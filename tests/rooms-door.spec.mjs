@@ -135,6 +135,93 @@ test.describe("the rooms door", () => {
     expect(r.hOverflow, "and the page does not leak sideways").toBe(false);
   });
 
+  test("every room's name fits on one line on a phone", async ({ browser }) => {
+    const page = await openLanding(browser, { viewport: { width: 390, height: 900 } });
+
+    /* The panel's whole job is the room's name, and on a 320px frame the four
+       longest wrapped to two lines while the door lay across the copy — "The
+       Draft Room" rendered as "he Draft Room". The frame is wider than the
+       angle is clever: opening the door further trades the placard for the
+       text, widening the frame buys both.
+
+       Stop the cycle before measuring. The door holds each room for six
+       seconds and this walks all six, so a sample taken mid-swing reports a
+       door that is nowhere in particular — which is how an earlier version of
+       this measurement produced clearances of -400px on a layout that was
+       fine. */
+    await page.evaluate(() => {
+      doorRunning = false;
+      window.queueRoomDoor = () => {};
+      window.startRoomDoor = () => {};
+      doorClear();          // and cancel the chain already in flight
+    });
+
+    /* Measure in the font the page actually ships. Inter arrives after first
+       paint, and a line count taken against the fallback is a measurement of a
+       different typeface. Playwright's own screenshot waits for this; evaluate
+       does not. */
+    await page.evaluate(() => document.fonts.ready);
+
+    const rooms = await page.evaluate(() => ROOMS.length);
+    for (let i = 0; i < rooms; i++) {
+      /* Clear before every open, not once at the top. Stopping the cycle does
+         not cancel the step already scheduled — DOOR_HOLD is six seconds and
+         this walks six rooms, so one lands mid-run, adds `.turning`, and
+         rotates the whole doorway 90° underneath a measurement. That reported
+         the door 317px across the text: not a layout failure, a doorway
+         side-on. */
+      await page.evaluate(n => { doorClear(); openRoomDoor(n); }, i);
+
+      /* Wait for the door to stop, rather than for a duration — and wait for
+         it to stop *moving*, not to reach a particular angle. Pinning this to
+         cos(70°) would make every future change to the angle fail here as a
+         timeout instead of failing on the thing this test is about.
+
+         "Stable" alone is not enough, and the first version of this was flaky
+         because of it: between the class landing and the transition's first
+         painted frame the transform sits at its start value, so two identical
+         polls can both read a shut door. It reported the door 211px across
+         the text — which is exactly what a shut door measures, and looked
+         like a layout bug rather than a harness one. So it must also have
+         actually turned: cos well under 1, without naming which angle. */
+      await page.waitForFunction(() => {
+        const s = document.getElementById("roomStage");
+        if (!s.classList.contains("open")) return false;
+        const now = getComputedStyle(s.querySelector(".door")).transform;
+        const cos = Math.abs((now.match(/\(([^)]*)\)/) || [, "1"])[1].split(",").map(Number)[0]);
+        const was = window.__lastDoorTransform;
+        window.__lastDoorTransform = now;
+        return was === now && cos < 0.9;
+      }, null, { timeout: 5000, polling: 120 });
+
+      const m = await page.evaluate(() => {
+        const s = document.getElementById("roomStage");
+        const name = s.querySelector(".door-room-name");
+        const inner = s.querySelector(".door-room-inner");
+        const door = s.querySelector(".door");
+
+        /* Count real line boxes. Dividing height by line-height is only as
+           good as the line-height it assumes, and measuring the name's own
+           width with a detached probe is worse still — a copy of the computed
+           style inherits the body font and reported 141px for a name that
+           needs 158 and was visibly wrapping. */
+        const rng = document.createRange();
+        rng.selectNodeContents(name);
+        const lines = new Set([...rng.getClientRects()].map(r => Math.round(r.top))).size;
+
+        return {
+          room: name.textContent,
+          lines,
+          clear: Math.round(inner.getBoundingClientRect().left -
+                            door.getBoundingClientRect().right)
+        };
+      });
+
+      expect(m.lines, `${m.room} fits on one line`).toBe(1);
+      expect(m.clear, `and the door is clear of ${m.room}`).toBeGreaterThan(4);
+    }
+  });
+
   test("a planned room turns the door; the open one goes in", async ({ browser }) => {
     const page = await openLanding(browser);
     await page.waitForTimeout(1400);

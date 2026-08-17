@@ -2038,7 +2038,13 @@ tr.drafted .ovr { color: var(--ink-light); }
      defeats stretch and makes it shrink-wrap, and every child of .doorway is
      absolutely positioned — so its intrinsic width is zero and the whole
      doorway collapses while still reporting a healthy max-width. */
-  .doorway-outer { width: 100%; max-width: 320px; justify-self: center; padding: 30px 0; }
+  /* The frame was capped at 320 while the list under it used the whole column
+     — 354px at 390, 378 at 414 — so the door sat inside an edge every other
+     block on the page shares. Widening it is the one move that buys the
+     placard and the room's name at the same time; opening the door further
+     trades one for the other, and shaving the text column's padding is worth
+     about six pixels. */
+  .doorway-outer { width: 100%; max-width: 380px; justify-self: center; padding: 30px 0; }
 
   /* The door opens further on a phone, and the text column moves left to use
      what the swing gives back.
@@ -2047,18 +2053,31 @@ tr.drafted .ovr { color: var(--ink-light); }
      frees up width — the intuition runs the other way and it is wrong. At 48°
      and 54° the panel ran straight over the text it is supposed to be
      revealing; that was measured rather than reasoned, after reasoning got it
-     backwards.
+     backwards. The desktop 62° does it too: on a 320 frame the door lands
+     across the copy, so "The Draft Room" read as "he Draft Room".
 
-     At the desktop 62° the text column is about 130px on a 320px frame, and
-     "The Draft Room" wraps to two lines on the one panel whose whole job is
-     the room's name. 68° gives 142px and one line, and drops the blurb from
-     six lines to four. Past about 73° the placard starts to squeeze and the
-     door stops reading as a door — 79px of visible face against 107 here.
+     **Measure the name in place, not with a probe.** A detached span carrying
+     a copy of the computed style inherits the body font and reported 141px for
+     "The Waiver Room" — comfortably inside a 154px column, on a name that was
+     visibly wrapping. Set `white-space: nowrap` on the real element and it is
+     158. Every number below is the second kind.
+
+     The longest is "The Prospect Room" at 175px, which no angle reaches on a
+     320 frame: at 68° the column is 160, and buying 175 there needs about 75°,
+     where the door is edge-on and stops being a door. So the frame gives the
+     width and the angle only has to clear the text — 70° leaves 9 to 11px
+     between the panel and the first letter.
+
+     **Below 360 it still wraps, and that is the honest outcome.** A 320px
+     screen offers a 260px room, which is 154 of column against 175 of name.
+     Two lines and no overlap is the right way to lose that; the alternative is
+     dropping the name to the blurb's own size, which is a worse answer than a
+     second line.
 
      Phone only. Desktop has width to spare and 62° reads better on a door
      that size. */
-  .roomstage.open .door { transform: rotateY(-68deg); }
-  .door-room-inner { left: 42%; }
+  .roomstage.open .door { transform: rotateY(-70deg); }
+  .door-room-inner { left: 36%; right: 12px; }
 }
 
 /* The header panel is a flat list and can reflow to any column count. The

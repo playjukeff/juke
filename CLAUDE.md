@@ -989,6 +989,40 @@ way, not reasoned about.
   wider than it looks like it needs to be. Anything written under the swing is
   hidden by the thing that is supposed to be revealing it.
 
+  **The frame is what buys width on a phone, not the angle.** A swung door
+  covers cos(θ), so opening it *further* uncovers more — the intuition runs
+  backwards, and 48° and 54° were both tried before that was measured. But the
+  angle only ever moves width between the placard and the room's name, because
+  both live on the same frame. Widening the frame gives both, and the frame had
+  a `max-width: 320px` while the list beneath it used the full column: 354px at
+  390, 378 at 414. The door sat inside an edge every other block on the page
+  shares. It is 380 now, at 70°, and the placard came out bigger than it was at
+  320.
+
+  **Measure text in place, never with a probe.** A detached span carrying a copy
+  of the computed style inherits the body font, and it reported 141px for "The
+  Waiver Room" in a 154px column — a comfortable fit, on a name that was
+  visibly wrapping. `white-space: nowrap` on the real element says 158. The
+  longest is "The Prospect Room" at 175, which no angle reaches on a 320 frame:
+  buying it there needs about 75°, where the door is edge-on and stops being a
+  door.
+
+  **Below 360px it still wraps, and two lines is the right way to lose that.**
+  A 320px screen offers a 260px room against a 175px name. The alternative is
+  dropping the name to the blurb's own size, which is a worse answer than a
+  second line.
+
+  **Anything measuring the door has to stop the cycle *and* cancel what is
+  already scheduled.** `doorRunning = false` prevents the next queue; it does
+  not cancel the step in flight, and `DOOR_HOLD` is six seconds — so a walk
+  through six rooms has one fire underneath it, add `.turning`, and rotate the
+  whole doorway 90°. That measured as the door lying 317px across the text,
+  which reads as a layout bug and is a doorway seen side-on. `doorClear()`
+  before every open. Waiting for the transform to go *stable* is not enough
+  either: between the class landing and the first painted frame it sits at its
+  start value, so two identical polls can both read a shut door — it must also
+  have turned.
+
   **A colour inside the room is a literal, not a token.** `--band-ink` is
   declared on `.hero-band`, not on `:root`, so naming it out here resolved to
   nothing — the property fell back to inherit and the room's name picked up the
