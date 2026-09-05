@@ -5316,6 +5316,81 @@ same measurement `HomePhone` already records for it), and it is a different
 kind of action from those two anyway — they change what the button above
 starts, this starts something else.
 
+### The ceiling moves, and nothing re-clamped the sheet to it
+
+Reported by a beta tester on an iPhone SE: mid-draft, auto-pick switched on
+from the Queue tab, and then no way to swipe the sheet back down — the
+auto-pick ribbon was sitting on the handle they would have swiped.
+
+**`maxHeight` was only ever honoured at mount and at a snap change, never
+when it MOVED.** `BottomSheet`'s one effect watches `snapIndex`, and turning
+auto-pick on does not change the snap — it grows the header by
+`AUTOPICK_RIBBON_H`, which drops the sheet's ceiling by 38. The motion value
+kept the height it already had, so the sheet stayed taller than the room now
+left and the header — `z-40`, over the sheet's `z-30` — covered the
+difference. Which is the exact failure that prop's own comment describes,
+arriving from the one direction it did not cover.
+
+**Two things move that ceiling and only one of them was auto-pick.**
+`DraftRoomPhone` also read the viewport height once at mount
+(`useState(() => window.innerHeight)`), and a phone browser's URL bar shows
+and hides as you scroll, and rotating changes it outright. So a height
+captured at mount can overstate the room by 60-90px within seconds of the
+draft starting, with nobody touching auto-pick at all.
+
+Measured against the real board, ribbon off then on:
+
+```
+                                 sheet   ceiling   header covers
+375x553  SE 2/3, Safari chrome     447       439         8px
+320x568  SE 1st gen                462       454         8px
+375x667  SE 2/3, no browser UI     470       553           0
+390x664  iPhone 13                 470       550           0
+375x667 -> 553 mid-draft           447       439        31px
+```
+
+**The sheet's height never changed when the ribbon appeared** — 447 stayed
+447 — which is the whole bug in one number.
+
+**8px is the entire handle.** The pip is 5px with a 9px margin above it, so
+an 8px bite takes the margin and leaves the pip 3px clear of a ribbon
+carrying a "Turn off" button: a downward swipe starts on the ribbon rather
+than on the sheet. The 31px row is the viewport case and buries the handle
+outright, which is the "completely covered" in the report.
+
+**The suite could never have caught it, and the last row is why.**
+`phone.spec.mjs` profiles exactly one device — iPhone 13 — where a 664px
+viewport minus a 114px header-with-ribbon leaves 80px of slack. Confirmed
+rather than assumed: with the bug restored, that profile still passes.
+**A single device profile is a sample, not a phone**, and this class of
+defect only exists at the short end of the range.
+
+`tests/sheet-reachable.spec.mjs` takes the sizes as its fixture and asserts
+the relationship — the header's bottom edge is never below the sheet's top
+edge — plus a hit-test of the handle's own centre, because a sheet can be
+1px legal and still hand the touch to the ribbon. Both fixes were confirmed
+red independently: without the re-clamp the two SE rows fail at 8px, and
+without the live viewport only the shrink test fails, at 31.
+
+**Re-settling rather than clamping `height` directly is what makes it
+symmetric**: turning auto-pick off hands the room back and the sheet grows
+into it again, instead of staying short for the rest of the draft. It is
+skipped mid-drag — `handleDrag` already clamps to the live ceiling every
+frame, so a gesture is honouring it anyway.
+
+**`window.innerHeight`, deliberately, and not `visualViewport.height`.**
+visualViewport is the one that tracks the on-screen keyboard, and the Chat
+tab has a composer — using it would shrink the sheet every time somebody
+typed. `position: fixed` is laid out against the layout viewport, which is
+what `innerHeight` reports and what the URL bar and rotation actually move.
+Measure a fixed element's ceiling against the viewport it is positioned in.
+
+**And the gesture is the assertion, not a tap.** The first version cycled
+snaps with a synthetic 2px tap and failed on all three sizes including the
+control — the app was fine and the tap was not registering. What was
+reported was a swipe, so the test swipes: 150px, past `DRAG_STEP`, and
+asserts the sheet reaches its collapsed snap.
+
 ## The gear menu, and notifications that do something
 
 The kebab dropdown is a bottom **action sheet** below `sm` and the anchored
@@ -5850,6 +5925,60 @@ file already states about the padding that stands in for a fixed header's
 height. Header-left minus H1-left is 0 on all five routes and the title
 spread within a row is 0 on both grids, at 375 and 1440; a number here
 would be wrong the next time the max-width moves.
+
+### The locker grew forever, on both screens the route split created
+
+Reported off the deployed site: the mock-drafts list "can't continue to grow
+vertically. If someone runs a hundred, we shouldn't show every single one."
+`HISTORY_LIMIT` is 200, and both screens rendered every entry — so the page
+grew by one row-height per finished draft, without limit, and neither had
+anything on it to say the list had an end.
+
+**It is one defect in two places, and fixing only the reported one moves it
+one route over.** The split above puts starting a draft at `#/rooms/draft`
+and the record of them at `#/drafts`, so the obvious repair for the entry is
+to show a few and link to the archive — which lands the reader on the other
+uncapped list. Both were changed together.
+
+The two want different answers, because the route split already decided what
+each screen is for:
+
+- **`#/rooms/draft` is a launcher**, so the list there is context for the
+  Start button rather than the record. `RECENT_SHOWN = 5`, then "See all N
+  drafts" into the archive. The total is in that link on purpose: five rows
+  and a bare "See all" read as five drafts.
+- **`#/drafts` is the archive**, so nothing may be unreachable from it. It
+  pages instead — 20, then "Show N more" — with `LockerTable`'s own footer
+  shape ("Showing 20 of 47" beside the button) rather than a second one
+  invented here. The button's number is what the press actually does, so
+  the last one reads "Show 7 more" rather than promising twenty.
+
+**`LockerTable` already paged and nothing had noticed.** It has had a
+`visibleCount` and a "Load 20 more" since the Locker redesign, whose own
+comment cites a manager who has run "hundreds of mocks" — so the pattern,
+the reasoning and the constant were all already in the repository, and the
+two screens built later simply never adopted them. The check worth running
+on any new list is whether an existing one already solved it.
+
+**One cut, not one per breakpoint.** The desktop rail is taller than five
+rows fill, and eight would fit it — but "See all N drafts" counts the whole
+locker either way, so a breakpoint-dependent cut makes that sentence true at
+one width and wrong at the other, and adds a second number to keep in step
+with the first. Measured at 1440 with 47 seeded: five rows plus the link
+ends the right rail at 752 against the left column's 845, which is a gap
+small enough to cost nothing.
+
+**Verified by seeding the locker rather than by reading the diff**, which is
+the only way this one is checkable — 47 entries into `juke.draft-history.v1`,
+then driven in a real browser at 390 and 1440. The entry renders 5 rows and
+"See all 47 drafts"; the archive renders 20, then 40 on one press with the
+button reading "Show 7 more", then 47 with the button gone. Every one of
+those was a number the unfixed code got wrong.
+
+**`DraftLocker` and `YouScreen` read the same list and needed nothing.** The
+first hands it straight to `LockerTable`, which pages; the second takes only
+`.length`. `PracticeScenarios` aggregates. Those four call sites are the
+whole set — `grep historyList()` before assuming a fifth.
 
 ### Still open
 
@@ -7339,6 +7468,58 @@ A cached stylesheet once let the logo expand to fill the entire screen.
   Any league setting that changes what a roster is allowed to hold deserves
   the same treatment. A grade that rewards a worse roster is worse than no
   grade, and it will not show up in a spread or a reconciliation.
+
+### A refusal that returns a boolean nobody reads
+
+Eight tests across `phone.spec.mjs` and `lobby.spec.mjs` were driving a
+screen that had never been reached, and every one of them reported a
+missing element rather than the reason.
+
+**`JukeEngine.startDraft()` and `JukeEngine.createRoom()` both open with a
+refusal.** `startDraft()` is `if (setupProblem()) return false`, and
+`createRoom()` is `if (setupProblem()) return null` — and `setupProblem()`
+answers *"the board is loading"* until `players.js` and `stats.js` land,
+which are deferred behind the cold-load reveal. **No caller in the suite
+read either return value.** So on any run where the deferred data is slow,
+the draft never started, the room was never created, and the test went on
+to assert against the Lobby.
+
+**It does not fail there. It asserts against the wrong screen**, which is
+the silent direction — the same shape as the entry screen's own
+`historySummary()` reading a board that has not arrived, one layer up in
+the harness instead of in the app.
+
+**Two independent holes, and the flat wait was only the second.** These
+sites also read the room the instant `state.started` flipped, which is
+synchronous inside `startDraft()` while `DraftRoomLoader` holds a
+full-viewport layer over the room for a floor of its own. That floor has
+been 400ms, then 2100, then 500, and is 2400 today; the waits were 700.
+`helpers.mjs`'s `startSoloDraft()` had already learned this and waits on
+`[data-draft-loader]` leaving — the seven bridge call sites simply never
+adopted it.
+
+Both are conditions, so both are waited on as conditions:
+`startPhoneDraft()` in `phone.spec.mjs` waits for `dataReady()`, **asserts
+the boolean**, then waits for the loader; `createRoom()` in `helpers.mjs`
+grew the same board wait, which fixes every caller at once rather than the
+one test that surfaced it.
+
+**Measured**: `phone.spec.mjs` went from 7 failing of 12 to 12 passing, and
+none of the seven was an app bug.
+
+**`lobby.spec.mjs` carried two hand-rolled copies of `createRoom()`**, and a
+local copy is a copy that never learns. Both are the shared helper now —
+the argument `helpers.mjs` already makes about `startSoloDraft()`'s seven
+near-identical predecessors, arriving a second time at a different function.
+
+**What makes this reproducible here rather than intermittent** is a sandbox
+where a render-blocking Google Fonts `<link>` resets through the proxy, so
+the reveal — and therefore the deferred data behind it — is late on every
+load. That is the same proxied-sandbox note this file already records
+against `sonar.spec.mjs`, and it is worth keeping for the reverse reason:
+it turns a rare race into a permanent one, which is the cheapest way to
+find a race there is. **A flaky wait is a bug that has not been measured
+under a slow enough load.**
 
 ### The suite goes stale, and it fails exactly like a broken app
 

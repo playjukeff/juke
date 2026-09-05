@@ -127,6 +127,10 @@ export default function BottomSheet({ snapIndex, onSnapIndexChange, header, chil
   const dragStartH = useRef(snaps[snapIndex])
   const draggedPastSlop = useRef(false)
   const controlsRef = useRef(null)
+  // Whether a finger is on the handle right now. Only the ceiling effect
+  // below reads it: every other path here already knows, because it is one
+  // of the drag handlers.
+  const dragging = useRef(false)
   // The snap this drag began from. `snapIndex` itself is a prop closed over
   // by the handler of whichever render armed it, which is the right value
   // here today only because a drag never writes to it mid-gesture — but a
@@ -163,7 +167,47 @@ export default function BottomSheet({ snapIndex, onSnapIndexChange, header, chil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapIndex])
 
+  /* ---- The ceiling is not fixed for the life of the sheet ----
+
+     `maxHeight` moves mid-draft, and nothing re-ran the settle above for
+     it: that effect watches `snapIndex`, which has not changed. So the
+     motion value kept a height taller than the room now left, the sheet's
+     top edge stayed where it was, and the header — `z-40`, over this
+     sheet's `z-30` — covered the difference. Which is the exact failure
+     the maxHeight note above describes, arriving from the one direction
+     that note did not cover: the ceiling was only ever honoured at mount
+     and at a snap change, never when it MOVED.
+
+     Two things move it. CockpitHeaderPhone grows by AUTOPICK_RIBBON_H the
+     moment auto-pick goes on, and the viewport itself changes height when
+     a phone browser's URL bar shows or hides, or the device rotates.
+
+     Reported from an iPhone SE: auto-pick switched on in the Queue tab,
+     and then no way to swipe the sheet back down, because the ribbon was
+     sitting on the handle. Measured at 375x553 with the ribbon on, the
+     sheet stayed 447px against a ceiling that had dropped to 439 and the
+     header covered the top 8px of it — the handle's whole top margin, with
+     the "Turn off" button directly above what was left, so a downward
+     swipe starts on the ribbon rather than on the sheet. At 390x664 — the
+     one phone the suite profiles — there is 80px of slack and it cannot
+     happen at all, which is why nothing caught it.
+
+     Re-settling rather than clamping `height` directly is what makes it
+     symmetric: turning auto-pick off hands the room back and the sheet
+     grows into it again, instead of staying short for the rest of the
+     draft. And it is skipped mid-drag, because a ceiling change during a
+     gesture would yank the sheet out from under the finger — `handleDrag`
+     already clamps to the live ceiling on every frame, so the drag is
+     honouring it anyway, and `handleDragEnd` settles onto the new snaps. */
+  useEffect(() => {
+    if (dragging.current) return
+    settle(snapIndex, 0)
+    return () => controlsRef.current?.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ceiling])
+
   const handleDragStart = () => {
+    dragging.current = true
     controlsRef.current?.stop()
     dragStartH.current = height.get()
     startIndex.current = snapIndex
@@ -178,6 +222,7 @@ export default function BottomSheet({ snapIndex, onSnapIndexChange, header, chil
   }
 
   const handleDragEnd = (_, info) => {
+    dragging.current = false
     if (!draggedPastSlop.current) {
       // A tap: cycle forward regardless of where the drag jitter left the
       // height, so a tap always means "one step on," never "wherever a
