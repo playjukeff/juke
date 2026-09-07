@@ -46,6 +46,25 @@ function realWeeks(currentWeek) {
   return weeks
 }
 
+// Every other top-level screen (YouScreen, DraftsScreen, RoomsLobby) leads
+// with a mono eyebrow and one visible <h1> naming the screen; LeagueBar and
+// MyLeagueDemo's own "Your Team" line carry the specific identity (which
+// league, which team) but neither is a heading tag, so My League had none
+// at all. Fixed text rather than the league's own name — that name is
+// already said, more usefully, by LeagueBar's switcher and MyLeagueDemo's
+// team line a few lines below this.
+const TITLE = (
+  <div className="mx-auto max-w-[1280px] px-5 pt-[22px] sm:px-10 sm:pt-10">
+    <div className="mb-1.5 font-mono text-[11px] tracking-[0.1em] text-teal">
+      <span className="mr-1.5" aria-hidden="true">🏟</span>
+      MY LEAGUE
+    </div>
+    <h1 className="m-0 font-display text-[30px] font-extrabold uppercase italic text-white sm:text-[44px]">
+      My League
+    </h1>
+  </div>
+)
+
 export default function MyLeagueScreen() {
   const { status, league } = useLeague()
   const connected = status === 'connected' && !!league
@@ -58,6 +77,7 @@ export default function MyLeagueScreen() {
   if (status === 'loading') {
     return (
       <AppShell active="my-league">
+        {TITLE}
         <div className="mx-auto max-w-[1280px] px-5 py-10 sm:px-10">
           <p className="text-[14px] text-ink-muted">Loading…</p>
         </div>
@@ -68,6 +88,7 @@ export default function MyLeagueScreen() {
   if (!connected) {
     return (
       <AppShell active="my-league">
+        {TITLE}
         <MyLeagueDemo />
       </AppShell>
     )
@@ -78,6 +99,7 @@ export default function MyLeagueScreen() {
 
   return (
     <AppShell active="my-league">
+      {TITLE}
       <LeagueBar league={league} snapshot={snapshot} snapStatus={snapStatus} />
       {ready && phase === 'in-season' ? (
         <WeekStrip weeks={realWeeks(snapshot.week)} selected={String(snapshot.week)} />

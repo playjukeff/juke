@@ -26,7 +26,7 @@ const CASES = [
   { hash: "#/rooms/waiver", needs: "Waiver Room", tab: "Rooms" },
   { hash: "#/rooms/trade", needs: "Trade Room", tab: "Rooms" },
   { hash: "#/rooms/strategy", needs: "Strategy Room", tab: "Rooms" },
-  { hash: "#/rooms/league", needs: "League Room", tab: "Rooms" },
+  { hash: "#/my-league", needs: "Connect a real league", tab: "My League" },
   { hash: "#/rooms/draft", needs: "Mock Drafts", tab: "Rooms" },
   { hash: "#/drafts", needs: "Your Drafts", tab: "Drafts" },
   { hash: "#/you", needs: "You", tab: "You" },
