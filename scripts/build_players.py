@@ -172,7 +172,18 @@ INJURY_CODES = {
 }
 
 MANUAL_MATCHES = {
-    # "Some Awkward Name": "1234",
+    # Sleeper now lists Travis Hunter's primary `position` as "DB" rather than
+    # a FANTASY_POSITIONS value, even though his own `fantasy_positions` array
+    # still carries "WR" and FFC still drafts him as one (~ADP 162). That
+    # single field is all index_sleeper() checks, so he silently fell out of
+    # every automatic join tier -- by_name_pos_team, by_name_pos and even the
+    # loosest by_name fallback are all built from that same filtered pass.
+    # Confirmed against the live Sleeper API 6 September 2026: position "DB",
+    # fantasy_positions ["DB", "WR"]. Same Sleeper id NFLVERSE_MATCHES already
+    # trusts for him, so this also un-silences that override -- it has been a
+    # no-op since his id disappeared from `stats` (link_nflverse() only
+    # applies NFLVERSE_MATCHES to an id already present there).
+    "Travis Hunter": "12530",
 }
 
 # ---------------------------------------------------------------- scoring
