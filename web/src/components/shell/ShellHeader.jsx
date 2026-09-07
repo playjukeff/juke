@@ -47,13 +47,21 @@ import { useLeague } from '../../hooks/useLeague.js'
    slot as the connect CTA it is really offering.
 
    This paragraph used to begin "there is no league connect in this project
-   yet", which stopped being true and stayed on the page. */
+   yet", which stopped being true and stayed on the page.
 
-const TABS = [
-  { key: 'home', label: 'Home', href: '#/' },
-  { key: 'drafts', label: 'Drafts', href: '#/drafts' },
-  { key: 'rooms', label: 'Rooms', href: '#/rooms' },
-]
+   ---- The desktop tab row is gone, and the rail is why ----
+
+   Home / Drafts / Rooms lived here as three text links. Juke Journey v3's
+   rail (AppShell.jsx's own RailNav, `lg:sticky` beside this header) covers
+   Rooms and History directly and adds My League above them, so the same
+   three destinations sitting in both places would be the identical
+   sub-navigation drawn twice — the written-down-twice failure this project
+   already has a name for, in a nav bar instead of a data table. Home stays
+   reachable through the logo link a few lines down; nothing else in this
+   header names a route any more. `active` is accepted and unused here for
+   exactly that reason — AppShell still threads it through in case a future
+   header treatment wants it, and a prop nothing reads is harmless where a
+   second nav would not be. */
 
 function GuestAuth() {
   const ready = useAccountUiReady()
@@ -159,28 +167,6 @@ export default function ShellHeader({ active = null }) {
           <a href="#/" className="shrink-0" aria-label="Juke — home">
             <JukeLogo size={22} />
           </a>
-
-          {/* Text tabs, desktop only — the mobile equivalent is
-              FloatingNavPill, which is the same four destinations at the
-              bottom of the screen. */}
-          <nav className="hidden items-center gap-[26px] text-[14px] font-semibold sm:flex">
-            {TABS.map((t) => {
-              const on = active === t.key
-              return (
-                <a
-                  key={t.key}
-                  href={t.href}
-                  aria-current={on ? 'page' : undefined}
-                  className={
-                    'border-b-2 pb-[2px] transition-colors duration-150 ' +
-                    (on ? 'border-mint text-mint' : 'border-transparent text-voidInk-body hover:text-voidInk-primary')
-                  }
-                >
-                  {t.label}
-                </a>
-              )
-            })}
-          </nav>
         </div>
 
         <div className="flex shrink-0 items-center gap-3 sm:gap-3.5">

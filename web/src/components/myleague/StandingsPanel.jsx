@@ -1,28 +1,30 @@
 import { platformFor } from '../shell/leaguePlatforms.js'
 import DraftCountdown from '../shell/DraftCountdown.jsx'
 import { draftPhase } from '../../lib/countdown.js'
-/* The League Room, on a connected league's real standings.
 
-   ---- Why this is the room that went first ----
+/* A connected league's real standings — moved here, unchanged, from the
+   old League Room (rooms/LeagueRoomLive.jsx) when League graduated from a
+   room into My League. Everything below is that component's own reasoning
+   and still applies; only the file it lives in changed.
+
+   ---- Why this was the room that went first ----
 
    Standings are a direct read. Sleeper's rosters carry wins, losses and
    points for, and its users carry the team names; joining them is the
    whole computation. Every other room needs Juke to have an opinion —
    what a claim is worth, whether an offer is fair, who to start — and an
-   opinion needs designing. This one only needs the table drawn correctly,
-   so it is what connecting buys on day one rather than a label change.
+   opinion needs designing. This is what connecting bought on day one
+   rather than a label change, and it is still the only real per-league
+   data My League can show until Waiver, Strategy and Trade have one of
+   their own.
 
    ---- What is not here, and why it is absent rather than empty ----
 
-   The handoff draws three segmented pills: Standings, Power, Chatter.
-   Power is a ranking model nobody has specified and Chatter is league
-   activity Sleeper does not expose in what we read. Drawing two pills that
-   switch to nothing is the dead-control failure this project keeps
-   finding, so there is one view and no pills at all — the same call
-   UsageTab makes by removing its own tab rather than showing an empty
-   panel.
-
-   They come back as pills the day there is something behind them.
+   The handoff draws three segmented pills on this panel: Standings, Power,
+   Chatter. Power is a ranking model nobody has specified and Chatter is
+   league activity Sleeper does not expose in what we read. Drawing two
+   pills that switch to nothing is the dead-control failure this project
+   keeps finding, so there is one view and no pills at all.
 
    ---- The ordering is ours, and it has to be said out loud ----
 
@@ -33,18 +35,12 @@ import { draftPhase } from '../../lib/countdown.js'
    would disagree with us. `division` and tiebreak settings are in the
    league object and unread; when a league that uses them turns up, this is
    the function that owes them an answer rather than the table quietly
-   being wrong. */
-
-function ordered(teams) {
+   being wrong. Exported so MyLeagueScreen.jsx can derive the same team's
+   rank and record for its own LeagueBar without a second sort. */
+export function ordered(teams) {
   return [...teams].sort((a, b) => (b.wins - a.wins) || (b.pointsFor - a.pointsFor))
 }
 
-/* The snapshot arrives as a prop rather than being fetched here.
-
-   RoomPage owns it because the hero it draws above this needs the week,
-   and lifting it there is also what keeps the page to ONE call for the
-   league instead of two — this component asking for the same id the hero
-   already asked for. Presentational from here down. */
 /* The draft's date and time, in the reader's own timezone.
 
    `toLocaleString` with no locale argument, which is the browser's — a
@@ -68,20 +64,10 @@ function draftWhen(ms) {
   }
 }
 
-export default function LeagueRoomLive({ league, snapshot, status, reason }) {
-  /* Which platform this league came from, by name.
-
-     Four strings on this screen said "Sleeper" outright, and every one of
-     them was correct until ESPN shipped — at which point an ESPN league's
-     own room told its owner it was read from Sleeper, and an unreachable
-     ESPN reported that Sleeper had not answered. Found by looking at the
-     screen rather than by anything failing, which is the only way this
-     class of wrongness is ever found.
-
-     platformFor() rather than a ternary on `provider`, because that is the
-     one list, and a third platform should be a row in it rather than an
-     edit here. `private` joins the failure branches with it: it cannot
-     happen on Sleeper and is the most likely failure on ESPN. */
+export default function StandingsPanel({ league, snapshot, status, reason }) {
+  /* Which platform this league came from, by name. platformFor() rather
+     than a ternary on `provider`, because that is the one list, and a
+     third platform should be a row in it rather than an edit here. */
   const platform = platformFor(league && league.provider).name
 
   if (status === 'loading') {

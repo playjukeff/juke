@@ -96,7 +96,7 @@ test.describe("a connected league", () => {
     // The control, and it matters: every assertion in the next test is about
     // something DISAPPEARING, and a bug that hid these from everybody would
     // pass all of them.
-    expect(body).toContain("Unlock every room with your league");
+    expect(body).toContain("Connect your league");
     expect(body).toContain("The rest unlock when you connect a league");
     expect(body).toMatch(/5 ROOMS · 1 OPEN/);
 
@@ -109,9 +109,11 @@ test.describe("a connected league", () => {
     await page.goto(`${SITE}/index.html#/rooms`);
     await page.waitForSelector("#view-home h1");
     // The lobby reads the league through useLeague(), which resolves a tick
-    // after mount — wait for the answer rather than for a duration.
+    // after mount — wait for the answer rather than for a duration. "Your
+    // league is in" is SubCopy()'s own connected-state text, so waiting on
+    // it is waiting on the same settle every assertion below depends on.
     await page.waitForFunction(
-      () => /2 OPEN/.test(document.getElementById("view-home").innerText),
+      () => document.getElementById("view-home").innerText.includes("Your league is in"),
       null,
       { timeout: 15000 },
     );
@@ -121,7 +123,7 @@ test.describe("a connected league", () => {
     /* Every one of these was still on the screen after a successful connect,
        and each is a different component that had no way to hear about it.
        Confirmed red without the shared league state: all four fail. */
-    expect(body, "the unlock bar is gone").not.toContain("Unlock every room with your league");
+    expect(body, "the unlock bar is gone").not.toContain("Connect your league");
     expect(body, "and so is the promise it made").not.toContain(
       "The rest unlock when you connect a league",
     );
@@ -130,13 +132,21 @@ test.describe("a connected league", () => {
        own note). What it says instead is that the league is in, which is
        the same fact in the copy this screen owns. */
     expect(body, "and the blurb says the league is in").toContain("Your league is in");
-    expect(body, "and the room it opens is counted").toMatch(/5 ROOMS · 2 OPEN/);
+    /* Still 1, not 2: League graduated out of this grid into its own screen
+       (My League, #/my-league) and connecting one no longer opens anything
+       ELSE shown here — Waiver, Trade and Strategy still need Juke to have
+       an opinion that has not been built. The room this screen used to open
+       on connect is simply not a room any more, so the count staying put is
+       the correct behaviour rather than a regression of the old one. */
+    expect(body, "and the grid still shows only Draft as open").toMatch(/5 ROOMS · 1 OPEN/);
 
-    /* The League Room specifically. `live` on a room means "built for
-       everybody" and was the only thing the lobby drew a padlock from, so a
-       room RoomPage renders live for a connected reader was still shown
-       locked here — the same bug as the copy, in an emoji. */
-    expect(body, "League is no longer previewed").not.toContain("Preview: standings + power ranks");
+    /* League itself no longer appears in this grid at all — not locked, not
+       open, just gone (it is #/my-league now). The old "no longer previewed"
+       check named League Room's own retired hook text; asserting its
+       absence here would be checking something that structurally cannot
+       happen any more, so the meaningful version of this guard is that the
+       room name itself is gone from the grid. */
+    expect(body, "and League Room is not one of the cards any more").not.toContain("League Room");
 
     await page.close();
   });

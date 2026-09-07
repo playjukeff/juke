@@ -167,12 +167,15 @@ const GRID = {
 export default function RoomsGridAlive({ columns = 'lobby' }) {
   const rooms = useRooms()
   /* Which rooms this reader can walk into, which is not the same question
-     as which rooms are built. `live` is the second one, and it was the
-     only one until a league could be connected: League Room renders real
-     standings for a connected reader (RoomPage's LIVE_ROOMS) and drew a
-     padlock here regardless, so the lobby said locked about a room that
-     opens. LIVE_WHEN_CONNECTED is that map's own key list rather than a
-     second copy of it. */
+     as which rooms are built. `live` is the second one, and `opensForMe`
+     exists for the gap between them: League Room used to render real
+     standings for a connected reader (RoomPage's LIVE_ROOMS) while this
+     grid drew a padlock on it regardless, so the lobby said locked about a
+     room that opened. League graduated into My League and left LIVE_ROOMS
+     empty, but the gap it exposed can reopen the moment any of Waiver,
+     Trade or Strategy gets a real connected body — so this stays rather
+     than being simplified back to `r.live` alone. LIVE_WHEN_CONNECTED is
+     that map's own key list rather than a second copy of it. */
   const { status } = useLeague()
   const opensForMe = (r) =>
     r.live || (status === 'connected' && LIVE_WHEN_CONNECTED.includes(r.slug))

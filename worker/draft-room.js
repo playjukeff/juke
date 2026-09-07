@@ -33,7 +33,7 @@ import {
   getSavedDraft, putSavedDraft, deleteSavedDraft,
   listDraftHistory, putHistoryEntry, deleteHistoryEntry,
   listLeagues, putLeague, deleteLeague, selectLeague, resolveSleeperIds,
-  refreshLeagueCache
+  refreshLeagueCache, getTier, LEAGUE_CAP
 } from "./store.js";
 
 /* Sleeper, read-only. Kept out of store.js for the same reason auth.js is:
@@ -1010,7 +1010,13 @@ async function meRoute(request, env, ctx) {
   // must not turn a real yes into an error.
   after(ctx, touchUser(env, user.id));
 
-  return new Response(JSON.stringify({ signedIn: true, userId: user.id }), { headers });
+  // Awaited, unlike the touch above: the tier gate a caller renders off
+  // this needs a real answer, not an eventually-consistent one. null (D1
+  // unreachable, or the tier column not migrated yet) is passed through as
+  // null rather than guessed at "free" — see getTier()'s own comment.
+  const tier = await getTier(env, user.id);
+
+  return new Response(JSON.stringify({ signedIn: true, userId: user.id, tier }), { headers });
 }
 
 /* Both routes below share one shape: refuse the origin, verify the token,
@@ -1530,6 +1536,29 @@ async function meLeaguesRoute(request, env, ctx) {
     const status = failure === "private" ? 403 : 404;
     return new Response(JSON.stringify({ ok: false, error: failure }), { status, headers });
   }
+
+  /* The tier gate. Checked here rather than before resolving the league so
+     a bad id still fails on "not found" first — the same ordering the
+     validation above already follows.
+
+     A refresh of a league this account already holds is not a new
+     connection and must not trip the cap, which is why the count excludes
+     it rather than just comparing against the raw cap. getTier() returning
+     null means the question could not be answered (D1 unreachable, or this
+     migration not applied yet) rather than that the account is free, and
+     the gate fails OPEN on that — refusing a real connect because of an
+     infra hiccup is a worse failure than letting one through uncapped for
+     a moment. */
+  const tier = await getTier(env, user.id);
+  if (tier !== null) {
+    const cap = LEAGUE_CAP[tier] ?? 0;
+    const already = await listLeagues(env, user.id);
+    const isRefresh = already.some((l) => l.provider === provider && l.leagueId === leagueId);
+    if (!isRefresh && already.length >= cap) {
+      return new Response(JSON.stringify({ ok: false, error: "tier-limit", tier, cap }), { status: 403, headers });
+    }
+  }
+
   const ok = await putLeague(env, user.id, league);
 
   /* A league somebody just connected is the one they want to look at.

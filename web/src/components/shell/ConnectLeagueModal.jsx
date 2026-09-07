@@ -1,6 +1,9 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { X, Check, Lock } from 'lucide-react'
 import { PLATFORMS, LIVE_PLATFORMS } from './leaguePlatforms.js'
+import { tierLabel } from '../../lib/tiers.js'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /* Connect a league: which platform, then one identifying thing, then which
    of the results is yours.
@@ -83,7 +86,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
   const dialogRef = useRef(null)
   const [username, setUsername] = useState('')
   // platform | idle | looking | picking | connecting | done
-  // | not-found | private | error
+  // | not-found | private | tier-limit | error
   const [status, setStatus] = useState('platform')
   const [platform, setPlatform] = useState(null)
   const [leagues, setLeagues] = useState([])
@@ -94,6 +97,14 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      to infer it from, and without it every screen that says "your roster"
      has nothing to key on. */
   const [espnLeague, setEspnLeague] = useState(null)
+  // Which tier's cap was hit, and what it is — filled only on a tier-limit
+  // refusal, to say which plan this account is on rather than a bare
+  // "you're at your limit".
+  const [tierInfo, setTierInfo] = useState({ tier: null, cap: null })
+  // The tier-limit branch's own tiny email-capture, same shape as
+  // EarlyAccessModal's: idle | invalid | submitting | success | error.
+  const [email, setEmail] = useState('')
+  const [notifyStatus, setNotifyStatus] = useState('idle')
 
   useImperativeHandle(ref, () => ({
     open() {
@@ -103,11 +114,29 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setChosen(null)
       setEspnLeague(null)
       setPlatform(null)
+      setTierInfo({ tier: null, cap: null })
+      setEmail('')
+      setNotifyStatus('idle')
       // Always the first step, never the one it was left on: this dialog
       // is one element reused for every open, which is the same reason
       // openSheet() clears the player sheet's team colour rather than
       // merely setting it.
       setStatus('platform')
+      dialogRef.current?.showModal()
+    },
+    /* The cap is already known before this opens — every caller has
+       useTier() and useLeague().leagues.length in hand — so a Free reader
+       (or anyone else already at their cap) lands straight on the
+       tier-limit screen instead of picking a platform, typing a username
+       and choosing a league only to be told no at the very end. The worker
+       still refuses a connect against this same cap regardless of which
+       path opened the dialog; this only saves the trip for the case that
+       can be known in advance. */
+    openAtLimit(tier, cap) {
+      setEmail('')
+      setNotifyStatus('idle')
+      setTierInfo({ tier, cap })
+      setStatus('tier-limit')
       dialogRef.current?.showModal()
     },
   }))
@@ -178,6 +207,11 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       : { ok: false, reason: 'offline' }
 
     if (!res.ok) {
+      if (res.reason === 'tier-limit') {
+        setTierInfo({ tier: res.tier, cap: res.cap })
+        setStatus('tier-limit')
+        return
+      }
       // A league that stopped being public between the lookup and the
       // connect is worth naming rather than reporting as a generic failure.
       setStatus(res.reason === 'private' ? 'private' : 'error')
@@ -187,6 +221,31 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
     if (onConnected) onConnected(res.league)
     // Long enough to read the confirmation, short enough not to be a wait.
     setTimeout(() => close(), 900)
+  }
+
+  /* The tier-limit branch's own way forward. There is no checkout to send
+     anybody to — see worker/store.js's LEAGUE_CAP comment and CLAUDE.md's
+     "payment processing is explicitly out of scope" — so this is the same
+     email-capture EarlyAccessModal.jsx already uses for every other "not
+     built yet" dead end, inlined rather than opened as a second dialog:
+     chaining two <dialog> elements from one imperative open() has nowhere
+     good to hand the ref, and this is small enough not to need its own
+     component. */
+  const notify = async (e) => {
+    e.preventDefault()
+    const trimmed = email.trim()
+    if (!EMAIL_RE.test(trimmed)) {
+      setNotifyStatus('invalid')
+      return
+    }
+    setNotifyStatus('submitting')
+    const signup = typeof window !== 'undefined' && window.Live && window.Live.signup
+    // The tier ABOVE the one that was hit — a Free account capped at zero
+    // wants Season Pass; a Season Pass account with its one league already
+    // connected wants Multi-League.
+    const nextTier = tierInfo.tier === 'pro' ? 'allaccess' : 'pro'
+    const result = signup ? await signup(trimmed, 'upgrade:' + nextTier) : { ok: false }
+    setNotifyStatus(result && result.ok ? 'success' : 'error')
   }
 
   /* The picking step renders one list. Sleeper fills it with leagues and
@@ -215,6 +274,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             <h3 className="mt-1.5 font-display text-[24px] font-bold text-white">
               {status === 'platform'
                 ? 'Where is your league?'
+                : status === 'tier-limit'
+                  ? "You're at your plan's limit"
                 : status === 'picking' || status === 'connecting' || status === 'done'
                   // ESPN has already resolved the league; what is being
                   // chosen at this step is which team in it is yours.
@@ -291,6 +352,49 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                     LIVE_PLATFORMS.length > 1 ? 'are' : 'is'
                   } what Juke reads today. The others are not connected yet.`}
             </p>
+          </>
+        ) : status === 'tier-limit' ? (
+          <>
+            <p className="mt-2 text-[14px] leading-[1.5] text-voidInk-body">
+              {tierLabel(tierInfo.tier)} connects{' '}
+              {tierInfo.cap ? `${tierInfo.cap} ${tierInfo.cap === 1 ? 'league' : 'leagues'}` : 'no leagues'}.
+              Upgrading isn't live yet — leave an email and we'll tell you when it is.
+            </p>
+            {notifyStatus === 'success' ? (
+              <p className="mt-4 flex items-center gap-2 text-[15px] text-mint">
+                <Check className="h-5 w-5 shrink-0" />
+                You're on the list.
+              </p>
+            ) : (
+              <form onSubmit={notify}>
+                <input
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (notifyStatus !== 'idle') setNotifyStatus('idle')
+                  }}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="mt-4 w-full rounded-xl border border-line-hairline bg-surface-page px-4 py-3 text-[16px] text-white outline-none placeholder:text-ink-muted focus:border-teal"
+                />
+                {notifyStatus === 'invalid' ? (
+                  <p className="mt-2 text-[13px] text-flow-rose">That doesn&apos;t look like an email address.</p>
+                ) : null}
+                {notifyStatus === 'error' ? (
+                  <p className="mt-2 text-[13px] text-flow-rose">That didn&apos;t send. Try again in a moment.</p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={notifyStatus === 'submitting'}
+                  className="mt-3 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01] disabled:opacity-40"
+                  style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
+                >
+                  {notifyStatus === 'submitting' ? 'Sending…' : 'Notify me'}
+                </button>
+              </form>
+            )}
           </>
         ) : status === 'done' ? (
           <p className="mt-4 flex items-center gap-2 text-[15px] text-mint">

@@ -656,6 +656,28 @@
         .catch(() => syncResult(false, "offline", { snapshot: null }));
     },
 
+    // Am I signed in, and on which tier — GET /me. Nothing on the client
+    // called this before tiers existed; web/src/lib/tierStore.js is the
+    // first caller. Answers signedIn:false rather than an error for a
+    // missing or expired token, mirroring the route itself: there is no
+    // wrong answer to asking whether you are logged in, only a true one.
+    me: function (token) {
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/me", { headers: token ? { "authorization": "Bearer " + token } : {} })
+        .then(function (r) {
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status), { signedIn: false, tier: null });
+          return r.json()
+            .then((body) => syncResult(true, null, {
+              signedIn: !!(body && body.signedIn),
+              // Passed through as-is, including a genuine null — the tier
+              // store's whole job is telling that apart from "free".
+              tier: body && body.tier !== undefined ? body.tier : null,
+            }))
+            .catch(() => syncResult(false, "bad-response", { signedIn: false, tier: null }));
+        })
+        .catch(() => syncResult(false, "offline", { signedIn: false, tier: null }));
+    },
+
     listLeagues: function (token) {
       if (!token) return Promise.resolve(syncResult(false, "signed-out", { leagues: [] }));
       const http = WORKER.replace(/^ws/, "http");
@@ -687,7 +709,22 @@
       })
         .then(function (r) {
           if (r.status === 404) return syncResult(false, "not-found", { league: null });
-          if (r.status === 403) return syncResult(false, "private", { league: null });
+          /* 403 is two different refusals now, told apart by the body
+             rather than assumed from the status: an ESPN league that has
+             stopped being public, and a tier cap this account has reached.
+             Reading the body is what stops a Free account's cap from being
+             reported as a broken ESPN league — which is what always
+             assuming "private" here would do the moment a Free account hit
+             the cap on Sleeper, where "private" means nothing at all. */
+          if (r.status === 403) {
+            return r.json()
+              .then((body) => syncResult(false, (body && body.error) || "private", {
+                league: null,
+                tier: body && body.tier,
+                cap: body && body.cap,
+              }))
+              .catch(() => syncResult(false, "private", { league: null }));
+          }
           if (!r.ok) return syncResult(false, reasonForStatus(r.status), { league: null });
           return r.json()
             .then((body) => (body && body.ok)

@@ -5,16 +5,17 @@ import { useRooms } from '../hooks/useRooms.js'
 import WaiverPreview from './rooms/WaiverPreview.jsx'
 import TradePreview from './rooms/TradePreview.jsx'
 import StrategyPreview from './rooms/StrategyPreview.jsx'
-import LeaguePreview from './rooms/LeaguePreview.jsx'
-import LeagueRoomLive from './rooms/LeagueRoomLive.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 
 /* #/rooms/<slug> — one page for every room, guest state.
 
-   The four in-season rooms are locked previews (design_handoff_v3_alive's
-   d/e/h/i); the Draft Room is open and redirects to the place it already
-   lives. What differs per room is the hero's accent and copy and which
-   sample content sits under the blur, so that is all this table holds.
+   The three in-season rooms below are locked previews
+   (design_handoff_v3_alive's d/e/h; League left this table when it
+   graduated into its own screen, see the redirect further down); the
+   Draft Room is open and redirects to the place it already lives; Prospect
+   has none yet. What differs per room is the hero's accent and copy and
+   which sample content sits under the blur, so that is all this table
+   holds.
 
    A room with no preview built yet renders the hero and the unlock card
    with nothing behind it — honest, and visibly unfinished, rather than a
@@ -39,20 +40,14 @@ const PREVIEWS = {
     headline: 'Plan your real week',
     Body: StrategyPreview,
   },
-  league: {
-    eyebrow: 'IN-SEASON · PREVIEW',
-    sub: 'Standings, power ranks and what every manager is up to.',
-    headline: 'See your real league',
-    Body: LeaguePreview,
-  },
 }
 
-/* Which rooms have something real behind a connected league. One today;
-   this is the list the other three join as they are built, and keeping it
-   a map rather than an `if` is what makes adding one a single line. */
-const LIVE_ROOMS = {
-  league: LeagueRoomLive,
-}
+/* Which rooms have something real behind a connected league. None today —
+   League was the one entry and it left this file for MyLeagueScreen.jsx.
+   Kept as a map rather than deleted outright, because that is what makes
+   Waiver, Trade and Strategy joining it, as each is built, a single line
+   rather than a new `if`. */
+const LIVE_ROOMS = {}
 
 /* The same list, as slugs, for anything that needs to know WHICH rooms a
    connected league opens without needing the component that draws them.
@@ -105,6 +100,19 @@ export default function RoomPage({ slug }) {
     live ? league.leagueId : null,
     live ? league.provider : null,
   )
+
+  // #/rooms/league is retired, not merely stale — League graduated into
+  // its own screen rather than being deleted, so it gets its own
+  // destination instead of falling into the generic stale-slug bounce
+  // below (which would land it on #/rooms with no explanation). Same
+  // shape as app.js's own #/draft -> #/draft-room redirect, and carries
+  // the query string for the identical reason that one does.
+  if (slug === 'league') {
+    if (typeof window !== 'undefined') {
+      location.replace(location.pathname + location.search + '#/my-league')
+    }
+    return null
+  }
 
   // The lobby only links slugs that exist, so this is a hand-typed or stale
   // URL. Send it to the lobby rather than rendering a room-shaped shell with

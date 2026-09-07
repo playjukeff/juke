@@ -87,9 +87,10 @@ export const LINE = [
    The obvious version gives each platform its own tint. It is not worth
    what it costs: every value in the palette is already spoken for, and the
    three that are not (`flow.gold`, `flow.lavender`, `flow.blue`) are room
-   identities — gold is the League Room, lavender is Trade. Reusing one
-   here would make a colour mean two things in one app, which this project
-   has a standing rule against and has already paid for once.
+   identities — gold is My League (its standings panel's own accent),
+   lavender is Trade. Reusing one here would make a colour mean two things
+   in one app, which this project has a standing rule against and has
+   already paid for once.
 
    The letter identifies the platform, and every surface that draws more
    than the badge draws the platform's name in text beside it. So a second

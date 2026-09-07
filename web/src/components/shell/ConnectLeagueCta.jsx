@@ -3,7 +3,9 @@ import { SignUpButton } from '@clerk/clerk-react'
 import ConnectLeagueModal from './ConnectLeagueModal.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
-import { noteLeagueConnected } from '../../hooks/useLeague.js'
+import { useLeague, noteLeagueConnected } from '../../hooks/useLeague.js'
+import { useTier } from '../../hooks/useTier.js'
+import { leagueCap } from '../../lib/tiers.js'
 
 /* "Connect a league", everywhere it is offered — and it now connects one.
 
@@ -63,6 +65,8 @@ export default function ConnectLeagueCta({
   const ref = useRef(null)
   const ready = useAccountUiReady()
   const signedIn = useSignedIn()
+  const { tier, status: tierStatus } = useTier()
+  const { leagues } = useLeague()
 
   const cls = VARIANTS[variant] || VARIANTS.gradient
   const style = variant === 'gradient'
@@ -88,9 +92,23 @@ export default function ConnectLeagueCta({
     if (onConnected) onConnected(league)
   }
 
+  /* Known in advance whenever the tier answer has actually landed — skip
+     straight to the tier-limit screen rather than making a Free reader
+     pick a platform and a league only to be told no at the end. `tierStatus
+     !== 'ready'` (still loading, or the worker could not say) opens the
+     ordinary flow instead of guessing a cap that might be wrong; the worker
+     enforces the real cap regardless of which screen this opens on. */
+  const openConnect = () => {
+    if (tierStatus === 'ready' && leagues.length >= leagueCap(tier)) {
+      ref.current?.openAtLimit(tier, leagueCap(tier))
+      return
+    }
+    ref.current?.open()
+  }
+
   return (
     <>
-      {trigger(() => ref.current?.open())}
+      {trigger(openConnect)}
       <ConnectLeagueModal ref={ref} onConnected={connected} />
     </>
   )

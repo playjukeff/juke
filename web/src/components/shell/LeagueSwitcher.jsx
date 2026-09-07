@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Plus } from 'lucide-react'
 import { useLeague, noteLeagueConnected } from '../../hooks/useLeague.js'
+import { useTier } from '../../hooks/useTier.js'
+import { leagueCap } from '../../lib/tiers.js'
 import { platformFor } from './leaguePlatforms.js'
 import ConnectLeagueModal from './ConnectLeagueModal.jsx'
 import DraftCountdown from './DraftCountdown.jsx'
@@ -43,6 +45,7 @@ const BADGE =
 
 export default function LeagueSwitcher() {
   const { status, leagues, league, select } = useLeague()
+  const { tier, status: tierStatus } = useTier()
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -171,7 +174,16 @@ export default function LeagueSwitcher() {
             <button
               type="button"
               role="menuitem"
-              onClick={() => { setOpen(false); modalRef.current?.open() }}
+              onClick={() => {
+                setOpen(false)
+                // Known in advance whenever the tier answer has landed —
+                // same reasoning as ConnectLeagueCta.jsx's identical check.
+                if (tierStatus === 'ready' && leagues.length >= leagueCap(tier)) {
+                  modalRef.current?.openAtLimit(tier, leagueCap(tier))
+                } else {
+                  modalRef.current?.open()
+                }
+              }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[14px] font-semibold text-voidInk-primary transition-colors hover:bg-white/[0.06]"
             >
               <Plus className="h-4 w-4 shrink-0 text-teal" aria-hidden="true" />

@@ -74,22 +74,23 @@ export default function DraftCountdown({ league, variant = 'row', className = ''
 
   const tone = TONE[state.phase] || 'text-voidInk-body'
 
-  /* `chip` is the switcher menu and the League Room header — a bordered
-     pill that has to survive sitting beside other chips. `row` is the You
-     screen, where it is one more line of metadata under a league name and a
-     border would be the only box on that row. */
+  /* `chip` is the switcher menu and My League's own banner
+     (myleague/StandingsPanel.jsx) — a bordered pill that has to survive
+     sitting beside other chips. `row` is the You screen, where it is one
+     more line of metadata under a league name and a border would be the
+     only box on that row. */
   /* Seconds in BOTH forms, which is not what KickoffPill does.
 
      That pill drops them below `sm` for a measured reason — it shares the
      hero's eyebrow row at 375px and the pair overflowed by nine pixels.
-     Neither of these surfaces has that constraint: the menu row and the
-     League Room banner are both full-width blocks with the countdown on a
+     Neither of these surfaces has that constraint: the menu row and My
+     League's own banner are both full-width blocks with the countdown on a
      line of its own.
 
      And the reason to keep them is the one KickoffPill was reported for:
      `3D 06:21` changes once a minute and reads as frozen. A menu is open
-     for seconds so it hardly matters there, but the League Room banner sits
-     on screen for as long as somebody is looking at their league — and a
+     for seconds so it hardly matters there, but My League's banner sits on
+     screen for as long as somebody is looking at their league — and a
      countdown that never visibly moves is not a live countdown, which is
      the whole of what was asked for. */
   if (variant === 'chip') {

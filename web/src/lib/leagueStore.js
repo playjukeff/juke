@@ -119,10 +119,10 @@
 
    Both, rather than one derived at each call site, because they answer
    different questions and almost every caller wants only the first: the
-   header draws the active league, the League Room reads the active
-   league's snapshot, the You screen lists all of them. Keeping `league` on
-   the object means the seven surfaces that read it did not change when
-   this grew a list underneath them.
+   header draws the active league, My League reads the active league's
+   snapshot, the You screen lists all of them. Keeping `league` on the
+   object means the seven surfaces that read it did not change when this
+   grew a list underneath them.
 
    The order is the server's. listLeagues() returns most-recently-selected
    first, so the head IS the active league by construction — there is no

@@ -33,76 +33,19 @@ import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
    That is two strings and one hidden span, which is copy rather than
    logic. What would be the "written down twice" failure is two components. */
 
-/* 3bu's phase strip: one cell per room across the top of the grid, the
-   room you are in now lit.
-
-   The handoff fills it with league timings — `WAIVER · 14H`, `TRADE · 2D`,
-   `LINEUP · SUN` — and every one of those is a deadline read off a
-   connected league. What survives without one is the part that is a fact
-   about the product rather than about your week: which room is open. That
-   is `live` on ROOMS, so the strip is real, and the timings arrive with
-   the league rather than being guessed.
-
-   Connected only, and that is this file's own argument followed one step
-   further than it was. It already said a row of locked labels above the
-   same locked cards is "the same fact twice", and used that to keep the
-   strip off the signed-out screen -- then drew it for a signed-in reader,
-   who has no league either and therefore sees exactly the same
-   duplication. The handoff's split is signed-out against signed-in
-   because in the handoff being signed in MEANS having a league; here the
-   two came apart, and the half that matters is the league.
-
-   So the condition is the one that decides whether there is anything to
-   say: a connected league, which is what turns `WAIVER` into
-   `WAIVER · 14H`. It draws itself the day one is connected rather than
-   waiting for somebody to remember it. */
-function PhaseStrip() {
-  const rooms = useRooms()
-  const { status } = useLeague()
-  // "loading" is not "none" -- see useLeague. Drawing on anything but a
-  // settled `connected` would flash the strip on every load for a reader
-  // whose league has not been read back yet.
-  if (status !== 'connected' || !rooms.length) return null
-
-  return (
-    <div className="mb-4 hidden gap-2 sm:flex">
-      {rooms.map((r) => {
-        const label = r.name.replace(/^The /, '').replace(/ Room$/, '').toUpperCase()
-        /* `live` is "built for everybody"; open is "you can walk in". They
-           were the same question until a league could be connected, and a
-           padlock on a room RoomPage will render live is the connection
-           failing to show — the same complaint this whole change is about,
-           in an emoji. LIVE_WHEN_CONNECTED is RoomPage's own list; the one
-           thing this must not do is keep a second copy of it. */
-        const open = r.live || (status === 'connected' && LIVE_WHEN_CONNECTED.includes(r.slug))
-        return (
-          <a
-            key={r.name}
-            href={r.href || `#/rooms/${r.slug}`}
-            className="flex-1 rounded-lg py-[9px] text-center font-mono text-[10px] tracking-[0.08em] transition-opacity duration-150 hover:opacity-90"
-            style={
-              open
-                ? { background: '#12302e', color: '#74E5CE' }
-                : { background: '#1A1F27', color: '#8A9BAA' }
-            }
-          >
-            {label} {open ? '✓' : '🔒'}
-          </a>
-        )
-      })}
-    </div>
-  )
-}
-
 /* The two lines that promise what connecting buys, and what they say once
    it has been bought.
 
-   Both read "the rest unlock when you connect a league", which is a
-   promise to a guest and a falsehood to somebody holding one — connecting
-   opens the League Room and leaves Waiver, Trade and Strategy exactly as
-   they were, because those three need Juke to have an opinion that has not
-   been built yet. Saying so is the honest version and it is also the more
-   useful one: it names where to go next.
+   Both used to read "the rest unlock when you connect a league" against a
+   connected state promising "Draft Room and League Room are open" — true
+   while League was one of these five doors. It graduated into My League
+   (#/my-league), a screen this grid does not draw at all, so connecting no
+   longer opens anything shown on this page: Waiver, Trade and Strategy
+   still need Juke to have an opinion that has not been built, exactly as
+   before, and there is nothing left here for a connected reader to unlock.
+   Saying so is the honest version, and it names where the real payoff
+   actually is rather than leaving a reader to wonder why nothing here
+   changed.
 
    `status` rather than `league`, and "loading" keeps the guest line, for
    useLeague's own reason — the wrong line once beats the wrong line
@@ -112,7 +55,7 @@ function SubCopy() {
   return (
     <p className="mt-3 hidden text-[16px] text-voidInk-body sm:block">
       {status === 'connected'
-        ? 'Draft Room and League Room are open. Waiver, Trade and Strategy open as they are built.'
+        ? 'Your league is in — see it in My League. These three still show a sample week until they are built.'
         : 'Draft Room is open to everyone. The rest unlock when you connect a league.'}
     </p>
   )
@@ -124,7 +67,7 @@ function Blurb() {
   return (
     <p className="m-0 flex-1 rounded-[14px_14px_14px_4px] border border-flow-pillEdge bg-flow-pill px-3.5 py-[11px] text-[14px] leading-[1.45] text-voidInk-primary sm:max-w-[520px] sm:rounded-[16px_16px_16px_4px] sm:px-[18px] sm:py-3.5 sm:text-[15px]">
       {connected ? (
-        'Your league is in. League Room reads it now — the other three still show a sample week until they are built.'
+        'Your league is in — see your standings and this week in My League. These three still show a sample week until they are built.'
       ) : (
         <>
           <span className="sm:hidden">
@@ -176,9 +119,11 @@ function UnlockBar() {
       <span className="text-[26px]" role="img" aria-label="Locked">🔒</span>
       <span className="flex-1">
         <span className="block text-[16px] font-semibold text-white">
-          Unlock every room with your league
+          Connect your league
         </span>
-        <span className="mt-1 block text-[12px] text-ink-muted">{PLATFORM_LINE}</span>
+        <span className="mt-1 block text-[12px] text-ink-muted">
+          See your real standings and this week's move in My League · {PLATFORM_LINE}
+        </span>
       </span>
       <ConnectLeagueCta variant="gradient" />
     </>,
@@ -189,9 +134,11 @@ function UnlockBar() {
       <span className="text-[26px]" role="img" aria-label="Locked">🔒</span>
       <span className="flex-1">
         <span className="block text-[16px] font-semibold text-white">
-          Unlock every room with your league
+          Connect your league
         </span>
-        <span className="mt-1 block text-[12px] text-ink-muted">{PLATFORM_LINE}</span>
+        <span className="mt-1 block text-[12px] text-ink-muted">
+          See your real standings and this week's move in My League · {PLATFORM_LINE}
+        </span>
       </span>
       <span className="flex gap-2">
         {ready ? (
@@ -294,8 +241,6 @@ export default function RoomsLobby() {
             <Blurb />
           </div>
         </div>
-
-        <PhaseStrip />
 
         <RoomsGridAlive columns="lobby" />
         <UnlockBar />

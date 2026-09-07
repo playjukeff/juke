@@ -185,16 +185,16 @@ function ConnectCard() {
         <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
           {league.season ? `${league.season} · ` : ''}
           {league.totalTeams ? `${league.totalTeams} teams · ` : ''}
-          read-only. The League Room reads it today; Waiver, Trade and Strategy open as they are
+          read-only. My League reads it today; Waiver, Trade and Strategy open as they are
           built.
         </p>
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <a
-            href="#/rooms/league"
+            href="#/my-league"
             className="inline-flex items-center justify-center whitespace-nowrap rounded-full px-5 py-3 text-[14px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.02]"
             style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
           >
-            Open the League Room
+            Open My League
           </a>
           <a href="#/you" className="text-[12px] text-ink-muted underline-offset-2 hover:underline">
             Manage
@@ -212,8 +212,8 @@ function ConnectCard() {
         Connect your league
       </div>
       <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
-        One connect opens the Waiver, Trade, Strategy and League Rooms — your claims, your offers
-        and your lineup, priced the way the Draft Room prices a pick.
+        One connect opens My League — your real standings, read the moment it lands. Waiver,
+        Trade and Strategy open as they are built.
       </p>
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <ConnectLeagueCta variant="gradient" />

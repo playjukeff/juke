@@ -574,10 +574,9 @@ const SEASONS = ["Pre-season", "In-season", "Post-season"];
    simulating, and the Prospect Room described as dynasty value, which is not
    what college-to-NFL scouting is at all.
 
-   The League Room genuinely spans in-season and post-season. It is filed
-   under the later one because the wrap-up is the part that is distinctly
-   its own — power rankings mid-season overlap with what the other rooms
-   already tell you — and because that leaves no phase standing empty. */
+   The League Room is gone from this array now — see the comment where it
+   used to sit, after Strategy — which is what makes the paragraph above
+   correct about five rooms rather than the six it was written against. */
 const ROOMS = [
   // #/draft-room, not #/draft: that's the legacy vanilla route
   // applyRoute() still toggles (#view-app, hidden-not-deleted DOM — see
@@ -618,25 +617,23 @@ const ROOMS = [
   //            not the README's #74E5CE: both breakpoints' markup says cyan
   //            (2dg/3dg), and the HTML is the spec where the two disagree.
   //   hook   — the one line a locked card shows a guest.
-  /* Retired, not deleted -- design_handoff_v3_alive draws four locked
-     rooms and the Draft Room, and the Prospect Room appears nowhere in
-     it: not in the README, not in a screenshot, and not in turn 1's
-     early explorations either, which draw only Draft/Waiver/Trade. Every
-     document before it says six rooms, so this is a change rather than a
-     correction, and the owner made it.
+  /* Retired once, un-retired here. design_handoff_v3_alive drew four
+     locked rooms and no Prospect — not in its README, not in a screenshot
+     — against every earlier document's six, and that was a real product
+     decision rather than an oversight, so the entry was flagged `retired`
+     rather than deleted: everything that draws a room (the lobby, the
+     homepage grid, the footer column) reads the same rooms() bridge, and
+     the flag was the one place to make it disappear from all three at
+     once.
 
-     What it was for is partly here already: the Draft Room runs a
-     rookies-only draft today (league.playerPool, Draft Settings), which
-     is the drafting half of "scout the incoming class". The half that is
-     not here is the college-production-to-NFL translation this blurb
-     promises -- so if this comes back, that is what it owes.
-
-     `retired` is read by rooms() below and nowhere else. Deleting this
-     line is how it returns; everything that draws a room -- the lobby,
-     the homepage grid, the footer column -- follows automatically
-     because all three read the same bridge. */
+     Juke Journey v3's rail restores it — its own room order names Draft,
+     Waiver, Strategy, Trade, Prospect — so `retired` comes off. What it is
+     for is partly here already: the Draft Room runs a rookies-only draft
+     today (league.playerPool, Draft Settings), which is the drafting half
+     of "scout the incoming class". The half that is not here is the
+     college-production-to-NFL translation this blurb promises, which is
+     still owed — un-retiring the entry did not build the room behind it. */
   { name: "The Prospect Room", slug: "prospect", glyph: "🔭", accent: "#82A1F6",
-    retired: true,
     hook: "Preview: rookie board before the draft", live: false, season: "Pre-season",
     lead: "Scout the future.",
     blurb: "Analyze the college production and NFL translation of incoming rookies before they even hit your draft board." },
@@ -668,14 +665,15 @@ const ROOMS = [
   { name: "The Strategy Room", slug: "strategy", glyph: "🧭", accent: "#74E5CE",
     hook: "Preview: start/sit by matchup", live: false, season: "In-season",
     lead: "Optimize every week.",
-    blurb: "Set your lineup using predictive analytics, probabilistic matchup outcomes, and deep opponent analysis." },
+    blurb: "Set your lineup using predictive analytics, probabilistic matchup outcomes, and deep opponent analysis." }
 
-  { name: "The League Room", slug: "league", glyph: "🏟", accent: "#F7D9A8",
-    hook: "Preview: standings + power ranks", live: false, season: "Post-season",
-    // Homepage v4 pass 2's fix: odds are not exact and this audience will
-    // notice — "exact playoff odds" is gone regardless of which body ships.
-    lead: "See the whole table.",
-    blurb: "Playoff odds, strength of schedule and league-wide trends, rebuilt every week as results land." }
+  /* The League Room left this array on Juke Journey v3's shell pass. It
+     graduated into My League (#/my-league), a rail item that sits above
+     these five rather than beside them, absorbing everything this room
+     used to show (standings, the draft countdown) plus the week strip and
+     the primary recommendation. It is not coming back here the way
+     Prospect could — deleting a line does not restore it — so there is
+     nothing to un-flag if a future room takes the name "League" again. */
 ];
 
 /* ---------- the product shot ----------

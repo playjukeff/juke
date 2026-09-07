@@ -35,6 +35,7 @@ export function parseHashRoute(hash) {
   const path = hash.slice(2).split('?')[0].replace(/\/+$/, '')
   if (path === 'rooms') return { view: 'rooms', slug: null }
   if (path.startsWith('rooms/')) return { view: 'room', slug: path.slice('rooms/'.length) }
+  if (path === 'my-league') return { view: 'my-league', slug: null }
   if (path === 'you') return { view: 'you', slug: null }
   if (path === 'drafts') return { view: 'drafts', slug: null }
   return { view: 'home', slug: null }

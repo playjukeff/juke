@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { SignInButton, useClerk, useUser } from '@clerk/clerk-react'
-import { CalendarClock, Compass, Home, ListChecks, LogOut, Settings2, User } from 'lucide-react'
+import { ListChecks, LogOut, MoreHorizontal, Home, Settings2, Trophy, User } from 'lucide-react'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import MoreSheet from './MoreSheet.jsx'
 
 /* The app-level bottom nav, as a floating pill.
 
@@ -58,30 +59,39 @@ export const NAV_PILL_CLEARANCE = 'calc(76px + env(safe-area-inset-bottom))'
    "a draft exists". */
 const BOARD_TAB = { key: 'draft', label: 'Board', icon: ListChecks, href: '#/draft-room' }
 
+/* Rooms and Drafts moved into the More sheet — Juke Journey v3's rail
+   folds them under one overflow item on a phone, the same way its desktop
+   rail replaces ShellHeader's old tab row. My League takes the second slot
+   because it is the one screen Juke Journey v3 puts above the rail's room
+   list rather than inside it, so it earns a tap of its own rather than
+   living behind More with everything that is. */
 const TABS = [
   { key: 'home', label: 'Home', icon: Home, href: '#/' },
-  { key: 'lobby', label: 'Drafts', icon: CalendarClock, href: '#/drafts' },
-  // #/rooms, not #rooms: the anchor scrolled to a section of the
-  // homepage, and the rooms are a destination now (RoomsLobby.jsx). The
-  // two strings are one character apart and mean different things —
-  // useHashRoute's own note says why only the second is a route.
-  { key: 'rooms', label: 'Rooms', icon: Compass, href: '#/rooms' },
-  /* A real destination now (YouScreen.jsx), where this was the one tab
-     in the pill with no href -- it opened an action sheet, because a
-     phone had nowhere else that could reach sign-out. The sheet is
-     still built and still the only thing DraftRoom's own copy of this
-     pill can offer inside a live draft, so it stays; what changes is
-     that the tab goes to the screen when there is one to go to. */
+  { key: 'my-league', label: 'My League', icon: Trophy, href: '#/my-league' },
+  /* No href — see the render loop below and MoreSheet.jsx. `active` still
+     needs to resolve to something truthful while the sheet is open over
+     one of the routes it lists, which is what moreActive derives further
+     down rather than this tab pretending to BE one of those routes. */
+  { key: 'more', label: 'More', icon: MoreHorizontal, href: null },
+  /* A real destination (YouScreen.jsx), where this was the one tab in the
+     pill with no href -- it opened an action sheet, because a phone had
+     nowhere else that could reach sign-out. The sheet is still built and
+     still the only thing DraftRoom's own copy of this pill can offer
+     inside a live draft, so it stays; what changes is that the tab goes to
+     the screen when there is one to go to. */
   { key: 'you', label: 'You', icon: User, href: '#/you' },
 ]
 
 function activeFromHash(hash) {
   if (hash.startsWith('#/draft-room')) return 'draft'
+  // 'lobby' and 'rooms' are not tab keys any more -- both routes live
+  // behind More now -- but the value is still read below (draftRunning's
+  // own `active === 'lobby'` check, and moreActive), so the hash still
+  // resolves to what it always meant rather than to the tab it used to
+  // light.
   if (hash.startsWith('#/drafts')) return 'lobby'
-  // Ordered after #/drafts deliberately: '#/drafts' and '#/rooms' do not
-  // collide, but a room page is '#/rooms/waiver' and has to light the
-  // same tab as the lobby it came from, which prefix-matching gives.
   if (hash.startsWith('#/rooms')) return 'rooms'
+  if (hash.startsWith('#/my-league')) return 'my-league'
   if (hash.startsWith('#/you')) return 'you'
   if (hash === '' || hash === '#' || hash === '#/') return 'home'
   return null
@@ -255,6 +265,7 @@ export default function FloatingNavPill() {
      render puts this back. It belongs in the effect. */
   const [active, setActive] = useState(null)
   const [youOpen, setYouOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const accountUiReady = useAccountUiReady()
   const engine = useEngine()
   useJukeTick(engine)
@@ -297,7 +308,11 @@ export default function FloatingNavPill() {
         <div className="flex w-full max-w-[420px] items-stretch gap-0.5 rounded-full border border-white/[0.09] bg-[rgba(17,20,25,0.86)] px-1.5 shadow-[0_10px_34px_-8px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           {tabs.map((t) => {
             const Icon = t.icon
-            const isActive = active === t.key
+            // More is not a route, so it cannot equal `active` the way
+            // every other tab can — it lights instead for the two routes
+            // it now holds (the old Rooms and Drafts tabs), which is what
+            // activeFromHash still resolves those hashes to.
+            const isActive = t.key === 'more' ? active === 'lobby' || active === 'rooms' : active === t.key
             const cls =
               'flex h-[58px] flex-1 flex-col items-center justify-center gap-[3px] rounded-full text-[10px] font-semibold transition-colors duration-150 ' +
               (isActive ? 'text-mint' : 'text-ink-muted')
@@ -325,19 +340,29 @@ export default function FloatingNavPill() {
                 </a>
               )
             }
-            // The one tab with no destination — see YouTab. Its hooks call
-            // into Clerk, so it may only mount once there is a provider
-            // above it to call into, which is exactly what accountUiReady
-            // answers; the plain button is what stands in until then.
-            return accountUiReady ? (
-              <YouTab key={t.key} cls={cls} content={content} onOpenSheet={() => setYouOpen(true)} />
-            ) : (
-              <button key={t.key} type="button" className={cls}>{content}</button>
+            // Two tabs with no destination now, each opening its own sheet.
+            // You's hooks call into Clerk, so it may only mount once there
+            // is a provider above it to call into — which is exactly what
+            // accountUiReady answers; the plain button is what stands in
+            // until then, same as before. More needs no such gate: its
+            // sheet is a plain link list with nothing Clerk-shaped in it.
+            if (t.key === 'you') {
+              return accountUiReady ? (
+                <YouTab key={t.key} cls={cls} content={content} onOpenSheet={() => setYouOpen(true)} />
+              ) : (
+                <button key={t.key} type="button" className={cls}>{content}</button>
+              )
+            }
+            return (
+              <button key={t.key} type="button" className={cls} onClick={() => setMoreOpen(true)}>
+                {content}
+              </button>
             )
           })}
         </div>
       </nav>
       {accountUiReady && youOpen && <YouSheet onClose={() => setYouOpen(false)} />}
+      {moreOpen && <MoreSheet onClose={() => setMoreOpen(false)} />}
     </>
   )
 }

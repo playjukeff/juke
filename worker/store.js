@@ -497,6 +497,36 @@ export async function touchUser(env, clerkId) {
   }
 }
 
+/* How many leagues each tier may connect. 'free' is zero on purpose — a
+   free account is a guest in every way that matters here, demo data only —
+   so this is also the map meLeaguesRoute() refuses a connect against. */
+export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 6 };
+
+/* Which plan an account is on, or null if the question could not be
+   answered.
+
+   null is not 'free'. A missing row means an account 0003's own default
+   already covers correctly — nobody has touched it, so 'free' is the true
+   answer — but a thrown query means the column is not there yet (a worker
+   deployed ahead of this migration) or D1 is unreachable, and neither of
+   those is evidence that the account is on the free tier. Collapsing them
+   would let an infra hiccup downgrade somebody who is paying; the caller
+   decides what "unknown" is worth, the same way listLeagues() lets its
+   caller decide what an empty read means. */
+export async function getTier(env, clerkId) {
+  if (!env.DB) return null;
+
+  try {
+    const row = await env.DB.prepare(
+      "SELECT tier FROM users WHERE clerk_id = ?"
+    ).bind(clerkId).first();
+    return (row && row.tier) || "free";
+  } catch (err) {
+    console.error("tier read failed:", err && err.message);
+    return null;
+  }
+}
+
 /* ----------------------------------------------------------
    Saved drafts and history
 

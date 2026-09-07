@@ -1,0 +1,17 @@
+-- 0009_tier.sql — which plan an account is on.
+--
+-- Three tiers: 'free' (mock drafts and demo data only — no real league may
+-- be connected), 'pro' (Season Pass, one connected league), 'allaccess'
+-- (Multi-League, up to six). Nothing enforced any of this before now — any
+-- signed-in account could connect any number of leagues — so this column
+-- is a new restriction rather than a description of one already in place.
+--
+-- No backfill. An account that already has a connected league today starts
+-- at 'free' like every other account; it keeps the league it has (nothing
+-- here deletes a connected_leagues row) but cannot connect another, or
+-- reconnect after disconnecting, until it is moved off 'free' by hand.
+--
+-- Same shape as every other column added to this table: touchUser()'s own
+-- upsert already runs on every request that matters, so nothing new has to
+-- create the row this lives on.
+ALTER TABLE users ADD COLUMN tier TEXT NOT NULL DEFAULT 'free';

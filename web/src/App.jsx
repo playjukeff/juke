@@ -1,6 +1,7 @@
 import Homepage from './components/Homepage.jsx'
 import RoomsLobby from './components/RoomsLobby.jsx'
 import RoomPage from './components/RoomPage.jsx'
+import MyLeagueScreen from './components/MyLeagueScreen.jsx'
 import YouScreen from './components/YouScreen.jsx'
 import DraftsScreen from './components/DraftsScreen.jsx'
 import { useHashRoute } from './hooks/useHashRoute.js'
@@ -18,6 +19,7 @@ export default function App() {
 
   if (view === 'rooms') return <RoomsLobby />
   if (view === 'room') return <RoomPage slug={slug} />
+  if (view === 'my-league') return <MyLeagueScreen />
   if (view === 'you') return <YouScreen />
   if (view === 'drafts') return <DraftsScreen />
   return <Homepage />
