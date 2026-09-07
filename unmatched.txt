@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-06 13:51 UTC
+Generated 2026-09-07 16:13 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -118,6 +118,8 @@ fum
 fum_rec_ez_tds
 fum_rec_td
 fum_ret_yd
+idp_blk_kick
+idp_def_td
 idp_ff
 idp_fum_rec
 idp_fum_ret_yd
@@ -222,7 +224,7 @@ every season we store. Sleeper stays authoritative: this changes no
 stored number and never should. It is here so that when the two
 start disagreeing, somebody finds out from this file.
 
-445 of 481 players joined to an nflverse record.
+444 of 481 players joined to an nflverse record.
 
 No nflverse record for:
 Seahawks | DEF | SEA | no nflverse id
@@ -257,9 +259,10 @@ Cardinals | DEF | ARI | no nflverse id
 Raiders | DEF | LV | no nflverse id
 Panthers | DEF | CAR | no nflverse id
 Dolphins | DEF | MIA | no nflverse id
-Garrett Greene | QB | TB | no nflverse id
+RJ Maryland | TE | GB | no nflverse id
 Michael Warren | RB | DET | no nflverse id
 Michael Woods | WR | DEN | no nflverse id
+Garrett Greene | QB | TB | no nflverse id
 Matt Hibner | TE | BAL | no nflverse id
 
 Two differences are known, applied rather than reported, and
@@ -280,19 +283,19 @@ single kick, and the made-total always agrees. A league paying extra
 for 60+ is slightly under-paying on those seasons. (Same date.)
 
 season    compared  disagree    rate
-2018           490        76   15.5%
-2019           632        54    8.5%
-2020           784        15    1.9%
-2021           980        14    1.4%
-2022          1237        39    3.2%
-2023          1544        11    0.7%
-2024          1945         7    0.4%
-2025          2331         5    0.2%
+2018           494        76   15.4%
+2019           647        54    8.3%
+2020           800        15    1.9%
+2021           991        14    1.4%
+2022          1257        39    3.1%
+2023          1559        11    0.7%
+2024          1961         7    0.4%
+2025          2333         5    0.2%
 
 stat  compared   agree   agree%
-cfd       909     846    93.1%
-ct        713     713   100.0%
-cy        971     967    99.6%
+cfd       924     861    93.2%
+ct        724     724   100.0%
+cy        989     985    99.6%
 f19        17      17   100.0%
 f29       132     129    97.7%
 f39       134     134   100.0%
@@ -302,17 +305,17 @@ f60        18      10    55.6%
 fg        134     133    99.3%
 fgx       131     131   100.0%
 pa        305     301    98.7%
-pc        270     267    98.9%
-pfd       251     214    85.3%
+pc        271     268    98.9%
+pfd       252     215    85.3%
 pi        219     219   100.0%
 pt        234     233    99.6%
-py        270     267    98.9%
-ra        826     821    99.4%
-rc        968     966    99.8%
-rfd       683     626    91.7%
-rt        467     467   100.0%
-ry        813     806    99.1%
-tg        987     974    98.7%
+py        271     268    98.9%
+ra        831     826    99.4%
+rc        986     984    99.8%
+rfd       688     631    91.7%
+rt        468     468   100.0%
+ry        818     811    99.1%
+tg       1005     992    98.7%
 xp        134     133    99.3%
 xpx        95      95   100.0%
 
