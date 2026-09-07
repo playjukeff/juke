@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Four URLs, and that is the whole site as a crawler sees it.
+
+  The app is hash-routed, so #/rooms, #/rooms/draft, #/drafts and #/you are
+  fragments rather than addresses: every one of them resolves to
+  https://jukeff.com/ and listing them would file four duplicates for one page.
+  Adding a route here is only correct once that route is a real path.
+
+  The docs entries are the redirect DESTINATIONS. Cloudflare Pages strips .html
+  and answers 308 on the source, so listing the .html form would put a permanent
+  redirect in a sitemap.
+
+  No lastmod on purpose. The nightly rewrites all four of these files every
+  morning to bump ?v=, so a date taken from git would claim the content changed
+  daily when only a cache-buster did, and a lastmod that is wrong every day is
+  worse than no lastmod at all. No changefreq or priority either: Google
+  ignores both, so they are noise that has to be kept in step with reality.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://jukeff.com/</loc></url>
+  <url><loc>https://jukeff.com/docs/draft-room-how-it-works</loc></url>
+  <url><loc>https://jukeff.com/docs/privacy</loc></url>
+  <url><loc>https://jukeff.com/docs/terms</loc></url>
+</urlset>

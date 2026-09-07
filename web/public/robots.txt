@@ -1,0 +1,20 @@
+# Lives in web/public/, which Vite copies to the deploy root verbatim. There is
+# no other place a file named with a leading "/" can come from now that Pages
+# builds from web/ — see CLAUDE.md on the output directory.
+#
+# This replaces Cloudflare's generated default, which was served at this address
+# and was 100% comments: the content-signals explainer with no Content-Signal
+# line under it, so it declared nothing and named no sitemap. Nothing is lost by
+# overriding it. If content signals are ever wanted they are a deliberate
+# rights reservation and belong here as an explicit decision, not as inherited
+# boilerplate.
+
+User-agent: *
+Allow: /
+
+# The error page answers 200 at a clean URL of its own, so it is indexable as a
+# page rather than as an error. A genuine miss still 404s correctly, so this is
+# the only soft-404 on the site.
+Disallow: /404
+
+Sitemap: https://jukeff.com/sitemap.xml
