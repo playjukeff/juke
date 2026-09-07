@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openApp } from "./helpers.mjs";
+import { openApp, createRoom } from "./helpers.mjs";
 
 /* Two managers in the React lobby.
 
@@ -52,14 +52,16 @@ test("two managers, one board: a claimed chair shows as taken to everybody",
        The seat board is a room screen, which is what this file is about: the
        chairs appear on the room's own lobby, and the room is what makes them
        claimable in the first place. So the room comes first and the chairs
-       are waited for after it — the same order a person invites somebody in. */
-    const code = await host.evaluate(async () => {
-      window.JukeEngine.createRoom();
-      for (let i = 0; i < 80 && !window.JukeEngine.codeInUrl(); i++) {
-        await new Promise((r) => setTimeout(r, 250));
-      }
-      return window.JukeEngine.codeInUrl();
-    });
+       are waited for after it — the same order a person invites somebody in.
+
+       Through the shared helper rather than a hand-rolled poll, which is
+       what both sites in this file used to carry. createRoom() opens with
+       `if (setupProblem()) return null`, so it refuses outright while the
+       deferred board is still loading — and a local copy of the poll is a
+       copy that never learned to wait for it. One helper, not two patches,
+       which is the argument helpers.mjs already makes about startSoloDraft's
+       seven near-identical predecessors. */
+    const code = await createRoom(host);
     expect(code, "the host's room has an invite code").toBeTruthy();
 
     // The lobby is the pre-draft screen, so no draft is started anywhere here.
@@ -196,13 +198,7 @@ test("the host sets the draft order and a guest cannot", async ({ browser }) => 
   const hostCtx = await browser.newContext();
   const host = await openApp(hostCtx, "#/draft-room");
 
-  const code = await host.evaluate(async () => {
-    window.JukeEngine.createRoom();
-    for (let i = 0; i < 80 && !window.JukeEngine.codeInUrl(); i++) {
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    return window.JukeEngine.codeInUrl();
-  });
+  const code = await createRoom(host);
   expect(code).toBeTruthy();
 
   const guestCtx = await browser.newContext();

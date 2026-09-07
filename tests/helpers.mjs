@@ -259,7 +259,27 @@ export async function openApp(context, path = "#/draft-room", opts = {}) {
 
    Returning "a room you are in" rather than "a code that exists" is what the
    callers all assumed they were getting anyway. */
-export function createRoom(page) {
+export async function createRoom(page) {
+  /* The board first, for the same reason startSoloDraft() waits on the
+     Start button's own disabled state a few functions down.
+
+     `JukeEngine.createRoom()` opens with `if (setupProblem()) return null`,
+     and setupProblem() answers "the board is loading" until players.js and
+     stats.js land — they are deferred behind the cold-load reveal, and
+     stats.js alone is 769KB. So a caller that creates a room the instant
+     openApp() resolves can be refused outright, and the refusal is a bare
+     null: the poll below then spends its full 30 seconds waiting for a code
+     that was never going to exist, and the caller reports "a room was
+     created" as false. Nothing in that names the board.
+
+     Measured in a sandbox where a render-blocking font request stalls the
+     reveal, which is what made it reproducible: phone.spec.mjs's entry-screen
+     test failed this way on every run, with the worker up and answering. */
+  await page.waitForFunction(
+    () => typeof dataReady === "function" && dataReady(),
+    null,
+    { timeout: 30000 },
+  );
   return page.evaluate(async () => {
     window.JukeEngine.createRoom();
     for (let i = 0; i < 120 && !window.JukeEngine.codeInUrl(); i++) {

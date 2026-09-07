@@ -41,6 +41,23 @@ import { useEngine, useJukeTick } from '../hooks/useJukeEngine.js'
    what is on screen is the dead-control failure this project keeps finding.
    The {league} pill arrives with league connect. */
 
+/* How many rows land before "Show more".
+
+   This screen IS the archive, so unlike the Draft Room's entry it does not
+   hand off anywhere — every draft has to be reachable from here. What it
+   must not do is render all two hundred at once (HISTORY_LIMIT), which is
+   what "if someone runs a hundred we should not show every single one"
+   asks for: the page grew by a row-height per draft and the filter pills
+   at the top scrolled away from the rows they filter.
+
+   20 rather than LockerTable's 8. That number is tied to its own
+   NEEDS_CONTROLS_ABOVE — the point below which its search box and four
+   filter pills have nothing to do — inside a fixed-height dashboard card.
+   This is a full page whose entire job is the list, so the first screenful
+   should be a screenful. The increment matches LockerTable's PAGE_SIZE,
+   because "one more page" is the same gesture on both. */
+const PAGE_SIZE = 20
+
 function relativeAge(at) {
   if (!at) return ''
   const mins = Math.max(0, Math.round((Date.now() - at) / 60000))
@@ -124,6 +141,10 @@ export default function DraftsScreen() {
   const engine = useEngine()
   const tick = useJukeTick(engine)
   const [filter, setFilter] = useState('ALL')
+  // Reset by every control that changes what `shown` contains, the same way
+  // LockerTable's own visibleCount is — paging is a position in one list,
+  // and a filter change makes it a different list.
+  const [shownCount, setShownCount] = useState(PAGE_SIZE)
   // Deleting an entry is a localStorage rewrite and broadcasts nothing, so
   // there is no "juke:header" to ride — the same local bump the Locker's own
   // delete already uses.
@@ -148,6 +169,7 @@ export default function DraftsScreen() {
   }, [list])
 
   const shown = filter === 'ALL' ? list : list.filter((e) => e.scoring === filter)
+  const visible = shown.slice(0, shownCount)
 
   const label = (key) => {
     const match = list.find((e) => e.scoring === key)
@@ -181,7 +203,7 @@ export default function DraftsScreen() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setFilter(key)}
+                    onClick={() => { setFilter(key); setShownCount(PAGE_SIZE) }}
                     aria-pressed={on}
                     className={
                       'rounded-full border px-3.5 py-[7px] text-[13px] font-semibold transition-colors duration-150 ' +
@@ -202,7 +224,7 @@ export default function DraftsScreen() {
           <DeviceNote />
 
           {shown.length ? (
-            shown.map((e) => (
+            visible.map((e) => (
               <Row
                 key={e.id}
                 entry={e}
@@ -218,7 +240,35 @@ export default function DraftsScreen() {
                 }}
               />
             ))
-          ) : (
+          ) : null}
+
+          {/* LockerTable's own footer shape — a position line beside the
+              button — rather than a second one invented here. The two are
+              the same list paged the same way, and "Showing 20 of 47" is
+              the half that says how deep you are once the eyebrow's total
+              has scrolled off the top.
+
+              The button's number is what the press actually does, so the
+              last press reads "Show 7 more" rather than promising twenty
+              and delivering seven. It only renders when there are more,
+              because a Show-more over a list that is already all of it is
+              a control that cannot change what is on screen. */}
+          {shownCount < shown.length && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <span className="font-numeral text-[12px] tabular-nums text-ink-muted">
+                Showing {visible.length} of {shown.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShownCount((n) => n + PAGE_SIZE)}
+                className="rounded-full border border-line-hairline px-4 py-2 text-[13px] font-semibold text-voidInk-body transition-colors duration-150 hover:border-mint hover:text-mint"
+              >
+                Show {Math.min(PAGE_SIZE, shown.length - shownCount)} more
+              </button>
+            </div>
+          )}
+
+          {shown.length ? null : (
             <div className="rounded-[18px] border border-line-hairline bg-[#151920] p-6 text-center">
               <div className="font-display text-[22px] font-bold text-white">
                 {list.length ? 'Nothing in that format yet' : 'No drafts yet'}

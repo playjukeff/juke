@@ -31,6 +31,67 @@ const FIELD_READER = `window.readSmallFields = function () {
     .map(function (el) { return (el.id || String(el.className)).slice(0, 40); });
 }`;
 
+/* Start a draft the way six of the tests below need one, and wait for the
+   ROOM rather than for a duration.
+
+   Every one of them used to be `startDraft(...); render(); waitForTimeout(700)`,
+   and that has two independent holes in it:
+
+   1. **`startDraft()` refuses without a board, and returns `false` saying
+      so.** `players.js` and `stats.js` are deferred behind the cold-load
+      reveal — `setupProblem()` answers "the board is loading" until they
+      land — and no caller here ever read that boolean. So on any run where
+      the deferred data is slow, the draft simply never started and the test
+      went on to measure the Lobby. It does not fail there; it asserts
+      against the wrong screen, which is the silent direction. Measured in a
+      sandbox where a render-blocking font request stalls the reveal:
+      `state.started` false, seven tests reporting missing elements that
+      were never going to be drawn.
+
+   2. **The room is not on screen when `state.started` flips.** That is
+      synchronous inside `startDraft()`, while `DraftRoomLoader` holds a
+      full-viewport layer over the room for a floor of its own — 400ms, then
+      2100, then 500, and 2400 today. A flat 700 raced every one of those
+      moves and is behind the current floor by 1700ms, so what these tests
+      read is the loader.
+
+   Both are conditions, so both are waited on as conditions. The floor is
+   deliberately not written down here: a number in a spec is a number
+   somebody has to find again every time it moves, which is the rule
+   `helpers.mjs` already states about `startSoloDraft()`'s own version of
+   this wait. */
+async function startPhoneDraft(page, opts = { mySlot: 3, clockLength: 90 }, inSameTurn) {
+  await page.waitForFunction(
+    () => typeof dataReady === "function" && dataReady(),
+    null,
+    { timeout: 30000 },
+  );
+  /* `inSameTurn` runs between the start and the render, in that one
+     synchronous turn, for the caller that needs its picks landed before
+     startDraft()'s own CPU timer can fire. Serialized with toString() and
+     rebuilt in the page, which is the same idiom this file already uses to
+     ship sweepOverflow() across — a function reads as a function at the call
+     site, where a statement string would not.
+
+     The return value is asserted rather than discarded, which is the whole
+     point: a refused start names itself here instead of surfacing as a
+     missing element several assertions later, on a screen the test was
+     never going to reach. */
+  const started = await page.evaluate(({ o, extra }) => {
+    const ok = window.JukeEngine.startDraft(o);
+    if (ok && extra) new Function("return (" + extra + ")()")();
+    render();
+    return ok;
+  }, { o: opts, extra: inSameTurn ? inSameTurn.toString() : null });
+  expect(started, "the draft actually started (a false here is setupProblem() refusing)").toBe(true);
+
+  await page.waitForFunction(
+    () => !document.querySelector("[data-draft-loader]"),
+    null,
+    { timeout: 20000 },
+  );
+}
+
 test("no field is under 16px, or iOS zooms in and stays there", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
   const page = await openApp(context, "#/draft-room");
@@ -90,10 +151,8 @@ test("no field is under 16px, or iOS zooms in and stays there", async ({ browser
       .find((d) => (d.className || "").toString().includes("z-[70]"));
     [...m.querySelectorAll("button")]
       .find((b) => /close draft settings/i.test(b.getAttribute("aria-label") || "")).click();
-    window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
-    render();
   });
-  await page.waitForTimeout(700);
+  await startPhoneDraft(page);
 
   const inDraft = await page.evaluate(() => readSmallFields());
   expect(inDraft, "and so does every field in the draft itself").toEqual([]);
@@ -267,20 +326,19 @@ function sweepOverflow() {
 test("nothing overflows sideways that cannot scroll or ellipsise", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
   const page = await openApp(context, "#/draft-room");
-  await page.evaluate(() => {
-    window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
-    // Same reason board-card.spec.mjs and board-marks.spec.mjs both call it:
-    // startDraft() ends in runCPUs(), and the loop below drives every pick
-    // itself without ever cancelling that timer. Thirty picks in leaves seat
-    // 9 on the clock, so it would go on drafting six more at 350ms each —
-    // straight through the 700ms wait and into the four-tab sweep below,
-    // which reads every element's box on each tab in turn. A board mutating
-    // between tabs is a sweep whose results are not comparable.
+  /* The picks run in the same synchronous turn as the start, which is what
+     the third argument is for. Same reason board-card.spec.mjs and
+     board-marks.spec.mjs both call stopSim(): startDraft() ends in
+     runCPUs(), and this loop drives every pick itself without cancelling
+     that timer. Thirty picks in leaves seat 9 on the clock, so it would go
+     on drafting six more at 350ms each — straight through the wait and into
+     the four-tab sweep below, which reads every element's box on each tab in
+     turn. A board mutating between tabs is a sweep whose results are not
+     comparable. */
+  await startPhoneDraft(page, { mySlot: 3, clockLength: 90 }, () => {
     stopSim();
     for (let i = 0; i < 30; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
-    render();
   });
-  await page.waitForTimeout(700);
   await page.evaluate((fn) => { window.__sweep = new Function("return (" + fn + ")()"); }, sweepOverflow.toString());
 
   /* Swept once per tab of the new bottom sheet, not just on whatever the
@@ -422,11 +480,7 @@ test("the live draft opens ready to draft, not behind extra taps", async ({ brow
   const page = await openApp(context, "#/draft-room");
   // Seat 0, so pick 1.01 is mine and the Draft button on the top row is
   // enabled rather than greyed out for not being my turn.
-  await page.evaluate(() => {
-    window.JukeEngine.startDraft({ mySlot: 0, clockLength: 90 });
-    render();
-  });
-  await page.waitForTimeout(700);
+  await startPhoneDraft(page, { mySlot: 0, clockLength: 90 });
 
   const r = await page.evaluate(() => {
     const root = document.getElementById("draftroom-root");
@@ -539,11 +593,7 @@ for (const width of [900, 1280]) {
     async ({ browser }) => {
       const context = await browser.newContext({ viewport: { width, height: 800 } });
       const page = await openApp(context, "#/draft-room");
-      await page.evaluate(() => {
-        window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
-        render();
-      });
-      await page.waitForTimeout(700);
+      await startPhoneDraft(page);
       await page.evaluate(BAR_READER);
 
       // The guarantee that retired the bug: one nav, never two, at any width.
@@ -719,6 +769,21 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
      comment). A fixed wait raced it every time and would have gone red on
      each of those moves. Waiting for the nav to exist cannot, which is the
      whole point and is now demonstrated three times over. */
+  /* The board first, and only then the button. This one presses the real
+     control rather than the bridge, so it meets the same refusal from the
+     other side: `setupProblem()` answers "the board is loading" until the
+     deferred data lands, and the Start button is disabled for exactly that
+     long. Clicking it then does nothing at all, and the wait below reports
+     a missing "Players" tab fifteen seconds later — a true sentence about a
+     screen that was never going to be reached, and nothing in it names the
+     cause. `startSoloDraft()` in helpers.mjs waits on the button's own
+     disabled state for this reason; here the condition is the same fact one
+     step upstream. */
+  await page.waitForFunction(
+    () => typeof dataReady === "function" && dataReady(),
+    null,
+    { timeout: 30000 },
+  );
   await clickStart();
   await page.waitForFunction(() => {
     const root = document.getElementById("draftroom-root");
@@ -808,11 +873,7 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
 test("the bottom sheet cycles through its three snap heights on a tap", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
   const page = await openApp(context, "#/draft-room");
-  await page.evaluate(() => {
-    window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
-    render();
-  });
-  await page.waitForTimeout(700);
+  await startPhoneDraft(page);
 
   const readHeight = () => page.evaluate(() => {
     const root = document.getElementById("draftroom-root");
@@ -946,11 +1007,7 @@ test("the bottom sheet cycles through its three snap heights on a tap", async ({
 test("the four tabs each show their own content, and a player profile opens and closes over them", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
   const page = await openApp(context, "#/draft-room");
-  await page.evaluate(() => {
-    window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
-    render();
-  });
-  await page.waitForTimeout(700);
+  await startPhoneDraft(page);
 
   // Text pulled from the sheet's own content slot, scoped past the same
   // class collision the test above documents (DraftBoardPeekPhone's board
@@ -1081,11 +1138,7 @@ test("each row's name stays fixed while its own strip scrolls, independently of 
   // first couple of board slots out from under this test in the interval
   // before it reads the DOM — a real risk at another seat, since a CPU's
   // own turn can fire well inside the wait below.
-  await page.evaluate(() => {
-    window.JukeEngine.startDraft({ mySlot: 0, clockLength: 90 });
-    render();
-  });
-  await page.waitForTimeout(700);
+  await startPhoneDraft(page, { mySlot: 0, clockLength: 90 });
 
   const r = await page.evaluate(() => {
     const root = document.getElementById("draftroom-root");

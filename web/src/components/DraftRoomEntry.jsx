@@ -93,6 +93,29 @@ const SPORTS = [
   { key: 'epl', label: 'Soccer', emoji: '⚽', live: false, retired: true },
 ]
 
+/* How many finished drafts this screen shows before handing off to the
+   archive.
+
+   This screen is the Draft Room's ENTRY — the thing it exists to offer is
+   the Start button at the top of the other column — and "Your mock drafts"
+   here is context for it, not the record. Rendering every entry made the
+   record and the context the same list: HISTORY_LIMIT is 200, so somebody
+   who has run a hundred mocks got a hundred rows under a button they came
+   here to press, and the screen grew by one row-height every time they
+   drafted.
+
+   #/drafts is the archive and already has the filters, the count and the
+   nothing-else-on-it to be one. So this list stops at five and says how
+   many there really are, which is the same split the route itself already
+   makes — see DraftsScreen.jsx's own note on why the two screens are apart.
+
+   One number rather than one per breakpoint. The desktop rail is taller
+   than five rows fill, and a slightly short column is a smaller cost than
+   a second count to keep in step with this one — the "See all N" line
+   below counts the whole locker either way, so a breakpoint-dependent cut
+   would make that sentence true at one width and wrong at the other. */
+const RECENT_SHOWN = 5
+
 function StatusPill({ status }) {
   const live = status === 'PRE-DRAFT'
   return (
@@ -372,6 +395,7 @@ export default function DraftRoomEntry({
             </p>
           </div>
         ) : (
+          <>
           <ul className="flex flex-col">
             {/* The unfinished one first, and it is the only row with two
                 actions on it. A draft you are in the middle of is a more
@@ -421,7 +445,7 @@ export default function DraftRoomEntry({
               </li>
             )}
 
-            {history.map((entry) => (
+            {history.slice(0, RECENT_SHOWN).map((entry) => (
               <li key={entry.id} className="flex items-center gap-3 border-b border-line-divider py-3.5 last:border-b-0">
                 <button
                   type="button"
@@ -484,6 +508,25 @@ export default function DraftRoomEntry({
               </li>
             ))}
           </ul>
+
+          {/* The way to the rest of them, and it only appears when there
+              ARE more — a permanent "see all" over a list that is already
+              all of it is a control that cannot change what is on screen,
+              which is the dead-control failure this project keeps finding.
+
+              It carries the real total rather than reading "See all",
+              because the number is the whole reason the list above it
+              stops: without it, five rows and a link read as five drafts. */}
+          {history.length > RECENT_SHOWN && (
+            <a
+              href="#/drafts"
+              className="mt-3 flex items-center justify-center gap-1.5 rounded-[14px] border border-line-hairline py-2.5 text-[13px] font-semibold text-voidInk-body active:bg-white/[0.04]"
+            >
+              See all {history.length} drafts
+              <ChevronRight className="h-4 w-4 shrink-0 text-white/35" aria-hidden="true" />
+            </a>
+          )}
+          </>
         )}
       </div>
       </div>

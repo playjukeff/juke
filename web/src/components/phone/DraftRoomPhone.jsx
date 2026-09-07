@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import CockpitHeaderPhone from './CockpitHeaderPhone.jsx'
 import DraftBoardPeekPhone from './DraftBoardPeekPhone.jsx'
 import BottomSheet, { SHEET_SNAPS } from '../BottomSheet.jsx'
@@ -65,11 +65,38 @@ export default function DraftRoomPhone({
   const onHeaderHeight = useCallback((h) => setHeaderH((prev) => (prev === h ? prev : h)), [])
   /* The sheet's tallest snap has to stay below the fixed header (z-40,
      above the sheet's own z-30) — see BottomSheet.jsx's own comment on
-     `maxHeight` for what goes wrong otherwise. The viewport height is read
-     once at mount, as it always was; the header's own share of it is the
-     part that has to be live, since the auto-pick ribbon can appear and
-     disappear mid-draft. */
-  const [viewportH] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0))
+     `maxHeight` for what goes wrong otherwise.
+
+     BOTH halves of this subtraction have to be live, and the viewport half
+     was read once at mount. That is fine on a desktop and wrong on the
+     device this screen exists for: a phone browser's URL bar shows and
+     hides as you scroll, and rotating changes it outright, so a height
+     captured at mount can overstate the room by 60-90px within seconds of
+     the draft starting. The sheet is then taller than the space under the
+     header and the header covers its drag handle — the same end state the
+     auto-pick ribbon produces, reached without anybody touching auto-pick,
+     and the reason an 8px overlap on an iPhone SE becomes a fully buried
+     handle rather than a tight one. */
+  const [viewportH, setViewportH] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 0))
+  /* `window.innerHeight`, deliberately, and NOT `visualViewport.height`.
+
+     visualViewport is the one that tracks the on-screen keyboard — and the
+     Chat tab has a composer, so using it would shrink the sheet every time
+     somebody typed a message. `position: fixed` is laid out against the
+     LAYOUT viewport, which is what innerHeight reports and what the URL
+     bar and rotation actually move. Measuring the sheet's ceiling against
+     the same viewport the sheet is positioned in is the whole point. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const read = () => setViewportH((prev) => (prev === window.innerHeight ? prev : window.innerHeight))
+    window.addEventListener('resize', read)
+    window.addEventListener('orientationchange', read)
+    return () => {
+      window.removeEventListener('resize', read)
+      window.removeEventListener('orientationchange', read)
+    }
+  }, [])
+
   const sheetMaxHeight = viewportH ? viewportH - headerH : undefined
   /* How much of the board the sheet is covering right now, worked out the
      same way BottomSheet works out its own resting height — the snap,
