@@ -7,6 +7,7 @@ import WaiverPreview from './rooms/WaiverPreview.jsx'
 import TradePreview from './rooms/TradePreview.jsx'
 import StrategyPreview from './rooms/StrategyPreview.jsx'
 import WaiverRoomLive, { TABS as WAIVER_TABS } from './rooms/WaiverRoomLive.jsx'
+import StrategyRoomLive, { TABS as STRATEGY_TABS } from './rooms/StrategyRoomLive.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 
 /* #/rooms/<slug> — one page for every room, guest state.
@@ -63,6 +64,27 @@ const LIVE_ROOMS = {
     Body: WaiverRoomLive,
     tabs: WAIVER_TABS,
     sub: 'Every player nobody in your league owns, priced against replacement.',
+    /* The bar's KPIs are the ROOM's, not the league's.
+
+       They were computed here for every live room, so the Strategy Room
+       drew "FAAB POOL $100" — a real number, on a screen where nobody is
+       bidding. That is the right-value-wrong-column failure in the one
+       place a reader glances at without reading: a KPI is a fact the room
+       is about, and a room that shows another room's is quietly wrong
+       rather than visibly broken. */
+    stats: (snapshot) =>
+      snapshot && snapshot.waiverBudget
+        ? [{ label: 'FAAB pool', value: `$${snapshot.waiverBudget}`, tone: 'text-flow-gold' }]
+        : [],
+  },
+  strategy: {
+    Body: StrategyRoomLive,
+    tabs: STRATEGY_TABS,
+    sub: 'What your lineup projects, and the one swap that changes it.',
+    /* Nothing yet. What this room's bar wants is the week's matchup
+       margin, which needs the matchups fetch three of its tabs are also
+       waiting on — so it says nothing rather than borrowing a figure. */
+    stats: () => [],
   },
 }
 
@@ -211,18 +233,15 @@ export default function RoomPage({ slug }) {
     ? {
         title: snapshot && snapshot.week ? `Week ${snapshot.week}` : 'Connected',
         meta: [league.name, `${league.totalTeams} team`].filter(Boolean).join(' · '),
-        /* Only what the league actually told us.
+        /* Whatever the ROOM asks for, and only what the league told us.
 
-           The handoff's bar says "FAAB LEFT $34". This says "FAAB pool",
-           and the difference is the whole point: `waiverBudget` is the
-           season's budget, straight off league.settings, and nothing in
-           either adapter reports what has been SPENT. "Left" would be a
-           number this cannot compute presented as one it can — on the one
-           figure a manager would act on before making a claim. */
-        stats:
-          snapshot && snapshot.waiverBudget
-            ? [{ label: 'FAAB pool', value: `$${snapshot.waiverBudget}`, tone: 'text-flow-gold' }]
-            : [],
+           Waiver's is "FAAB pool" where the handoff's bar says "FAAB
+           LEFT $34", and the difference is the whole point: `waiverBudget`
+           is the season's budget, straight off league.settings, and
+           nothing in either adapter reports what has been SPENT. "Left"
+           would be a number this cannot compute presented as one it can,
+           on the one figure a manager acts on before making a claim. */
+        stats: (LIVE_ROOMS[slug].stats || (() => []))(snapshot),
       }
     : {
         title: 'Preview',
