@@ -11006,6 +11006,25 @@ window.JukeEngine = {
      the entry -- see the note on it. */
   rooms:        () => ROOMS.filter((r) => !r.retired),
   overallScore: overallScore,
+  /* Points over replacement, which is the unit a waiver board wants:
+     "+18.4 over replacement" is actionable where a 0-100 share of the
+     board's best is a ranking. Both are on the sheet already and this
+     was the one of the two React could not reach.
+
+     It needs no dataReady() guard, unlike the entries below that touch
+     DraftEngine or STAT_KEYS: REPLACEMENT_PTS is a module-scope const
+     {} that buildProjections() fills, so an early call reads an empty
+     object and the `|| 0` carries it — and a player with no projPts
+     answers null before it ever gets there. Checked rather than
+     assumed; the guard rule in CLAUDE.md is about bindings that do not
+     exist yet, and this one always does.
+
+     It honours UNRANKED_POSITIONS, so a kicker or a defense answers
+     null. That is right for a waiver board for the reason it is right
+     on the sheet: three seasons of backtesting found the projected
+     order for those two no better than chance, and a targets list that
+     ranked them would be selling a number the app itself withholds. */
+  replacementGap: replacementGap,
   shotPicks:    shotPicks,
   fetchScores:  fetchScores,
   readSave:     readSave,

@@ -1,10 +1,12 @@
 import AppShell from './shell/AppShell.jsx'
+import { useEffect, useState } from 'react'
 import RoomShell from './shell/RoomShell.jsx'
 import LockedPreview from './shell/LockedPreview.jsx'
 import { useRooms } from '../hooks/useRooms.js'
 import WaiverPreview from './rooms/WaiverPreview.jsx'
 import TradePreview from './rooms/TradePreview.jsx'
 import StrategyPreview from './rooms/StrategyPreview.jsx'
+import WaiverRoomLive, { TABS as WAIVER_TABS } from './rooms/WaiverRoomLive.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 
 /* #/rooms/<slug> — one page for every room, guest state.
@@ -47,7 +49,22 @@ const PREVIEWS = {
    Kept as a map rather than deleted outright, because that is what makes
    Waiver, Trade and Strategy joining it, as each is built, a single line
    rather than a new `if`. */
-const LIVE_ROOMS = {}
+const LIVE_ROOMS = {
+  /* `{ Body, tabs }` rather than a bare component, because a room declares
+     its own sections and the ONE RoomShell draws them — the handoff's first
+     constraint, which a room rendering its own header would break at the
+     first room that wanted a second tab.
+
+     Only the sections that have real content are listed. Waiver's other six
+     (Player Lab, FAAB Planner, Roster Gaps, Drop List, League Intel, News
+     Wire) join as each is built; a tab that opens onto nothing is the dead
+     control this project keeps finding. */
+  waiver: {
+    Body: WaiverRoomLive,
+    tabs: WAIVER_TABS,
+    sub: 'Every player nobody in your league owns, priced against replacement.',
+  },
+}
 
 /* The same list, as slugs, for anything that needs to know WHICH rooms a
    connected league opens without needing the component that draws them.
@@ -100,6 +117,19 @@ export default function RoomPage({ slug }) {
     live ? league.leagueId : null,
     live ? league.provider : null,
   )
+
+  /* Which section of a live room is open. Up here with the other hooks for
+     this file's own documented reason -- three early returns below fire on
+     some routes and not others, and this component does NOT unmount between
+     #/rooms/waiver and #/rooms/trade, so a hook underneath them changes the
+     hook count between two routes.
+
+     Reset on the slug rather than seeded once: moving between rooms would
+     otherwise open the second one on a tab key the first one owned, which
+     resolves to no tab at all and draws an empty body under a bar with
+     nothing selected. */
+  const [tab, setTab] = useState('lobby')
+  useEffect(() => { setTab('lobby') }, [slug])
 
   // #/rooms/league is retired, not merely stale — League graduated into
   // its own screen rather than being deleted, so it gets its own
@@ -181,7 +211,18 @@ export default function RoomPage({ slug }) {
     ? {
         title: snapshot && snapshot.week ? `Week ${snapshot.week}` : 'Connected',
         meta: [league.name, `${league.totalTeams} team`].filter(Boolean).join(' · '),
-        stats: [],
+        /* Only what the league actually told us.
+
+           The handoff's bar says "FAAB LEFT $34". This says "FAAB pool",
+           and the difference is the whole point: `waiverBudget` is the
+           season's budget, straight off league.settings, and nothing in
+           either adapter reports what has been SPENT. "Left" would be a
+           number this cannot compute presented as one it can — on the one
+           figure a manager would act on before making a claim. */
+        stats:
+          snapshot && snapshot.waiverBudget
+            ? [{ label: 'FAAB pool', value: `$${snapshot.waiverBudget}`, tone: 'text-flow-gold' }]
+            : [],
       }
     : {
         title: 'Preview',
@@ -196,6 +237,9 @@ export default function RoomPage({ slug }) {
         title={shell.title}
         meta={shell.meta}
         stats={shell.stats}
+        tabs={live ? LIVE_ROOMS[slug].tabs : []}
+        active={tab}
+        onTab={setTab}
         backHref="#/rooms"
         backLabel="Rooms"
       >
@@ -220,7 +264,12 @@ export default function RoomPage({ slug }) {
           </h1>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-voidInk-body">
             {live
-              ? 'Where every manager stands, read from your league.'
+              /* Was 'Where every manager stands, read from your league.',
+                 hardcoded when the League Room was the only live room and
+                 wrong for every room that joins it — Waiver is not about
+                 where managers stand. A room's own line, with the League
+                 sentence gone with the room that owned it. */
+              ? LIVE_ROOMS[slug].sub
               : preview
                 ? preview.sub
                 : room.blurb}
@@ -229,9 +278,15 @@ export default function RoomPage({ slug }) {
 
         {live ? (
           (() => {
-            const Live = LIVE_ROOMS[slug]
+            const Live = LIVE_ROOMS[slug].Body
             return (
-              <Live league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+              <Live
+                league={league}
+                snapshot={snapshot}
+                status={snapStatus}
+                reason={snapReason}
+                tab={tab}
+              />
             )
           })()
         ) : (
