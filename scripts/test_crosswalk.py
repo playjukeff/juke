@@ -629,6 +629,185 @@ deep_all = bp.extend_deep_bench(list(DEEP_PLAYERS), COVER_SLEEPER, DEEP_BYES, ta
 check("and the receiver still arrives once both slots are covered",
       [p["pos"] for p in deep_all[1:]].count("WR"), 1)
 
+def test_cfbd_crosswalk():
+    """The CFBD draft-pick join, against a pool small enough to reason about.
+
+    This one carries a hazard the other two crosswalks do not: a school name.
+    Sleeper says "Miami (FL)" and CFBD says "Miami", and they are two strings
+    for one school sitting next to "Miami (OH)", which is a genuinely
+    different one. Get that wrong in the obvious direction and the join loses
+    every player out of a major programme while working perfectly for
+    everybody else -- a partial failure, which is the kind nobody notices.
+
+    ---- Every tier is tested where NO OTHER tier can rescue it ----
+
+    The first version of this file did not do that, and two mutations proved
+    it: replacing normalise_college() with normalise(), and deleting the
+    NFL-team tier outright, both left it green. Each tier had been given a
+    fixture that the tier below it could also satisfy, so the suite was
+    measuring "does the join work at all" three times over.
+
+    So the pool below deliberately carries TWO Cam Wards and TWO Carnell
+    Tates -- same name, same position, different schools and clubs. A
+    duplicate kills the name-only tier, and a pick whose NFL team matches
+    neither of them kills the team tier, which is what leaves exactly one
+    tier able to answer. This is the same lesson the Strategy and Trade
+    boards each paid for once: a fixture written to demonstrate a feature
+    proves less than one written to starve it.
+
+    Everything here is synthetic. The real feed needs a key, and the shape of
+    what it returns was read off CFBD's published OpenAPI spec, so what is
+    pinned below is this file's own logic rather than an assumption about
+    theirs.
+    """
+    sleeper = {
+        # Miami (FL) against CFBD's "Miami" -- the case the alias table is
+        # for -- with a namesake at another school so the name tier cannot
+        # answer for either of them.
+        "1": {"full_name": "Cam Ward", "position": "QB",
+              "team": "TEN", "college": "Miami (FL)"},
+        "8": {"full_name": "Cam Ward", "position": "QB",
+              "team": "CLE", "college": "Ohio"},
+        # Miami (OH), which must NOT collapse into Miami (FL).
+        "2": {"full_name": "Travis Ward", "position": "WR",
+              "team": "CIN", "college": "Miami (OH)"},
+        # Unique on name and position: the only one the loosest tier can have.
+        "3": {"full_name": "Jeremiyah Love", "position": "RB",
+              "team": "ARI", "college": "Notre Dame"},
+        # A second namesake pair, for the NFL-team tier.
+        "4": {"full_name": "Carnell Tate", "position": "WR",
+              "team": "TEN", "college": "Ohio State"},
+        "9": {"full_name": "Carnell Tate", "position": "WR",
+              "team": "NYJ", "college": "Directional State"},
+        # On our books, never in this draft class.
+        "6": {"full_name": "Old Timer", "position": "TE",
+              "team": "KC", "college": "Alabama"},
+        # Not a fantasy position, so never indexed at all.
+        "7": {"full_name": "Some Corner", "position": "CB",
+              "team": "NYJ", "college": "LSU"},
+    }
+    stats = {k: {} for k in sleeper}
+    indexes = bp.index_sleeper(sleeper)
+    college_index = bp.index_sleeper_by_college(sleeper)
+
+    def pick(name, position, college, nfl, overall, athlete, extra=None):
+        row = {"name": name, "position": position, "collegeTeam": college,
+               "nflTeam": nfl, "overall": overall, "round": 1,
+               "pick": overall, "year": 2026, "collegeAthleteId": athlete}
+        row.update(extra or {})
+        return row
+
+    def link(rows):
+        return bp.link_cfbd_draft(stats, sleeper, indexes, college_index, rows)
+
+    # ---- tier 1: only the school can answer ----
+    # PIT is neither Cam Ward's club, so the team tier is dead; there are two
+    # Cam Wards, so the name tier is dead. If the alias is missing or the
+    # wrong normaliser is used, this player is simply not found.
+    only_college, _ = link([pick("Cam Ward", "Quarterback", "Miami", "PIT", 1, 4001)])
+    check("CFBD: a school the two feeds spell differently is the join, alone",
+          only_college.get("1", {}).get("athlete"), 4001)
+    check("CFBD: and it brings the pick, which is the whole point",
+          only_college.get("1", {}).get("overall"), 1)
+    check("CFBD: the namesake at another school is untouched",
+          "8" in only_college, False)
+
+    # Miami (OH) is a different school and must resolve to its own player.
+    other_miami, _ = link([pick("Travis Ward", "WR", "Miami (OH)", "PIT", 20, 4002)])
+    check("CFBD: Miami (OH) joins as itself, not as Miami (FL)",
+          other_miami.get("2", {}).get("athlete"), 4002)
+
+    # ---- tier 2: only the NFL team can answer ----
+    # An unknown school kills the college tier; two Carnell Tates kill the
+    # name tier. Nothing but the club is left.
+    only_team, _ = link([pick("Carnell Tate", "Wide Receiver",
+                              "Not A School CFBD Names", "TEN", 40, 4004)])
+    check("CFBD: an unreconciled school falls back to the NFL club, alone",
+          only_team.get("4", {}).get("athlete"), 4004)
+    check("CFBD: and it picks the right one of the two namesakes",
+          "9" in only_team, False)
+
+    # ---- tier 3: only the name can answer ----
+    # Unknown school, and a club that is not his either.
+    only_name, _ = link([pick("Jeremiyah Love", "Running Back",
+                              "Not A School CFBD Names", "PIT", 33, 4003)])
+    check("CFBD: a unique name still joins when school and club both fail",
+          only_name.get("3", {}).get("athlete"), 4003)
+
+    # An ambiguous name with nothing else to go on must resolve to NOBODY
+    # rather than to whichever was indexed first.
+    ambiguous, _ = link([pick("Cam Ward", "QB", "Not A School", "PIT", 1, 4001)])
+    check("CFBD: two players share a name and nothing else matches, so neither is taken",
+          ambiguous, {})
+
+    # ---- what must never join ----
+    rest, _ = link([
+        pick("Some Corner", "Cornerback", "LSU", "NYJ", 55, 4005),
+        pick("Nobody Here", "Wide Receiver", "Toledo", "CLE", 90, 4006),
+    ])
+    check("CFBD: a defensive pick matches nobody, and that is correct",
+          rest, {})
+    check("CFBD: a veteran with no pick in this class is untouched",
+          "6" in rest, False)
+
+    # ---- the expert-ranking rule, enforced rather than trusted ----
+    # CFBD returns preDraftRanking / preDraftPositionRanking / preDraftGrade on
+    # every pick, and this project does not republish somebody else's scouting
+    # grade. A pick number is a fact about what happened; a grade is an opinion
+    # about what should have.
+    graded, _ = link([pick("Cam Ward", "QB", "Miami", "PIT", 1, 4001,
+                           {"preDraftRanking": 3, "preDraftPositionRanking": 1,
+                            "preDraftGrade": 92})])
+    stored = sorted(graded.get("1", {}))
+    check("CFBD: no scouting grade is carried, however freely it is offered",
+          [k for k in stored if any(w in k.lower() for w in ("grade", "rank"))], [])
+    check("CFBD: and the pick itself still is",
+          graded.get("1", {}).get("round"), 1)
+
+    # ---- two of theirs claiming one of ours: keep neither ----
+    doubled, doubled_report = link([
+        pick("Cam Ward", "QB", "Miami", "PIT", 1, 4001),
+        pick("Cam Ward", "QB", "Miami", "PIT", 2, 9999),
+    ])
+    check("CFBD: two picks claiming one player store neither",
+          "1" in doubled, False)
+    check("CFBD: and the collision is reported rather than swallowed",
+          any(l.startswith("COLLISION") for l in doubled_report), True)
+
+    # ---- the report is what finishes COLLEGE_ALIASES from a real run ----
+    _weak, weak_report = link([pick("Carnell Tate", "WR",
+                                    "Notre Dame University", "TEN", 40, 4004)])
+    check("CFBD: a school that needed a weaker tier names itself in the report",
+          any(l.startswith("COLLEGE |") and "Notre Dame University" in l
+              for l in weak_report), True)
+
+    _n, strange_report = link([pick("Jeremiyah Love", "Offensive Weapon",
+                                    "Notre Dame", "ARI", 33, 4003)])
+    check("CFBD: an unrecognised position is reported, not silently dropped",
+          any(l.startswith("POSITION |") and "OFFENSIVE WEAPON" in l
+              for l in strange_report), True)
+
+    # ---- the normaliser itself, where the Miami trap actually lives ----
+    check("college: Sleeper's Miami (FL) and CFBD's Miami are one school",
+          bp.normalise_college("Miami (FL)"), bp.normalise_college("Miami"))
+    check("college: Miami (OH) is NOT that school",
+          bp.normalise_college("Miami (OH)") == bp.normalise_college("Miami"), False)
+    check("college: punctuation and case do not matter",
+          bp.normalise_college("texas a&m"), bp.normalise_college("Texas A&M"))
+    check("college: accents are stripped the way names already are",
+          bp.normalise_college("San Jose State"), bp.normalise_college("San José State"))
+    check("college: nothing is not something",
+          bp.normalise_college(None), "")
+    # normalise() eats generational suffixes -- jr, sr, ii, iii, iv, v. A
+    # school is not a person, and running one through the wrong normaliser is
+    # the drift this second function exists to prevent.
+    check("college: a school is not put through the person normaliser",
+          bp.normalise_college("Old Dominion"), "olddominion")
+
+
+test_cfbd_crosswalk()
+
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED: " + ", ".join(FAILURES))

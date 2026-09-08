@@ -1168,6 +1168,240 @@ def fetch_expected_points():
     return out
 
 
+# ---------------------------------------------------------------------------
+# CollegeFootballData: what a rookie did before he got here
+# ---------------------------------------------------------------------------
+#
+# The Prospect Room ranks first-year players and cannot explain them: it names
+# college production, combine testing and NFL draft position as three things
+# nobody here knows. CFBD closes two of those three. /draft/picks carries the
+# pick itself and a collegeAthleteId, and that id is what makes college
+# production joinable on an identifier rather than on a second name match.
+#
+# There is no combine endpoint anywhere in their 84, so combine testing stays
+# missing and the room must go on saying so. Closing two gaps and quietly
+# rewording the third would be worse than closing none.
+#
+# The key is optional, exactly like TANK01_KEY: without it this is skipped, the
+# rebuild is otherwise identical, and the room keeps working with one more gap
+# named. A pipeline that cannot run without somebody's key is a pipeline that
+# stops running the day the key lapses.
+
+# Their position string may be a name ("Wide Receiver") or an abbreviation
+# ("WR") -- DraftPosition carries both and DraftPick.position is documented
+# only as `string`, so this accepts either rather than betting on one. An
+# unrecognised value is counted and reported rather than dropped silently: a
+# draft class that suddenly matches nobody is what this table would cause, and
+# it would read as a bad join rather than as a renamed position.
+CFBD_POSITIONS = {
+    "QB": "QB", "QUARTERBACK": "QB",
+    "RB": "RB", "RUNNING BACK": "RB", "HB": "RB", "HALFBACK": "RB",
+    "FB": "RB", "FULLBACK": "RB",
+    "WR": "WR", "WIDE RECEIVER": "WR",
+    "TE": "TE", "TIGHT END": "TE",
+    "K": "K", "PK": "K", "KICKER": "K", "PLACE KICKER": "K",
+}
+
+# Sleeper's college string against CFBD's school name, where the two disagree.
+#
+# ---- Miami is the reason this table exists ----
+#
+# Sleeper carries "Miami (FL)" AND "Miami (OH)" -- two different schools, both
+# on the board. CFBD calls the first one just "Miami". So the obvious
+# normaliser (strip everything that is not a letter) turns Sleeper's into
+# "miamifl" against their "miami" and silently loses every player out of one
+# of the most productive programmes in the country, while "miamioh" goes on
+# matching perfectly and hides the fact that anything is wrong.
+#
+# Aliases map onto the shorter form, because that is the one both feeds are
+# likelier to agree on, and only where the two genuinely differ. Everything
+# not named here normalises to itself.
+#
+# ---- This table is seeded, not finished ----
+#
+# The left-hand column is grounded: drawn from the 125 distinct values actually
+# present in stats.js. The right-hand side is CFBD's naming, which could not be
+# checked without a key -- so link_cfbd_draft() REPORTS every school it could
+# not reconcile rather than assuming this is complete, and the first keyed run
+# is what finishes it. A join that fails loudly on an unknown school is
+# recoverable; one that fails quietly is the bug this whole file is arranged
+# against.
+COLLEGE_ALIASES = {
+    "miamifl": "miami",
+    "miamiflorida": "miami",
+    "northcarolinastate": "ncstate",
+    "connecticut": "uconn",
+    "massachusetts": "umass",
+    "southerncalifornia": "usc",
+    "louisianastate": "lsu",
+    "texaschristian": "tcu",
+    "brighamyoung": "byu",
+    "centralflorida": "ucf",
+    "mississippi": "olemiss",
+    "southernmethodist": "smu",
+    "pitt": "pittsburgh",
+    "appstate": "appalachianstate",
+    "louisianalafayette": "louisiana",
+}
+
+
+def normalise_college(name):
+    """A school name, reduced to something two feeds can agree on.
+
+    Deliberately NOT normalise(). That one strips generational suffixes --
+    jr, sr, ii, iii, iv, v -- which is right for a person and wrong for a
+    school: "Vanderbilt" survives, but any school whose name carried a
+    standalone "v" would not, and the rule has no business being applied to
+    an institution in the first place. Two normalisers doing two jobs, rather
+    than one doing both and being subtly wrong at one of them.
+    """
+    text = unicodedata.normalize("NFKD", name or "")
+    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
+    key = re.sub(r"[^a-z]", "", text)
+    return COLLEGE_ALIASES.get(key, key)
+
+
+def index_sleeper_by_college(sleeper):
+    """A fourth index, for the one join that has a school in it.
+
+    Separate from index_sleeper() rather than a fourth slot in its tuple,
+    because three call sites unpack that tuple by position and widening it
+    would touch all of them to serve one caller. It reuses normalise() for
+    the name half, so there is still exactly one of those in this file.
+
+    College is the strongest discriminator CFBD gives us, and the reason this
+    join can be stronger than the nflverse one: a player's school never
+    changes, where the NFL team that drafted him can already be wrong by
+    September -- traded, cut, or signed elsewhere off a practice squad.
+    """
+    index = {}
+    for player_id, entry in sleeper.items():
+        if entry.get("position") not in FANTASY_POSITIONS:
+            continue
+        key = normalise(entry.get("full_name") or entry.get("last_name") or "")
+        college = normalise_college(entry.get("college"))
+        if not key or not college:
+            continue
+        index.setdefault((key, entry["position"], college), (player_id, entry))
+    return index
+
+
+def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
+    """Attach a CFBD draft pick to our records, and report what did not join.
+
+    The same discipline as link_source_ids() and link_nflverse(): tiers,
+    strictest first; a collision refuses both rather than picking one;
+    everything that failed comes back for the report; and the counts are
+    taken from what SURVIVED rather than from what was attempted.
+
+    Three tiers, and the order is the point:
+
+      name + position + college   -- college is immutable, so this is the one
+                                     tier that cannot go stale
+      name + position + NFL team  -- for a school this table has no alias for
+      name + position             -- only when it is unique on our side
+
+    The middle tier is the interesting one. It exists because COLLEGE_ALIASES
+    is seeded rather than finished, so an unknown school degrades to a weaker
+    match instead of dropping the player -- and every pick that lands there
+    names its school in the report, which is how the table gets completed
+    from a real run rather than from guesswork.
+
+    Nothing is stored here. This resolves WHICH of our players a pick belongs
+    to; what gets written, and where it lives, is a separate decision that
+    wants a measurement of the real payload first.
+    """
+    by_name_pos_team, by_name_pos, by_name = indexes
+    linked, report = {}, []
+    claimed, method = {}, {}
+    unknown_positions, unknown_colleges = {}, {}
+
+    for row in picks:
+        raw_position = (row.get("position") or "").strip().upper()
+        position = CFBD_POSITIONS.get(raw_position)
+        if position is None:
+            # Every defensive and offensive-line pick lands here, which is the
+            # overwhelming majority of a draft and is not a fault. Counted
+            # rather than listed one by one: whoever reads the report is
+            # looking for a string that SHOULD have mapped, and 200 lines of
+            # "Cornerback" is how they would miss it.
+            if raw_position:
+                unknown_positions[raw_position] = unknown_positions.get(raw_position, 0) + 1
+            continue
+
+        key = normalise(row.get("name") or "")
+        if not key:
+            continue
+
+        college = normalise_college(row.get("collegeTeam"))
+        team = clean_team(row.get("nflTeam"))
+
+        strict = college_index.get((key, position, college)) if college else None
+        match, how = strict, "name+pos+college"
+        if match is None:
+            match = by_name_pos_team.get((key, position, team))
+            how = "name+pos+nflteam"
+        if match is None:
+            candidates = [c for c in by_name.get(key, [])
+                          if c[1].get("position") == position]
+            if len(candidates) == 1:
+                match, how = candidates[0], "name+pos"
+        if match is None or match[0] not in stats:
+            continue
+
+        our_id = match[0]
+        their_id = row.get("collegeAthleteId")
+
+        # Two of theirs claiming one of ours means the join is wrong, not that
+        # the player was drafted twice. Keep neither.
+        if our_id in claimed and claimed[our_id] != their_id:
+            report.append(
+                f"COLLISION | {row.get('name')} | {position} | "
+                f"{row.get('collegeTeam')} | {claimed[our_id]} and {their_id} "
+                f"both map to {our_id}")
+            linked.pop(our_id, None)
+            method.pop(our_id, None)
+            continue
+
+        if how != "name+pos+college" and row.get("collegeTeam"):
+            school = row.get("collegeTeam")
+            unknown_colleges[school] = unknown_colleges.get(school, 0) + 1
+
+        claimed[our_id] = their_id
+        method[our_id] = how
+        linked[our_id] = {
+            "athlete": their_id,
+            "overall": row.get("overall"),
+            "round": row.get("round"),
+            "pick": row.get("pick"),
+            "year": row.get("year"),
+            "college": row.get("collegeTeam"),
+            # preDraftRanking / preDraftPositionRanking / preDraftGrade are
+            # deliberately NOT carried. They are somebody else's scouting
+            # grade, and this project does not republish expert rankings --
+            # the same rule that keeps analyst commentary off the player
+            # sheet. A pick number is a fact about what happened; a grade is
+            # an opinion about what should have.
+        }
+
+    for school, n in sorted(unknown_colleges.items(), key=lambda kv: -kv[1]):
+        report.append(f"COLLEGE | {school} | {n} matched on a weaker tier | "
+                      f"add an alias if this is a naming difference")
+    for raw, n in sorted(unknown_positions.items(), key=lambda kv: -kv[1]):
+        report.append(f"POSITION | {raw} | {n} picks | not a fantasy position, "
+                      f"or a name CFBD_POSITIONS has not heard of")
+
+    strict_n = sum(1 for k in linked if method.get(k) == "name+pos+college")
+    team_n = sum(1 for k in linked if method.get(k) == "name+pos+nflteam")
+    loose_n = sum(1 for k in linked if method.get(k) == "name+pos")
+    print(f"  CFBD: linked {len(linked)} picks ({strict_n} on name+pos+college, "
+          f"{team_n} on name+pos+nflteam, {loose_n} on name+pos)")
+    if linked and strict_n == 0:
+        print("  ! not one pick matched on college -- COLLEGE_ALIASES is "
+              "probably wrong about CFBD's naming")
+    return linked, report
+
+
 def link_nflverse(stats, sleeper, indexes, nfl_rows):
     """Attach an nflverse gsis_id to our records, and report anything that did not.
 
