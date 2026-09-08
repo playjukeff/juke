@@ -119,6 +119,7 @@ the Stack section above, not a one-time migration hiccup.
 | `worker/migrations/` | D1 schema, applied with `wrangler d1 migrations apply`. The database is not to be shaped by hand — see the note on three variants of one schema. |
 | `web/index.html` | The real homepage entry Vite builds from. Loads the legacy files above as root-relative classic scripts, alongside Vite's own hashed module bundle for React. The Draft Room markup lives here too, hidden — see the Stack section. |
 | `web/src/components/phone/` | The phone-only screens, mounted below `sm` (`usePhoneWidth()`): the draft room, the floating nav pill. Each is a different screen from its desktop counterpart rather than a narrower one — see "The mobile pass" below for why that is a product decision and what it costs. **Two have left**: the homepage (`HomeAlive.jsx`) and the Mock Drafts Lobby (`DraftRoomEntry.jsx`) are one responsive screen at every width now — see "Flow v3" below for why that handoff reverses the split for those two specifically and not for the draft room. |
+| `web/src/components/decision/` | The decision system's five primitives — a KPI strip, a bar and its row, the one light stake card, the run-next card, and a confidence that is never a bare percentage. `tokens.js` holds only the few values a style prop needs at runtime; everything else is a Tailwind token. One `<StakeCard>` per route, warned about in dev. |
 | `web/src/components/insights/` | The Your Insights panel — the rail, the four views, the habits sidebar and the two data-series colours the page draws with. Draws only: every figure and every sentence on it comes off `insightsReport()`/`insightsMock()` in app.js section 11d2, so the sidebar's habit card and the centre panel's pick table are two readings of one audit and cannot disagree. Replaced the eight-card analytics grid, which is unrendered rather than deleted. |
 | `web/src/components/settings/` | The Draft Settings screen's own controls, the scoring-rule editor and the draft-order list. Split out of `DraftSettingsModal.jsx` when that file became the whole settings screen rather than a three-tab modal. |
 | `web/src/components/PracticeScenarios.jsx` | The Mock Drafts lobby's "Practice a scenario" grid — four preset drafts that launch with their settings already chosen. Draws only; `practiceScenarios.js` beside it decides which four, and `engine.startScenario()` is what turns a card into a draft. |
@@ -6006,6 +6007,160 @@ change that re-establishes what "over" means has to re-seed the edge.
 
 `tests/practice-scenarios.spec.mjs` covers all of it, and the two bug-fix
 tests were confirmed red with each fix removed and the other four still green.
+
+## The decision system, and the one rule the whole of it is
+
+`design_principles_application` (P1–P8): a token set, a face, five primitives
+and a per-screen guide covering all twenty app screens. It is the first
+handoff here that is a SYSTEM rather than a screen, and the thing it is for
+fits in one line.
+
+**Teal is the brand and the action, and it is never a value.** Before this
+there was no name for a cost, so a negative number was `text-rose-300` on one
+card, an inline `#E39284` on another and `text-teal-300` on a third — and a
+page that prints a good outcome in the same cyan as its buttons has taught
+the reader that cyan means "good" and then asked them to press one.
+`cost` / `gain` name the two directions, `evidence` names a quantity that has
+neither, and `stake` is the one light surface a page is allowed.
+
+### What was added, and the three things that were not
+
+Additive, merged by hand into `tailwind.config.js` rather than pasted:
+`slate.frame`, `ink.label`, `cost`/`cost.deep`, `gain`, `stake`, `evidence`,
+`accent.pink`/`accent.neutral`, a `hairline`/`divider` border pair, four type
+roles, seven radii, `bar-track`, and `font-decision`.
+
+Three of the handoff's asks are deliberately absent:
+
+- **The forty `--jd-*` custom properties in `juke-decision-tokens.css`.**
+  Every one restates a Tailwind token — the slate ladder, the inks, the
+  radii, the durations — and a second copy in CSS is the written-down-twice
+  rule with a colour in it: the two drift the first time either moves and
+  nothing errors. What survives into `index.css` is the `@font-face`, which
+  Tailwind cannot express, and the four `.jd-*` animation classes, which
+  carry a per-element `--i` delay and so cannot be utilities. That is the
+  same split `index.css` already made for Your Insights' own `ins*`
+  keyframes.
+- **The `jd-*` keyframes in the Tailwind config.** Nothing uses
+  `animate-jd-rise`, so the JIT would never emit them.
+- **`spacing.rail: 72px`.** This app's rail is 84px. The handoff is
+  describing its own mockup, and a token nobody applies is a knob that turns
+  nothing — which is the call `railItems.js` already made about the
+  "needs action" dot it deleted.
+
+### The contrast table in the guide is optimistic, and it is an acceptance criterion
+
+Measured on `slate.panel` (#232D3A) rather than taken:
+
+```
+              claimed   measured
+cost            7.2       5.78
+gain           10.6       9.36
+evidence        9.1       8.25
+ink.label       6.1       6.81   (understated)
+ink            12.4      12.27
+ink.muted       4.9       4.87
+```
+
+Nothing has to move — every one still clears 4.5 — but the guide names the
+table as a per-screen acceptance criterion, and a criterion nobody has
+checked is not one.
+
+**`cost.deep` is 3.33 and may never be type.** It is the fill under a bar and
+the 3px rule on a KPI card, both of which answer to 1.4.11's 3:1 rather than
+to 4.5 — the same split the board's gold ring already documents.
+
+**And the stake card has its own pair, because a colour is right on the
+surface it actually lands on.** `cost`/`gain` measure 1.6 and 1.3 on
+`#FBD5A8` — invisible. `STAKE_COST_INK` (#8F3A2E, 5.40) and `STAKE_GAIN_INK`
+(#1F6B4E, 4.64) are the same two hues taken far enough down to carry. This is
+the second time that measurement has had to be made on a light card in this
+codebase; the first is in `InsightsSidebar.jsx`.
+
+### `border-hairline` and `border-line-hairline` are one word apart
+
+And they are different values. `line.hairline` (#252930) is opaque and is
+measured against the marketing side's `surface.*` ladder, where every ground
+is within a few points of the next. A room stacks four grounds — frame, page,
+panel, sunk — and one opaque line cannot read as an edge on all four: it is
+nearly invisible on `sunk` and heavy on `frame`. The alpha line holds on every
+step. **Inside a room, use `hairline`.** The config says so at the point of
+definition, which is the only place somebody about to type one of them is
+looking.
+
+### Bricolage is fetched by `AppShell`, not by `index.html` and not by `RoomShell`
+
+`font-decision` is an app-side face: the rooms, My League, the ledger. No
+marketing page draws it, so a `<link rel=preload>` in `<head>` would pull 41KB
+on the homepage for a face that page never shows — and `index.html`'s two
+existing preloads are already at `fetchpriority="low"` because they were
+measured pulling 49KB past the one stylesheet the first paint waits on. A
+third unconditional one would spend that measurement.
+
+It went into `RoomShell` first and had to move. **My League is not a room** —
+it sits above the five in the rail — and it draws the Move card and the stake
+card in this face. `AppShell` is the boundary that actually matches, because
+it is the thing every app screen is wrapped in by construction.
+
+Module scope rather than a ref: moving between two app routes unmounts and
+remounts the shell, and a ref would append a second `<link>` each time. The
+browser would serve it from cache; the tag would still accumulate.
+
+### A KPI strip is rendered by the screen, not lifted into the hero
+
+The guide says "hero → `<KpiStrip>`", and that is about placement rather than
+ownership. Only a room's own body holds the snapshot the four numbers come
+out of, and passing them up through `RoomPage` so they can be drawn two
+elements higher is a second copy of a room's data living in the shell. It
+lands in the same place on screen.
+
+### Two of the Waiver Room's four KPIs are not there
+
+The guide asks for FAAB LEFT, CLAIMS RUN, HIT RATE and PTS OPEN. Neither
+adapter reports what has been **spent** — `WaiverRoomLive.jsx`'s own header
+already recorded that, and `waiverBudget` is the season's pool — so "FAAB
+left" would be the pool relabelled as a balance, wrong by however much the
+reader has already bid. And nothing anywhere records a claim, so there is no
+count to run and no hits to rate.
+
+**A KPI strip is the most confident furniture on a page.** Filling two of its
+four cards with numbers nobody computed is the worst available place to
+invent one. What is there instead is real: the pool (labelled as a pool), how
+much of the wire is worth anything, the single best claim, and how many
+points the reader's own lineup is leaving on the wire.
+
+### A marker's label may not be a child of its own line
+
+Found by sweeping the rendered My League screen. `<Bar>`'s field marker was a
+1px `<span>` with `background: ink-muted` and its text label nested inside it,
+which is two bugs at once: the label composites as ink-muted **on ink-muted**
+and reports 1.00 in any contrast sweep, and the 1px parent reports a 60px
+overflow it can neither scroll nor ellipsise. Neither is visible on screen —
+the label sits outside the line, on the card — and both are real defects in
+what the markup claims. Two siblings, both positioned off the track, and each
+element is then true about the thing it carries.
+
+**The same sweep caught the stake card's separator at 2.35** against a 3:1
+bar (a 26px middot at `opacity-40`), which is `opacity` lying about a colour
+for the third time in this codebase.
+
+### What is done, and what the twenty-screen guide still has open
+
+Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
+`BarRow`, `StakeCard`, `RunNextCard`, `Confidence`), `RoomPage`'s keyed body,
+`AppShell`'s face preload, and screens **01 / 03 / 18** (My League and the
+Move card), **07** (Waiver), **09** (Trade's swing), **10** (Prospect's
+thin-evidence notice).
+
+Open, in the guide's own PR order: **06** (the Draft Room's `AnalysisTab`
+impact table and the tier cliff on a pick axis), **11** (History), **02, 04,
+05, 08, 12–17, 19, 20**.
+
+**Two of those cannot be done as written and should not be faked.** Screen
+16's per-room "points at stake this week" and screen 20's identical rail
+label need a per-room stake figure, and no room writes one — the rail's own
+`railItems.js` already deleted a "needs action" dot for exactly that reason
+and says so. They arrive with the first room that computes one.
 
 ## Your Insights, and the difference between a share and a decision
 

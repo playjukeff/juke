@@ -58,6 +58,10 @@ export function signed(value, sign) {
     if (/^-/.test(value)) return '−' + value.slice(1)
     return sign === 'gain' ? '+' + value : sign === 'cost' ? '−' + value : value
   }
+  // Zero takes no sign at all. `+0` claims a direction the number does not
+  // have, and it is the value a dead-even trade and an unchanged week both
+  // produce -- the two places a reader is most likely to be looking.
+  if (value === 0) return '0'
   const n = Math.abs(value)
   return (value < 0 || sign === 'cost' ? '−' : '+') + n
 }

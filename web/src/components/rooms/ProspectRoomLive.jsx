@@ -88,21 +88,33 @@ function Banner({ rows }) {
   }
   const anything = drafted || undrafted || withCollege
 
+  /* P6. The thin-evidence card, and this notice is the model the decision
+     system generalised from -- the guide says so in as many words. So the
+     restyle is small and it is the system catching up to this panel rather
+     than the other way round: the amber pair becomes `cost`, which is what a
+     caveat is coloured in everywhere else now, and the counts become mono
+     because they are figures rather than prose.
+
+     What does NOT change is the argument. A room that says out loud which of
+     its inputs it does not have is the one thing this file's own header is
+     about, and the border is the whole signal: the content inside is
+     untouched, so a reader can see the evidence is thin and decide for
+     themselves. Withholding the confidence, not the content. */
   return (
-    <div className="mb-5 rounded-[12px] border border-flow-amber/30 bg-flow-amber/10 px-4 py-3">
-      <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-flow-amber">
+    <div className="jd-rise mb-5 rounded-panel border border-cost/60 px-4 py-3" style={{ '--i': 0 }}>
+      <div className="font-plex text-label uppercase text-cost">
         What is known, and what is not
       </div>
-      <p className="mt-1 max-w-[72ch] text-[13px] leading-relaxed text-voidInk-body">
+      <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-voidInk-body">
         {anything ? (
           <>
-            Where <strong className="font-semibold text-white">{drafted}</strong> of these players
-            went in the draft, and what{' '}
-            <strong className="font-semibold text-white">{withCollege}</strong> of them did in
-            college.{' '}
+            Where <strong className="font-plex font-semibold text-ink">{drafted}</strong> of these
+            players went in the draft, and what{' '}
+            <strong className="font-plex font-semibold text-ink">{withCollege}</strong> of them did
+            in college.{' '}
             {undrafted ? (
               <>
-                <strong className="font-semibold text-white">{undrafted}</strong> were never
+                <strong className="font-plex font-semibold text-ink">{undrafted}</strong> were never
                 drafted at all — which is a fact about them rather than a gap in what we know.{' '}
               </>
             ) : null}
