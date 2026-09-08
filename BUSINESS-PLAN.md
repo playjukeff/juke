@@ -106,7 +106,7 @@ SEO surface, and the proof that the paid tier is honest.
 | Mock drafts, any league shape | ✓ | ✓ | ✓ |
 | All scoring formats | ✓ | ✓ | ✓ |
 | Full method transparency | ✓ | ✓ | ✓ |
-| Connect a real league | — | 1 league | up to 6 |
+| Connect a real league | — | 1 league | up to 20 |
 | Custom scoring import | — | ✓ | ✓ |
 | Live draft companion | — | ✓ | ✓ |
 | In-season roster tool | — | ✓ | ✓ |
