@@ -19,7 +19,7 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp } from "./helpers.mjs";
+import { openApp, awaitBoard } from "./helpers.mjs";
 import { WORKER_HTTP, LOCAL_WORKER } from "./helpers.mjs";
 
 const HOSTILE = [
@@ -35,6 +35,10 @@ const HOSTILE = [
 ];
 
 async function start(page) {
+  // The board first -- this presses #startBtn through evaluate(), which a
+  // disabled attribute cannot refuse, so without it startDraft() returns
+  // false and state.started never flips. See awaitBoard() in helpers.mjs.
+  await awaitBoard(page);
   await page.evaluate(() => {
     /* Seat 0, and no picks. Every player this file names by hand is near the
        top of the board, and a drafted player leaves the available list - so

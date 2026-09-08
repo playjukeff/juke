@@ -130,7 +130,32 @@ export function setLegacyField(page, id, value) {
   }, [id, value]);
 }
 
-export function clickLegacyStart(page) {
+/* The board has to have landed before anything presses Start.
+
+   setupProblem() refuses a draft while players.js and stats.js are still in
+   flight -- rightly, since a draft genuinely cannot start without them --
+   and startDraft() then returns false. Nobody reads that boolean, so the
+   symptom is `state.started` never becoming true and an assertion or a
+   waitForFunction failing somewhere that has nothing to do with the cause.
+
+   startSoloDraft() below learned this and waits on the Start button; the
+   hand-rolled copies that press #startBtn through page.evaluate() never did,
+   and a click through evaluate() cannot be refused by a disabled attribute
+   the way a real click is -- it just runs and returns false.
+
+   That is what the nightly against production had been failing on. Locally
+   the two files are there almost immediately and this never fires; against
+   jukeff.com stats.js alone is 787KB over a real network, so whichever spec
+   lost the race is the one that reported -- which is why it read as flake
+   rather than as one shared cause. Confirmed by holding those two files back
+   and watching state.started come back false with this wait removed. */
+export function awaitBoard(page, timeout = 30000) {
+  return page.waitForFunction(
+    () => typeof dataReady === "function" && dataReady(), null, { timeout });
+}
+
+export async function clickLegacyStart(page) {
+  await awaitBoard(page);
   return page.evaluate(() => document.getElementById("startBtn").click());
 }
 
@@ -350,6 +375,10 @@ export async function startSoloDraft(page) {
      currently reads. The `.first()` is because a room can have this
      screen's Start and NewMockPanel's on the page together. */
   const startMock = page.locator('#draftroom-root [data-start-draft]').first();
+  /* Recorded where the click happens, never re-queried afterwards: pressing
+     it starts the draft and unmounts the entry screen, so a count() taken
+     after the fact is 0 for the success case as well as the skipped one. */
+  let clicked = false;
   if (await startMock.count()) {
     /* Wait for the board before asking whether the button is enabled.
 
@@ -385,6 +414,7 @@ export async function startSoloDraft(page) {
       .catch(() => {});
     if (!(await startMock.isEnabled())) throw new Error("the Start button refused this league");
     await startMock.click();
+    clicked = true;
   }
 
   // Optional, like every step above it, and it did not use to be. A room
@@ -403,7 +433,21 @@ export async function startSoloDraft(page) {
   if (await startBtn.count()) {
     if (!(await startBtn.isEnabled())) throw new Error("the Start button refused this league");
     await startBtn.click();
+    clicked = true;
   }
+
+  /* Every step above is optional, so all of them missing is a silent
+     no-op: nothing is pressed, and the wait below then fails after 15s
+     on a draft nobody asked to start. That failure names no control and
+     no cause -- it points at this line, which is the one thing that was
+     working -- and it is indistinguishable in the output from a draft
+     that was started and refused.
+
+     A failure that names nothing is far more expensive than one that
+     names a value; that is this project's own lesson from the socket
+     suite printing a bare TypeError over 108 passing assertions. */
+  if (!clicked) throw new Error("no Start control was found to press");
+
   await page.waitForFunction(() => state.started, null, { timeout: 15000 });
 
   /* And then wait for the room to actually be on screen, which is a
