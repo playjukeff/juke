@@ -1233,15 +1233,22 @@ CFBD_POSITIONS = {
 # likelier to agree on, and only where the two genuinely differ. Everything
 # not named here normalises to itself.
 #
-# ---- This table is seeded, not finished ----
+# ---- Measured, 8 September 2026, against the real 2026 class ----
 #
-# The left-hand column is grounded: drawn from the 125 distinct values actually
-# present in stats.js. The right-hand side is CFBD's naming, which could not be
-# checked without a key -- so link_cfbd_draft() REPORTS every school it could
-# not reconcile rather than assuming this is complete, and the first keyed run
-# is what finishes it. A join that fails loudly on an unknown school is
-# recoverable; one that fails quietly is the bug this whole file is arranged
-# against.
+# 257 picks, 82 of them at a fantasy position, against the 77 first-year
+# players on the half-PPR board. 59 matched, every one on name+pos+college.
+# Without this table it is 57: the two it rescues are Carson Beck, whom CFBD
+# files under "Miami" and Sleeper under "Miami (FL)", and Justin Joly, "NC
+# State" against "North Carolina State". So the Miami hazard this was built
+# for is real and it costs a first-round quarterback.
+#
+# Two entries are therefore measured and the rest are seeded from the 125
+# distinct values in stats.js against CFBD's own naming -- unexercised by this
+# class, kept for the next one, and all of them safe in the direction they map
+# (nothing here collapses two schools that are actually different; "Miami (OH)"
+# stays "miamioh" precisely because it is not aliased). link_cfbd_draft()
+# still REPORTS any school it could not reconcile, which is what would catch a
+# class that brings a naming difference nobody has seen yet.
 COLLEGE_ALIASES = {
     "miamifl": "miami",
     "miamiflorida": "miami",
@@ -1310,24 +1317,39 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
     everything that failed comes back for the report; and the counts are
     taken from what SURVIVED rather than from what was attempted.
 
-    Three tiers, and the order is the point:
+    Two tiers:
 
       name + position + college   -- college is immutable, so this is the one
                                      tier that cannot go stale
-      name + position + NFL team  -- for a school this table has no alias for
-      name + position             -- only when it is unique on our side
+      name + position             -- only when it is unique on our side, for a
+                                     school COLLEGE_ALIASES has no entry for
 
-    The middle tier is the interesting one. It exists because COLLEGE_ALIASES
-    is seeded rather than finished, so an unknown school degrades to a weaker
-    match instead of dropping the player -- and every pick that lands there
-    names its school in the report, which is how the table gets completed
-    from a real run rather than from guesswork.
+    ---- There was a third, on the NFL club, and measuring it killed it ----
+
+    It sat between these two and it was DEAD CODE: CFBD sends nflTeam as a
+    city ("Las Vegas"), not the abbreviation clean_team() resolves, so it could
+    never match a Sleeper team and the tier silently did nothing. Worse than
+    nothing -- a fallback that cannot fire reads as a safety net and is not
+    one.
+
+    Fixing it was costed and rejected. It needs a 32-entry city table, and two
+    of those cities name two clubs each: "New York" and "Los Angeles" cannot
+    identify a club at all without a second fetch of /draft/teams for the
+    nickname. Against that, the measurement says it would buy nothing -- on the
+    real 2026 class all 59 matches landed on college and NOT ONE needed a
+    weaker tier. The name tier below is the honest safety net: a rookie's name
+    is very nearly always unique on a 480-player board, it needs no new table,
+    and it degrades an unknown school rather than dropping the player.
+
+    Every pick that lands on the weaker tier still names its school in the
+    report, which is how COLLEGE_ALIASES gets completed from a real run rather
+    than from guesswork.
 
     Nothing is stored here. This resolves WHICH of our players a pick belongs
     to; what gets written, and where it lives, is a separate decision that
     wants a measurement of the real payload first.
     """
-    by_name_pos_team, by_name_pos, by_name = indexes
+    _by_name_pos_team, _by_name_pos, by_name = indexes
     linked, report = {}, []
     claimed, method = {}, {}
     unknown_positions, unknown_colleges = {}, {}
@@ -1350,13 +1372,9 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
             continue
 
         college = normalise_college(row.get("collegeTeam"))
-        team = clean_team(row.get("nflTeam"))
 
         strict = college_index.get((key, position, college)) if college else None
         match, how = strict, "name+pos+college"
-        if match is None:
-            match = by_name_pos_team.get((key, position, team))
-            how = "name+pos+nflteam"
         if match is None:
             candidates = [c for c in by_name.get(key, [])
                           if c[1].get("position") == position]
@@ -1408,10 +1426,9 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
                       f"or a name CFBD_POSITIONS has not heard of")
 
     strict_n = sum(1 for k in linked if method.get(k) == "name+pos+college")
-    team_n = sum(1 for k in linked if method.get(k) == "name+pos+nflteam")
     loose_n = sum(1 for k in linked if method.get(k) == "name+pos")
     print(f"  CFBD: linked {len(linked)} picks ({strict_n} on name+pos+college, "
-          f"{team_n} on name+pos+nflteam, {loose_n} on name+pos)")
+          f"{loose_n} on name+pos)")
     if len(linked) >= CFBD_COLLEGE_ALARM_MIN and strict_n == 0:
         print("  ! not one of these matched on college -- COLLEGE_ALIASES is "
               "probably wrong about CFBD's naming")
