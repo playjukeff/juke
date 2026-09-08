@@ -128,7 +128,9 @@ the Stack section above, not a one-time migration hiccup.
 | `web/.env.example` | The local-dev template. Keeps a `pk_test_` key on purpose: production's `pk_live_` belongs in the Pages dashboard, and a developer running `vite dev` against the production Clerk instance would be polluting the real user list. |
 | `worker/auth.js` | `verifiedUser()` — the one place the worker decides who is asking. Answers null for a missing, malformed, expired or forged token alike, and for no key configured at all. Read its comment before touching it: the public `verifyToken` export does not have the return shape its own internals document. |
 | `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Waits for a message sent to come back as a broadcast — twice, spaced — because `wrangler deploy` returning is not the moment the worker serves. Costs 3.8s healthy; the alternative was a gate that went red three times in ninety minutes on healthy deploys. |
-| `worker/test-auth.mjs` | Every way of being signed out, against a real `wrangler dev`. Cannot cover the signed-in path — that needs a token Clerk actually signed — which is precisely the gap the `verifyToken` bug lived in. |
+| `worker/test-auth.mjs` | Every way of being signed out, against a real `wrangler dev` — the one suite that runs the routes inside a real workerd rather than in process. |
+| `worker/test-verified-user.mjs` | The signed-in half of `auth.js`, offline. Generates a key pair, serves it as JWKS, and lets the real `verifyToken` do the real verification — `apiUrl` is the seam. Nothing is mocked, because the bug it exists for was in a real call's return shape. |
+| `worker/test-me-routes.mjs` | The `/me` routes with somebody signed in: `signedIn: true` at all, `requireUser()` letting somebody through, and `POST /me/history`'s 409. `draft-room.js` imports into Node, so no wrangler and no ports. |
 | `web/src/` | The React homepage: `Homepage.jsx` composes `Header`, `Hero`, `ScoresStrip`, `ShowYourWorking`, `RoomsGrid`, `ClosingCta`. Every one of them reads real data through `window.JukeEngine` (or `window.DraftEngine` directly, for `pickCode()`) rather than inventing sample content — the header ticker used to be six fabricated stats and is now five real ones read off the live board. |
 | `web/vite.config.js` | The Vite build config, plus a dev-server middleware that serves the same `LEGACY_FILES`/`LEGACY_DIRS` list `copy-legacy-assets.mjs` uses, from the true repo root, so `window.JukeEngine` carries real data under `vite dev` too — not just after a full build. |
 | `web/scripts/copy-legacy-assets.mjs` | Copies the legacy files into `web/dist/` after `vite build`, chained as this package's `build` script. Fails loudly (`process.exit(1)`) and lists exactly what's missing rather than shipping a partial site quietly. |
@@ -6917,13 +6919,68 @@ secret for ever.
 malformed token, a well-formed but unsigned one — and asserts that none of them
 ever produces anything but a clean refusal.
 
-**It cannot cover the signed-in path, and neither can anything else here**: that
-needs a token actually signed by Clerk, which nothing offline can produce. The
-`verifyToken` bug above lived in exactly that gap. It is verified by hand,
-against a real deploy, with a real sign-in — and the cheapest honest check is
-the network tab: `/me/draft` and `/me/history` returning **200** while signed
-in means the worker's verification genuinely works, where a page that merely
-*looks* signed in proves only that Clerk's client half does.
+**That gap is closed, and this section said for months that it could not be.**
+The claim was "a token that verifies needs Clerk to have signed it, which
+nothing offline can produce", and the second half does not follow from the
+first: `verifyToken` takes **`apiUrl`**, Clerk's own option for where the
+public keys come from. Point it at a local endpoint serving a JWKS built from
+a key pair the test generated, and an ordinary verification runs to
+completion.
+
+**Nothing is mocked, and that is the whole design.** The real library fetches
+the keys, matches the `kid` off the token header, checks an RS256 signature,
+checks `exp`/`nbf`, and returns whatever shape it returns — and that last one
+is the point, because the bug was never in the cryptography. It was that the
+package root exports `withLegacyReturn(verifyToken)`, which resolves to the
+payload and throws on failure, while `auth.js` destructured `{ data, errors }`
+off it. Only a real call with a signature that really verifies can catch that.
+
+**`jwtKey` was the obvious alternative and is the wrong one.** It verifies
+networklessly against a PEM, it works, and it was measured working — and it
+would mean production verifying one way and the test verifying another, which
+is a test that agrees with itself rather than with the thing it is about.
+Redirecting where the keys are fetched from leaves the fetch, the kid match,
+the signature check, the claim checks and the return shape exactly as
+production runs them.
+
+**It is a seam and not a bypass**: it says where the public keys live, never
+whether the signature has to be right. Nothing sets `CLERK_API_URL` in
+production and no workflow writes it, so unset, `auth.js` behaves precisely as
+before.
+
+Two suites, both offline, both in `deploy-worker.yml` **before** the deploy —
+a `verifiedUser()` that has stopped verifying should stop a deploy rather than
+be discovered by one:
+
+- **`worker/test-verified-user.mjs`** — 16 assertions on `auth.js` itself:
+  a valid token is a user, expired, not-yet-valid, wrong key, unknown `kid`,
+  tampered signature, no `sub`, not a JWT, and every way of being signed out
+  re-asserted so that fixing the signed-in path cannot loosen the other one.
+  0.3s.
+- **`worker/test-me-routes.mjs`** — 13 assertions on the routes. `draft-room.js`
+  is an ordinary fetch handler and imports into Node, so the real router, the
+  real `requireUser()` and the real `store.js` run in process with only D1 and
+  `ctx` stubbed.
+
+**Confirmed red against the real bugs, both of them.** Restoring the
+`{ data, errors }` destructuring fails 3 assertions in the first suite and 7 in
+the second, and the first line of the first is the production incident verbatim
+— *a validly signed token is a signed-in user: got null*. Removing the 409
+branch fails exactly one, by name.
+
+**Three things it still does not cover**, and they are worth naming rather than
+leaving to be discovered. It does not prove Clerk's real JWKS endpoint is
+reachable or shaped as expected — that is a third party's uptime and belongs to
+the deployed check, not to an offline one. It does not prove the *client* half
+sends a token at all, which is React and Clerk's SDK. And a stub answering
+`changes: 0` is what produces the 409 here — whether the SQL really refuses a
+cross-account write is a question about SQL, answered against real sqlite3 in
+`scripts/test_history_ownership.py`. Two layers, each testing what it owns.
+
+So the by-hand check below is no longer the only evidence, and it is still the
+cheapest end-to-end one: the network tab, `/me/draft` and `/me/history`
+returning **200** while signed in. A page that merely *looks* signed in proves
+only that Clerk's client half does.
 
 **A 200 proves the token, and it does not prove the table.** `listDraftHistory()`
 catches a missing `draft_history` and answers `[]`, so a D1 that never had
@@ -7378,10 +7435,12 @@ resolving through the suffix rule. Every failure path too: private, missing,
 malformed, no Origin, wrong Origin.
 
 **The connect POST itself could not be.** It is behind `requireUser()`, which
-needs a token Clerk actually signed — the same gap `verifyToken` lived in and
-the one this project cannot close offline. The dialog was driven by hand to
-the point of pressing Connect, with the one-line keyless exposure this file
-already describes.
+needed a token Clerk had signed — the gap `verifyToken` lived in. That gap is
+closed now (see "What can be tested offline"), so `requireUser()` admitting a
+verified caller is asserted rather than assumed; what is still by hand is this
+route's own upstream half, since a real connect reads a real league from ESPN.
+The dialog was driven by hand to the point of pressing Connect, with the
+one-line keyless exposure this file already describes.
 
 **And the rosters this was built for do not exist yet.** That league's 2026
 draft is 9 September 2026; `draftDetail.drafted` is false and every 2026
