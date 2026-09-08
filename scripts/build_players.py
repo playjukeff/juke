@@ -1297,7 +1297,7 @@ def index_sleeper_by_college(sleeper):
     changes, where the NFL team that drafted him can already be wrong by
     September -- traded, cut, or signed elsewhere off a practice squad.
     """
-    index = {}
+    index, by_school = {}, {}
     for player_id, entry in sleeper.items():
         if entry.get("position") not in FANTASY_POSITIONS:
             continue
@@ -1306,10 +1306,15 @@ def index_sleeper_by_college(sleeper):
         if not key or not college:
             continue
         index.setdefault((key, entry["position"], college), (player_id, entry))
-    return index
+        # The same pair WITHOUT a position, for the tier that has to survive
+        # two feeds disagreeing about what a player plays. A list rather than
+        # a first-wins entry, because the tier is only allowed to fire when
+        # there is exactly one candidate.
+        by_school.setdefault((key, college), []).append((player_id, entry))
+    return index, by_school
 
 
-def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
+def link_cfbd_draft(stats, sleeper, indexes, college_indexes, picks):
     """Attach a CFBD draft pick to our records, and report what did not join.
 
     The same discipline as link_source_ids() and link_nflverse(): tiers,
@@ -1317,12 +1322,33 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
     everything that failed comes back for the report; and the counts are
     taken from what SURVIVED rather than from what was attempted.
 
-    Two tiers:
+    Three tiers:
 
       name + position + college   -- college is immutable, so this is the one
                                      tier that cannot go stale
+      name + college              -- position ignored, and only when the pair
+                                     is unique on BOTH sides
       name + position             -- only when it is unique on our side, for a
                                      school COLLEGE_ALIASES has no entry for
+
+    ---- The middle tier is for two feeds disagreeing about a position ----
+
+    Added after it fired in a real nightly run. Max Bredeson is an RB to
+    Sleeper and a Tight End to CFBD, both out of Michigan -- one player, two
+    opinions about what he plays. Without this he is neither matched nor
+    undrafted, so his draft position is left permanently unstated on a player
+    who was very much drafted.
+
+    It is the same shape as NFLVERSE_MATCHES, which exists as a hand-written
+    line for exactly one two-way player, and it is preferred to a hand-written
+    line because a draft class is new every year and a manual table for it
+    would go stale annually.
+
+    Deliberately ABOVE the name+position tier, not below. Two people sharing a
+    name at one school is rarer than two sharing a name at one position, so
+    the school is the safer thing to insist on -- and "unique on both sides"
+    is what makes it safe rather than merely likely: if either feed has two
+    candidates the tier declines and the next one tries.
 
     ---- There was a third, on the NFL club, and measuring it killed it ----
 
@@ -1373,8 +1399,16 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
 
         college = normalise_college(row.get("collegeTeam"))
 
+        college_index, by_school = college_indexes
         strict = college_index.get((key, position, college)) if college else None
         match, how = strict, "name+pos+college"
+        if match is None and college:
+            ours = by_school.get((key, college), [])
+            theirs = [p for p in picks
+                      if normalise(p.get("name") or "") == key
+                      and normalise_college(p.get("collegeTeam")) == college]
+            if len(ours) == 1 and len(theirs) == 1:
+                match, how = ours[0], "name+college"
         if match is None:
             candidates = [c for c in by_name.get(key, [])
                           if c[1].get("position") == position]
@@ -1397,7 +1431,13 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
             method.pop(our_id, None)
             continue
 
-        if how != "name+pos+college" and row.get("collegeTeam"):
+        if how == "name+college":
+            entry = (match or (None, {}))[1]
+            report.append(
+                f"POSITION SPLIT | {row.get('name')} | we say "
+                f"{entry.get('position') or '?'} and they say {row.get('position')} | "
+                f"{row.get('collegeTeam')} | matched on name and school")
+        elif how != "name+pos+college" and row.get("collegeTeam"):
             school = row.get("collegeTeam")
             unknown_colleges[school] = unknown_colleges.get(school, 0) + 1
 
@@ -1426,9 +1466,10 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
                       f"or a name CFBD_POSITIONS has not heard of")
 
     strict_n = sum(1 for k in linked if method.get(k) == "name+pos+college")
+    school_n = sum(1 for k in linked if method.get(k) == "name+college")
     loose_n = sum(1 for k in linked if method.get(k) == "name+pos")
     print(f"  CFBD: linked {len(linked)} picks ({strict_n} on name+pos+college, "
-          f"{loose_n} on name+pos)")
+          f"{school_n} on name+college, {loose_n} on name+pos)")
     if len(linked) >= CFBD_COLLEGE_ALARM_MIN and strict_n == 0:
         print("  ! not one of these matched on college -- COLLEGE_ALIASES is "
               "probably wrong about CFBD's naming")
@@ -1511,7 +1552,7 @@ def fetch_cfbd(path):
     return rows if isinstance(rows, list) else []
 
 
-def build_prospects(stats, sleeper, indexes, college_index, picks, season_rows):
+def build_prospects(stats, sleeper, indexes, college_indexes, picks, season_rows):
     """Write record["pr"] for every first-year player, and report the rest.
 
     Runs AFTER the records are built, and it has to for build_usage()'s own
@@ -1560,7 +1601,7 @@ def build_prospects(stats, sleeper, indexes, college_index, picks, season_rows):
         print("  prospects: CFBD returned no picks, so nothing is claimed")
         return 0, ["CFBD returned no picks; no draft position was written"]
 
-    linked, report = link_cfbd_draft(stats, sleeper, indexes, college_index, picks)
+    linked, report = link_cfbd_draft(stats, sleeper, indexes, college_indexes, picks)
 
     # Their final college season, keyed by the athlete id the pick carried --
     # an identifier join, not a second name match. CFBD's `playerId` on a stat
@@ -2675,6 +2716,31 @@ def main():
             handle.write("(no TANK01_KEY set, so no crosswalk was attempted)\n")
         else:
             handle.write("\n".join(source_report) if source_report else "(none)\n")
+
+        # The Prospect Room's own report, and the reason it is not optional:
+        # record["pr"] has three states, and the third -- "a rookie the draft
+        # knows about but this join could not place" -- writes NOTHING to the
+        # record on purpose, because guessing "undrafted" would put a fact on
+        # screen that nobody has. If that refusal is not reported it is simply
+        # invisible, and the careful half of the design becomes a silent
+        # omission.
+        #
+        # It went unwritten in the change that added it: the report was built,
+        # extended, and never reached this file. Found the first time the
+        # unclear branch actually fired in a real run -- which was also the
+        # first time anybody would have wanted to read it.
+        handle.write("\n\n\nProspects the draft class could not place\n")
+        handle.write("A rookie here is one the draft KNOWS about under a name this\n"
+                     "join could not match, so his draft position is left unstated\n"
+                     "rather than guessed at. A COLLEGE line names a school whose\n"
+                     "spelling needed a weaker tier -- add it to COLLEGE_ALIASES. A\n"
+                     "POSITION line is a string CFBD_POSITIONS has never seen. An ID\n"
+                     "SPACE line means a Sleeper id and a CFBD athlete id collide,\n"
+                     "which would make a lookup return the wrong person entirely.\n\n")
+        if not CFBD_KEY:
+            handle.write("(no CFBD_KEY set, so no draft class was fetched)\n")
+        else:
+            handle.write("\n".join(prospect_report) if prospect_report else "(none)\n")
 
         handle.write("\n\n\nSleeper stats we are not storing\n")
         handle.write("The browser can only score what this pipeline records, so anything\n"

@@ -43,6 +43,27 @@ jobs:
           # empty string, which is the same as no key, so this line is safe to
           # merge before the secret exists.
           TANK01_KEY: ${{ secrets.TANK01_KEY }}
+          # The Prospect Room's two blocks: record["pr"] (a rookie's draft
+          # position and final college season) and COLLEGE_BOARD (players still
+          # in college, who are NOT on the draft board and never will be until
+          # somebody drafts them).
+          #
+          # Optional exactly as TANK01_KEY is -- no key, no calls, no blocks,
+          # and an otherwise identical rebuild. It differs from Tank01 in how
+          # LOUD the failure is, and that is worth knowing: a missing Tank01
+          # key silently drops ids nobody looks at, where a missing CFBD key
+          # empties a room somebody opened on purpose. The run says which it
+          # is, and unmatched.txt carries the detail.
+          #
+          # It is also the only feed here that costs real bandwidth: about
+          # 28 MB and 15s, because /stats/player/season is the whole college
+          # season (23.6 MB) and the FBS roster is another 4.5. One call each
+          # rather than one per player, and the season serves both blocks.
+          #
+          # Both years derive from STAT_SEASONS in build_players.py, so the
+          # one constant somebody bumps each January moves the draft class and
+          # the college season with it. Nothing here needs editing annually.
+          CFBD_KEY: ${{ secrets.CFBD_KEY }}
 
       - name: Guard the frozen baseline
         # data/baselines/2026/preseason/ is a one-shot, hand-frozen snapshot
