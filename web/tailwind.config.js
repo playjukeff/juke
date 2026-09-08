@@ -137,6 +137,18 @@ export default {
           // own translucent ground, so it cannot borrow `surface.nav`.
           pill: '#1A1F27',
           pillEdge: '#2A3138',
+          // RoomShell's own sticky ground — Juke Journey v3's `--bg2`. It
+          // sits between `surface.nav` and `flow.hero`, which is the job:
+          // a bar that has to read as chrome over whatever the room's body
+          // is, without being the near-black the marketing nav uses.
+          //
+          // MoveCard.jsx and LockedPreview.jsx already hardcode #151920,
+          // three units off this in blue alone and indistinguishable on
+          // screen. They are not changed here — folding two inline
+          // literals into a token is a tidy-up with its own diff, and
+          // doing it inside a component that is trying to land a new
+          // header would hide it.
+          bar: '#151923',
         },
         // Body text on the `surface.*`/void ground, raised from the old
         // `text-white/NN` opacity system (§9's own contrast audit already
