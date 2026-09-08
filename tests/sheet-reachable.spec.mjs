@@ -25,7 +25,24 @@ import { openApp } from "./helpers.mjs";
    every time the header's own height moves, which is the rule CLAUDE.md
    already states about the padding that stands in for a fixed header. */
 
-test.use({ launchOptions: { executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" } });
+/* No launchOptions here, deliberately.
+ *
+ * This file shipped with a hardcoded
+ *   executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+ * -- an absolute path to one numbered chromium build, which is a development
+ * workaround that was never taken out. It pins the suite to a browser
+ * revision that stops existing the next time Playwright is bumped, and on any
+ * machine without that exact directory it fails as
+ * "Failed to launch chromium because executable doesn't exist", which reads
+ * as a broken runner rather than as a line in a spec.
+ *
+ * It cost the nightly four failures a night from 5 September. It did not
+ * START that red streak -- that began on 28 August -- which is how a standing
+ * red compounds: nobody reads a suite that is already failing, so the next
+ * thing to break arrives unnoticed.
+ *
+ * Playwright resolves its own browser. Let it.
+ */
 
 const SIZES = [
   { name: "iPhone SE 2/3, Safari chrome showing", width: 375, height: 553 },

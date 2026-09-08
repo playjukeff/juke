@@ -33,7 +33,7 @@
    the real components underneath. */
 
 import { test, expect } from "@playwright/test";
-import { openApp, SITE } from "./helpers.mjs";
+import { openApp, SITE, LOCAL_SITE } from "./helpers.mjs";
 
 const LEAGUE = { leagueId: "lg1", name: "Dynasty Degens", season: "2026", totalTeams: 12 };
 
@@ -55,6 +55,29 @@ function stubAccount(page, leagues) {
     document.addEventListener("DOMContentLoaded", install);
   }, leagues);
 }
+
+/* A stub can only stand in for Clerk where Clerk is ABSENT.
+ *
+ * stubAccount() writes window.JukeAuth, which useSignedIn() reads -- and that
+ * hook deliberately does not touch Clerk, because useAuth() throws without a
+ * provider and a keyless build has none. So in a keyless build the stub is the
+ * whole truth and every signed-in surface renders.
+ *
+ * Against production it is not: that build carries a real pk_live_ key, so
+ * <SignedIn> is governed by Clerk, Clerk says signed out, and every surface
+ * that NAMES a league renders nothing. The tests then read the page and get
+ * "JUKE" -- the header -- which looks like the league chip having broken.
+ *
+ * These five stood red on the nightly for eleven consecutive nights for that
+ * reason, which is the standing-red trap this project already records: a
+ * suite carrying permanent failures stops being read, and the two genuinely
+ * stale specs beside them were invisible inside the noise.
+ *
+ * Same shape as news.spec.mjs's keyless test, and the same instruction with
+ * it: VERIFY A SKIP IN BOTH DIRECTIONS or it is a deletion. Locally these
+ * eight run and pass; against production three run and five skip.
+ */
+const CLERK_GATED = "signed-in rendering is Clerk's, and a keyed build ignores the stub";
 
 const text = (page) => page.locator("#view-home").innerText();
 
@@ -110,6 +133,7 @@ test.describe("a connected league", () => {
   });
 
   test("with a league connected, the site stops asking for one", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubAccount(page, [LEAGUE]);
     await page.goto(`${SITE}/index.html#/rooms`);
@@ -175,6 +199,7 @@ test.describe("a connected league", () => {
   });
 
   test("the homepage names the league instead of advertising a connect", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubAccount(page, [LEAGUE]);
     await page.goto(`${SITE}/index.html#/`);
@@ -252,6 +277,7 @@ const named = (name) => () =>
 
 test.describe("more than one connected league", () => {
   test("the app draws the head of the list", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubSwitchable(page, [ESPN_LG, SLEEPER_LG]);
     await home(page);
@@ -270,6 +296,7 @@ test.describe("more than one connected league", () => {
   });
 
   test("switching moves the head, and the page follows", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubSwitchable(page, [ESPN_LG, SLEEPER_LG]);
     await home(page);
@@ -298,6 +325,7 @@ test.describe("more than one connected league", () => {
   });
 
   test("a switch made on another device arrives here", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubSwitchable(page, [ESPN_LG, SLEEPER_LG]);
     await home(page);
