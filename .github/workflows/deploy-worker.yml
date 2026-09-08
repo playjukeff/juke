@@ -119,6 +119,47 @@ jobs:
       - name: Check the bundle compiles
         run: npx --yes wrangler@4 deploy --dry-run --outdir=/tmp/worker-build -c worker/wrangler.toml
 
+      # The half of auth.js nothing here could reach until now.
+      #
+      # test-auth.mjs covers every way of being signed OUT and says in its
+      # own header why it stops there: a token that verifies needs Clerk to
+      # have signed it. That gap had a real cost -- the verifyToken
+      # return-shape bug rejected every valid login from the day accounts
+      # shipped until 1 September 2026, with every other check in this
+      # repository green throughout, because a worker that refuses every
+      # token and a worker nobody is signed in to look identical from
+      # outside.
+      #
+      # It closes with `apiUrl`, Clerk's own option for where the public
+      # keys come from: the suite generates a key pair, serves it as JWKS on
+      # localhost, and lets the real library do the real verification. The
+      # library is not mocked and neither is verifiedUser() -- which is the
+      # point, since the bug was in the RETURN SHAPE of a real call rather
+      # than anywhere a stub would have been faithful.
+      #
+      # Here rather than in tests.yml because it needs @clerk/backend, and
+      # that workflow deliberately installs nothing -- every step in it is
+      # stdlib Python or dependency-free Node. This one already ran
+      # `npm ci --prefix worker` two steps up, already runs only when the
+      # worker changes, and runs BEFORE the deploy: a verifiedUser() that
+      # has stopped verifying should stop a deploy rather than be discovered
+      # by one. Confirmed red against the original bug, exit 1, naming the
+      # incident in its first line; 0.3s and no network.
+      - name: Verify a real signed-in token
+        run: node worker/test-verified-user.mjs
+
+      # And the routes that read it, one layer up: /me answering
+      # signedIn true at all, requireUser() letting somebody THROUGH
+      # rather than only its 401, and POST /me/history answering 409 --
+      # a branch that shipped unverified, because the SQL refusing a
+      # cross-account write is checked against real sqlite3 in
+      # scripts/test_history_ownership.py and nothing checked that the
+      # refusal becomes a status. draft-room.js is an ordinary fetch
+      # handler and imports into Node, so this needs no wrangler and no
+      # ports.
+      - name: Verify the signed-in routes
+        run: node worker/test-me-routes.mjs
+
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a
