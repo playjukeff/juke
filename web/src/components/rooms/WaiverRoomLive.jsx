@@ -1,6 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PosTile } from './sampleParts.jsx'
-import { freeAgents, myTeam, rosterGaps } from './waiverBoard.js'
+import {
+  demandByPosition, dropList, freeAgents, myTeam, rivalNeeds, rosterGaps,
+} from './waiverBoard.js'
+import UpgradeGate from '../shell/UpgradeGate.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
 /* The Waiver Room, with a real league behind it.
@@ -40,7 +43,27 @@ import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 export const TABS = [
   { key: 'lobby', label: 'Lobby' },
   { key: 'targets', label: 'Targets Board' },
+  { key: 'gaps', label: 'Roster Gaps' },
+  { key: 'drops', label: 'Drop List' },
+  { key: 'news', label: 'News Wire' },
+  { key: 'intel', label: 'League Intel', gate: 'allaccess' },
 ]
+
+/* ---- The two of the handoff's eight that are NOT here ----
+ *
+ * `faab` (FAAB Planner, Season Pass) is the one this room genuinely
+ * cannot build. It plans a budget against what has been SPENT, and
+ * neither adapter reports that — `waiverBudget` is the season's pool and
+ * nothing else. A gated tab that unlocked onto an invented spend would be
+ * the dead control one tier up, and charging for it would be worse.
+ *
+ * `player` (Player Lab) is a different kind of absence: PlayerProfileModal
+ * already IS that screen, and wiring a target row to open it is a change
+ * to this room's rows rather than a seventh tab. It arrives with that.
+ *
+ * `intel` IS here and gated, which is the point: the handoff's rule is
+ * that every tier sees the next tier's feature set, and a tier system with
+ * nothing behind it is a badge. */
 
 /* How many rows the Lobby previews before handing off to the full board.
    Five is what fits above the fold beside the roster-gap column at 1440
@@ -95,6 +118,127 @@ function Panel({ title, action, children }) {
   )
 }
 
+/* The News Wire: real headlines for the players actually on the wire.
+ *
+ * Through the same /news route the player sheet uses, and under the same
+ * rules its own section already establishes and which are worth restating
+ * because they are easy to lose in a new caller:
+ *
+ *   * we LINK, never republish. A headline, its source and an outbound
+ *     link — reproducing a body is what a licence buys.
+ *   * `configured: false` draws nothing at all. "Not wired up" and
+ *     "nothing today" are different facts, and a section nobody asked to
+ *     wait for is worse as a permanently empty panel than as no panel.
+ *   * it fails by disappearing. Never throws, never blocks a render.
+ *
+ * One request per player, bounded by the caller to the top of the wire —
+ * the route caches for fifteen minutes and the provider's free tier is a
+ * thousand calls a month, which a room that swept the whole board would
+ * spend in a sitting.
+ */
+function NewsWire({ rows, engine }) {
+  const [items, setItems] = useState([])
+  const [state, setState] = useState('loading')
+
+  useEffect(() => {
+    let alive = true
+    const live = typeof window !== 'undefined' ? window.Live : null
+    /* The PROVIDER's id, never the Sleeper one.
+
+       `x` on a stats record holds this player's id at other sources, built
+       nightly by the pipeline's own crosswalk, and sourceId() is how you
+       ask for it — which is what LatestNewsTab already does. Passing a
+       Sleeper id here, as this did first, asks Tank01 for a key it does
+       not use: at best nothing comes back, and the failure this project
+       actually warns about is worse than nothing, because somebody else's
+       news under a player's name is the one outcome worse than an empty
+       panel.
+
+       No id means no news and no fallback — not a name search, not
+       league-wide headlines dressed as his. A player the crosswalk could
+       not place is simply skipped. */
+    const asked = engine
+      ? rows
+          .map((row) => ({ row, theirId: engine.sourceId ? engine.sourceId(row.player, 'tank') : null }))
+          .filter((a) => !!a.theirId)
+      : []
+    if (!live || !live.news || !asked.length) {
+      setState('none')
+      return () => { alive = false }
+    }
+    setState('loading')
+    Promise.all(
+      asked.map(({ row, theirId }) =>
+        live
+          .news(theirId)
+          .then((res) => ({ row, res }))
+          .catch(() => ({ row, res: null }))
+      )
+    )
+      .then((all) => {
+        if (!alive) return
+        const out = []
+        for (const { row, res } of all) {
+          if (!res || res.configured === false) continue
+          for (const item of (res.items || []).slice(0, 2)) {
+            out.push({ player: row.player, item })
+          }
+        }
+        setItems(out)
+        setState(out.length ? 'ready' : 'none')
+      })
+      .catch(() => { if (alive) setState('none') })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, engine])
+
+  /* Absent, not empty — the news tab's own rule on the player sheet. A
+     panel that permanently says "no headlines" is worse than no panel, and
+     an unconfigured provider is indistinguishable from a quiet week. */
+  if (state === 'none') {
+    return (
+      <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+        <Panel title="News wire">
+          <div className="py-10 text-center text-[13px] text-ink-muted">
+            Nothing on the wire&rsquo;s top names right now.
+          </div>
+        </Panel>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+      <Panel title="News wire">
+        {state === 'loading' ? (
+          <div className="h-[120px] animate-pulse" />
+        ) : (
+          items.map(({ player, item }, i) => (
+            <a
+              key={player.id + ':' + i}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 border-b border-line-hairline py-3 last:border-b-0"
+            >
+              <PosTile pos={player.pos} size={30} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                  {player.name}
+                  {item.source ? ` · ${item.source}` : ''}
+                </span>
+                <span className="mt-0.5 block text-[14px] font-semibold leading-snug text-white">
+                  {item.title}
+                </span>
+              </span>
+            </a>
+          ))
+        )}
+      </Panel>
+    </div>
+  )
+}
+
 export default function WaiverRoomLive({ league, snapshot, status, reason, tab }) {
   const engine = useEngine()
   /* `board` is empty until players.js lands (deferred, not blocking), and
@@ -128,12 +272,31 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
 
   const mine = myTeam(snapshot, league)
 
-  const gaps = useMemo(() => {
-    if (!mine || !board.length) return []
-    const byId = new Map(board.map((p) => [String(p.id), p]))
-    return rosterGaps(mine, byId, available, gapOf).slice(0, 3)
+  /* One id->row map for every derivation below, built once per board
+     change rather than per panel: rosterGaps, dropList and rivalNeeds all
+     want it, and rivalNeeds calls rosterGaps once per rival. */
+  const byId = useMemo(
+    () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board.length, mine, available, gapOf])
+    [board.length]
+  )
+
+  const allGaps = useMemo(
+    () => (mine ? rosterGaps(mine, byId, available, gapOf) : []),
+    [mine, byId, available, gapOf]
+  )
+  const gaps = allGaps.slice(0, 3)
+
+  const drops = useMemo(
+    () => (mine ? dropList(mine, byId, gapOf, 20) : []),
+    [mine, byId, gapOf]
+  )
+
+  const rivals = useMemo(
+    () => rivalNeeds(snapshot, mine, byId, available, gapOf),
+    [snapshot, mine, byId, available, gapOf]
+  )
+  const demand = useMemo(() => demandByPosition(rivals), [rivals])
 
   if (status === 'loading') {
     return (
@@ -190,6 +353,134 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
       {available.length} available
     </a>
   )
+
+  /* A roster with no `ownerId` on the connection has no "your team", and
+     three of these tabs are about the reader's own roster specifically.
+     One sentence rather than three empty panels — and it names the fix,
+     because "reconnect" is something a reader can actually do. */
+  const noTeam = (
+    <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+      <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-[13px] text-ink-muted">
+        Reconnect this league to see this — Juke does not know which of the{' '}
+        {snapshot.totalTeams} rosters is yours.
+      </div>
+    </div>
+  )
+
+  if (tab === 'gaps') {
+    if (!mine) return noTeam
+    return (
+      <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+        <Panel title="Where the wire beats your roster">
+          {allGaps.length ? (
+            allGaps.map((g) => (
+              <div
+                key={g.pos}
+                className="flex items-center gap-3 border-b border-line-hairline py-3 last:border-b-0"
+              >
+                <PosTile pos={g.pos} size={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-white">
+                    {g.best.player.name}
+                  </span>
+                  <span className="block font-mono text-[11px] text-ink-muted">
+                    {g.held === null
+                      ? 'you hold nobody rankable at this position'
+                      : `your best ${g.pos} is ${Math.round(g.held)} over replacement`}
+                  </span>
+                </span>
+                <Gap value={g.improvement} />
+              </div>
+            ))
+          ) : (
+            <div className="py-10 text-center text-[13px] text-ink-muted">
+              Nothing on the wire beats what you already hold, at any position.
+            </div>
+          )}
+        </Panel>
+      </div>
+    )
+  }
+
+  if (tab === 'drops') {
+    if (!mine) return noTeam
+    return (
+      <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+        <Panel title="Your bench, worst first">
+          {drops.length ? (
+            drops.map((row, i) => <TargetRow key={row.player.id} rank={i + 1} row={row} />)
+          ) : (
+            <div className="py-10 text-center text-[13px] text-ink-muted">
+              Nobody on your bench is rankable — which in most leagues means a bench of kickers,
+              defenses and players with no projection, and those are not cut decisions Juke will
+              make for you.
+            </div>
+          )}
+          <p className="border-t border-line-hairline py-3 text-[12px] leading-relaxed text-ink-muted">
+            Starters are not listed, whatever the projection says: benching one is a start/sit
+            question. Kickers and defenses are not either — Juke declines to rank those two, so it
+            will not rank them to cut them.
+          </p>
+        </Panel>
+      </div>
+    )
+  }
+
+  if (tab === 'news') {
+    return <NewsWire rows={available.slice(0, 8)} engine={engine} />
+  }
+
+  if (tab === 'intel') {
+    return (
+      <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+        <UpgradeGate need="allaccess" title="See what every rival needs">
+          <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+            <Panel title="What your rivals are thin at">
+              {rivals.length ? (
+                rivals.map((row) => (
+                  <div key={row.team.rosterId} className="border-b border-line-hairline py-3 last:border-b-0">
+                    <div className="text-[14px] font-semibold text-white">{row.team.teamName}</div>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {row.gaps.map((g) => (
+                        <span
+                          key={g.pos}
+                          className="rounded-full border border-line-hairline px-2.5 py-1 font-mono text-[11px] text-ink-muted"
+                        >
+                          {g.pos} +{Math.round(g.improvement)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-[13px] text-ink-muted">
+                  No rival has a hole the wire can fill this week.
+                </div>
+              )}
+            </Panel>
+            <Panel title="Who you are bidding against">
+              {demand.length ? (
+                demand.map((d) => (
+                  <div
+                    key={d.pos}
+                    className="flex items-center gap-3 border-b border-line-hairline py-3 last:border-b-0"
+                  >
+                    <PosTile pos={d.pos} size={30} />
+                    <span className="flex-1 text-[13px] text-voidInk-body">
+                      {d.count} {d.count === 1 ? 'rival needs' : 'rivals need'} a {d.pos}
+                    </span>
+                    <span className="font-mono text-[15px] font-semibold text-white">{d.count}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-[13px] text-ink-muted">Nobody is bidding.</div>
+              )}
+            </Panel>
+          </div>
+        </UpgradeGate>
+      </div>
+    )
+  }
 
   if (tab === 'targets') {
     return (

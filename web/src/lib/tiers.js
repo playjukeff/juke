@@ -20,3 +20,28 @@ export function tierLabel(tier) {
 export function leagueCap(tier) {
   return LEAGUE_CAP[tier] ?? LEAGUE_CAP.free
 }
+
+/* The ladder, in order, so a gate can ask "is this tier at least that
+   one" without every caller writing the ordering down again.
+ *
+ * The worker's LEAGUE_CAP happens to be monotonic (0, 1, 6) and it would
+ * be tempting to compare caps instead. That is the same fact by
+ * coincidence rather than by definition: a tier gates FEATURES as well as
+ * league count, and the first feature that a paid tier gets without also
+ * raising the cap would silently break every gate built on it. */
+export const TIER_ORDER = ['free', 'pro', 'allaccess']
+
+/* Does `have` reach `need`?
+ *
+ * An unknown `have` — which is what tierStore holds until /me answers —
+ * reaches nothing. That is the same "absent, not wrong" call the room
+ * header's badge makes: a gate that fell open while the tier was still
+ * loading would flash paid content at a Free account on every page load,
+ * and a gate that flashes is not a gate. */
+export function meetsTier(have, need) {
+  if (!need) return true
+  const h = TIER_ORDER.indexOf(have)
+  const n = TIER_ORDER.indexOf(need)
+  if (h < 0 || n < 0) return false
+  return h >= n
+}
