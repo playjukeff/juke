@@ -147,3 +147,6 @@ jobs:
       # is a win" must be checkable without a browser nobody can log into.
       - name: Trade board
         run: node scripts/test_trade_board.mjs
+
+      - name: Prospect board
+        run: node scripts/test_prospect_board.mjs

@@ -627,16 +627,25 @@ const ROOMS = [
      once.
 
      Juke Journey v3's rail restores it — its own room order names Draft,
-     Waiver, Strategy, Trade, Prospect — so `retired` comes off. What it is
-     for is partly here already: the Draft Room runs a rookies-only draft
-     today (league.playerPool, Draft Settings), which is the drafting half
-     of "scout the incoming class". The half that is not here is the
-     college-production-to-NFL translation this blurb promises, which is
-     still owed — un-retiring the entry did not build the room behind it. */
+     Waiver, Strategy, Trade, Prospect — so `retired` comes off.
+
+     The room behind it is built now (ProspectRoomLive.jsx), and the blurb
+     below is NOT the one this entry carried while it was empty. That one
+     promised "the college production and NFL translation of incoming
+     rookies", and none of college production, combine testing or NFL
+     draft position exists anywhere in this repository — so the room's own
+     first screenful says so out loud, and a homepage card selling the
+     opposite would have been the product contradicting itself across two
+     screens rather than merely owing a feature.
+
+     `live` stays false and that is not a leftover: it means "DraftRoom.jsx
+     owns this route", which RoomPage keys `return null` off. What makes
+     Prospect open is OPEN_ROOMS there — rooms whose content needs no
+     connected league — and roomIsOpen() is what every padlock asks. */
   { name: "The Prospect Room", slug: "prospect", glyph: "🔭", accent: "#82A1F6",
     hook: "Preview: rookie board before the draft", live: false, season: "Pre-season",
     lead: "Scout the future.",
-    blurb: "Analyze the college production and NFL translation of incoming rookies before they even hit your draft board." },
+    blurb: "Rank every incoming rookie by projected value over replacement — and see exactly what Juke does and does not know about each one." },
   // #/drafts (the Lobby/Locker), not #/draft-room (the live Cockpit
   // itself). DraftRoom.jsx's own `enteredRoom` state persists for the rest
   // of the tab's life once a draft is entered — including a finished one,

@@ -90,9 +90,18 @@ test.describe("the phone bottom nav and its More sheet", () => {
     // The sheet still carries every room and History, unaffected by the
     // My League filter — this is what tells "filtered correctly" apart
     // from "rendered nothing".
+    //
+    // #/history, not #/drafts. The rail's History item pointed at the
+    // mock-draft archive for as long as there was no decision ledger to
+    // point at; the ledger shipped and railItems.js moved it, and this
+    // line was left behind — standing red from that merge until the
+    // Prospect Room's own run tripped over it. It is the stale-spec
+    // shape this project catalogues: it failed by not FINDING something,
+    // on a property (does the sheet render its third group at all) that
+    // had nothing to do with the route that moved.
     await expect(page.locator(SHEET).locator('a[href="#/rooms/waiver"]')).toBeVisible();
     await expect(page.locator(SHEET).locator('a[href="#/rooms/trade"]')).toBeVisible();
-    await expect(page.locator(SHEET).locator('a[href="#/drafts"]')).toBeVisible();
+    await expect(page.locator(SHEET).locator('a[href="#/history"]')).toBeVisible();
 
     await context.close();
   });

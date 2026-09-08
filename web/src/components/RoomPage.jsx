@@ -9,6 +9,7 @@ import StrategyPreview from './rooms/StrategyPreview.jsx'
 import WaiverRoomLive, { TABS as WAIVER_TABS } from './rooms/WaiverRoomLive.jsx'
 import StrategyRoomLive, { TABS as STRATEGY_TABS } from './rooms/StrategyRoomLive.jsx'
 import TradeRoomLive, { TABS as TRADE_TABS } from './rooms/TradeRoomLive.jsx'
+import ProspectRoomLive, { TABS as PROSPECT_TABS } from './rooms/ProspectRoomLive.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 
 /* #/rooms/<slug> — one page for every room, guest state.
@@ -99,18 +100,48 @@ const LIVE_ROOMS = {
   },
 }
 
-/* The same list, as slugs, for anything that needs to know WHICH rooms a
-   connected league opens without needing the component that draws them.
 
-   Exported rather than restated: the Rooms lobby draws a padlock on every
-   room whose `live` flag is false, and `live` means "this room is built
-   for everyone" — not "you can open it". Those were the same question
-   until Sleeper connect shipped, and now they are not: League is live for
-   a connected reader and locked for everybody else. A second hand-written
-   list of which rooms that covers is the written-down-twice failure with a
-   padlock on it, and it fails silently — the lobby says locked, the room
-   opens. */
-export const LIVE_WHEN_CONNECTED = Object.keys(LIVE_ROOMS)
+/* Rooms whose real content needs no league at all.
+
+   The three above each read a roster, so each is genuinely locked until
+   somebody connects one. Prospect reads the board — players.js and
+   stats.js, which every visitor already has — so a rookie is a rookie
+   whoever you are. Gating it behind a connection it never consults would
+   be a control that cannot act, which is the same failure as a tab
+   unlocking onto nothing.
+
+   Separate from LIVE_ROOMS rather than a flag on it, because `live` below
+   dereferences `league.name` and asks the worker for a snapshot. A room
+   with no league in scope must not travel that path. */
+const OPEN_ROOMS = {
+  prospect: {
+    Body: ProspectRoomLive,
+    tabs: PROSPECT_TABS,
+    sub: 'Every first-year player on the board, ranked — and what Juke does not know about them.',
+    title: 'Open',
+    stats: [],
+  },
+}
+
+/* Is this room's real content reachable by this reader, for any reason.
+
+   One function rather than a second exported list, because three call
+   sites ask this question — the lobby's open count, the homepage grid and
+   this file — and a room that is open for a reason one of them has not
+   heard of is the written-down-twice failure with a padlock on it: the
+   lobby says locked and the room opens.
+
+   It replaced an exported LIVE_WHEN_CONNECTED slug list, which answered
+   the narrower "which rooms does a LEAGUE open" and was correct for as
+   long as a league was the only thing that opened one. Prospect is the
+   third category, and a list cannot carry a third answer without every
+   caller learning about it. */
+export function roomIsOpen(room, leagueStatus) {
+  if (!room) return false
+  if (room.live) return true
+  if (OPEN_ROOMS[room.slug]) return true
+  return leagueStatus === 'connected' && !!LIVE_ROOMS[room.slug]
+}
 
 export default function RoomPage({ slug }) {
   const rooms = useRooms()
@@ -130,6 +161,11 @@ export default function RoomPage({ slug }) {
      draw a lock. Showing the locked preview during the first tick would
      flash it at somebody who has connected. */
   const live = !!(room && !room.live && status === 'connected' && league && LIVE_ROOMS[slug])
+
+  /* Not `!live && OPEN_ROOMS[slug]`: the two sets do not overlap, and
+     writing it as a fallback would quietly make a room that joined both
+     lists render whichever branch happened to be tested first. */
+  const openRoom = !!(room && !room.live && OPEN_ROOMS[slug])
 
   /* Read HERE, above every early return below, and that placement is the
      whole reason this is computed before the guards rather than after
@@ -254,11 +290,20 @@ export default function RoomPage({ slug }) {
            on the one figure a manager acts on before making a claim. */
         stats: (LIVE_ROOMS[slug].stats || (() => []))(snapshot),
       }
-    : {
-        title: 'Preview',
-        meta: `${room.season} · sample data`,
-        stats: [],
-      }
+    : openRoom
+      ? {
+          /* An open room has no week and no league to name, so it says
+             what it is instead of borrowing the preview's "sample data" —
+             which would be false about a screen drawing the real board. */
+          title: OPEN_ROOMS[slug].title,
+          meta: `${room.season} · no league needed`,
+          stats: OPEN_ROOMS[slug].stats,
+        }
+      : {
+          title: 'Preview',
+          meta: `${room.season} · sample data`,
+          stats: [],
+        }
 
   return (
     <AppShell active="rooms">
@@ -267,7 +312,7 @@ export default function RoomPage({ slug }) {
         title={shell.title}
         meta={shell.meta}
         stats={shell.stats}
-        tabs={live ? LIVE_ROOMS[slug].tabs : []}
+        tabs={live ? LIVE_ROOMS[slug].tabs : openRoom ? OPEN_ROOMS[slug].tabs : []}
         active={tab}
         onTab={setTab}
         backHref="#/rooms"
@@ -287,7 +332,15 @@ export default function RoomPage({ slug }) {
             style={{ color: room.accent }}
           >
             <span className="mr-1.5" aria-hidden="true">{room.glyph}</span>
-            {liveEyebrow || (preview ? preview.eyebrow : `${room.season.toUpperCase()} · PREVIEW`)}
+            {liveEyebrow ||
+              (openRoom
+                /* An open room may not call itself a preview, for the same
+                   reason a connected one may not: the word tells a reader
+                   to distrust content that is real. */
+                ? `${room.season.toUpperCase()} · OPEN`
+                : preview
+                  ? preview.eyebrow
+                  : `${room.season.toUpperCase()} · PREVIEW`)}
           </div>
           <h1 className="m-0 font-display text-[30px] font-extrabold text-white sm:text-[40px]">
             {room.name}
@@ -300,9 +353,11 @@ export default function RoomPage({ slug }) {
                  where managers stand. A room's own line, with the League
                  sentence gone with the room that owned it. */
               ? LIVE_ROOMS[slug].sub
-              : preview
-                ? preview.sub
-                : room.blurb}
+              : openRoom
+                ? OPEN_ROOMS[slug].sub
+                : preview
+                  ? preview.sub
+                  : room.blurb}
           </p>
         </div>
 
@@ -318,6 +373,11 @@ export default function RoomPage({ slug }) {
                 tab={tab}
               />
             )
+          })()
+        ) : openRoom ? (
+          (() => {
+            const Open = OPEN_ROOMS[slug].Body
+            return <Open tab={tab} />
           })()
         ) : (
           <LockedPreview headline={preview ? preview.headline : `See your real ${slug} room`}>
