@@ -118,3 +118,12 @@ jobs:
       # what lets this run with no npm install like every other step here.
       - name: Decision-ledger state machine
         run: node scripts/test_decision_state.mjs
+
+      # The Waiver Room's arithmetic — who is available and what a claim is
+      # worth. Here rather than in the browser suite for the reason the two
+      # above are: the room only renders inside Clerk's <SignedIn>, which a
+      # keyless build never draws. This is the module that decides what a
+      # manager is told to claim, so "only checkable by looking at a screen
+      # nobody can reach" was not an acceptable place for it to live.
+      - name: Waiver board
+        run: node scripts/test_waiver_board.mjs
