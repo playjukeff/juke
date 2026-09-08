@@ -6066,8 +6066,19 @@ apart.
 
 **Cached on `(locker, board, scoring)`**, keyed the way `PAR_CACHE` already is
 and for the same reason: this is a whole-history replay and it may not run
-once per render. Measured at **25ms warm for fourteen mocks**, 8 September
-2026.
+once per render. Measured 8 September 2026: **25ms to build over fourteen
+mocks, 0.001ms to answer once built.**
+
+**The locker's half of that key is the raw storage string, compared by
+`===`.** It was a parse — length, newest id — and the parse is the whole cost
+at rest: this screen re-renders on hover, `insightsReport()` runs on every one
+of those renders, and at the 200-entry limit the locker is about 1.5MB of
+JSON. Parsing it to answer "has anything changed" is ~2.8ms per hovered bar
+for an answer that is almost always no. `historyRaw()` is `readHistory()`'s
+own first line, split out so the cache can ask the cheap question; a string
+comparison is also *exact* where a length-and-id summary is a guess. Measured:
+0.197ms per cached call before, **0.0012ms after**, with the cache still
+invalidating the moment a mock lands.
 
 **Which mock is selected survives a move between views 01 and 02 and is
 cleared by 03 and 04**, which is half of the handoff's rule rather than all

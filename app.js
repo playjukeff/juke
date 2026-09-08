@@ -7706,9 +7706,25 @@ const HISTORY_KEY = "juke.draft-history.v1";
 // keeps this well inside what a browser actually allows per origin.
 const HISTORY_LIMIT = 200;
 
+/* The locker as it sits in storage, unparsed.
+
+   Split out of readHistory() below for one caller: insightsReport() runs on
+   every render of a screen whose hover state re-renders it, and the only
+   thing it needs before deciding whether its cache is still good is whether
+   the bytes moved. At the 200-entry limit that is about 1.5MB of JSON, so
+   parsing it to answer "has anything changed" costs ~2.8ms per hovered bar
+   for an answer that is almost always no. */
+function historyRaw() {
+  try {
+    return localStorage.getItem(HISTORY_KEY) || "";
+  } catch (err) {
+    return "";
+  }
+}
+
 function readHistory() {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = historyRaw();
     const data = raw ? JSON.parse(raw) : [];
     return Array.isArray(data) ? data : [];
   } catch (err) {
@@ -9040,17 +9056,20 @@ const LEVERAGE_PCT = 1;
 
 let INSIGHTS_CACHE = null;
 
-/* Everything the report is derived from moves: the locker (a new mock), the
-   board (the nightly rebuild) and the scoring table. BEST_VOR is the
-   cheapest tell for the last of those — every rescore rewrites it — and
+/* Everything the report is derived from other than the locker itself: the
+   board (the nightly rebuild) and the scoring table. BEST_VOR is the cheapest
+   tell for the second of those — every rescore rewrites it — and
    league.teams/scoring/bench ride along because bestLineup(),
    replacementRank() and lineupSlots() all read the LIVE league, so a
-   historical roster is scored against whatever shape is loaded now. Same
-   key shape PAR_CACHE already uses, and for the same reason: this is a
-   whole-history replay and it may not run once per render. */
-function insightsCacheKey(list) {
-  return [list.length, list.length ? list[0].id : "-", BEST_VOR,
-          league.teams, league.scoring, league.bench].join("|");
+   historical roster is scored against whatever shape is loaded now. Same key
+   shape PAR_CACHE already uses, and for the same reason: this is a
+   whole-history replay and it may not run once per render.
+
+   The locker's own half of the key is the raw string, compared by ===. That
+   is exact where a length-and-newest-id summary is a guess, and it is far
+   cheaper than the parse it replaces — see historyRaw(). */
+function insightsShapeKey() {
+  return [BEST_VOR, league.teams, league.scoring, league.bench].join("|");
 }
 
 /* The fractional round a pick landed in: overall 1..teams is round 1.00 to
@@ -9832,9 +9851,13 @@ function insightsExperiments(audits, coverage, habits, seErr) {
    for "zero", which is the same "absent, not zeroed" rule this file keeps
    everywhere. */
 function insightsReport() {
-  const all = readHistory();
-  if (INSIGHTS_CACHE && INSIGHTS_CACHE.key === insightsCacheKey(all)) return INSIGHTS_CACHE.report;
+  const raw = historyRaw();
+  const shape = insightsShapeKey();
+  if (INSIGHTS_CACHE && INSIGHTS_CACHE.raw === raw && INSIGHTS_CACHE.shape === shape) {
+    return INSIGHTS_CACHE.report;
+  }
 
+  const all = readHistory();
   const list = all.slice(0, INSIGHTS_WINDOW);
   const thin = {
     ready: false,
@@ -10021,7 +10044,7 @@ function insightsReport() {
     }
   };
 
-  INSIGHTS_CACHE = { key: insightsCacheKey(all), report: report, audits: audits };
+  INSIGHTS_CACHE = { raw: raw, shape: shape, report: report, audits: audits };
   return report;
 }
 
