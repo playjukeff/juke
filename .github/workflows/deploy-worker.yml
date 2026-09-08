@@ -156,6 +156,35 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4 deploy -c worker/wrangler.toml
 
+      # A deploy returns when the upload succeeds, and that is not the same
+      # moment the worker is serving. A Durable Object created inside the
+      # rollout window is torn down when the new version takes over, and the
+      # suite below is then holding a socket nobody is behind.
+      #
+      # That is not a guess. It failed three times in ninety minutes on three
+      # separate merges, every one transient and every one with the deployed
+      # worker measuring 109 assertions clean minutes later -- and the report
+      # names it exactly: 79 ok lines, and all 40 failures a wait for a
+      # broadcast that follows a client message. Connect works, the first
+      # state arrives, nothing after it does.
+      #
+      # So the gate waits for the property it actually depends on -- a message
+      # sent coming back as a broadcast -- rather than for a number of
+      # seconds. Same argument as test-sockets.mjs's own until(): a sleep
+      # short enough to be cheap proves nothing, and one long enough to be
+      # safe is paid on every deploy. This costs 3.8s on a healthy worker,
+      # measured.
+      #
+      # Deliberately NOT a retry of the verify step. A retry would also make
+      # a worker that is genuinely broken half the time look green, which is
+      # the opposite of what this gate is for. Waiting for readiness removes
+      # the race; it hides no failure.
+      - name: Wait for the worker to serve broadcasts
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          JUKE_WORKER: wss://juke-draft-room.jukeff.workers.dev
+        run: node worker/wait-for-worker.mjs
+
       # Ask the thing itself, which is the rule this project keeps arriving
       # at: a deploy that reported success and a worker that actually serves
       # the new code are different claims, and every incident in the header
