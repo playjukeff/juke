@@ -15,14 +15,23 @@
  *
  * ---- What is NOT here, and why ----
  *
- * The tab bar. No room passes tabs yet: the four in-season rooms are
- * locked previews with one body each, so a tab strip would be a control
- * that cannot act — which this component's own comment refuses to render
- * for that reason. It arrives with the Waiver Room, and its tests arrive
- * with it. Verified by hand in the meantime, by temporarily passing
- * Waiver's real eight-tab list and looking: the active underline, and the
- * two gate chips reading SEASON PASS and MULTI-LEAGUE rather than the
- * handoff's internal PRO / ALL ACCESS.
+ * Any room's own tab CONTENT. What a room's sections are is that room's
+ * business and its own spec's; what this file pins is that the strip is
+ * drawn when a room has sections and not otherwise, that exactly one tab
+ * reads as open, and that gaining a strip does not change the identity row
+ * every room shares.
+ *
+ * This section used to say "no room passes tabs yet" and assert zero
+ * strips everywhere. That was true while all four in-season rooms were
+ * locked previews with one body each. Prospect is the first room whose
+ * content needs no connected league, so it draws real tabs in a keyless
+ * build — and the assertion went red for the shell doing its job. The
+ * other three will do the same the day this suite can sign in, which is
+ * why what replaced it is a relationship rather than a newer count.
+ *
+ * Still verified by hand and not here: the two gate chips reading SEASON
+ * PASS and MULTI-LEAGUE rather than the handoff's internal PRO /
+ * ALL ACCESS. No room reachable without Clerk carries a gated tab.
  */
 
 import { test, expect } from "@playwright/test";
@@ -52,9 +61,33 @@ test.describe("the room shell", () => {
          a hero eyebrow uppercased in CSS and title-case in source). */
       await expect(shell).toContainText(room.name);
 
-      /* No tab strip while no room has tabs. An empty 44px band under the
-         bar reads as a tab row that failed to load. */
-      await expect(page.locator("[data-room-tabs]")).toHaveCount(0);
+      /* The tab strip is drawn when the room passes tabs and not
+         otherwise, and what is asserted is that relationship rather than
+         its answer for today's rooms.
+
+         This used to read `toHaveCount(0)`, with a comment saying "no tab
+         strip while no room has tabs" — true when written, because the
+         four in-season rooms were locked previews with one body each.
+         Prospect is the first room whose real content needs no league, so
+         it renders its own tabs in a keyless build and that assertion went
+         red for the shell working exactly as designed. The three that are
+         still Clerk-gated will do the same the day this suite can sign in,
+         so pinning today's answer would only defer the same failure. */
+      const tabs = page.locator("[data-room-tabs]");
+      const strips = await tabs.count();
+      expect(strips, "at most one tab strip").toBeLessThanOrEqual(1);
+      if (strips) {
+        /* An empty 44px band under the bar reads as a tab row that failed
+           to load, and exactly one tab is selected — two underlines, or
+           none, is the same class of defect as a strip with nothing in
+           it. */
+        const items = tabs.locator("button, a");
+        expect(await items.count(), "a strip that is drawn has tabs in it").toBeGreaterThan(0);
+        expect(
+          await tabs.locator('[aria-current="page"]').count(),
+          "exactly one tab reads as the open one"
+        ).toBe(1);
+      }
 
       await page.close();
     });
@@ -123,7 +156,16 @@ test.describe("the room shell", () => {
     /* The point of one component. If a room grew its own, the most likely
        tell is a different height or a different ground — both of which a
        reader notices as a jump when moving between rooms and neither of
-       which fails anything. */
+       which fails anything.
+
+       Measured on the IDENTITY ROW rather than on the whole shell. The tab
+       band under it is per-room by design — a room declares its own
+       sections and this component draws them — so measuring the shell
+       reports a room GAINING tabs as the shell having diverged, which is
+       the opposite of what this test is for. Prospect proved that by
+       coming out 100px against the other three's 53, on a bar that was
+       working perfectly. Stickiness and the ground still belong to the
+       shell itself, so those two are read off it. */
     const seen = [];
     for (const room of ROOMS) {
       const page = await openApp(context, `#/rooms/${room.slug}`);
@@ -132,8 +174,9 @@ test.describe("the room shell", () => {
       seen.push(
         await bar.evaluate((el) => {
           const s = getComputedStyle(el);
+          const id = el.querySelector("[data-room-identity]");
           return {
-            h: Math.round(el.getBoundingClientRect().height),
+            h: id ? Math.round(id.getBoundingClientRect().height) : null,
             bg: s.backgroundColor,
             position: s.position,
           };
@@ -141,6 +184,7 @@ test.describe("the room shell", () => {
       );
       await page.close();
     }
+    expect(seen[0].h, "the identity row is measurable").toBeGreaterThan(0);
     const first = JSON.stringify(seen[0]);
     for (let i = 1; i < seen.length; i++) {
       expect(JSON.stringify(seen[i]), `${ROOMS[i].slug} matches ${ROOMS[0].slug}`).toBe(first);

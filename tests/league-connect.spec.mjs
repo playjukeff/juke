@@ -98,7 +98,13 @@ test.describe("a connected league", () => {
     // pass all of them.
     expect(body).toContain("Connect your league");
     expect(body).toContain("The rest unlock when you connect a league");
-    expect(body).toMatch(/5 ROOMS · 1 OPEN/);
+    /* Two, not one. Draft has always been open to everybody; Prospect
+       joined it, because its content is the board rather than a roster and
+       there is nothing for a league to unlock. The rooms a LEAGUE opens is
+       a narrower question than the rooms a reader can walk into, and this
+       count is the second one — which is why roomIsOpen() replaced the
+       exported slug list that could only answer the first. */
+    expect(body).toMatch(/5 ROOMS · 2 OPEN/);
 
     await page.close();
   });
@@ -132,13 +138,30 @@ test.describe("a connected league", () => {
        own note). What it says instead is that the league is in, which is
        the same fact in the copy this screen owns. */
     expect(body, "and the blurb says the league is in").toContain("Your league is in");
-    /* Still 1, not 2: League graduated out of this grid into its own screen
-       (My League, #/my-league) and connecting one no longer opens anything
-       ELSE shown here — Waiver, Trade and Strategy still need Juke to have
-       an opinion that has not been built. The room this screen used to open
-       on connect is simply not a room any more, so the count staying put is
-       the correct behaviour rather than a regression of the old one. */
-    expect(body, "and the grid still shows only Draft as open").toMatch(/5 ROOMS · 1 OPEN/);
+    /* And it does not still call those three a sample. This line was wrong
+       on the deployed site for as long as the assertion above was red, and
+       for the same reason — the copy promising "these three still show a
+       sample week until they are built" outlived the three being built. */
+    expect(body, "the connected copy does not call the live rooms samples").not.toContain(
+      "sample week until they are built",
+    );
+    /* All five, and this assertion was STANDING RED before the Prospect
+       Room went anywhere near it.
+
+       It read `1 OPEN`, with a comment explaining that connecting a league
+       opens nothing else in this grid — true while Waiver, Trade and
+       Strategy were locked previews. They got real connected bodies in the
+       phases that followed and nobody came back to this line, so it has
+       been failing since. Prospect's own run is what surfaced it, the same
+       way it surfaced rail-nav's stale #/drafts.
+
+       Two of the five are open to everybody (Draft, Prospect) and three
+       are what the league buys, which is the number this screen exists to
+       move. The guest test above pins the other end at 2; the pair of them
+       together is what says connecting is worth something. */
+    expect(body, "a league opens the three rooms that read a roster").toMatch(
+      /5 ROOMS · 5 OPEN/,
+    );
 
     /* League itself no longer appears in this grid at all — not locked, not
        open, just gone (it is #/my-league now). The old "no longer previewed"

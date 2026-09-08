@@ -3,7 +3,7 @@ import AppShell from './shell/AppShell.jsx'
 import RoomsGridAlive from './RoomsGridAlive.jsx'
 import ConnectLeagueCta from './shell/ConnectLeagueCta.jsx'
 import { LINE as PLATFORM_LINE } from './shell/leaguePlatforms.js'
-import { LIVE_WHEN_CONNECTED } from './RoomPage.jsx'
+import { roomIsOpen } from './RoomPage.jsx'
 import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
 import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
@@ -36,6 +36,20 @@ import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
 /* The two lines that promise what connecting buys, and what they say once
    it has been bought.
 
+   Both connected lines used to end "These three still show a sample week
+   until they are built", which was true when a league opened nothing on
+   this page. It stopped being true the moment Waiver, Trade and Strategy
+   got real connected bodies, and nothing here heard about it — so a
+   manager who had just connected a league was told the three rooms now
+   reading their roster were samples. Corrected in place, and it is the
+   copy-goes-stale failure this file catalogues, landing on the screen that
+   sells the thing that shipped.
+
+   The guest lines name Draft and Prospect, which are open to EVERYBODY —
+   Prospect because its content is the board rather than a roster, so
+   connecting does nothing for it. Three sets to keep straight, and a new
+   room joining any of them has to move a sentence here.
+
    Both used to read "the rest unlock when you connect a league" against a
    connected state promising "Draft Room and League Room are open" — true
    while League was one of these five doors. It graduated into My League
@@ -55,8 +69,8 @@ function SubCopy() {
   return (
     <p className="mt-3 hidden text-[16px] text-voidInk-body sm:block">
       {status === 'connected'
-        ? 'Your league is in — see it in My League. These three still show a sample week until they are built.'
-        : 'Draft Room is open to everyone. The rest unlock when you connect a league.'}
+        ? 'Your league is in — Waiver, Trade and Strategy are reading it, and your standings are in My League.'
+        : 'Draft Room and Prospect Room are open to everyone. The rest unlock when you connect a league.'}
     </p>
   )
 }
@@ -67,12 +81,12 @@ function Blurb() {
   return (
     <p className="m-0 flex-1 rounded-[14px_14px_14px_4px] border border-flow-pillEdge bg-flow-pill px-3.5 py-[11px] text-[14px] leading-[1.45] text-voidInk-primary sm:max-w-[520px] sm:rounded-[16px_16px_16px_4px] sm:px-[18px] sm:py-3.5 sm:text-[15px]">
       {connected ? (
-        'Your league is in — see your standings and this week in My League. These three still show a sample week until they are built.'
+        'Your league is in — Waiver, Trade and Strategy now read your real roster, and your standings are in My League.'
       ) : (
         <>
           <span className="sm:hidden">
-            Draft Room is open. The rest unlock when you connect a league — peek inside any of
-            them.
+            Draft and Prospect are open. The rest unlock when you connect a league — peek
+            inside any of them.
           </span>
           <span className="hidden sm:inline">
             Peek inside any locked room — you will see a sample week so you know what you are
@@ -190,9 +204,7 @@ export default function RoomsLobby() {
      the same distinction the grid and the phase strip now make, and the
      eyebrow was the third place saying the old answer. */
   const { status } = useLeague()
-  const open = rooms.filter(
-    (r) => r.live || (status === 'connected' && LIVE_WHEN_CONNECTED.includes(r.slug)),
-  ).length
+  const open = rooms.filter((r) => roomIsOpen(r, status)).length
 
   return (
     <AppShell active="rooms">

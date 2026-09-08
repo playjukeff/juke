@@ -1,6 +1,6 @@
 import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
-import { LIVE_WHEN_CONNECTED } from './RoomPage.jsx'
+import { roomIsOpen } from './RoomPage.jsx'
 
 /* The room cards, written once for the two screens that draw them: the
    Rooms lobby (#/rooms) and the homepage's own THE ROOMS section. The
@@ -181,11 +181,12 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
      room that opened. League graduated into My League and left LIVE_ROOMS
      empty, but the gap it exposed can reopen the moment any of Waiver,
      Trade or Strategy gets a real connected body — so this stays rather
-     than being simplified back to `r.live` alone. LIVE_WHEN_CONNECTED is
-     that map's own key list rather than a second copy of it. */
+     than being simplified back to `r.live` alone. Prospect then made it a
+     three-way question (open to everybody, open with a league, locked), so
+     the answer is roomIsOpen() rather than a slug list every caller has to
+     keep in step. */
   const { status } = useLeague()
-  const opensForMe = (r) =>
-    r.live || (status === 'connected' && LIVE_WHEN_CONNECTED.includes(r.slug))
+  const opensForMe = (r) => roomIsOpen(r, status)
   const lead = rooms.filter(opensForMe)
   const locked = rooms.filter((r) => !opensForMe(r))
   const grid = GRID[columns] || GRID.lobby

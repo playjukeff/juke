@@ -96,7 +96,11 @@ export default function RoomShell({
         data-room-shell
         className="sticky top-0 z-[5] border-b border-line-hairline bg-charcoal text-ink"
       >
-        <div className="flex min-h-[52px] flex-wrap items-stretch">
+        {/* The identity row, marked because it is the part that must be
+            identical in every room — the tab band under it is per-room by
+            design, so a check that measured the whole bar would report a
+            room GAINING tabs as the shell having diverged. */}
+        <div data-room-identity className="flex min-h-[52px] flex-wrap items-stretch">
           {backHref ? (
             <a
               href={backHref}
