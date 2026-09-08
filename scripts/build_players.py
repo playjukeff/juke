@@ -1193,6 +1193,22 @@ def fetch_expected_points():
 # unrecognised value is counted and reported rather than dropped silently: a
 # draft class that suddenly matches nobody is what this table would cause, and
 # it would read as a bad join rather than as a renamed position.
+# How many linked picks it takes before "nothing matched on college" is
+# evidence about COLLEGE_ALIASES rather than about the sample.
+#
+# The alarm below first read `if linked and strict_n == 0`, which is true of
+# any fixture built to exercise the weaker tiers -- so test_crosswalk.py
+# printed it twice on a passing run. A warning that fires when nothing is
+# wrong is a warning nobody reads by the end of the week, which is the
+# standing-red trap this project already has a scar from.
+#
+# Ten is comfortably above any fixture and far below a real run: the board
+# carried 77 first-year players on 8 September 2026, and the fantasy-relevant,
+# board-resolvable share of a draft class is on that order. Below ten links
+# the join has a bigger problem than its alias table, and a message about
+# school naming would send the next person the wrong way.
+CFBD_COLLEGE_ALARM_MIN = 10
+
 CFBD_POSITIONS = {
     "QB": "QB", "QUARTERBACK": "QB",
     "RB": "RB", "RUNNING BACK": "RB", "HB": "RB", "HALFBACK": "RB",
@@ -1396,8 +1412,8 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
     loose_n = sum(1 for k in linked if method.get(k) == "name+pos")
     print(f"  CFBD: linked {len(linked)} picks ({strict_n} on name+pos+college, "
           f"{team_n} on name+pos+nflteam, {loose_n} on name+pos)")
-    if linked and strict_n == 0:
-        print("  ! not one pick matched on college -- COLLEGE_ALIASES is "
+    if len(linked) >= CFBD_COLLEGE_ALARM_MIN and strict_n == 0:
+        print("  ! not one of these matched on college -- COLLEGE_ALIASES is "
               "probably wrong about CFBD's naming")
     return linked, report
 

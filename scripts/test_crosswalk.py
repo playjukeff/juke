@@ -17,6 +17,8 @@ player they hold that we do not carry.
 Run:  python scripts/test_crosswalk.py
 """
 
+import contextlib
+import io
 import os
 import sys
 
@@ -786,6 +788,53 @@ def test_cfbd_crosswalk():
     check("CFBD: an unrecognised position is reported, not silently dropped",
           any(l.startswith("POSITION |") and "OFFENSIVE WEAPON" in l
               for l in strange_report), True)
+
+
+    # ---- the alarm about COLLEGE_ALIASES has to be sized ----
+    #
+    # Both directions, because a threshold that silenced it everywhere would
+    # pass a one-sided check and quietly remove the only thing that would tell
+    # anybody the alias table had gone wrong. The first version fired on any
+    # fixture that exercised a weaker tier, so this suite printed it twice on
+    # a passing run -- and a warning that cries wolf is one nobody reads.
+    def warnings_for(rows):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            link(rows)
+        return [l for l in buffer.getvalue().splitlines() if "COLLEGE_ALIASES" in l]
+
+    small = [pick("Jeremiyah Love", "RB", "Not A School CFBD Names", "PIT", 33, 4003)]
+    check("CFBD: one pick matching no school is not evidence about the alias table",
+          warnings_for(small), [])
+
+    # A whole class that matched nothing on college IS evidence, and must say
+    # so. Built from real board players so nothing but the school is wrong:
+    # every one of these resolves on the NFL club instead.
+    # Letter-only and all distinct, because normalise() strips DIGITS -- a
+    # first version numbered them Player Number0..9, which all reduce to the
+    # one key "playernumber", collide, and are correctly thrown away. The
+    # fixture proved the collision guard instead of the alarm.
+    CLASS = ["Alpha", "Bravo", "Charlie", "Delta", "Echo",
+             "Foxtrot", "Golf", "Hotel", "Kilo", "Lima"]
+    assert len(CLASS) >= bp.CFBD_COLLEGE_ALARM_MIN
+    klass, wide, wide_stats = [], dict(sleeper), dict(stats)
+    for i, surname in enumerate(CLASS):
+        klass.append(pick(f"Player {surname}", "WR", "Not A School CFBD Names",
+                          "TEN", 100 + i, 5000 + i))
+        wide[f"w{i}"] = {"full_name": f"Player {surname}", "position": "WR",
+                         "team": "TEN", "college": "Directional State"}
+        wide_stats[f"w{i}"] = {}
+    wide_indexes = bp.index_sleeper(wide)
+    wide_college = bp.index_sleeper_by_college(wide)
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        linked_wide, _ = bp.link_cfbd_draft(wide_stats, wide, wide_indexes,
+                                            wide_college, klass)
+    warned = [l for l in buffer.getvalue().splitlines() if "COLLEGE_ALIASES" in l]
+    check("CFBD: a whole class matching no school still raises the alarm",
+          len(warned), 1)
+    check("CFBD: and those picks did join, on the weaker tier",
+          len(linked_wide), len(CLASS))
 
     # ---- the normaliser itself, where the Miami trap actually lives ----
     check("college: Sleeper's Miami (FL) and CFBD's Miami are one school",
