@@ -1,0 +1,18 @@
+{
+  "enabledPlugins": {
+    "aikido@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-whole-tree-git.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
