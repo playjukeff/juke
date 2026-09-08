@@ -100,7 +100,13 @@ async function authed(path, headers, opts) {
   return { status: res.status, body };
 }
 
-for (const path of ["/me/draft", "/me/history"]) {
+/* /me/decisions joins this loop rather than getting its own block: it is
+   the same requireUser() gate through the same door, and a route that is
+   in the list is a route nobody has to remember to test. What it does NOT
+   cover is the ledger's own extra refusal -- a decision against a league
+   this account has not connected -- which needs a signed-in caller and so
+   sits in the same gap every /me/* write in this project sits in. */
+for (const path of ["/me/draft", "/me/history", "/me/decisions"]) {
   check(`${path} with no Origin is refused outright`,
         (await authed(path, {})).status, 403);
 
@@ -154,6 +160,20 @@ const leaguePreflight = await fetch(BASE + "/me/leagues", {
 });
 check("OPTIONS on /me/leagues names PATCH among the allowed methods",
       (leaguePreflight.headers.get("access-control-allow-methods") || "").includes("PATCH"), true);
+
+/* A new ROUTE is a new preflight, for the reason /me/leagues' PATCH already
+   records: POST and DELETE with a JSON content-type are not CORS-simple, so
+   a browser preflights them, and a preflight that does not name them means
+   the request never leaves the page -- no log line, no error at the worker,
+   and a room that records nothing. */
+const decisionsPreflight = await fetch(BASE + "/me/decisions", {
+  method: "OPTIONS",
+  headers: { Origin: LOCAL_ORIGIN, "access-control-request-method": "POST" },
+});
+for (const verb of ["GET", "POST", "DELETE"]) {
+  check(`OPTIONS on /me/decisions names ${verb} among the allowed methods`,
+        (decisionsPreflight.headers.get("access-control-allow-methods") || "").includes(verb), true);
+}
 
 // OPTIONS preflight has to answer before verifiedUser() ever runs — a
 // browser sends it with no Authorization header at all, so gating it

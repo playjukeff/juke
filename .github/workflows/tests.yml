@@ -67,6 +67,18 @@ jobs:
       - name: Schema fallback ladder
         run: python scripts/test_schema_ladder.py
 
+      # The decision ledger's own SQL, for the reason test-auth.mjs cannot
+      # cover it: every /me/decisions assertion there is about being signed
+      # OUT, and the statement that matters most -- the DO UPDATE's WHERE,
+      # which stops one account overwriting another's decision by reusing an
+      # id it guessed -- only runs for somebody signed in. That needs a token
+      # Clerk actually signed, which nothing offline can produce. So this
+      # reads the shipped SQL out of store.js and runs it against sqlite,
+      # exactly as the ladder above does, and with the same reasoning: a copy
+      # of the statement here would pass while the real one was broken.
+      - name: Decision ledger SQL
+        run: python scripts/test_decisions.py
+
       # sleeper.js is a plain module and its real work is turning four
       # upstream responses into one object, so this drives it against a
       # local stub with no network and no wrangler -- which is the only way
