@@ -321,7 +321,12 @@ function ConnectedLeagues() {
             ) : (
               <span className="flex shrink-0 items-center gap-3">
                 {on ? (
-                  <a href="#/rooms/league" className="text-[13px] font-semibold text-teal">
+                  // #/my-league, not the retired #/rooms/league — that
+                  // slug only ever existed to bounce here now
+                  // (RoomPage.jsx), so linking it directly skips a
+                  // pointless redirect hop on the one row a reader is
+                  // most likely to press.
+                  <a href="#/my-league" className="text-[13px] font-semibold text-teal">
                     Open
                   </a>
                 ) : (

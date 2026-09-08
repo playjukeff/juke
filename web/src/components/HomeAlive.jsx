@@ -433,9 +433,12 @@ export default function HomeAlive() {
                   so the honest destination for somebody without a league
                   is the place that shows what connecting buys.
 
-                  Once there IS one it goes to the room that can use it and
-                  says which league, rather than continuing to advertise a
-                  connect that has already happened. `sub` was a bare list
+                  Once there IS one it goes to My League and says which
+                  league, rather than continuing to advertise a connect
+                  that has already happened — #/my-league directly, not
+                  the retired #/rooms/league, which only ever existed to
+                  bounce here (RoomPage.jsx's own comment: "League
+                  graduated into its own screen"). `sub` was a bare list
                   of four platforms and is the shared line now — three of
                   those four are not built, and a caption that reads as
                   four working integrations is what this whole change is
@@ -446,7 +449,7 @@ export default function HomeAlive() {
                 eyebrowColor="#00E5FF"
                 title={leagueStatus === 'connected' && connectedLeague ? connectedLeague.name : 'Connect'}
                 sub={leagueStatus === 'connected' && connectedLeague ? 'Connected · read-only' : PLATFORM_LINE}
-                href={leagueStatus === 'connected' && connectedLeague ? '#/rooms/league' : '#/rooms'}
+                href={leagueStatus === 'connected' && connectedLeague ? '#/my-league' : '#/rooms'}
               />
             </div>
 
