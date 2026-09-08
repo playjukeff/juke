@@ -9042,6 +9042,10 @@ let syncState = "off";
                      the worker has no CLERK_SECRET_KEY
      "store-failed"  the account was reached and could not store it — the
                      database end, not the sign-in end
+     "id-taken"      the account was reached and refused one locker entry,
+                     because its client-minted id already belongs to another
+                     account. Retrying the same id never works, which is what
+                     separates it from every other reason here
      "offline"       nothing reached the worker at all
 
    Deliberately the worker's own vocabulary rather than a message: the

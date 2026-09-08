@@ -133,6 +133,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/scripts/copy-legacy-assets.mjs` | Copies the legacy files into `web/dist/` after `vite build`, chained as this package's `build` script. Fails loudly (`process.exit(1)`) and lists exactly what's missing rather than shipping a partial site quietly. |
 | `web/package.json` | A real build, with real dependencies (React, Vite, Tailwind, Framer Motion) — unlike the repo-root `package.json`, which stays Playwright-only. This is the one place in the project a `npm install` is required before anything runs. |
 | `scripts/test_engine.py` | Runs `draft-engine.js` and `room.js` in node/deno/bun and asserts the rules from outside a browser. |
+| `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
 | `tests/` | End-to-end tests: the real pages, in a real browser, two managers in a real room. `playwright.config.mjs` now builds `web/` and serves `web/dist` rather than the repo root, so every spec runs against the same artifact a Cloudflare Pages deploy produces. |
 | `package.json` (repo root) | **Dev only.** Fetches the test runner and nothing else. Unrelated to `web/package.json` — this one still has no build step, no bundler and no runtime dependency. |
@@ -6591,6 +6592,70 @@ actually changed, and sending the other 199 back every time is all cost.
 **Ids are minted client-side and reused**, not re-issued by the database, so an
 entry has one id its whole life rather than a local one and a server one that
 can disagree.
+
+### A client-minted id says which row, never whose
+
+`draft_history.id` is the PRIMARY KEY and `clerk_id` is an ordinary column
+beside it, so a conflict on that id is not necessarily the caller's own row.
+`recordHistory()` mints the id client-side and `meHistoryRoute()` reads it
+straight off the request body — so `putHistoryEntry()`'s `ON CONFLICT(id) DO
+UPDATE`, with no `WHERE`, let any signed-in account overwrite another
+account's archived mock by reusing its id. Low severity, and a cross-account
+write: one entry's `data` replaced, nothing read, and the id is semi-random
+rather than unguessable.
+
+**`deleteHistoryEntry()` three functions below has scoped its `WHERE` to
+`clerk_id` since it was written, and says why in its own comment.** The write
+did not. That asymmetry is the whole lesson: a delete obviously needs to ask
+whose row it is, and an upsert looks like it has already answered the question
+by matching a primary key.
+
+`WHERE draft_history.clerk_id = excluded.clerk_id` refuses the update rather
+than erroring — measured against sqlite3, which is what D1 is: the insert
+reports 1 change, the owner's own retry reports 1, and a second account
+reusing the id reports **0** with the stored row untouched. So the answer is
+read off `changes`, not off the absence of a throw.
+
+**Three states rather than a boolean, and that is not tidiness.** "Refused" is
+truthy in every shape that lets a caller keep writing `if (ok)` — and getting
+it wrong means telling somebody a locker entry synced when the stored row is a
+stranger's. `putHistoryEntry()` answers `"ok"` / `"conflict"` / `"error"`; the
+route turns the middle one into a **409**, which is the one failure on that
+route with a status rather than a body, because a status is the only thing
+`live.js` can tell apart before parsing and the two want different sentences on
+screen. `reasonForStatus()` maps it to **`id-taken`** rather than letting it
+fall through to `offline` — nothing about it is a network fault, and a retry of
+the same id never succeeds, so "it will sync once the connection is back" would
+be wrong twice.
+
+**An unreadable `meta` reports written, not refused.** The SQL is what enforces
+the ownership; reading `changes` only decides what to *say*. A binding that
+stopped reporting the field would otherwise turn every ordinary save into a
+409, and the row is safe either way.
+
+**The audit is one grep and it should be run whenever a table gains a
+client-supplied key.** `grep -n "ON CONFLICT" worker/store.js` — the player
+pool's `player_id` is a shared cache and account-blind; `users`,
+`saved_drafts` and `connected_leagues` all conflict on a key that *contains*
+`clerk_id`, bound from the verified session, so the conflicting row is the
+caller's by construction. `draft_history` was the only one that did not, and
+`saved_drafts` was confirmed rather than assumed, because "probably safe" is
+not a thing this file may leave standing.
+
+**`scripts/test_history_ownership.py` is in `tests.yml`**, reads the real
+statements out of `store.js` rather than restating them
+(`test_schema_ladder.py`'s reason, at a second statement), and was confirmed red against the unscoped upsert: two assertions
+fail and the rest stay green, which is the shape to expect — a cross-account
+overwrite leaves `clerk_id` alone, so the victim still owns the row it no
+longer recognises.
+
+**And `worker/test-store.mjs` had been red on `main` for months**, on the half
+of it that nothing in CI runs. `deleteUserData()` clears four tables since
+`0005_leagues.sql`; the test pinned three and looked for `users` at index 2.
+The code was right the whole time and the test described the shape of a batch
+it had seen once — it now asserts the property (`users` goes last, because
+every other table references it), so the next child table satisfies it with no
+edit.
 
 ### Merging is a decision, and it is made in one place
 

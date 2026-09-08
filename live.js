@@ -339,6 +339,11 @@
   function reasonForStatus(status) {
     if (status === 401) return "unauthorized";
     if (status === 403) return "forbidden";
+    // /me/history refusing a POST whose id already belongs to another
+    // account. Its own word rather than the "offline" fallback: nothing
+    // about it is a network fault, and a retry of the same id never
+    // succeeds, so telling a reader it will sync on its own is wrong twice.
+    if (status === 409) return "id-taken";
     return "offline";
   }
 

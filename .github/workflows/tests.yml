@@ -67,6 +67,16 @@ jobs:
       - name: Schema fallback ladder
         run: python scripts/test_schema_ladder.py
 
+      # The other thing sqlite3 can answer without an account: whether a
+      # write is scoped to the account that owns the row. draft_history.id
+      # is minted client-side and arrives in the request body, so a conflict
+      # on it is not necessarily the caller's own row -- and a cross-account
+      # overwrite renders, contrasts and answers 200, which is to say nothing
+      # this project runs could see it. Reads the real statement out of
+      # store.js for the reason the ladder above does.
+      - name: Locker write ownership
+        run: python scripts/test_history_ownership.py
+
       # sleeper.js is a plain module and its real work is turning four
       # upstream responses into one object, so this drives it against a
       # local stub with no network and no wrangler -- which is the only way
