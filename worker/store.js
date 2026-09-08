@@ -1013,6 +1013,31 @@ export async function listLeagues(env, clerkId) {
    project keeps recording, arriving here as an outage.
 
    So writes ladder too, newest first. */
+/* ---- The cap check lives inside this same statement, not before it ----
+
+   It used to be a separate read (listLeagues(), a length comparison)
+   ahead of this write, in the caller. That is a check-then-act race: two
+   concurrent POSTs for two different new leagues each read the same
+   pre-connect count before either write lands, both pass, both insert —
+   a paying account connecting past its own cap by firing two requests at
+   once. D1 gives no row lock or serializable transaction across two
+   separate statements to close that with.
+
+   What it does give is a single INSERT...SELECT...WHERE, which SQLite
+   executes as one atomic, serialized unit against the database file — no
+   other writer's statement can interleave with the COUNT this WHERE
+   reads. So the count check and the insert it gates now happen in the
+   same breath: `WHERE NOT ?enforceCap OR EXISTS(refresh) OR COUNT(*) <
+   ?cap`. A refresh of an already-connected league always passes (the
+   EXISTS branch), matching the old isRefresh exemption without a second
+   read to compute it. `enforceCap` is 0 for getTier()'s fail-open case
+   (D1 unreachable, or this migration not applied yet) — the same "an
+   infra hiccup must not block a real connect" principle, just enforced
+   inside the statement instead of in front of it.
+
+   The row is only ever inserted or updated when the WHERE holds, so
+   `changes` from the statement result is a false push away from a true
+   answer to "did the cap block this" — no error, no second query. */
 const LEAGUE_WRITES = [
   // 0008: the draft time.
   {
@@ -1020,7 +1045,10 @@ const LEAGUE_WRITES = [
       "INSERT INTO connected_leagues" +
       " (clerk_id, provider, league_id, owner_id, name, season, total_teams," +
       "  connected_at, refreshed_at, draft_at, draft_status)" +
-      " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+      " SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?" +
+      " WHERE NOT ?" +
+      "    OR EXISTS (SELECT 1 FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?)" +
+      "    OR (SELECT COUNT(*) FROM connected_leagues WHERE clerk_id = ?) < ?" +
       " ON CONFLICT(clerk_id, provider, league_id) DO UPDATE SET" +
       "   owner_id = excluded.owner_id," +
       "   name = excluded.name," +
@@ -1037,7 +1065,10 @@ const LEAGUE_WRITES = [
       "INSERT INTO connected_leagues" +
       " (clerk_id, provider, league_id, owner_id, name, season, total_teams," +
       "  connected_at, refreshed_at)" +
-      " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+      " SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?" +
+      " WHERE NOT ?" +
+      "    OR EXISTS (SELECT 1 FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?)" +
+      "    OR (SELECT COUNT(*) FROM connected_leagues WHERE clerk_id = ?) < ?" +
       " ON CONFLICT(clerk_id, provider, league_id) DO UPDATE SET" +
       "   owner_id = excluded.owner_id," +
       "   name = excluded.name," +
@@ -1048,7 +1079,11 @@ const LEAGUE_WRITES = [
   },
 ];
 
-export async function putLeague(env, clerkId, league) {
+/* `cap` is the connect cap to enforce atomically with the write, or
+   `null`/`undefined` to skip enforcement entirely (getTier() could not
+   answer). Returns `true` (stored), `"capped"` (the WHERE above blocked
+   it — nothing was written), or `false` (a real D1 failure, logged). */
+export async function putLeague(env, clerkId, league, cap) {
   if (!env.DB) return false;
 
   const stamp = nowSeconds();
@@ -1061,16 +1096,19 @@ export async function putLeague(env, clerkId, league) {
     league.season,
     league.totalTeams || null,
   ];
+  const enforceCap = cap == null ? 0 : 1;
+  const gate = [enforceCap, clerkId, league.provider, league.leagueId, clerkId, cap || 0];
 
   let last = null;
   for (let i = 0; i < LEAGUE_WRITES.length; i++) {
     const rung = LEAGUE_WRITES[i];
     try {
-      await env.DB.batch([
+      const results = await env.DB.batch([
         upsertUser(env, clerkId, stamp),
-        env.DB.prepare(rung.sql).bind(...head, ...rung.args(league, stamp)),
+        env.DB.prepare(rung.sql).bind(...head, ...rung.args(league, stamp), ...gate),
       ]);
-      return true;
+      const write = results[1];
+      return write && write.meta && write.meta.changes ? true : "capped";
     } catch (err) {
       last = err;
       /* A missing column is an unapplied migration and the next rung is the
