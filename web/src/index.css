@@ -2,6 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- Juke decision system: the face and the motion (P5, P8) -------------
+
+   juke-decision-tokens.css from the handoff, reduced to the two things a
+   stylesheet is the only place for.
+
+   WHAT IS NOT HERE, and why. That file also declares forty-odd `--jd-*`
+   custom properties restating slate/ink/teal, the radii and the durations.
+   Every one of them is already a Tailwind token (tailwind.config.js), and a
+   second copy in CSS is the written-down-twice rule with a colour in it: the
+   two would drift the first time either moved and nothing would error. The
+   components read the Tailwind names. What survives is the @font-face, which
+   Tailwind cannot express, and the four animation classes, which carry a
+   per-element `--i` delay and so cannot be Tailwind utilities either - the
+   same reason index.css already carries the ins* keyframes for Your
+   Insights rather than putting them in the config.
+
+   `--jd-rise-*` DO stay, because the delay arithmetic below is the one place
+   they are read and a caller setting `--i` has to be able to reason about
+   the step. */
+:root {
+  --jd-rise-dur: 520ms;
+  --jd-rise-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --jd-rise-base: 80ms;
+  --jd-rise-step: 70ms;
+  --jd-bar-dur: 640ms;
+}
+
+/* Bricolage Grotesque, self-hosted exactly like Plex and Archivo above: one
+   variable file, latin subset, the unicode-range Google's own CSS2 API
+   serves for a plain display=swap request. `font-decision` in the Tailwind
+   config points at it; `font-display` (Gabarito) is untouched.
+
+   Preloaded per route rather than in <head> - see RoomShell.jsx. index.html
+   already carries two font preloads at fetchpriority="low" because they were
+   measured pulling 49KB past the one stylesheet the first paint waits on,
+   and a third unconditional one would spend that measurement on a face no
+   marketing page draws. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/bricolage-grotesque-variable-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@keyframes jd-rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes jd-grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+@keyframes jd-fade { from { opacity: 0 } to { opacity: 1 } }
+
+/* P8. Every card in a view carries this with its own index:
+   className="jd-rise" style={{ '--i': i }}. The view root is re-keyed on a
+   tab or route change so the whole sequence replays. */
+.jd-rise {
+  animation: jd-rise var(--jd-rise-dur) var(--jd-rise-ease) both;
+  animation-delay: calc(var(--jd-rise-base) + var(--i, 0) * var(--jd-rise-step));
+}
+
+/* P3. A bar fill, on the same clock as the row it sits in - it inherits the
+   row's own --i rather than counting separately, so a bar and its label
+   arrive together.
+
+   transform-origin is LEFT by default and RIGHT on the negative side of a
+   zero axis. That is not decoration: a negative bar growing from the left
+   travels through the zero line and reads, for 300ms, as a gain. */
+.jd-bar-fill {
+  transform-origin: left center;
+  animation: jd-grow var(--jd-bar-dur) var(--jd-rise-ease) both;
+  animation-delay: calc(var(--jd-rise-base) + var(--i, 0) * var(--jd-rise-step));
+}
+.jd-bar-fill[data-side='neg'] { transform-origin: right center; }
+
+.jd-lift { transition: transform 160ms ease, border-color 160ms ease; }
+.jd-lift:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.14); }
+
+/* The whole opt-out, and there is no JS branch anywhere to match it. A bar
+   resolves to its final width rather than animating, which is the honest
+   reduced-motion answer for a mark whose LENGTH is the datum: hiding it
+   would remove the information, and animating it is the thing being opted
+   out of. */
+@media (prefers-reduced-motion: reduce) {
+  .jd-rise { animation: jd-fade 300ms ease-out both; animation-delay: 0ms; }
+  .jd-bar-fill { animation: none; transform: none; }
+  .jd-lift,
+  .jd-lift:hover { transform: none; }
+}
+
 /* Self-hosted, homepage v4 pass 1. Archivo and IBM Plex Mono used to load
    from Google Fonts, bundled into the same CSS2 request as the display
    face and Inter (index.html's font <link>) — a third-party origin

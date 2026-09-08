@@ -189,6 +189,13 @@ export default {
           // reason a rule uses it as an edge: it is the value that reads
           // as "raised off the panel" without becoming a surface itself.
           rule: '#38434F',
+          /* ---- Juke decision system (juke-decision.tailwind.js) ----
+             The app frame: the ground behind the rail AND the content
+             column, one step under `sunk`. It lives here rather than in
+             `surface.*` because it is the outermost surface of a ROOM, and
+             that group is the marketing side's own ladder measured against
+             a different ground. */
+          frame: '#151C25',
         },
         // Text on slate. These are re-derived, not the void values moved
         // across: measured 13.1:1, 6.6:1 and 4.9:1 against #1E2733. The
@@ -200,12 +207,98 @@ export default {
           DEFAULT: '#EDF1F5',
           soft: '#A0AEBC',
           muted: '#8A9BAA',
+          /* ---- Juke decision system ----
+             One step above `muted`, for the 10px mono labels the decision
+             primitives are full of. The paragraph above documents `muted`
+             as the FLOOR at 11px and up; a 10px label with 0.13em tracking
+             is below that size and wants a little more. Measured 6.1:1 on
+             slate.panel, against muted's 4.9. */
+          label: '#A9B7C5',
         },
+        /* ---- Juke decision system: P1-P8 (juke-decision.tailwind.js) ----
+
+           Everything below is additive. slate.*, ink.*, teal, font-body and
+           font-plex are reused as-is, and `flow.*` is untouched.
+
+           THE ONE RULE THESE EXIST TO ENFORCE: teal is the brand and the
+           action, and it is never a value. A number that went the wrong way
+           is `cost`; a number that went the right way is `gain`; a number
+           with no sign at all is `evidence`. Before this there was no name
+           for any of those, so a cost was `text-rose-300` in one card,
+           `#E39284` inline in another and `text-teal-300` in a third - which
+           is how a page ends up teaching a reader that cyan means "good"
+           and then using cyan for a button. */
+
+        /* P1. The sign pair.
+
+           Deliberately NOT `flow.rose` (#F7A8A8) / `mint` (#74E5CE). Those
+           two are marketing state marks measured against the void ground and
+           `mint`'s own comment says it must never touch a position chip;
+           these are measured against slate.panel and they sit beside each
+           other in a table row, which is the case neither of those was
+           tuned for.
+
+           MEASURED, because the handoff's own contrast table is optimistic:
+           it claims cost 7.2 and gain 10.6 on #232D3A, and the real figures
+           are 5.78 and 9.36. Both still clear 4.5 comfortably, so nothing
+           has to move — but the table is an acceptance criterion in the
+           guide, and a criterion nobody has checked is not one. evidence is
+           8.25 against a claimed 9.1; ink.label is 6.81 against a claimed
+           6.1, which is the one it understates.
+
+           `cost.deep` is 3.33 and so may NEVER be type. It is the fill under
+           a bar and the 3px rule on a KPI card, both of which answer to
+           1.4.11's 3:1 rather than to 4.5 - the same split this project
+           already documents for the board's gold ring.
+
+           `cost.deep` is the fill under a bar and the 3px rule on a KPI card
+           - a mark, not type. NetAdpValueCard.jsx has drawn exactly this hex
+           for exactly this meaning since it was written, and its own comment
+           makes the same argument these do: "#BE6153 is a muted oxblood, not
+           #F87171." */
+        cost: { DEFAULT: '#E39284', deep: '#BE6153' },
+        gain: '#ABDFC7',
+
+        /* P2. The one light card on a page, and the only light surface in a
+           room. Ink on it is slate.sunk.
+
+           Near-identical to `flow.gold` (#F7D9A8) one group up, and that is
+           the same distinction this file already draws between `flow.gold`
+           and `flow.amber`: gold is the League Room's IDENTITY and a room is
+           not a state. What is at stake on a screen is a state, so it gets
+           its own name rather than borrowing a room's. */
+        stake: '#FBD5A8',
+
+        /* P3. An unsigned bar fill - a market gap, a share, a count. The
+           colour a bar takes when the quantity has no direction. */
+        evidence: '#AACAF2',
+
+        /* P7 / P8. The run-next label, and the mark for something inactive
+           or unsampled. Neither is a value colour and neither is a room. */
+        accent: { pink: '#F7BCCB', neutral: '#C2CCD7' },
+
         // This page's background. Close to but deliberately not `obsidian`
         // (#0B0E14, used everywhere else) — the handoff's own value, and
         // this project's rule once a hex is explicitly chosen is to keep it
         // rather than round it off to the nearest existing token.
         void: '#070a0d',
+      },
+      /* Two hairlines, and they are not the same hairline.
+
+         `line.hairline` (#252930) above is OPAQUE and is measured against the
+         marketing side's `surface.*` ladder, where every ground is within a
+         few points of the next. A room stacks four grounds - frame, page,
+         panel, sunk - and one opaque line cannot read as an edge on all four:
+         it is nearly invisible on `sunk` and heavy on `frame`. An alpha line
+         holds on every step, which is the whole reason the decision system
+         names its own.
+
+         So `border-hairline` and `border-line-hairline` are different values
+         and the names are one word apart. That is a real footgun and it is
+         the reason for this paragraph: inside a room, use `hairline`. */
+      borderColor: {
+        hairline: 'rgba(255,255,255,0.07)',
+        divider: 'rgba(255,255,255,0.05)',
       },
       boxShadow: {
         // resting glass panel: barely-there edge, no glow
@@ -239,6 +332,40 @@ export default {
       backdropBlur: {
         glass: '16px',
       },
+      fontSize: {
+        /* ---- Juke decision system ----
+           Four roles, and each one is a role rather than a size: a mono
+           label, a small mono label, the big number on a KPI card, and a
+           room's own H1. Named so the primitives cannot drift from each
+           other the way eleven hand-picked sizes on one screen already did
+           once (see style.css's type-scale note). */
+        label: ['10px', { letterSpacing: '0.13em', lineHeight: '1' }],
+        'label-sm': ['10.5px', { letterSpacing: '0.14em', lineHeight: '1' }],
+        kpi: ['26px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
+        'room-h1': ['34px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
+      },
+      borderRadius: {
+        // The decision system's own ladder, by job rather than by number:
+        // the app frame, a card, a panel, a KPI tile, a table row, a chip, a
+        // badge. Same division style.css already uses for its five radii.
+        frame: '22px',
+        card: '18px',
+        panel: '16px',
+        kpi: '14px',
+        row: '13px',
+        chip: '10px',
+        badge: '9px',
+      },
+      spacing: {
+        // The one measurement the bar primitive is built from, so a track
+        // and its fill can never be given two different heights.
+        //
+        // The handoff also names `rail: 72px`. It is NOT here: this app's
+        // rail is 84px (RailNav.jsx), the handoff is describing its own
+        // mockup, and a token nobody applies is a knob that turns nothing.
+        'bar-track': '7px',
+      },
+      transitionDuration: { hover: '160ms' },
       fontFamily: {
         // The display face, and it has to be the same string style.css's
         // --font-display carries — two copies of "what the display face
@@ -300,6 +427,19 @@ export default {
         // index.html's preload), not loaded from Google Fonts any more.
         // Same font either way, still not homepage-only.
         plex: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        /* ---- Juke decision system: the rooms' own display face ----
+
+           Bricolage Grotesque, self-hosted from /fonts/ like Plex and
+           Archivo. It is `font-decision` and NOT a redefinition of
+           `font-display`, which stays Gabarito: that token is named in
+           exactly two places (this file and style.css) and the legacy pages
+           read the other one, so moving it here would leave the two halves
+           of the site in different faces with nothing erroring.
+
+           Gabarito is the fallback rather than system-ui, so a failed font
+           load lands on the face the app already draws headings in instead
+           of on whatever the OS supplies. */
+        decision: ['"Bricolage Grotesque"', 'Gabarito', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'pulse-glow': {

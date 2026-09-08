@@ -18,3 +18,9 @@
 # it fails in somebody else's link preview rather than here.
 *.png binary
 *.ico binary
+# A woff2 is a compressed container and git's heuristic has never mistaken one
+# for text, but the argument above about the PNG signature applies word for
+# word: the format is entirely binary, an end-of-line filter rewriting a byte
+# inside it produces a file that is not a font, and it fails on somebody
+# else's machine rather than here.
+*.woff2 binary
