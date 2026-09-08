@@ -37,7 +37,19 @@ import MoreSheet from './MoreSheet.jsx'
    Players/Queue/Team/Chat), and two bottom navs on a 390px screen — one of
    them floating over the other — is the "same control, two affordances"
    problem with the whole navigation system.
-*/
+
+   ---- Its breakpoint is `lg`, not `sm`, and that is deliberate ----
+
+   Every other phone/desktop split in web/src runs on `sm` (640px) — this
+   one cannot, because the thing on the other side of it is RailNav, which
+   is `lg:flex` (1024px), not `sm:flex`. This pill and its two sheets
+   (YouSheet here, MoreSheet.jsx) are gated `lg:hidden` specifically so they
+   cover every width the rail does not, with no seam. Gating this at `sm`
+   left a real gap from 640px to 1023px — a tablet in portrait, or any
+   non-maximized desktop window — where neither nav rendered at all: no
+   rail, no pill, nothing on screen but the logo. AppShell.jsx's own
+   `NAV_PILL_CLEARANCE` padding is unconditional, so widening this needed no
+   companion change there. */
 
 // 58px of pill + 8px of float above the safe area + 10px of breathing room.
 // Anything that scrolls under this pill reserves it.
@@ -173,7 +185,7 @@ function YouSheet({ onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/65 backdrop-blur-[2px] sm:hidden"
+      className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/65 backdrop-blur-[2px] lg:hidden"
       onClick={onClose}
     >
       <motion.div
@@ -302,7 +314,7 @@ export default function FloatingNavPill() {
   return (
     <>
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 lg:hidden"
         style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom))' }}
       >
         <div className="flex w-full max-w-[420px] items-stretch gap-0.5 rounded-full border border-white/[0.09] bg-[rgba(17,20,25,0.86)] px-1.5 shadow-[0_10px_34px_-8px_rgba(0,0,0,0.85)] backdrop-blur-xl">

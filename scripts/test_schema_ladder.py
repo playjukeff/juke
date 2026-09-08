@@ -15,6 +15,11 @@ So this reads the real SQL out of store.js rather than restating it. A copy
 here would pass while the shipped query was broken, which is the failure being
 tested for wearing a test's clothes.
 
+It also pins the connect cap, which lives inside those same write statements
+rather than in front of them. That is not decoration here: the caller decides
+403 tier-limit from `changes` alone, so a gate that stopped gating would leave
+every ladder assertion below perfectly green.
+
 Standard library only, like the rest of the pipeline. sqlite3 is what D1 is.
 
     py scripts/test_schema_ladder.py
@@ -89,21 +94,44 @@ for level, label in [(3, 'fully migrated'), (2, '0008 missing'), (1, '0005 only'
     expected = {3: 0, 2: 1, 1: 2}[level]
     check('%-16s -> and it is the newest usable one (%d)' % (label, expected), winner == expected)
 
+# The cap gate rides on the same statement as the write now -- see
+# putLeague()'s own comment for why a separate check-then-write in front of
+# it was a race. That makes its bindings part of every rung, and this test
+# supplied none of them, so it went red on a binding count rather than on
+# anything it was written to measure. The gate is split off the REAL SQL
+# rather than counted here, for the same reason the SQL itself is read out
+# of store.js: a rung that changes its gate has to fail this, not rebind
+# quietly around it.
+GATE_AT = " WHERE NOT ?"
+TAIL = [100, 100, 1788919200000, 'pre_draft']
+
+def head_args(provider='espn', league_id='65142363', name='D-Town Boogie'):
+    return ['u1', provider, league_id, None, name, '2026', 10]
+
+def bind(sql, provider='espn', league_id='65142363', name='D-Town Boogie',
+         enforce=False, cap=0):
+    """Every binding one rung takes, sized off the statement itself."""
+    cut = sql.find(GATE_AT)
+    assert cut >= 0, 'a write rung carrying no cap gate: ' + sql[:80]
+    head = head_args(provider, league_id, name)
+    body_n = sql[:cut].count('?')
+    gate = [1 if enforce else 0, 'u1', provider, league_id, 'u1', cap]
+    assert sql.count('?') - body_n == len(gate), 'gate shape moved: %d bindings' % (
+        sql.count('?') - body_n)
+    args = head + TAIL[:body_n - len(head)]
+    assert len(args) == body_n, 'body takes %d bindings, supplied %d' % (body_n, len(args))
+    return args + gate
+
 # Every write rung, against every schema level. A connect that fails is not
-# a degraded feature -- it is the feature.
+# a degraded feature -- it is the feature. Enforcement is off here so this
+# keeps asking the ladder's own question and nothing else.
 for level, label in [(3, 'fully migrated'), (2, '0008 missing'), (1, '0005 only')]:
     db = db_at(level)
     db.execute("DELETE FROM connected_leagues")
     winner = None
     for i, sql in enumerate(writes):
-        # The head args every rung shares, then that rung's own tail. Counted
-        # from the statement rather than restated, so a rung that changes its
-        # column list cannot quietly pass here.
-        n = sql.count('?')
-        args = ['u1', 'espn', '65142363', None, 'D-Town Boogie', '2026', 10]
-        args += [100, 100, 1788919200000, 'pre_draft'][:n - len(args)]
         try:
-            db.execute(sql, args)
+            db.execute(sql, bind(sql))
             winner = i
             break
         except sqlite3.OperationalError:
@@ -114,6 +142,36 @@ for level, label in [(3, 'fully migrated'), (2, '0008 missing'), (1, '0005 only'
     if winner is not None:
         got = db.execute("SELECT name FROM connected_leagues WHERE clerk_id='u1'").fetchall()
         check('%-16s -> and the row is really there' % label, got == [('D-Town Boogie',)])
+
+# The gate itself, on every rung that can run. The concurrency it closes is
+# not reproducible from one thread -- what IS checkable is that the three
+# outcomes the caller reads are the three this statement produces, because
+# meLeaguesRoute() answers 403 tier-limit off nothing but `changes`. A rung
+# that silently stopped enforcing would leave every assertion above green.
+CAP_LEVELS = [(3, 'fully migrated', 0), (2, '0008 missing', 1)]
+for level, label, rung in CAP_LEVELS:
+    sql = writes[rung]
+
+    # At the cap, a DIFFERENT league is refused and nothing is written.
+    db = db_at(level)     # already holds one league: espn/65142363
+    cur = db.execute(sql, bind(sql, 'sleeper', '999', 'Second League', enforce=True, cap=1))
+    n = db.execute("SELECT COUNT(*) FROM connected_leagues").fetchone()[0]
+    check('%-16s -> at the cap, a new league is refused' % label, cur.rowcount == 0 and n == 1)
+
+    # A refresh of one already held is not a new connection and must pass,
+    # which is the EXISTS branch standing in for the old isRefresh read.
+    db = db_at(level)
+    cur = db.execute(sql, bind(sql, 'espn', '65142363', 'Renamed', enforce=True, cap=1))
+    got = db.execute("SELECT name FROM connected_leagues WHERE clerk_id='u1'").fetchall()
+    check('%-16s -> at the cap, a refresh still passes' % label,
+          cur.rowcount == 1 and got == [('Renamed',)])
+
+    # getTier() could not answer, so enforcement is skipped rather than
+    # defaulting anyone to Free -- an infra hiccup must not block a connect.
+    db = db_at(level)
+    cur = db.execute(sql, bind(sql, 'sleeper', '999', 'Second League', enforce=False, cap=0))
+    n = db.execute("SELECT COUNT(*) FROM connected_leagues").fetchone()[0]
+    check('%-16s -> tier unknown, the write is not capped' % label, cur.rowcount == 1 and n == 2)
 
 # No table at all is an account with no leagues, not a crash.
 db = db_at(0)

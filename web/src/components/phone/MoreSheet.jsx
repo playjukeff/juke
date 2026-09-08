@@ -8,18 +8,25 @@ import { useRailItems, useActiveRailKey } from '../shell/railItems.js'
    from the bottom nav) and a second, differently-tuned transition here
    would read as a different app for one tap.
 
-   A link list rather than YouSheet's buttons: every row here goes
-   somewhere, nothing here performs an action, so `<a href>` is the honest
-   element and needs no onClick to close itself — the hash change unmounts
-   this component along with everything else FloatingNavPill renders for
-   the old route. */
+   A link list rather than YouSheet's buttons, but each row still closes
+   itself explicitly on click. This used to assume the hash change alone
+   would unmount everything FloatingNavPill renders — true only when the
+   destination is a different top-level view. Two rows here point at
+   #/rooms/<slug>, and RoomPage.jsx's own comment says why that assumption
+   fails for them: "this component does not unmount between" two room
+   slugs, precisely so its hooks stay stable — so AppShell, FloatingNavPill
+   and this sheet all survive a Waiver-to-Trade tap unchanged, and the
+   sheet was left stuck open over the new room. onClose() on every row
+   fixes it without depending on which transitions happen to remount and
+   which don't, the same way YouSheet's own action rows already close
+   themselves rather than trusting a side effect of what they do next. */
 export default function MoreSheet({ onClose }) {
   const items = useRailItems()
   const active = useActiveRailKey()
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/65 backdrop-blur-[2px] sm:hidden"
+      className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/65 backdrop-blur-[2px] lg:hidden"
       onClick={onClose}
     >
       <motion.div
@@ -37,13 +44,22 @@ export default function MoreSheet({ onClose }) {
             </span>
           </div>
           {items
-            .filter((item) => !item.divider)
+            // My League already fits in the pill — it is the second tab,
+            // by design (FloatingNavPill.jsx: "it earns a tap of its own
+            // rather than living behind More") — so it is the one entry
+            // in this shared list that does NOT belong in "everything
+            // that does not fit". Left in, it was a real duplicate
+            // rather than a redundant label: two controls on the same
+            // screen going to the same place, one always visible and one
+            // a tap away inside the other.
+            .filter((item) => !item.divider && item.key !== 'my-league')
             .map((item) => {
               const on = active === item.key
               return (
                 <a
                   key={item.key}
                   href={item.href}
+                  onClick={onClose}
                   aria-current={on ? 'page' : undefined}
                   className={
                     'flex w-full items-center gap-3 border-b border-line-hairline px-4 py-3.5 text-left text-[16px] font-semibold last:border-b-0 transition-colors active:bg-white/[0.05] ' +

@@ -59,7 +59,9 @@ export default function MyLeagueDemo() {
         <WeekStrip weeks={data.weeks} selected={week} onSelect={setWeek} />
       </div>
 
-      {data.move ? <MoveCard {...data.move} onOpen={() => {}} /> : null}
+      {data.move ? (
+        <MoveCard {...data.move} onOpen={() => { window.location.hash = `#/rooms/${data.move.slug}` }} />
+      ) : null}
       <SecondaryMoves items={data.secondary} />
 
       <div className="mx-auto mt-3.5 max-w-[1280px] px-5 sm:px-10">

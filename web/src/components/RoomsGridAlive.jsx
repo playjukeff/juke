@@ -157,8 +157,15 @@ function LockedCard({ room, wide = false, lgSpan }) {
    a list, which is the same sentence the two-column rule below already
    makes about a lone card.
 
-   Six rooms divide evenly and none of this fires, so it takes itself out
-   of the way the day the Prospect Room comes back. */
+   This used to end "six rooms divide evenly and none of this fires, so it
+   takes itself out of the way the day the Prospect Room comes back" --
+   written while Prospect was still retired, on the assumption its return
+   would be the only thing to change the count. It came back in the same
+   phase League left the room grid for its own screen, so the total never
+   reached six -- it is five today exactly as it was before, and `tail`
+   fires on every load rather than sitting dormant. Corrected here rather
+   than left standing, the same rule this file already follows for the
+   claim just above it. */
 const GRID = {
   home: { cls: 'lg:grid-cols-5', span: 'lg:col-span-1', per: 5 },
   lobby: { cls: 'lg:grid-cols-6', span: 'lg:col-span-2', per: 3 },

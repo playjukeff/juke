@@ -52,6 +52,7 @@ export function buildDemoData(board) {
     move: primary
       ? {
           room: 'Waiver Room',
+          slug: 'waiver',
           pos: primary.pos,
           title: `Add ${primary.name}${bench ? `, drop ${bench.name}` : ''}`,
           confidence: 81,
@@ -68,6 +69,7 @@ export function buildDemoData(board) {
       .filter(Boolean)
       .map((p, i) => ({
         room: i === 0 ? 'Strategy' : 'Trade',
+        slug: i === 0 ? 'strategy' : 'trade',
         title: i === 0 ? `Start ${p.name} over your current flex` : `Counter this week's offer for ${p.name}`,
         conf: i === 0 ? 71 : 66,
       })),

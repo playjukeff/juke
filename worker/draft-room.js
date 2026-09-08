@@ -1537,29 +1537,25 @@ async function meLeaguesRoute(request, env, ctx) {
     return new Response(JSON.stringify({ ok: false, error: failure }), { status, headers });
   }
 
-  /* The tier gate. Checked here rather than before resolving the league so
-     a bad id still fails on "not found" first — the same ordering the
-     validation above already follows.
-
-     A refresh of a league this account already holds is not a new
-     connection and must not trip the cap, which is why the count excludes
-     it rather than just comparing against the raw cap. getTier() returning
-     null means the question could not be answered (D1 unreachable, or this
-     migration not applied yet) rather than that the account is free, and
-     the gate fails OPEN on that — refusing a real connect because of an
-     infra hiccup is a worse failure than letting one through uncapped for
-     a moment. */
+  /* The tier gate. getTier() is read here rather than before resolving the
+     league so a bad id still fails on "not found" first — the same
+     ordering the validation above already follows. Only the cap VALUE
+     comes from this read; the actual count-vs-cap comparison is not done
+     here at all, and that is deliberate — see putLeague()'s own comment
+     for why a separate check-then-write here is exactly the race this
+     project measured and closed. `cap` is left `null` (enforcement
+     skipped) when getTier() cannot answer — D1 unreachable, or this
+     migration not applied yet — rather than that the account is free;
+     refusing a real connect because of an infra hiccup is a worse failure
+     than letting one through uncapped for a moment. */
   const tier = await getTier(env, user.id);
-  if (tier !== null) {
-    const cap = LEAGUE_CAP[tier] ?? 0;
-    const already = await listLeagues(env, user.id);
-    const isRefresh = already.some((l) => l.provider === provider && l.leagueId === leagueId);
-    if (!isRefresh && already.length >= cap) {
-      return new Response(JSON.stringify({ ok: false, error: "tier-limit", tier, cap }), { status: 403, headers });
-    }
-  }
+  const cap = tier !== null ? (LEAGUE_CAP[tier] ?? 0) : null;
 
-  const ok = await putLeague(env, user.id, league);
+  const stored = await putLeague(env, user.id, league, cap);
+  if (stored === "capped") {
+    return new Response(JSON.stringify({ ok: false, error: "tier-limit", tier, cap }), { status: 403, headers });
+  }
+  const ok = stored === true;
 
   /* A league somebody just connected is the one they want to look at.
 

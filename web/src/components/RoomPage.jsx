@@ -105,8 +105,22 @@ export default function RoomPage({ slug }) {
   // its own screen rather than being deleted, so it gets its own
   // destination instead of falling into the generic stale-slug bounce
   // below (which would land it on #/rooms with no explanation). Same
-  // shape as app.js's own #/draft -> #/draft-room redirect, and carries
-  // the query string for the identical reason that one does.
+  // shape as app.js's own #/draft -> #/draft-room redirect (replace(),
+  // never assign(), so the dead route cannot become a back-button trap),
+  // but not the same query-string guarantee: app.js's redirect exists
+  // specifically to carry a query embedded IN THE HASH — an invite is
+  // "#/draft?room=ABC1" — across to the new route, which needed reading
+  // location.hash directly because route() had already stripped it.
+  // #/rooms/league never had an equivalent hash-borne parameter (grep
+  // turns up nothing that ever built one), and useHashRoute.js's own
+  // parseHashRoute() strips any "?..." off the hash before `slug` ever
+  // reaches this component the same way route() does — so there is
+  // nothing left here to recover even if this wanted to. What this DOES
+  // carry, location.search, is the real URL's own query string (before
+  // the "#"), which is a different and much rarer thing in a
+  // hash-routed app — a UTM parameter on a shared link, say — kept for
+  // the ordinary reason a redirect should not drop it, not because it
+  // stands in for what app.js's redirect protects.
   if (slug === 'league') {
     if (typeof window !== 'undefined') {
       location.replace(location.pathname + location.search + '#/my-league')
