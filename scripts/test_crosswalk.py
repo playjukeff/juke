@@ -651,9 +651,14 @@ def test_cfbd_crosswalk():
 
     So the pool below deliberately carries TWO Cam Wards and TWO Carnell
     Tates -- same name, same position, different schools and clubs. A
-    duplicate kills the name-only tier, and a pick whose NFL team matches
-    neither of them kills the team tier, which is what leaves exactly one
-    tier able to answer. This is the same lesson the Strategy and Trade
+    duplicate kills the name-only tier, which is what leaves the school as the
+    only thing able to answer.
+
+    (There was a third tier, on the NFL club. Measuring the real 2026 class
+    killed it: CFBD sends a CITY, not an abbreviation, so it could never match
+    and had been doing nothing at all -- and all 59 real matches landed on
+    college regardless. The duplicates that were built to starve it now starve
+    the name tier instead, which is the tier that actually exists.) This is the same lesson the Strategy and Trade
     boards each paid for once: a fixture written to demonstrate a feature
     proves less than one written to starve it.
 
@@ -687,6 +692,12 @@ def test_cfbd_crosswalk():
         # Not a fantasy position, so never indexed at all.
         "7": {"full_name": "Some Corner", "position": "CB",
               "team": "NYJ", "college": "LSU"},
+        # A third namesake pair, carrying the SHORT form of a school on our
+        # side -- see the pick-side test below for what it is for.
+        "10": {"full_name": "Lake McRee", "position": "TE",
+               "team": "LAC", "college": "USC"},
+        "11": {"full_name": "Lake McRee", "position": "TE",
+               "team": "NYJ", "college": "Duke"},
     }
     stats = {k: {} for k in sleeper}
     indexes = bp.index_sleeper(sleeper)
@@ -719,15 +730,38 @@ def test_cfbd_crosswalk():
     check("CFBD: Miami (OH) joins as itself, not as Miami (FL)",
           other_miami.get("2", {}).get("athlete"), 4002)
 
-    # ---- tier 2: only the NFL team can answer ----
-    # An unknown school kills the college tier; two Carnell Tates kill the
-    # name tier. Nothing but the club is left.
-    only_team, _ = link([pick("Carnell Tate", "Wide Receiver",
-                              "Not A School CFBD Names", "TEN", 40, 4004)])
-    check("CFBD: an unreconciled school falls back to the NFL club, alone",
-          only_team.get("4", {}).get("athlete"), 4004)
+    # ---- a player traded since the draft still joins, because college is
+    #      the tier and a club is not ----
+    # CFBD names the club that DRAFTED him ("Las Vegas", a city, which is what
+    # killed the club tier); our board carries where he is now. There are two
+    # Carnell Tates, so the name tier cannot answer either -- only the school
+    # can, which is the whole argument for leading with it.
+    traded, _ = link([pick("Carnell Tate", "Wide Receiver", "Ohio State",
+                           "Las Vegas", 40, 4004)])
+    check("CFBD: a player traded since the draft still joins, on his school",
+          traded.get("4", {}).get("athlete"), 4004)
     check("CFBD: and it picks the right one of the two namesakes",
-          "9" in only_team, False)
+          "9" in traded, False)
+
+    # ---- the alias table has to run on BOTH sides ----
+    #
+    # Every alias measured against the real 2026 class fires on OUR side:
+    # CFBD writes the short form ("Miami", "NC State") and Sleeper the long one
+    # ("Miami (FL)", "North Carolina State"), so the table normalises us down
+    # to them. That left the pick side unexercised -- swapping
+    # normalise_college() for normalise() THERE broke nothing, and the mutation
+    # run said so.
+    #
+    # It is not dead code, it is untested code: the day CFBD sends a long form,
+    # that call is the only thing that reconciles it. Two Lake McRees make the
+    # school the only tier that can answer, so this fails if the pick side ever
+    # stops aliasing.
+    pick_side, _ = link([pick("Lake McRee", "Tight End",
+                              "Southern California", "Los Angeles", 70, 4007)])
+    check("CFBD: an alias applies to THEIR spelling too, not only ours",
+          pick_side.get("10", {}).get("athlete"), 4007)
+    check("CFBD: and it does not take the namesake at the other school",
+          "11" in pick_side, False)
 
     # ---- tier 3: only the name can answer ----
     # Unknown school, and a club that is not his either.
@@ -777,8 +811,10 @@ def test_cfbd_crosswalk():
           any(l.startswith("COLLISION") for l in doubled_report), True)
 
     # ---- the report is what finishes COLLEGE_ALIASES from a real run ----
-    _weak, weak_report = link([pick("Carnell Tate", "WR",
-                                    "Notre Dame University", "TEN", 40, 4004)])
+    # Jeremiyah Love is unique on name and position, so an unreconciled school
+    # still resolves on the name tier -- and names itself on the way through.
+    _weak, weak_report = link([pick("Jeremiyah Love", "RB",
+                                    "Notre Dame University", "ARI", 33, 4003)])
     check("CFBD: a school that needed a weaker tier names itself in the report",
           any(l.startswith("COLLEGE |") and "Notre Dame University" in l
               for l in weak_report), True)
