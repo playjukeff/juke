@@ -141,3 +141,9 @@ jobs:
       # inside Clerk's <SignedIn>.
       - name: Strategy board
         run: node scripts/test_strategy_board.mjs
+
+      # The Trade Room's arithmetic, and the highest-stakes of the three:
+      # a trade is irreversible once accepted, so the sum that says "this
+      # is a win" must be checkable without a browser nobody can log into.
+      - name: Trade board
+        run: node scripts/test_trade_board.mjs

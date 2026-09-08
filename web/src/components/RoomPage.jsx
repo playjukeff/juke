@@ -8,6 +8,7 @@ import TradePreview from './rooms/TradePreview.jsx'
 import StrategyPreview from './rooms/StrategyPreview.jsx'
 import WaiverRoomLive, { TABS as WAIVER_TABS } from './rooms/WaiverRoomLive.jsx'
 import StrategyRoomLive, { TABS as STRATEGY_TABS } from './rooms/StrategyRoomLive.jsx'
+import TradeRoomLive, { TABS as TRADE_TABS } from './rooms/TradeRoomLive.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 
 /* #/rooms/<slug> — one page for every room, guest state.
@@ -76,6 +77,16 @@ const LIVE_ROOMS = {
       snapshot && snapshot.waiverBudget
         ? [{ label: 'FAAB pool', value: `$${snapshot.waiverBudget}`, tone: 'text-flow-gold' }]
         : [],
+  },
+  trade: {
+    Body: TradeRoomLive,
+    tabs: TRADE_TABS,
+    sub: 'Both rosters priced against replacement, before you send it.',
+    /* Nothing. The bar's natural KPI here is the deal on screen, and that
+       lives in the builder where the reader is looking — a duplicate of it
+       in the chrome would be one number in two places, drifting the first
+       time either moved. */
+    stats: () => [],
   },
   strategy: {
     Body: StrategyRoomLive,
