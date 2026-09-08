@@ -743,6 +743,63 @@ def test_cfbd_crosswalk():
     check("CFBD: and it picks the right one of the two namesakes",
           "9" in traded, False)
 
+    # ---- two feeds disagreeing about a position ----
+    #
+    # Found by a real nightly run rather than by imagining it: Max Bredeson is
+    # an RB to Sleeper and a Tight End to CFBD, both out of Michigan. One
+    # player, two opinions about what he plays -- and without this tier he is
+    # neither matched nor undrafted, so a player who was very much drafted
+    # carries no draft position at all.
+    #
+    # Cam Ward stands in for him here. There are two Cam Wards, so the
+    # name-only tier cannot answer; only name+school can.
+    split, split_report = link([pick("Cam Ward", "Tight End", "Miami", "PIT", 1, 4001)])
+    check("CFBD: a player the two feeds file at different positions still joins",
+          split.get("1", {}).get("athlete"), 4001)
+    check("CFBD: and the disagreement is reported rather than swallowed",
+          any(l.startswith("POSITION SPLIT |") and "Cam Ward" in l for l in split_report),
+          True)
+    check("CFBD: the report names both opinions, since that is the fact",
+          any("we say QB and they say Tight End" in l for l in split_report), True)
+
+    # It may only fire when the pair is unique on BOTH sides. Ambiguity is
+    # what makes ignoring the position dangerous, so ambiguity declines.
+    twins = dict(sleeper)
+    twins["12"] = {"full_name": "Twin Guy", "position": "WR",
+                   "team": "BUF", "college": "Duke"}
+    twins["13"] = {"full_name": "Twin Guy", "position": "TE",
+                   "team": "NYJ", "college": "Duke"}
+    twin_stats = dict(stats)
+    twin_stats["12"] = twin_stats["13"] = {}
+    twin_linked, _ = bp.link_cfbd_draft(
+        twin_stats, twins, bp.index_sleeper(twins),
+        bp.index_sleeper_by_college(twins),
+        [pick("Twin Guy", "Running Back", "Duke", "PIT", 5, 4010)])
+    check("CFBD: two of OURS at one school share a name, so the tier declines",
+          "12" in twin_linked or "13" in twin_linked, False)
+
+    both = link([pick("Cam Ward", "Tight End", "Miami", "PIT", 1, 4001),
+                 pick("Cam Ward", "Wide Receiver", "Miami", "CLE", 9, 4011)])[0]
+    check("CFBD: two of THEIRS at one school share a name, so it declines too",
+          "1" in both, False)
+
+    # The check above passes whether or not the tier tests THEIRS for
+    # uniqueness, because two picks claiming one player trip the COLLISION
+    # guard instead -- a mutation letting `theirs` be ambiguous failed nothing,
+    # and the mutation runner then misattributed the result, which is why this
+    # was verified by applying it directly.
+    #
+    # So this one carries the SAME athlete id on both picks, which the
+    # collision guard deliberately permits (one id twice is not two of theirs
+    # claiming one of ours), leaving the tier as the only thing that can
+    # refuse. Without it the second row silently overwrites the first and the
+    # player carries whichever draft position happened to arrive last.
+    dupe = link([pick("Cam Ward", "Tight End", "Miami", "PIT", 1, 4001),
+                 pick("Cam Ward", "Wide Receiver", "Miami", "CLE", 9, 4001)])[0]
+    check("CFBD: an ambiguous pick is refused rather than letting the last one win",
+          "1" in dupe, False)
+
+
     # ---- the alias table has to run on BOTH sides ----
     #
     # Every alias measured against the real 2026 class fires on OUR side:
