@@ -1454,6 +1454,10 @@ CFBD_BASE = os.environ.get("CFBD_BASE", "https://api.collegefootballdata.com")
 # January, and this follows.
 PROSPECT_DRAFT_YEAR = STAT_SEASONS[-1] + 1
 PROSPECT_COLLEGE_SEASON = STAT_SEASONS[-1]
+# The college season now under way, whose rosters name who is still
+# there. One after the season we take production from, because that
+# season is the last COMPLETED one.
+PROSPECT_ROSTER_SEASON = STAT_SEASONS[-1] + 1
 
 # The college stat lines worth storing, in the SHORT KEYS this file already
 # uses for the same quantities. Reusing them rather than inventing a second
@@ -1616,6 +1620,149 @@ def build_prospects(stats, sleeper, indexes, college_index, picks, season_rows):
           f"{undrafted} undrafted, {len(unclear)} unclear), "
           f"{with_college} with a college line")
     return written, report
+
+
+# ---------------------------------------------------------------------------
+# The college board: players who have NOT been drafted yet
+# ---------------------------------------------------------------------------
+#
+# The Prospect Room's other half. record["pr"] is what a rookie did before he
+# got here, keyed by Sleeper id because he is on our board. These players are
+# not: Jeremiah Smith has no Sleeper id, no NFL team and no projection, and
+# nothing in players.js or stats.js has ever heard of him. So this is a
+# separate, player-less block keyed by CFBD athlete id -- the same shape
+# TEAM_RANKS already takes for the same reason.
+#
+# ---- It is a production list and NOT a prospect ranking ----
+#
+# Ordered by college yards, and that is all it claims. Measured against the
+# real 2025 FBS season, the top receivers by yardage come out Malachi Toney,
+# Danny Scudero, Beau Sparks, Wyatt Young -- with Jeremiah Smith FIFTH, whom
+# any scout would have first. Yards reward volume and opportunity, not talent.
+#
+# Reordering them would mean Juke inventing a scouting model, which is the
+# thing this project refuses to do everywhere else: it withholds a Juke score
+# for kickers rather than guess, and it prints a ranking's own uncertainty
+# rather than dress it up. So the room says "by college production" and means
+# it, and the reader does the scouting.
+#
+# ---- Three filters, each a fact rather than a judgement ----
+#
+# FBS only, because ranking every division put Youngstown State, Montana and
+# Illinois State quarterbacks in the top eight -- players nobody is scouting
+# for the NFL, crowding out the ones they are.
+#
+# Class year 3 or better, because that is who can be drafted next. CFBD sends
+# it on the roster, so it is read rather than inferred; a handful of rows
+# carry a nonsense value (four came back as 2026) and those are dropped rather
+# than guessed at.
+#
+# A real production line, because a board of players with no statistics is a
+# list of names.
+COLLEGE_POSITIONS = ("QB", "RB", "WR", "TE")
+
+# How many per position. 20 is 95 players at 3.3 KB gzipped, measured -- deep
+# enough to hold everyone a reader is likely to have heard of, and small
+# enough that a room most visitors never open is not charging them for it.
+# 30 would be 4.6 KB and 10 would be 2.1; nothing about the code changes if
+# this moves.
+COLLEGE_PER_POSITION = 20
+
+# The earliest class year that can enter the next draft.
+COLLEGE_MIN_YEAR = 3
+
+
+def build_college_board(roster_rows, season_rows):
+    """Players still in college, by production, for the draft after this one.
+
+    Takes the SAME season_rows the prospect block already fetched -- one
+    /stats/player/season call serves both halves of this room, so the college
+    board costs exactly one extra request (the roster) rather than two.
+
+    Returns {} for a missing roster or a missing season, which is what an
+    outage looks like from here, and the room draws nothing rather than a
+    board with no numbers on it.
+
+    That early return is NOT what makes the result empty -- the filters below
+    would produce {} on their own, and a mutation proved it by deleting the
+    return and failing nothing. What it buys is a LINE IN THE LOG: an empty
+    board because CFBD did not answer and an empty board because nobody
+    qualified are the same value and completely different facts, and without
+    this the first one is silent. Same rule as asking the database rather than
+    the response.
+    """
+    if not roster_rows or not season_rows:
+        missing = "roster" if not roster_rows else "season"
+        print(f"  college board: no {missing} from CFBD, so nothing is built")
+        return {}
+
+    eligible = {}
+    for row in roster_rows:
+        position = (row.get("position") or "").upper()
+        if position not in COLLEGE_POSITIONS:
+            continue
+        year = row.get("year")
+        # A class year outside 1-6 is a bad row rather than a very old
+        # student. Dropped, because the filter below is only as honest as the
+        # field it reads.
+        if not isinstance(year, int) or not 1 <= year <= 6:
+            continue
+        if year < COLLEGE_MIN_YEAR:
+            continue
+        athlete = str(row.get("id") or "")
+        if athlete:
+            eligible[athlete] = row
+
+    production = {}
+    for row in season_rows:
+        athlete = str(row.get("playerId") or "")
+        if athlete not in eligible:
+            continue
+        key = CFBD_STAT_KEYS.get((row.get("category"), row.get("statType")))
+        if key is None:
+            continue
+        try:
+            value = float(row.get("stat"))
+        except (TypeError, ValueError):
+            continue
+        if value:
+            production.setdefault(athlete, {})[key] = (
+                int(value) if value == int(value) else round(value, 1))
+
+    def total_yards(line):
+        return line.get("py", 0) + line.get("ry", 0) + line.get("cy", 0)
+
+    by_position = {}
+    for athlete, line in production.items():
+        by_position.setdefault(eligible[athlete]["position"].upper(), []).append(athlete)
+
+    board = {}
+    for position, athletes in by_position.items():
+        athletes.sort(key=lambda a: total_yards(production[a]), reverse=True)
+        for athlete in athletes[:COLLEGE_PER_POSITION]:
+            row = eligible[athlete]
+            name = " ".join(x for x in (row.get("firstName"), row.get("lastName")) if x)
+            board[athlete] = {
+                "n": name,
+                "p": position,
+                "t": row.get("team") or "",
+                # The class year is shown rather than turned into a sentence:
+                # "year 3" is what the feed says, and "eligible for the 2027
+                # draft" is an inference on top of it that this file does not
+                # make. There are two Jeremiah Smiths on the 2026 FBS rosters
+                # -- a receiver at Ohio State and a linebacker at Louisiana
+                # Tech -- which is why the key is an athlete id and the team
+                # travels with the name.
+                "y": row.get("year"),
+                "c": production[athlete],
+            }
+
+    counts = {}
+    for entry in board.values():
+        counts[entry["p"]] = counts.get(entry["p"], 0) + 1
+    print(f"  college board: {len(board)} players still in college "
+          f"({', '.join(f'{k} {v}' for k, v in sorted(counts.items()))})")
+    return board
 
 
 def link_nflverse(stats, sleeper, indexes, nfl_rows):
@@ -2291,7 +2438,7 @@ def main():
     # to arrive at the same rows. The season is fetched only when a pick
     # actually joined, so an outage on the first call does not pay for the
     # second.
-    prospect_report = []
+    prospect_report, college_board = [], {}
     if CFBD_KEY:
         print(f"Fetching the {PROSPECT_DRAFT_YEAR} draft class from CFBD...")
         picks = fetch_cfbd(f"/draft/picks?year={PROSPECT_DRAFT_YEAR}")
@@ -2304,6 +2451,16 @@ def main():
         _written, prospect_report = build_prospects(
             stats, sleeper, indexes, index_sleeper_by_college(sleeper),
             picks, season_rows)
+
+        # The other half of the room, off the SAME season rows: one extra
+        # request (the roster) rather than two, because the production for a
+        # player still in college and for one who just left it is the same
+        # fetch.
+        if season_rows:
+            print(f"  fetching the {PROSPECT_ROSTER_SEASON} FBS rosters...")
+            roster_rows = fetch_cfbd(
+                f"/roster?year={PROSPECT_ROSTER_SEASON}&classification=fbs")
+            college_board = build_college_board(roster_rows, season_rows)
     else:
         print("CFBD: no CFBD_KEY set, so no draft position and no college line")
 
@@ -2435,6 +2592,16 @@ def main():
             "   TDs). Every entry is {rank, val}, so the UI can print the raw\n"
             "   number beside the rank. For the Team tab, not a player's own\n"
             "   sheet. TEAM_RANKS_META names the season it was built from.\n\n"
+            "   COLLEGE_BOARD is the second player-less block, and the only\n"
+            "   thing in this file NOT keyed by a Sleeper id: players still in\n"
+            "   college, keyed by CFBD athlete id, who have never been drafted\n"
+            "   and are not on any Juke board. n/p/t/y are name, position,\n"
+            "   school and class year; c is last season's production in the\n"
+            "   same short keys as s. FBS only, class year 3 or better, top\n"
+            "   20 a position BY YARDS -- which is production and explicitly\n"
+            "   not a prospect ranking, because ordering talent would mean\n"
+            "   inventing a scouting model. COLLEGE_BOARD_META names the\n"
+            "   seasons and the draft it points at. Empty without CFBD_KEY.\n\n"
             f"   Source ids : {crosswalked} of {len(stats)} players carry a Tank01 id\n"
             f"   Archived   : {archived} players carry past projections"
             f"{' for ' + ', '.join(archive_years) if archive_years else ' (none returned)'}\n"
@@ -2446,7 +2613,15 @@ def main():
             "const TEAM_RANKS_META = " + json.dumps(
                 {"season": team_ranks_season, "teams": len(team_ranks)},
                 separators=(",", ":")) + ";\n\n"
-            "const TEAM_RANKS = " + json.dumps(team_ranks, separators=(",", ":")) + ";\n")
+            "const TEAM_RANKS = " + json.dumps(team_ranks, separators=(",", ":")) + ";\n\n"
+            "const COLLEGE_BOARD_META = " + json.dumps(
+                {"season": PROSPECT_COLLEGE_SEASON,
+                 "roster": PROSPECT_ROSTER_SEASON,
+                 "draft": PROSPECT_DRAFT_YEAR + 1,
+                 "players": len(college_board)},
+                separators=(",", ":")) + ";\n\n"
+            "const COLLEGE_BOARD = " + json.dumps(
+                college_board, separators=(",", ":")) + ";\n")
 
     with open(UNMATCHED_FILE, "w", encoding="utf-8") as handle:
         handle.write(f"FFC rows that did not join to a Sleeper player\nGenerated {stamp}\n"
