@@ -4,14 +4,27 @@ __pycache__/
 *.pyc
 
 # Local editor and assistant settings. Machine-specific, so they would only
-# ever cause conflicts if they were shared.
-.claude/
+# ever cause conflicts if they were shared. Two things are re-included: the
+# launch config, which is already tracked, and this repository's own skills.
+.claude/*
+!.claude/launch.json
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/juke-*/
+
+# The prefix is what separates a skill written FOR Juke from one installed on
+# this machine, and it has to, because `npx skills add` writes SYMLINKS into
+# .claude/skills/ pointing at absolute paths under .agents/ — committing one
+# would ship a path that exists on nobody else's disk. Nothing that command
+# installs is named juke-*, so a skill named `juke-<something>` ships and
+# anything else stays local. Name it right and it needs no line here.
 
 # Agent skills installed by `npx skills add`, and the lockfile pinning them.
 # Third-party instruction files that run with full agent permissions, chosen
 # per machine rather than per project — the same reasoning as .claude/ above,
-# whose own skills/ directory is symlinks into here and is already covered by
-# that line. The lockfile goes with them: it exists to reproduce an install,
+# whose own skills/ directory is symlinks into here and is covered by the
+# .claude/skills/* line above. The lockfile goes with them: it exists to
+# reproduce an install,
 # and there is nothing to reproduce once the skills are not shared.
 .agents/
 skills-lock.json
