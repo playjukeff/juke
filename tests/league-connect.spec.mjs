@@ -399,3 +399,82 @@ test.describe("more than one connected league", () => {
     await page.close();
   });
 });
+
+/* A read that FAILS is not an account with no league.
+ *
+ * Reported 8 September 2026 with a screenshot: two connected leagues, an
+ * account on Multi-League, both rows in D1 throughout — and #/my-league
+ * showing "Demo league · sample data" under a "Connect a real league"
+ * button. The read was returning 500 (see staleLeague() in
+ * worker/draft-room.js for the missing import behind it), leagueStore
+ * settled "error", and MyLeagueScreen's `!connected` drew the guest
+ * experience.
+ *
+ * So the worker bug is fixed where it lives, and this is the other half:
+ * whatever makes the read fail next time, this screen must not answer it by
+ * claiming the reader has no league. That is the rule leagueStore.js's own
+ * header states — a state meaning "we could not find out" has to be
+ * renderable — which HomeAlive and YouScreen already followed and this
+ * screen did not.
+ *
+ * Clerk-gated for the same reason as the block above: a keyed build lets
+ * AuthBridge overwrite window.JukeAuth with Clerk's own answer, so the stub
+ * is only the whole truth where Clerk is absent. */
+function stubFailingRead(page) {
+  return page.addInitScript(() => {
+    window.JukeAuth = { isSignedIn: true, userId: "u1", getToken: () => Promise.resolve("t") };
+    const install = () => {
+      const L = window.Live || (window.Live = {});
+      // Exactly what live.js answers for a 500: no leagues, and a reason
+      // that is not "there are none".
+      L.listLeagues = () => Promise.resolve({ ok: false, reason: "offline", leagues: [] });
+    };
+    install();
+    window.addEventListener("juke:data-loaded", install);
+    document.addEventListener("DOMContentLoaded", install);
+  });
+}
+
+test.describe("My League when the read fails", () => {
+  test("says it could not find out, rather than showing the guest demo", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
+
+    const page = await context.newPage();
+    await stubFailingRead(page);
+    await page.goto(`${SITE}/index.html#/my-league`);
+    await page.waitForSelector("#view-home h1");
+
+    /* Settle first, and wait on EITHER outcome rather than on the right one.
+       Waiting for the error copy alone makes the failure a bare
+       "waitForFunction: Timeout 15000ms exceeded", which says nothing about
+       what was on screen instead — confirmed by running it that way against
+       the bug. Waiting for whichever screen the store lands on lets the
+       assertions below be what fails, and they name it. */
+    await page.waitForFunction(
+      () => {
+        const t = document.getElementById("view-home").innerText;
+        return /Demo league/.test(t) || /Couldn.t load your league/.test(t);
+      },
+      null,
+      { timeout: 15000 },
+    );
+
+    const shown = await text(page);
+
+    /* The assertion the screenshot is about. The demo is the correct screen
+       for somebody with no league and a false statement to somebody with
+       one, and nothing else on the page distinguishes the two. */
+    expect(shown, "the guest demo must not stand in for a failed read")
+      .not.toContain("Demo league");
+
+    expect(shown, "it says what happened").toMatch(/Couldn.t load your league/);
+
+    /* Retry rather than Connect, deliberately: offering Connect to somebody
+       who already has a league has them reconnect one they never
+       disconnected, which is why "error" exists rather than collapsing into
+       "none" in the first place. */
+    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+
+    await page.close();
+  });
+});
