@@ -377,6 +377,32 @@ const unreacted = await until("reaction is taken back", () => {
 }) || {};
 check("pressing the same reaction twice removes it", unreacted.reacts, null);
 
+/* And bob needs his own wait for the un-react, for the same reason he
+   needs one for the react twelve lines up. That sweep guarded the react
+   and stopped one block short of this one.
+
+   It is not only symmetry. The typing block below snapshots bob's inbox
+   on its second line, and until() above returns the moment ALICE has the
+   un-react -- so bob's copy of that same broadcast can still be in
+   flight, land AFTER bobInboxBefore is taken, and read as "typing caused
+   a state broadcast". A red assertion about typing, caused by a reaction,
+   on a worker that is fine.
+
+   That is exactly what failed the deploy gate on 8 September 2026: 1 of
+   109, and the same suite passed 109/109 against that identical deployed
+   worker minutes later. Not the deploy race wait-for-worker.mjs settles
+   -- that one is ~40 failures, every one a wait for a broadcast. A single
+   red assertion is a gap in the harness, and a gate that cries wolf is
+   one nobody reads by the end of the week.
+
+   Bob has already seen his own reaction by here (the `mine` wait proves
+   `reacts` is set on his copy), so waiting for it to go away cannot pass
+   on the state from BEFORE the react. */
+await until("bob sees the reaction taken back too", () => {
+  const line = (lastState(bob) || {}).chat?.find((m) => m.id === target.id);
+  return line && !line.reacts ? line : false;
+});
+
 /* ---- typing ----
 
    The one message that never touches state. It is relayed to the other
