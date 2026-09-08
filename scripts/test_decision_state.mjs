@@ -70,7 +70,7 @@ const mod = await import(
 );
 const {
   refreshDecisions, retryDecisions, recordDecision, forgetDecision,
-  decisionState, decisionsFor, decisionsForWeek, __resetDecisions,
+  decisionState, decisionsFor, decisionsForWeek, weekMark, __resetDecisions,
 } = mod;
 
 const ROW = (over) => Object.assign({
@@ -205,6 +205,33 @@ await check("a week written as a string still matches a numeric strip", async ()
     decisionsForWeek("L1", 4, rows).length, 1,
     "this fails by drawing an empty week rather than by throwing, which is why it is pinned"
   );
+});
+
+await check("a week with nothing graded carries no mark", async () => {
+  const rows = [ROW({ id: "a", week: 6 }), ROW({ id: "b", week: 6, verdict: "pending" })];
+  assert.equal(
+    weekMark("L1", 6, rows), null,
+    "a green tick over pending calls claims an outcome nobody knows yet"
+  );
+});
+
+await check("one graded good call marks the week good", async () => {
+  const rows = [ROW({ id: "a", week: 5, verdict: "good" }), ROW({ id: "b", week: 5 })];
+  assert.equal(weekMark("L1", 5, rows), "good");
+});
+
+await check("one bad call marks the week bad, whatever else went right", async () => {
+  const rows = [
+    ROW({ id: "a", week: 4, verdict: "good" }),
+    ROW({ id: "b", week: 4, verdict: "bad" }),
+    ROW({ id: "c", week: 4, verdict: "good" }),
+  ];
+  assert.equal(weekMark("L1", 4, rows), "bad", "a week is a warning if it holds a mistake");
+});
+
+await check("a week belonging to another league is not marked", async () => {
+  const rows = [ROW({ id: "a", leagueId: "L2", week: 3, verdict: "bad" })];
+  assert.equal(weekMark("L1", 3, rows), null);
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK");

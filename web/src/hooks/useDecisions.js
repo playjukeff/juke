@@ -8,6 +8,7 @@ import {
   refreshDecisions,
   retryDecisions,
   subscribeDecisions,
+  weekMark,
 } from '../lib/decisionStore.js'
 
 /* React's view of the decision ledger.
@@ -28,6 +29,7 @@ export {
   recordDecision,
   refreshDecisions,
   retryDecisions,
+  weekMark,
 }
 
 export function useDecisions() {

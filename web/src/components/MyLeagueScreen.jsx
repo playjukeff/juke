@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import AppShell from './shell/AppShell.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
 import { seasonPhase } from '../lib/seasonPhase.js'
@@ -5,6 +6,8 @@ import LeagueBar from './myleague/LeagueBar.jsx'
 import WeekStrip from './myleague/WeekStrip.jsx'
 import StandingsPanel from './myleague/StandingsPanel.jsx'
 import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
+import PastWeekPanel from './myleague/PastWeekPanel.jsx'
+import { useDecisions, decisionsForWeek, weekMark } from '../hooks/useDecisions.js'
 
 /* #/my-league — the connected-league home. Absorbs the old League Room
    (#/rooms/league, rooms/LeagueRoomLive.jsx — its content lives on now as
@@ -37,11 +40,27 @@ import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
    at a fantasy-specific one it does not know. */
 const NFL_WEEKS = 18
 
-function realWeeks(currentWeek) {
+/* `mark` comes from the ledger now, where this passed none at all.
+   WeekStrip's own header records why it had none: "a real connected league
+   has neither a grading data source nor a known season length yet". It has
+   the first of those — decisions.verdict, written by the grading job — and
+   still not the second, which is why NFL_WEEKS above is unchanged and the
+   strip still draws the calendar the sport has rather than one this league
+   never told us about.
+
+   weekMark() leaves an ungraded week unmarked rather than green; see its
+   own note. So a week fills in as it is graded, and a strip with nothing
+   graded looks exactly as it did before this change. */
+function realWeeks(currentWeek, leagueId, decisions) {
   const weeks = [{ key: 'draft', label: 'DRAFT' }]
   for (let n = 1; n <= NFL_WEEKS; n++) {
     const now = n === currentWeek
-    weeks.push({ key: String(n), label: now ? `WEEK ${n} · NOW` : `W${n}`, disabled: n > currentWeek })
+    weeks.push({
+      key: String(n),
+      label: now ? `WEEK ${n} · NOW` : `W${n}`,
+      disabled: n > currentWeek,
+      mark: weekMark(leagueId, n, decisions),
+    })
   }
   return weeks
 }
@@ -67,6 +86,12 @@ const TITLE = (
 
 export default function MyLeagueScreen() {
   const { status, league } = useLeague()
+  const { decisions } = useDecisions()
+  /* null means "the current week", which is the resting state and cannot be
+     seeded from the snapshot: the snapshot is not read yet on the first
+     render, and a week number captured once would then be stale the moment
+     the league moved on. The strip resolves its own selection below. */
+  const [openWeek, setOpenWeek] = useState(null)
   const connected = status === 'connected' && !!league
 
   const { snapshot, status: snapStatus, reason: snapReason } = useLeagueSnapshot(
@@ -96,15 +121,39 @@ export default function MyLeagueScreen() {
 
   const ready = snapStatus === 'ready' && !!snapshot
   const phase = ready ? seasonPhase(snapshot) : 'unknown'
+  const inSeason = ready && phase === 'in-season'
+
+  /* The strip is selectable now, which it was not: it had no onSelect at
+     all, on the rule that a control which cannot act must not be offered.
+     What it could not do was show you what happened in a past week, and
+     that is exactly what the ledger supplies. */
+  const currentKey = inSeason ? String(snapshot.week) : null
+  const selectedKey = openWeek || currentKey
+  const showingPast = inSeason && !!openWeek && openWeek !== currentKey
+  const pastRows = showingPast
+    ? decisionsForWeek(league.leagueId, openWeek === 'draft' ? 0 : Number(openWeek), decisions)
+    : []
 
   return (
     <AppShell active="my-league">
       {TITLE}
       <LeagueBar league={league} snapshot={snapshot} snapStatus={snapStatus} />
-      {ready && phase === 'in-season' ? (
-        <WeekStrip weeks={realWeeks(snapshot.week)} selected={String(snapshot.week)} />
+      {inSeason ? (
+        <WeekStrip
+          weeks={realWeeks(snapshot.week, league.leagueId, decisions)}
+          selected={selectedKey}
+          onSelect={(key) => setOpenWeek(key === currentKey ? null : key)}
+        />
       ) : null}
-      <StandingsPanel league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+      {showingPast ? (
+        <PastWeekPanel
+          weekKey={openWeek}
+          rows={pastRows}
+          onBack={() => setOpenWeek(null)}
+        />
+      ) : (
+        <StandingsPanel league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+      )}
     </AppShell>
   )
 }

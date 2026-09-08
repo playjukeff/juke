@@ -264,6 +264,32 @@ export function decisionsForWeek(leagueId, week, decisions) {
   return decisionsFor(leagueId, decisions).filter((d) => Number(d.week) === n)
 }
 
+/* The tick a week carries on My League's strip: 'bad', 'good', or none.
+ *
+ * ---- A week is only marked once something in it has been GRADED ----
+ *
+ * The prototype marks any week that has rows: bad if one of them is a bad
+ * call, good otherwise. That is right for a mock-up whose sample data is
+ * graded by construction and wrong for real decisions, which are recorded
+ * days before they can be judged -- a week holding three pending calls
+ * would carry a green tick claiming an outcome nobody knows yet.
+ *
+ * So an ungraded week is unmarked, which is the same "absent, not empty"
+ * call MyLeagueScreen already makes about the sections it does not draw.
+ * Once anything in the week has a verdict, one bad call marks it bad:
+ * a week is a warning if it holds a mistake, whatever else went right.
+ */
+export function weekMark(leagueId, week, decisions) {
+  const rows = decisionsForWeek(leagueId, week, decisions)
+  let graded = false
+  for (let i = 0; i < rows.length; i++) {
+    const v = rows[i].verdict
+    if (v === 'bad') return 'bad'
+    if (v && v !== 'pending') graded = true
+  }
+  return graded ? 'good' : null
+}
+
 /* The current answer, without a React subscription -- what makes this
    testable outside a browser at all. A copy, so nobody can write through
    it. */
