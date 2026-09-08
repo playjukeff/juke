@@ -9734,6 +9734,16 @@ function insightsFailures(audits) {
    fill the widest hole, and try a format at all. A list of three variations
    on "run more mocks" would be one card printed three times. */
 function insightsExperiments(audits, coverage, habits, seErr) {
+  /* What pressing the card actually does, said on the card.
+
+     The titles below are prescriptions - "three mocks", "two mocks" - because
+     that is what would tighten the read, and the button starts ONE. In the
+     design handoff these cards are not wired to anything, so the gap does not
+     exist there; here it would be a control whose label promises three drafts
+     and delivers one, which is the dead-control problem in its quieter form.
+     Each card carries the sentence for the press as well as the sentence for
+     the advice. */
+  const runLabel = (scoring, seat) => "Start one — " + SCORING_NAMES[scoring] + ", seat " + seat;
   const out = [];
   const formats = insightsFormats();
   const counts = {};
@@ -9755,6 +9765,7 @@ function insightsExperiments(audits, coverage, habits, seErr) {
       tag: "tests habit 1",
       note: "Your costliest habit in your deepest cell. One run against " + best +
             " you have already logged is enough to see whether it holds.",
+      runLabel: runLabel(top, seat),
       scoring: top,
       seat: seat
     });
@@ -9783,6 +9794,7 @@ function insightsExperiments(audits, coverage, habits, seErr) {
         tag: seErr === null ? "new ground" : "±" + seErr.toFixed(1) + " → ±" + projected.toFixed(1),
         note: (bestLen > 1 ? "Those seats are" : "That seat is") +
               " unsampled, and a chair you have never drafted from is a guess rather than a read.",
+        runLabel: runLabel(top, Math.round((a + b) / 2)),
         scoring: top,
         seat: Math.round((a + b) / 2)
       });
@@ -9802,6 +9814,7 @@ function insightsExperiments(audits, coverage, habits, seErr) {
         ? "You have never run " + SCORING_NAMES[thin] + ". Value at running back moves most between formats, so nothing on this page is a read on it."
         : (counts[thin] || 0) + " mock" + ((counts[thin] || 0) === 1 ? "" : "s") +
           " in " + SCORING_NAMES[thin] + " is not a read on it.",
+      runLabel: runLabel(thin, Math.max(1, Math.round(coverage.seats / 3))),
       scoring: thin,
       seat: Math.max(1, Math.round(coverage.seats / 3))
     });

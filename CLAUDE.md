@@ -6223,8 +6223,8 @@ Three departures:
 3. **Its label ink #8A4B12 passes on the card and fails on the tiles.** 4.99
    against #F7D9A8, and the two stat tiles inside that card carry
    `rgba(22,32,46,0.1)` over it — rgb(225,199,156) — where the same brown is
-   **4.13**. `#78400F` is the identical hue and saturation two steps darker:
-   6.08 on the card, 5.05 on the tiles. **A colour is right on the surface it
+   **4.13**. `#78400F` is the same hue and saturation two steps darker:
+   6.08 on the card, 5.04 on the tiles. **A colour is right on the surface it
    actually lands on, and this one lands on two.**
 
 **And the opacity trick had to come out.** The handoff dims the "best
@@ -6237,6 +6237,24 @@ tone that clears the bar on that ground.
 Measured with transitions killed and both element and ancestor backgrounds
 composited: **zero failures across all four views**, and the sweep was
 confirmed non-vacuous by injecting a known-bad colour.
+
+### Every CTA on the page goes through one launch, and says what it does
+
+The rail's "run this next", the sidebar's habit button and view 04's three
+experiment cards all call one `runAt(scoring, seat)`, so the three can never
+aim at a combination the other two cannot — the same reason
+`describeRecommendation()` exists for the pair that came before them. It
+clamps the seat to the live league, because the coverage grid counts seats up
+to the deepest room in your history and `startDraft()` writes `opts.mySlot`
+straight onto state: a seat outside the league is the draft that runs to the
+end without ever offering you a pick. `clampSeat()` guards `setLeague()` and
+`readSetup()`; this is the third door.
+
+**The experiment cards say what the press does as well as what the card
+advises.** Their titles are prescriptions — "three mocks", "two mocks" — and
+the button starts one. In the handoff those cards are wired to nothing, so
+the gap does not exist there; here it would be a control promising three
+drafts and delivering one.
 
 ### Responsive, which the handoff says is not designed
 

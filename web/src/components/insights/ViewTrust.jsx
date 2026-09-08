@@ -106,7 +106,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
                   type="button"
                   onClick={() => onRun(e.scoring, e.seat)}
                   disabled={roomActive}
-                  title={roomActive ? 'Not available in a room' : `Run ${e.title}`}
+                  title={roomActive ? 'Not available in a room' : e.runLabel}
                   data-ins-rise
                   style={delay(180 + i * 80)}
                   className={
@@ -119,6 +119,14 @@ export default function ViewTrust({ report, onRun, roomActive }) {
                     <p className="shrink-0 font-plex text-[12px] text-teal-300">{e.tag}</p>
                   </div>
                   <p className="mt-1.5 text-[12.5px] leading-[1.45] text-ink-soft">{e.note}</p>
+                  {/* What the press does, beside what the card advises. The
+                      title above is a prescription — "three mocks" — and the
+                      button starts one; without this line the card promises
+                      three drafts and delivers one. See insightsExperiments()
+                      in app.js. */}
+                  <p className="mt-2 font-plex text-[11px] text-teal-300">
+                    {roomActive ? 'Not available in a room' : e.runLabel}
+                  </p>
                 </button>
               ))}
             </div>

@@ -34,8 +34,8 @@ const GOLD = '#F7D9A8'
 
    #78400F is the same hue and saturation two steps darker (HSL lightness
    30.6% -> 25.5%), so the card reads identically and both grounds clear the
-   bar: 6.08 on the card, 5.05 on the tiles. CELL_INK, which carries the
-   headline and the two values, is 12.07 on the card and 9.9 on a tile. */
+   bar: 6.08 on the card, 5.04 on the tiles. CELL_INK, which carries the
+   headline and the two values, is 12.07 on the card and 9.99 on a tile. */
 const GOLD_LABEL = '#78400F'
 
 function Card({ children, className = '' }) {
