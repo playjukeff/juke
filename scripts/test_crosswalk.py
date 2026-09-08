@@ -1124,6 +1124,65 @@ def test_college_board():
     capped = bp.build_college_board(wide, wide_stats)
     check("college: no more than the cap survives at a position",
           len(capped), bp.COLLEGE_PER_POSITION)
+
+    # ---- the ordering is STORED, because JSON cannot carry it ----
+    #
+    # These keys are numeric strings, and JavaScript re-orders integer-like
+    # object keys into ascending numeric order on parse -- so whatever order
+    # this function inserts them in is gone by the time a browser reads the
+    # file. The room drew a list headed "By college production" ordered by
+    # athlete id, with a 3,472-yard quarterback below a 1,141-yard running
+    # back, until `r` existed.
+    ranks = sorted(v["r"] for v in capped.values())
+    check("college: every row carries a rank",
+          ranks, list(range(1, len(capped) + 1)))
+    best = min(capped.values(), key=lambda v: v["r"])
+    check("college: rank 1 is the most productive, not the lowest athlete id",
+          best["c"]["cy"], max(v["c"]["cy"] for v in capped.values()))
+
+    # A receiver is ranked on the receiving yards his row PRINTS, not on a
+    # total including a trick-play pass nobody can see. Beau Sparks went above
+    # Wyatt Young on 22 passing yards while the column beside them read 1,200
+    # against 1,264 -- ordered by something, just not by the thing on screen.
+    trick = [
+        player(200, "Trick", "Play", "WR", "State", 4),
+        player(201, "Plain", "Catcher", "WR", "State", 4),
+    ]
+    trick_stats = [
+        stat(200, "receiving", "YDS", 1200), stat(200, "passing", "YDS", 90),
+        stat(201, "receiving", "YDS", 1264),
+    ]
+    tb = bp.build_college_board(trick, trick_stats)
+    check("college: a receiver is ranked on receiving yards, not on a trick play",
+          min(tb.values(), key=lambda v: v["r"])["c"]["cy"], 1264)
+
+    # WITHIN a position, not across them. A first version ranked every
+    # position together, which sorts by raw yards -- and a quarterback throws
+    # for four thousand where a receiver catches for twelve hundred, so the
+    # board came out twenty quarterbacks deep with Jeremiah Smith nowhere
+    # near a screen somebody opened to find him. Comparing a passing total to
+    # a receiving total is not a comparison, so the number was never
+    # meaningful; a rank inside a position is, and it is the vocabulary this
+    # app already speaks (QB1, TE12).
+    mixed = bp.build_college_board(roster, season)
+    by_pos = {}
+    for v in mixed.values():
+        by_pos.setdefault(v["p"], []).append(v)
+    for position, rows in by_pos.items():
+        rows.sort(key=lambda v: v["r"])
+        # The same quantity the row prints, per position -- see total_yards().
+        def shown(v):
+            c = v["c"]
+            if position == "QB":
+                return c.get("py", 0) + c.get("ry", 0)
+            if position == "RB":
+                return c.get("ry", 0) + c.get("cy", 0)
+            return c.get("cy", 0)
+        yards = [shown(v) for v in rows]
+        check(f"college: {position} ranks descend by production",
+              yards, sorted(yards, reverse=True))
+        check(f"college: {position} ranks start at 1 and have no gaps",
+              [v["r"] for v in rows], list(range(1, len(rows) + 1)))
     check("college: and it is the most productive who do",
           min(v["c"]["cy"] for v in capped.values()),
           2000 - (bp.COLLEGE_PER_POSITION - 1) * 10)

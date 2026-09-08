@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PosTile } from './sampleParts.jsx'
 import { evidence, knownAbout, rookies } from './prospectBoard.js'
+import CollegeBoard from './CollegeBoard.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
 /* The Prospect Room.
@@ -50,6 +51,12 @@ import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 export const TABS = [
   { key: 'lobby', label: 'Lobby' },
   { key: 'board', label: 'Big Board' },
+  /* The room's other half, and a different KIND of player rather than a
+     different view of the same ones: nobody on it has been drafted, none of
+     them is on any Juke board, and none can be ranked by value over
+     replacement because that number does not exist for a college player.
+     That is why it is a tab and not a filter. */
+  { key: 'college', label: 'In College' },
 ]
 
 /* The Lobby is a sample of the same list rather than a different one.
@@ -189,6 +196,19 @@ export default function ProspectRoomLive({ tab }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.length, statOf, gapOf]
   )
+
+  /* Below the hooks, and that placement is the whole point.
+   *
+   * The college half draws none of what is computed above -- no board, no
+   * projection, no replacement level -- so returning early is right. But this
+   * component does NOT unmount between tabs, and useMemo() sits above: an
+   * early return placed before it changes the hook COUNT between 'college'
+   * and every other tab, which React throws on. Written that way first and
+   * caught by reading the order rather than by the crash.
+   *
+   * The same wall DraftLocker already hit once, and the reason RoomPage
+   * computes its own state above three returns for. */
+  if (tab === 'college') return <CollegeBoard />
 
   if (!ready) {
     return (

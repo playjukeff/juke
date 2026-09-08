@@ -1796,8 +1796,28 @@ def build_college_board(roster_rows, season_rows):
             production.setdefault(athlete, {})[key] = (
                 int(value) if value == int(value) else round(value, 1))
 
-    def total_yards(line):
-        return line.get("py", 0) + line.get("ry", 0) + line.get("cy", 0)
+    def total_yards(position, line):
+        """The yardage that IS this position's production, and that the room
+        shows on the row.
+
+        Not py+ry+cy for everybody. Ranked that way, Beau Sparks went above
+        Wyatt Young on twenty-two trick-play PASSING yards, while the row
+        beside him showed 1,200 against 1,264 -- a column that does not
+        descend under a heading that says it is ordered. The rank was right
+        about a number the reader could not see, which is this project's
+        own right-value-wrong-label failure.
+
+        So each position is ranked on the numbers its own row prints:
+        a quarterback on passing and rushing, a back on rushing and
+        receiving, a receiver or tight end on receiving. A receiver's
+        rushing yards are a jet sweep and are not drawn, so they do not
+        decide his place either.
+        """
+        if position == "QB":
+            return line.get("py", 0) + line.get("ry", 0)
+        if position == "RB":
+            return line.get("ry", 0) + line.get("cy", 0)
+        return line.get("cy", 0)
 
     by_position = {}
     for athlete, line in production.items():
@@ -1805,7 +1825,7 @@ def build_college_board(roster_rows, season_rows):
 
     board = {}
     for position, athletes in by_position.items():
-        athletes.sort(key=lambda a: total_yards(production[a]), reverse=True)
+        athletes.sort(key=lambda a: total_yards(position, production[a]), reverse=True)
         for athlete in athletes[:COLLEGE_PER_POSITION]:
             row = eligible[athlete]
             name = " ".join(x for x in (row.get("firstName"), row.get("lastName")) if x)
@@ -1823,6 +1843,38 @@ def build_college_board(roster_rows, season_rows):
                 "y": row.get("year"),
                 "c": production[athlete],
             }
+
+    # ---- the ordering has to be STORED, because JSON cannot carry it ----
+    #
+    # This board is keyed by CFBD athlete id, and those are numeric strings.
+    # JavaScript re-orders integer-like object keys into ascending numeric
+    # order on parse, so whatever order this function inserts them in is
+    # destroyed the moment a browser reads the file -- the room drew a list
+    # headed "By college production" that was really ordered by athlete id,
+    # with a 3,472-yard quarterback below a 1,141-yard running back.
+    #
+    # `r` is the fix and it is deliberately a stored rank rather than a rule
+    # the browser re-applies: the cut above (top N a position, by yards) and
+    # the order on screen are the SAME decision, and writing it twice in two
+    # languages is how they drift. One integer a player, about 400 bytes
+    # before compression.
+    # WITHIN a position, not across them.
+    #
+    # Ranking every position together sorts by raw yards, and a quarterback
+    # throws for four thousand where a receiver catches for twelve hundred --
+    # so the first twenty rows came out quarterbacks and Jeremiah Smith was
+    # nowhere near the top of a board somebody opened to find him. That is not
+    # a close call about presentation: comparing a passing total to a
+    # receiving total is not a comparison, so a number built from both was
+    # never meaningful in the first place.
+    #
+    # A rank inside a position IS meaningful, and it is the vocabulary this
+    # app already speaks everywhere else -- QB1, TE12, the whole player sheet.
+    for position in {entry["p"] for entry in board.values()}:
+        same = [a for a in board if board[a]["p"] == position]
+        same.sort(key=lambda a: total_yards(position, production[a]), reverse=True)
+        for place, athlete in enumerate(same, start=1):
+            board[athlete]["r"] = place
 
     counts = {}
     for entry in board.values():
