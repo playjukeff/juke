@@ -36,6 +36,16 @@ import { tierLabel } from '../../lib/tiers.js'
  * somebody an internal identifier, and it would disagree with every other
  * surface that already names the tier properly.
  *
+ * ---- The ground is `charcoal`, which already WAS the handoff's --bg2 ----
+ *
+ * This shipped for one commit as a new `flow.bar` token set to #151923 —
+ * which is byte-for-byte the `charcoal` two hundred lines above it in
+ * tailwind.config.js, already used by four components. That is precisely
+ * the drift the `flow` group's own comment warns about ("deliberately NOT
+ * added: the handoff's own near-duplicates of tokens that already
+ * exist"), committed inside the change that quotes it. Grep the config for
+ * the hex before naming a colour, not just for the name you had in mind.
+ *
  * ---- A gate chip is amber, not gold ----
  *
  * The prototype's chip is `--gold #FFD166`. `flow.gold` here is the
@@ -84,7 +94,7 @@ export default function RoomShell({
           without matching copy that moves. */}
       <header
         data-room-shell
-        className="sticky top-0 z-[5] border-b border-line-hairline bg-flow-bar text-ink"
+        className="sticky top-0 z-[5] border-b border-line-hairline bg-charcoal text-ink"
       >
         <div className="flex min-h-[52px] flex-wrap items-stretch">
           {backHref ? (
