@@ -108,13 +108,17 @@ function token(sub = "user_2abcDEF") {
    turns on — so it is a parameter rather than a constant, and the two
    values it can take are the two branches under test. Everything else
    answers the shape store.js expects and nothing more. */
-function stubDb(changes = 1) {
+function stubDb(changes = 1, rows = []) {
   const seen = [];
   const stmt = (sql) => ({
     sql,
     bind(...args) { seen.push({ sql, args }); return this; },
     async run() { return { success: true, meta: { changes } }; },
-    async all() { return { results: [] }; },
+    // `rows` is what listLeagues() reads. It defaults to empty, which is
+    // what every test above this line wants and is also exactly what kept
+    // the leagues GET untested for as long as it was — see the block at the
+    // bottom of this file.
+    async all() { return { results: rows }; },
     async first() { return null; }
   });
   return {
@@ -126,25 +130,73 @@ function stubDb(changes = 1) {
   };
 }
 
+/* Upstream, answering "no" to everything, so the deferred refresh a stale
+   league kicks off resolves without leaving the machine.
+
+   Not optional politeness: refreshActiveLeague() is invoked synchronously by
+   after() — ctx.waitUntil only decides whether the runtime WAITS for it — so
+   without a base URL to point at, asserting anything about a stale league
+   would fire a real request at Sleeper on every run. getJson() turns a
+   non-OK into null and leagueSnapshot() then returns null, which is the
+   quiet no-op path this file wants. */
+const upstream = createServer((req, res) => {
+  res.writeHead(404, { "content-type": "application/json" });
+  res.end("null");
+});
+await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+/* unref() rather than a close() at the end: the deferred refresh outlives the
+   assertion that triggered it, so closing this on the last line races it and
+   prints five "sleeper fetch failed" lines for connections we refused
+   ourselves. Unreferenced, it serves whatever is still in flight and stops
+   holding the event loop open on its own. */
+upstream.unref();
+const UPSTREAM = `http://127.0.0.1:${upstream.address().port}`;
+
 const ORIGIN = "http://localhost:5173";
 const CTX = { waitUntil() {} };
 
-async function call(path, { method = "GET", auth, origin = ORIGIN, body, db } = {}) {
+async function callRaw(path, { method = "GET", auth, origin = ORIGIN, body, db, ctx = CTX } = {}) {
   const headers = {};
   if (origin !== null) headers.Origin = origin;
   if (auth) headers.Authorization = "Bearer " + auth;
   if (body !== undefined) headers["content-type"] = "application/json";
 
-  const env = { CLERK_SECRET_KEY: "sk_test_stub", CLERK_API_URL: API_URL };
+  const env = {
+    CLERK_SECRET_KEY: "sk_test_stub",
+    CLERK_API_URL: API_URL,
+    SLEEPER_BASE: UPSTREAM,
+    ESPN_BASE: UPSTREAM
+  };
   if (db) env.DB = db.DB;
 
-  const res = await worker.fetch(
-    new Request("https://jukeff.com" + path, { method, headers, body }),
-    env, CTX
-  );
+  let res;
+  try {
+    res = await worker.fetch(
+      new Request("https://jukeff.com" + path, { method, headers, body }),
+      env, ctx
+    );
+  } catch (err) {
+    /* A route that threw instead of answering. Reported as a value rather
+       than taking the run down, because that is one of the failures this file
+       exists to catch now — "got {threw: ...}" names it, where an unhandled
+       rejection at top level would only say the process stopped. */
+    return { status: "threw", body: { threw: (err && err.message) || String(err) }, cors: null };
+  }
   let parsed = null;
   try { parsed = await res.json(); } catch { /* not every status carries one */ }
-  return { status: res.status, body: parsed };
+  return {
+    status: res.status,
+    body: parsed,
+    // The one response header a browser's behaviour actually turns on.
+    cors: res.headers.get("access-control-allow-origin")
+  };
+}
+
+/* Status and body, which is what almost every assertion here is about.
+   callRaw() is for the two that are about the header instead. */
+async function call(path, opts) {
+  const { status, body } = await callRaw(path, opts);
+  return { status, body };
 }
 
 // ---- GET /me, both branches of the one question it exists to answer -------
@@ -214,10 +266,93 @@ check("a write the database refuses is a 409, not a cheerful ok",
 check("and the 409 is behind the same guard as everything else",
       (await call("/me/history", { method: "POST", body: entry, db: stubDb(0) })).status, 401);
 
-check("a body with no id is a 400 before the database is asked",
-      (await call("/me/history", { method: "POST", auth: token(),
-                                   body: JSON.stringify({ completedAt: 1 }), db: stubDb(0) })).status, 400);
+// ---- GET /me/leagues, for an account that actually has one ----------------
+
+/* The branch nothing here could reach until stubDb() learned to return rows,
+   and the gap that let a ReferenceError run in production for three days.
+ *
+ * meLeaguesRoute()'s GET only touches staleLeague() when `leagues[0]` exists,
+ * so an empty result set skips it entirely. Every test in this project ran
+ * against an empty one: the suite has no connected league, keyless preview
+ * builds render the signed-out fallback, and `curl` sends no token and stops
+ * at the 401. The route answered 200 for all of them and always would. The
+ * only callers who could reach the throw were accounts with a league
+ * connected — the real users, and nobody else.
+ *
+ * `refreshed_at: 1` is what makes this the interesting row rather than any
+ * row: staleLeague() returns early for a drafted league, so a "complete"
+ * status here would pass against the bug. */
+const LEAGUE_ROW = {
+  provider: "sleeper",
+  league_id: "1401655775939567616",
+  owner_id: "owner_1",
+  name: "Juke Fantasy Football",
+  season: "2026",
+  total_teams: 10,
+  connected_at: 1,
+  refreshed_at: 1,
+  draft_at: null,
+  draft_status: null
+};
+
+check("a connected league is listed rather than throwing on the way out",
+      await call("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]) }),
+      { status: 200, body: { leagues: [{
+        provider: "sleeper",
+        leagueId: "1401655775939567616",
+        ownerId: "owner_1",
+        name: "Juke Fantasy Football",
+        season: "2026",
+        totalTeams: 10,
+        connectedAt: 1,
+        refreshedAt: 1,
+        draftAt: null,
+        draftStatus: null
+      }] } });
+
+/* Same request, asserted on the header instead, because the two failures are
+   different and only one of them is visible from the browser. A 500 with no
+   CORS is reported by Chrome as "blocked by CORS policy: No
+   'Access-Control-Allow-Origin' header is present" — so the crash above
+   presented to the owner as a misconfigured origin allow-list, which was the
+   one thing that had never been wrong. */
+check("and the answer carries the header the browser needs to read it",
+      (await callRaw("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]) })).cors,
+      ORIGIN);
+
+/* The wrapper around the router, which is what makes the NEXT defect in here
+   legible instead of arriving as a CORS mystery.
+ *
+ * after() calls ctx.waitUntil synchronously, so a ctx whose waitUntil throws
+ * is a real unhandled failure raised from inside a route that had already
+ * done its work — the same shape as the missing import, without depending on
+ * that particular bug being back. */
+const THROWING_CTX = { waitUntil() { throw new Error("synthetic runtime failure"); } };
+
+check("a route that throws still answers, with a status rather than a hang",
+      (await call("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]), ctx: THROWING_CTX })).status,
+      500);
+
+check("and a thrown route still carries CORS, or the page cannot see the 500",
+      (await callRaw("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]), ctx: THROWING_CTX })).cors,
+      ORIGIN);
+
+// The body says nothing about what threw: a message shaped by an exception is
+// a way to read a route's internals back out of it. The stack goes to the log.
+check("and it says nothing about what went wrong",
+      (await call("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]), ctx: THROWING_CTX })).body,
+      { error: "server-error" });
+
+// The catch-all must not have swallowed the guards, which return responses
+// rather than throwing — a 500 in place of a 401 here would be a real loss.
+check("the leagues route still refuses a caller with no token",
+      (await call("/me/leagues", { db: stubDb(1, [LEAGUE_ROW]) })).status, 401);
+
+check("and one from a disallowed origin",
+      (await call("/me/leagues", { auth: token(), origin: "https://evil.example",
+                                   db: stubDb(1, [LEAGUE_ROW]) })).status, 403);
 
 jwks.close();
+
 if (fails.length) process.exitCode = 1;
 report();

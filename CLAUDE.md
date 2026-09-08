@@ -7661,6 +7661,107 @@ must CARRY the encoded id. That covers a sixth call the day it is added, and
 it was confirmed red against a raw splice — which the version it replaced
 was not.
 
+## A crash in a Worker arrives at the browser as a CORS error
+
+Reported 8 September 2026, with a screenshot: an account holding a Sleeper
+league and an ESPN league, on `allaccess`, looking at `#/my-league` under a
+"Connect a real league" button and a banner reading *Demo league · sample
+data*. Written down as "the site is not remembering that I've already
+connected both leagues".
+
+Nothing had been forgotten. Both rows were in D1 the whole time, the account
+was on the right tier, the worker was deployed and current, every migration
+was applied, and `listLeagues()`'s newest rung — run by hand against the
+remote database — returned both leagues in the right order.
+
+**`staleLeague()` used `nowSeconds()` and `draft-room.js` never imported
+it.** So `GET /me/leagues` raised a `ReferenceError` and answered nothing.
+
+### It was reachable only by real users, which is why nothing caught it
+
+`meLeaguesRoute()`'s GET reaches `staleLeague()` only when `leagues[0]`
+exists. Every automated caller had an empty list:
+
+- `test-me-routes.mjs`'s `stubDb()` answered `{ results: [] }` to every
+  `.all()`, so the route returned 200 and always would.
+- A keyless build renders the signed-out fallback, so no browser spec has a
+  connected league either.
+- `curl` sends no token and stops at the 401 — **which is exactly why the
+  first four probes all looked healthy.**
+
+The one population that could reach the throw was accounts with a league
+actually connected. That is the whole real user base and nobody else. **A
+branch behind "the list is not empty" is invisible to a suite whose fixtures
+are all empty**, and the emptiness is usually the default nobody chose.
+
+### And it did not report as a crash
+
+An unhandled throw in a Worker is a bare 500 carrying no
+`access-control-allow-origin`, and a response the fetch spec will not let the
+page read is indistinguishable, from the page, from one that never arrived.
+So Chrome said:
+
+```
+Access to fetch at '.../me/leagues' from origin 'https://jukeff.com' has been
+blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present
+Failed to load resource: net::ERR_FAILED
+```
+
+That names the origin allow-list, which was correct and had never been
+wrong — `ALLOWED` has carried both the apex and `www` since it was written,
+and `curl` confirmed the preflight and the 401 both carry the header. Every
+piece of evidence pointed at the one thing that was fine.
+
+**The default export wraps the router in a try/catch now**, returning a
+generic 500 *with* `corsFor(request)` and putting the stack in the log. It
+changes no behaviour on any working path — every guard in the router returns
+a Response rather than throwing — and it means the next defect in here
+arrives as a status the console names instead of a CORS mystery. The body
+stays generic on purpose: a message shaped by an exception is a way to read a
+route's internals back out of it.
+
+### What actually found it
+
+`wrangler tail`, in one line: `ReferenceError: nowSeconds is not defined`,
+`outcome=exception`, six times.
+
+Everything before that was inference, and the inference that mattered was
+**reading two timestamps against each other**. `users.last_seen_at` was
+minutes old, and `touchUser()` runs only after `GET /me` verifies a real
+token — so auth worked. `connected_leagues.refreshed_at` was three days old
+on one row and hours old on the other, and both values were traceable to
+`putLeague()` rather than to `refreshActiveLeague()` — which every
+`GET /me/leagues` runs when the row is over an hour stale. **A write that
+should have happened and did not is evidence about a route nobody can
+otherwise observe.** Ask the database, not the response — this file's own
+rule, used to locate a bug rather than to confirm a deploy.
+
+### Three defects fell out of the same audit
+
+- **`MyLeagueScreen` drew the demo for `status === 'error'`**, identically to
+  "you have no league". So a server-side 500 presented as the product having
+  forgotten somebody's leagues, silently, on the screen where that claim is
+  loudest. `leagueStore.js`'s own header already states the rule — a state
+  meaning "we could not find out" has to be renderable — and `HomeAlive`'s
+  ConnectCard and `YouScreen` already followed it. This screen was the third
+  reader of that hook and the only one still collapsing the fourth state into
+  the second. **When a fix is applied to "every caller", count the callers.**
+
+- **Both connect branches dropped `draftAt`/`draftStatus` on the floor.**
+  `putLeague()` has bound them since 0008 and neither branch ever passed
+  them, so every league connected since the countdown shipped stored
+  `draft_at` NULL and stayed that way until `refreshActiveLeague()` next ran
+  — which, with `staleLeague()` throwing, was never. Measured on the live
+  database: both rows NULL, while both platforms were serving a real draft
+  time. Two independent bugs on one feature, each hiding the other's symptom.
+
+- **The `inFlight` latch in `leagueStore.js` was suspected and is innocent.**
+  It has no timeout, so a `getToken()` that never settles would wedge the
+  store for the session — a real hazard, and not this one: the tail shows six
+  `GET /me/leagues` in a single sitting, so the latch was clearing exactly as
+  written. Left alone rather than "fixed" on a theory, which is the same call
+  this file records about `DraftEngine.jitter()`.
+
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
 A content audit on 2 September 2026 found the same defect in eight places,

@@ -85,7 +85,7 @@ const TITLE = (
 )
 
 export default function MyLeagueScreen() {
-  const { status, league } = useLeague()
+  const { status, league, retry } = useLeague()
   const { decisions } = useDecisions()
   /* null means "the current week", which is the resting state and cannot be
      seeded from the snapshot: the snapshot is not read yet on the first
@@ -105,6 +105,58 @@ export default function MyLeagueScreen() {
         {TITLE}
         <div className="mx-auto max-w-[1280px] px-5 py-10 sm:px-10">
           <p className="text-[14px] text-ink-muted">Loading…</p>
+        </div>
+      </AppShell>
+    )
+  }
+
+  /* Asked, and could not find out — which may NOT fall through to the demo
+     below, and this is the screen where that mattered most.
+
+     Reported 8 September 2026 with a screenshot: two connected leagues, an
+     account on Multi-League, both rows sitting in D1 the whole time, and this
+     page offering "Connect a real league" over sample data. The read was
+     failing (GET /me/leagues was throwing a bare 500 — see staleLeague() in
+     worker/draft-room.js), `leagues` was therefore empty, and `!connected`
+     drew the guest experience. So a server-side crash presented as the
+     product having forgotten the reader's leagues.
+
+     HomeAlive's ConnectCard and YouScreen both already draw an honest state
+     here, for the reason leagueStore.js's own header states — a state meaning
+     "we could not find out" has to be renderable. This screen was the third
+     reader of that hook and the only one still collapsing it into "none". The
+     demo is what somebody with no league SHOULD see; showing it to somebody
+     who has one is a claim, not a gap. */
+  if (status === 'error') {
+    return (
+      <AppShell active="my-league">
+        {TITLE}
+        <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-10">
+          <div className="rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] sm:rounded-[22px] sm:p-[26px]">
+            <span className="font-mono text-[11px] tracking-[0.14em] text-ink-muted">MY LEAGUE</span>
+            <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
+              Couldn&rsquo;t load your league
+            </div>
+            <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
+              Nothing has been disconnected and your leagues are still on your account — we just
+              could not reach it to read them. Mock drafts are unaffected and need no account.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <button
+                type="button"
+                onClick={retry}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-line-hairline px-5 py-3 text-[14px] font-bold text-white transition-colors duration-150 hover:border-teal/50"
+              >
+                Try again
+              </button>
+              <a
+                href="#/rooms/draft"
+                className="text-[12px] text-ink-muted underline-offset-2 hover:underline"
+              >
+                Start a mock draft
+              </a>
+            </div>
+          </div>
         </div>
       </AppShell>
     )
