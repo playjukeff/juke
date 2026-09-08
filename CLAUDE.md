@@ -8041,6 +8041,40 @@ finding in the whole pass was the one nothing flagged.
 
   Run it against production after a deploy, too:
   `JUKE_WORKER=wss://juke-draft-room.jukeff.workers.dev node worker/test-sockets.mjs`.
+
+  **Its report survives a crash now, and it did not.** Every result is
+  buffered into `note`/`fails` and printed at the very bottom, `until()`
+  reports a timeout by pushing a failure and returning undefined, and several
+  blocks then read two fields deep off what it did not find. That throws, and
+  a throw at top level skipped the report entirely — so a post-deploy run
+  that had passed **108 assertions** and timed out on one slow poll broadcast
+  printed a bare `TypeError` and not a single `ok` line. Eight lines of
+  output, none of them saying what happened.
+
+  On the one gate that runs against a just-promoted worker that is the worst
+  available output: it reads as "everything is broken" when what happened is
+  "one broadcast was slow", and the honest diagnosis — ask the deployed
+  worker directly, which passed 109 twice — costs nothing but is only reached
+  by somebody who distrusts the red. **A failure that names nothing is far
+  more expensive than one that names a value**, which is this section's own
+  lesson arriving through the harness rather than through the app.
+
+  `report()` is on `process.on("exit")`, so whatever ran gets printed however
+  the process ends, and `uncaughtException` records the crash as a failure of
+  its own **saying the run stopped there** — a report that is merely SHORT is
+  the other way to be misread, and 108 ok lines with no mention that four
+  sections never ran is a pass with a hole in it. The three poll blocks guard
+  on their own wait and call `blocked()` instead, so a slow broadcast costs
+  that block and nothing else. Deliberately not `?.` at the crash sites: that
+  keeps the run alive and then spends 8s per dependent wait rediscovering,
+  five times over, what the first timeout already said.
+
+  Verified by breaking the first `poll-create` into a message the room
+  ignores and running both versions against production: **before, 8 lines and
+  a stack trace; after, exit 1, 101 `ok` lines, `the poll arrives timed out
+  after 8000ms`, one `blocked` entry, and every later section still run.** A
+  hard throw injected mid-file reports 31 `ok` lines and names the file and
+  line, where it used to report nothing at all.
 - Engine: `py scripts/test_engine.py` — runs `draft-engine.js` and `room.js`
   outside a browser and asserts the snake maths, the turn order, the legality
   checks, the determinism of the CPU wobble, and the parts of a room that a
