@@ -4,6 +4,9 @@ import {
   demandByPosition, dropList, freeAgents, myTeam, rivalNeeds, rosterGaps,
 } from './waiverBoard.js'
 import UpgradeGate from '../shell/UpgradeGate.jsx'
+import KpiStrip from '../decision/KpiStrip.jsx'
+import BarRow, { Bar } from '../decision/Bar.jsx'
+import StakeCard from '../decision/StakeCard.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
 /* The Waiver Room, with a real league behind it.
@@ -71,34 +74,57 @@ export const TABS = [
 const LOBBY_TARGETS = 5
 const BOARD_TARGETS = 40
 
+/* P1. `text-mint` was a marketing state mark on the void ground doing duty
+   as this room's positive; `gain` is the sign colour, measured on
+   slate.panel, and it is the same green every other room now prints a
+   positive in. A zero or a negative takes the muted ink rather than `cost`:
+   a wire player at or below replacement has not COST anybody anything, he
+   is simply not worth claiming, and colouring him as a loss would be a
+   direction the number does not have. */
 function Gap({ value }) {
   const n = Math.round(value)
   return (
-    <span className={'font-mono text-[15px] font-semibold ' + (n > 0 ? 'text-mint' : 'text-ink-muted')}>
+    <span className={'font-plex text-[15px] font-semibold tabular-nums ' + (n > 0 ? 'text-gain' : 'text-ink-muted')}>
       {n > 0 ? '+' : ''}
       {n}
     </span>
   )
 }
 
-function TargetRow({ rank, row }) {
+/* P3. The row keeps its numeral and gains a 100px bar scaled to the best
+   gap on the list it is part of.
+
+   A ranked list of "over replacement" figures is exactly the shared-unit
+   column the guide says becomes bars: 34, 31, 28, 12, 9 down a page is five
+   numbers a reader subtracts by eye, and the same five as lengths is one
+   glance. The numeral stays because the bar cannot say 34, which is the
+   thing a manager types into a bid. */
+function TargetRow({ rank, row, max, index = 0 }) {
   const p = row.player
   return (
-    <div className="flex items-center gap-3 border-b border-line-hairline py-2.5 last:border-b-0">
-      <span className="w-6 shrink-0 font-mono text-[11px] text-ink-muted">
+    <div
+      className="jd-rise flex items-center gap-3 border-b border-line-hairline py-2.5 last:border-b-0"
+      style={{ '--i': index }}
+    >
+      <span className="w-6 shrink-0 font-plex text-[11px] text-ink-muted">
         {String(rank).padStart(2, '0')}
       </span>
       <PosTile pos={p.pos} size={32} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold text-white">{p.name}</span>
-        <span className="block truncate font-mono text-[11px] text-ink-muted">
+        <span className="block truncate font-plex text-[11px] text-ink-muted">
           {p.team || 'FA'}
           {p.bye ? ` · BYE ${p.bye}` : ''}
         </span>
       </span>
-      <span className="shrink-0 text-right">
+      {max > 0 ? (
+        <span className="hidden w-[100px] shrink-0 sm:block">
+          <Bar value={Math.max(0, row.gap)} max={max} sign="gain" index={index} />
+        </span>
+      ) : null}
+      <span className="w-14 shrink-0 text-right">
         <Gap value={row.gap} />
-        <span className="block font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
+        <span className="block font-plex text-[10px] uppercase tracking-[0.08em] text-ink-muted">
           over repl.
         </span>
       </span>
@@ -298,6 +324,80 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
   )
   const demand = useMemo(() => demandByPosition(rivals), [rivals])
 
+  // Somebody who would actually improve a roster -- see the note further
+  // down, beside the panel this feeds.
+  const targets = available.filter((row) => row.gap > 0)
+
+  /* One scale per list, so a bar on the Targets board and a bar on the Drop
+     list are not silently drawn against different maxima. Rows scaled to
+     different denominators are two charts stacked, which is the failure P3
+     exists to prevent rather than an implementation detail. */
+  const wireMax = available.length ? Math.max(...available.map((r) => Math.max(0, r.gap))) : 0
+  const dropMax = drops.length ? Math.max(...drops.map((r) => Math.max(0, r.gap))) : 0
+  const gapMax = allGaps.length ? Math.max(...allGaps.map((g) => g.improvement)) : 0
+
+  /* The stake card's headline is a sentence, so it needs the noun rather
+     than the chip -- and the nouns come off the engine rather than being
+     written down a third time. app.js's POS_NAMES_LONG is the copy that
+     writes prose and draftRoomPositions.js is React's; a literal here would
+     be the one that drifts, because nothing on this screen would notice.
+
+     Guarded: `posNames` is a newer bridge entry than this component and a
+     cached app.js will not have it, which is the same guard every other
+     newer entry gets at its call site. */
+  const posNames = (engine && engine.posNames && engine.posNames()) || {}
+
+  /* P4. The four numbers this room opens with, and two of the handoff's own
+     four are not among them.
+
+     It asks for FAAB LEFT, CLAIMS RUN, HIT RATE and PTS OPEN. Neither
+     adapter reports what has been SPENT -- this file's own header already
+     records that, and `waiverBudget` is the season's pool -- so "FAAB left"
+     would be the pool relabelled as a balance, wrong by however much the
+     reader has already bid. And nothing anywhere records a claim, so there
+     is no count to run and no hits to rate. A KPI strip is the most
+     confident furniture on a page; filling two of its four cards with
+     numbers nobody computed is the worst available place to invent one.
+
+     What is real: the pool, how much of the wire is worth anything at all,
+     the single best claim, and how many points the reader's own lineup is
+     leaving on the wire. The last is what the room is for, so it takes the
+     `cost` accent -- points open are points not claimed. */
+  const ptsOpen = allGaps.reduce((sum, g) => sum + g.improvement, 0)
+  const bestClaim = allGaps[0] || null
+
+  const kpis = [
+    {
+      label: 'FAAB pool',
+      value: snapshot && snapshot.waiverBudget ? '$' + snapshot.waiverBudget : '\u2014',
+      note:
+        snapshot && snapshot.waiverBudget
+          ? 'The season\u2019s budget. Sleeper does not report what you have spent.'
+          : 'This league does not run FAAB.',
+      accent: 'evidence',
+    },
+    {
+      label: 'Worth claiming',
+      value: String(targets.length),
+      note: `Of ${available.length} rankable on the wire, above replacement.`,
+      accent: 'evidence',
+    },
+    {
+      label: 'Best claim',
+      value: bestClaim ? '+' + Math.round(bestClaim.improvement) : '\u2014',
+      note: bestClaim
+        ? `${bestClaim.best.player.name} over your best ${bestClaim.pos}.`
+        : 'Nothing on the wire beats what you hold.',
+      accent: 'gain',
+    },
+    {
+      label: 'Points open',
+      value: ptsOpen > 0 ? String(Math.round(ptsOpen)) : '0',
+      note: 'Across every position a claim would improve.',
+      accent: 'cost',
+    },
+  ]
+
   if (status === 'loading') {
     return (
       <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-10">
@@ -332,7 +432,10 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
     )
   }
 
-  /* A "target" is somebody who would actually improve a roster, so the
+  /* (`targets` is derived beside `available` above, so the KPI strip and
+     the Lobby's panel read one filter rather than two.)
+
+     A "target" is somebody who would actually improve a roster, so the
      Lobby's panel takes only the positive gaps.
 
      Found by driving the room against a league where the top 150 are all
@@ -346,7 +449,6 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
      The full board below keeps them, and should: a ranked wire is an
      inventory, and the least-bad tight end is a real thing to want in a
      bye week. It is titled as one rather than as a list of targets. */
-  const targets = available.filter((row) => row.gap > 0)
 
   const fullBoard = (
     <a href="#/rooms/waiver" className="font-mono text-[11px] font-semibold text-mint">
@@ -408,7 +510,9 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
       <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
         <Panel title="Your bench, worst first">
           {drops.length ? (
-            drops.map((row, i) => <TargetRow key={row.player.id} rank={i + 1} row={row} />)
+            drops.map((row, i) => (
+              <TargetRow key={row.player.id} rank={i + 1} row={row} max={dropMax} index={i} />
+            ))
           ) : (
             <div className="py-10 text-center text-[13px] text-ink-muted">
               Nobody on your bench is rankable — which in most leagues means a bench of kickers,
@@ -487,7 +591,9 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
       <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
         <Panel title="The wire, best first" action={fullBoard}>
           {available.length ? (
-            available.map((row, i) => <TargetRow key={row.player.id} rank={i + 1} row={row} />)
+            available.map((row, i) => (
+              <TargetRow key={row.player.id} rank={i + 1} row={row} max={wireMax} index={i} />
+            ))
           ) : (
             <div className="py-8 text-center text-[13px] text-ink-muted">
               Nobody on the wire is projected above replacement. In a league this deep that is
@@ -501,20 +607,25 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
 
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+      {/* P4. The strip goes first, directly under the room's own H1, which
+          is where the handoff draws it. It is rendered here rather than
+          passed up to RoomPage's hero because only this component holds the
+          snapshot the four numbers come out of -- see RoomPage's own note. */}
+      <KpiStrip items={kpis} className="mb-5" />
+
       <p className="mb-5 max-w-[68ch] text-[15px] leading-relaxed text-voidInk-body">
         {snapshot.name} is synced.{' '}
         {available.length
           ? `${available.length} players are unowned and rankable`
           : 'Nobody unowned is rankable'}
         , scored under your league&rsquo;s own rules.
-        {snapshot.waiverBudget ? ` FAAB runs $${snapshot.waiverBudget} a season.` : ''}
       </p>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Panel title="Top targets" action={fullBoard}>
           {targets.length ? (
             targets.slice(0, LOBBY_TARGETS).map((row, i) => (
-              <TargetRow key={row.player.id} rank={i + 1} row={row} />
+              <TargetRow key={row.player.id} rank={i + 1} row={row} max={wireMax} index={i} />
             ))
           ) : (
             /* The true state of a deep league's wire in most weeks, and
@@ -527,42 +638,67 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
           )}
         </Panel>
 
-        <Panel title="Where a claim would help">
-          {mine ? (
-            gaps.length ? (
-              gaps.map((g) => (
-                <div
-                  key={g.pos}
-                  className="flex items-center gap-3 border-b border-line-hairline py-3 last:border-b-0"
-                >
-                  <PosTile pos={g.pos} size={32} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-semibold text-white">
-                      {g.best.player.name}
-                    </span>
-                    <span className="block font-mono text-[11px] text-ink-muted">
-                      {g.held === null
-                        ? 'you hold nobody rankable here'
-                        : `over your best ${g.pos}`}
-                    </span>
-                  </span>
-                  <Gap value={g.improvement} />
+        <div className="flex flex-col gap-4">
+          {/* P2. The one light card on this route, and it is the claim that
+              closes most of the gap.
+
+              It is the top of the sidebar rather than a fourth panel down
+              the page because it is the answer: everything else in this
+              room is the working. Absent when there is no team to price a
+              claim against, rather than drawn empty -- a stake card with no
+              stake in it is the loudest thing on the page saying nothing. */}
+          {bestClaim ? (
+            <StakeCard
+              eyebrow="Costing you most"
+              title={`No ${(posNames[bestClaim.pos] || bestClaim.pos).toLowerCase()} on your roster is worth what the wire has`}
+              cost={`+${Math.round(bestClaim.improvement)} pts open`}
+            >
+              {bestClaim.best.player.name} is {Math.round(bestClaim.best.gap)} over replacement.{' '}
+              {bestClaim.held === null
+                ? `You hold nobody rankable at ${bestClaim.pos}.`
+                : `Your best ${bestClaim.pos} is ${Math.round(bestClaim.held)}.`}
+            </StakeCard>
+          ) : null}
+
+          <Panel title="Where a claim would help">
+            {mine ? (
+              gaps.length ? (
+                /* P3. Three positions, one unit, one scale -- which is the
+                   shared-unit list the guide says becomes bars. The label
+                   carries the player and the position he beats, because a
+                   bar with only a position on it says where the gap is and
+                   not what closes it. */
+                gaps.map((g, i) => (
+                  <BarRow
+                    key={g.pos}
+                    index={i}
+                    label={`${g.best.player.name} \u00b7 over your best ${g.pos}`}
+                    value={g.improvement}
+                    max={gapMax}
+                    sign="gain"
+                    display={`+${Math.round(g.improvement)}`}
+                    title={
+                      g.held === null
+                        ? `You hold nobody rankable at ${g.pos}`
+                        : `Your best ${g.pos} is ${Math.round(g.held)} over replacement`
+                    }
+                  />
+                ))
+              ) : (
+                <div className="py-8 text-center text-[13px] text-ink-muted">
+                  Nothing on the wire beats what you already hold at any position.
                 </div>
-              ))
+              )
             ) : (
+              /* No ownerId on the connection, so there is no "your team" —
+                 and pricing a claim against an arbitrary roster would be
+                 worse than not pricing it. */
               <div className="py-8 text-center text-[13px] text-ink-muted">
-                Nothing on the wire beats what you already hold at any position.
+                Reconnect this league to see which of your own positions a claim would improve.
               </div>
-            )
-          ) : (
-            /* No ownerId on the connection, so there is no "your team" —
-               and pricing a claim against an arbitrary roster would be
-               worse than not pricing it. */
-            <div className="py-8 text-center text-[13px] text-ink-muted">
-              Reconnect this league to see which of your own positions a claim would improve.
-            </div>
-          )}
-        </Panel>
+            )}
+          </Panel>
+        </div>
       </div>
     </div>
   )

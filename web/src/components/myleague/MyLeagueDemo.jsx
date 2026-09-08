@@ -5,6 +5,9 @@ import ConnectLeagueCta from '../shell/ConnectLeagueCta.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import MoveCard from './MoveCard.jsx'
 import SecondaryMoves from './SecondaryMoves.jsx'
+import KpiStrip from '../decision/KpiStrip.jsx'
+import StakeCard from '../decision/StakeCard.jsx'
+import RunNextCard from '../decision/RunNextCard.jsx'
 import { buildDemoData } from './demoData.js'
 
 /* My League, before a real one is connected — Free and guest alike, per
@@ -55,6 +58,13 @@ export default function MyLeagueDemo() {
         <ConnectLeagueCta variant="outline" label="Connect a real league" />
       </div>
 
+      {/* P4. The strip, directly under the identity row and above the week
+          calendar — four numbers that say where this season stands before
+          the page says anything about this week. */}
+      <div className="mx-auto mt-4 max-w-[1280px] px-5 sm:px-10">
+        <KpiStrip items={data.kpis} />
+      </div>
+
       <div className="mt-4">
         <WeekStrip weeks={data.weeks} selected={week} onSelect={setWeek} />
       </div>
@@ -62,7 +72,56 @@ export default function MyLeagueDemo() {
       {data.move ? (
         <MoveCard {...data.move} onOpen={() => { window.location.hash = `#/rooms/${data.move.slug}` }} />
       ) : null}
-      <SecondaryMoves items={data.secondary} />
+
+      {/* P2. Directly under the Move, which is where the guide puts it on a
+          phone and where it belongs at every width on this screen: the Move
+          is what to do this week and the stake card is what keeps costing
+          you every week. One is a decision, the other is a pattern, and the
+          pattern is the one worth the page's only light surface.
+
+          The two-column split below is the desktop sidebar the guide asks
+          for; at phone width it stacks, so the stake card lands directly
+          under the Move either way. */}
+      {/* Three items, two orders. On a desktop this is the guide's sidebar:
+          the secondary moves take the left column and the stake card sits at
+          the top of the right one with the run-next card under it. On a
+          phone the column collapses and the ORDER has to change with it, not
+          just the width -- the guide's own screen 18 puts the stake card
+          "directly under the Move", and stacking in source order buries it
+          under two secondary cards instead. Explicit row/column placement at
+          lg, `order` below it. */}
+      <div className="mx-auto mt-4 grid max-w-[1280px] items-start gap-4 px-5 sm:px-10 lg:grid-cols-[1fr_340px]">
+        <div className="order-2 lg:order-none lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <SecondaryMoves items={data.secondary} />
+        </div>
+
+        {data.habit ? (
+          <div className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+            <StakeCard
+              title={data.habit.title}
+              cost={data.habit.cost}
+              gain={data.habit.gain}
+              action={{
+                label: data.habit.action.label,
+                onClick: () => { window.location.hash = data.habit.action.href },
+              }}
+            >
+              {data.habit.body}
+            </StakeCard>
+          </div>
+        ) : null}
+
+        {/* P7. Last in the column, and last on the page at every width,
+            which is the guide's own placement: the final word is the one
+            thing you could run that would settle what it has just said. */}
+        {data.runNext ? (
+          <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2">
+            <RunNextCard title={data.runNext.title} action={data.runNext.action} index={1}>
+              {data.runNext.body}
+            </RunNextCard>
+          </div>
+        ) : null}
+      </div>
 
       <div className="mx-auto mt-3.5 max-w-[1280px] px-5 sm:px-10">
         <SampleCard>

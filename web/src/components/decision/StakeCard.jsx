@@ -68,7 +68,11 @@ export default function StakeCard({ eyebrow = 'Costing you most', title, cost, g
       {cost || gain ? (
         <p className="mt-3 font-decision text-[26px] font-extrabold leading-none">
           {cost ? <span style={{ color: STAKE_COST_INK }}>{cost}</span> : null}
-          {cost && gain ? <span className="opacity-40"> · </span> : null}
+          {/* opacity-60, not 40. This is a 26px glyph so it answers to
+              1.4.11's 3:1 rather than to 4.5, and at 40% the ink composites
+              to 2.35 on the card -- under even that. Measured rather than
+              picked: 4.13 at 60%. */}
+          {cost && gain ? <span className="opacity-60"> · </span> : null}
           {gain ? <span style={{ color: STAKE_GAIN_INK }}>{gain}</span> : null}
         </p>
       ) : null}

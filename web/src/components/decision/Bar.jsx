@@ -66,16 +66,32 @@ export function Bar({ value, max, sign = 'evidence', marker, index = 0, zeroAxis
           }}
         />
       ) : null}
+      {/* The line and its label are SIBLINGS, not parent and child.
+
+          Nested, the label inherits the 1px line's own background as its
+          ground -- so it is ink-muted on ink-muted, which measures 1.00 in a
+          contrast sweep and reports the marker as unreadable. It is not
+          (the label sits outside the line, on the card), but a sweep cannot
+          know that, and neither can the next person reading the markup. The
+          nesting also made the 1px span report a 60px overflow, since the
+          label is wider than its parent and neither could scroll nor
+          ellipsise. Two siblings, both positioned off the track, and both
+          facts about the marker are then true of the elements that carry
+          them. */}
       {marker ? (
-        <span
-          className="pointer-events-none absolute -top-[3px] h-[13px] w-px"
-          style={{ left: pct(marker.at, max) + '%', background: INK_MUTED }}
-          title={marker.label}
-        >
-          <span className="absolute -top-[12px] left-1/2 -translate-x-1/2 whitespace-nowrap font-plex text-[9.5px] text-ink-muted">
+        <>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-[3px] h-[13px] w-px"
+            style={{ left: pct(marker.at, max) + '%', background: INK_MUTED }}
+          />
+          <span
+            className="pointer-events-none absolute -top-[15px] -translate-x-1/2 whitespace-nowrap font-plex text-[9.5px] text-ink-muted"
+            style={{ left: pct(marker.at, max) + '%' }}
+          >
             {marker.label}
           </span>
-        </span>
+        </>
       ) : null}
     </span>
   )
