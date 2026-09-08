@@ -183,3 +183,60 @@ body {
     display: none;
   }
 }
+
+/* ---- Your Insights (web/src/components/insights) ----------------------
+
+   The design handoff's own keyframes, kept as plain CSS rather than moved
+   into tailwind.config.js's `keyframes` block for one reason: Tailwind only
+   emits an @keyframes rule when an `animation-*` utility that names it is
+   generated, and every entrance on this page carries its own inline
+   `animation-delay` off a stagger the engine computed. That is a style prop,
+   not a class, so there is no utility for the JIT to find. The `sonar-*`
+   family lives in the config because SonarLoader.jsx does name utilities.
+
+   Named ins* rather than the handoff's ds*: these are ours now, and a two-
+   letter prefix nobody can trace back to a file is how a keyframe outlives
+   the thing that needed it.
+
+   The reduced-motion block at the foot is the whole opt-out. Framer Motion's
+   useReducedMotion() covers the components that use it; nothing on this page
+   does, because every one of these is a one-shot entrance with a delay and a
+   CSS keyframe is both cheaper and easier to stagger than a JS animation
+   that has to be told when its own turn is. */
+@keyframes insDeal { from { opacity: 0; transform: translateY(22px) rotate(-0.8deg) } to { opacity: 1; transform: none } }
+@keyframes insRise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes insPop { from { opacity: 0; transform: scale(0.74) } to { opacity: 1; transform: none } }
+@keyframes insGrowX { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+/* A slight overshoot, so a bar arrives rather than simply appearing at its
+   height. 66% is the handoff's own turning point. */
+@keyframes insGrowOver { 0% { transform: scaleY(0) } 66% { transform: scaleY(1.08) } 100% { transform: scaleY(1) } }
+@keyframes insSweep { from { transform: translateX(-120%) } to { transform: translateX(340%) } }
+@keyframes insRail { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@keyframes insBreathe { 0%, 100% { box-shadow: 0 0 0 0 rgba(247,217,168,0) } 50% { box-shadow: 0 0 0 7px rgba(247,217,168,0.13) } }
+
+/* animation-fill-mode matters per family and is not interchangeable.
+
+   `backwards` on the bars: their final width or height is an inline style,
+   and it has to hold while the delay runs — `both` would leave a bar at
+   scale 0 after it finished on a browser that re-runs the rule. `both` on
+   the entrances, so an element that has not started yet is invisible rather
+   than drawn at full opacity and then faded in from it. Getting these the
+   wrong way round is what makes a staggered grid flash its whole contents
+   once before animating. */
+[data-ins-rise] { animation: insRise 460ms cubic-bezier(0.2,0.9,0.25,1) both }
+[data-ins-pop] { animation: insPop 420ms cubic-bezier(0.22,1.3,0.36,1) backwards }
+[data-ins-grow-x] { transform-origin: left; animation: insGrowX 700ms cubic-bezier(0.2,0.9,0.25,1) backwards }
+[data-ins-grow-y] { transform-origin: bottom; animation: insGrowOver 780ms cubic-bezier(0.2,0.9,0.25,1) backwards }
+[data-ins-sweep] { animation: insSweep 900ms cubic-bezier(0.22,1,0.32,1) both }
+[data-ins-rail] { transform-origin: center; animation: insRail 420ms cubic-bezier(0.22,1.05,0.32,1) both }
+[data-ins-deal] { animation: insDeal 700ms cubic-bezier(0.22,1.25,0.36,1) both }
+[data-ins-breathe] { animation: insBreathe 3400ms ease-in-out 1800ms infinite }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ins-rise], [data-ins-pop], [data-ins-grow-x], [data-ins-grow-y],
+  [data-ins-sweep], [data-ins-rail], [data-ins-deal], [data-ins-breathe] {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

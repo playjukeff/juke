@@ -92,6 +92,18 @@ export const POS_LIST = ['QB', 'RB', 'WR', 'TE']
 // same six names — this file is already documented as the one position
 // reference for the whole site, and a name is exactly the kind of thing
 // that drifts silently if it is ever written down twice.
+//
+// THERE ARE NOW TWO COPIES AND THEY MUST NOT DRIFT. app.js carries
+// POS_NAMES_LONG beside posLabel(), because the Your Insights page's habit
+// headlines are written in the engine, beside the arithmetic that produced
+// them, and a sentence that names a position needs the noun rather than the
+// chip. That copy is deliberate and it is the same shape as normalise()
+// living in both build_players.py and worker/names.js: one side is a classic
+// script and the other an ES module, app.js loads first, and a module-scope
+// read of window.JukeEngine is undefined during the prerender
+// (entry-server.jsx runs in Node, where there is no window). Six English
+// nouns are the cheapest possible thing to keep in step; a build-time bridge
+// for them would not be. Change one, change the other.
 export const POS_NAMES = { QB: 'Quarterback', RB: 'Running back', WR: 'Wide receiver', TE: 'Tight end', DST: 'Defense', K: 'Kicker' }
 
 /* The board cell, and the two maps that draw it. These are the palette

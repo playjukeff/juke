@@ -119,6 +119,7 @@ the Stack section above, not a one-time migration hiccup.
 | `worker/migrations/` | D1 schema, applied with `wrangler d1 migrations apply`. The database is not to be shaped by hand — see the note on three variants of one schema. |
 | `web/index.html` | The real homepage entry Vite builds from. Loads the legacy files above as root-relative classic scripts, alongside Vite's own hashed module bundle for React. The Draft Room markup lives here too, hidden — see the Stack section. |
 | `web/src/components/phone/` | The phone-only screens, mounted below `sm` (`usePhoneWidth()`): the draft room, the floating nav pill. Each is a different screen from its desktop counterpart rather than a narrower one — see "The mobile pass" below for why that is a product decision and what it costs. **Two have left**: the homepage (`HomeAlive.jsx`) and the Mock Drafts Lobby (`DraftRoomEntry.jsx`) are one responsive screen at every width now — see "Flow v3" below for why that handoff reverses the split for those two specifically and not for the draft room. |
+| `web/src/components/insights/` | The Your Insights panel — the rail, the four views, the habits sidebar and the two data-series colours the page draws with. Draws only: every figure and every sentence on it comes off `insightsReport()`/`insightsMock()` in app.js section 11d2, so the sidebar's habit card and the centre panel's pick table are two readings of one audit and cannot disagree. Replaced the eight-card analytics grid, which is unrendered rather than deleted. |
 | `web/src/components/settings/` | The Draft Settings screen's own controls, the scoring-rule editor and the draft-order list. Split out of `DraftSettingsModal.jsx` when that file became the whole settings screen rather than a three-tab modal. |
 | `web/src/components/PracticeScenarios.jsx` | The Mock Drafts lobby's "Practice a scenario" grid — four preset drafts that launch with their settings already chosen. Draws only; `practiceScenarios.js` beside it decides which four, and `engine.startScenario()` is what turns a card into a draft. |
 | `web/src/components/shell/leaguePlatforms.js` | Which platforms Juke can read a league from, and which it cannot yet. The one list — it was prose in seven places, and prose cannot be wrong in a way anything notices. |
@@ -138,6 +139,7 @@ the Stack section above, not a one-time migration hiccup.
 | `scripts/test_engine.py` | Runs `draft-engine.js` and `room.js` in node/deno/bun and asserts the rules from outside a browser. |
 | `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
+| `tests/insights.spec.mjs` | Your Insights, against fourteen mocks the CPU really drafted rather than a fixture — a synthetic history would test the renderer and nothing about the audit, which is where every defect in this feature has been. Includes the one assertion that is not about rendering: no kicker or defense is ever named as value you left on the board, and your own kicker is still priced. |
 | `tests/` | End-to-end tests: the real pages, in a real browser, two managers in a real room. `playwright.config.mjs` now builds `web/` and serves `web/dist` rather than the repo root, so every spec runs against the same artifact a Cloudflare Pages deploy produces. |
 | `package.json` (repo root) | **Dev only.** Fetches the test runner and nothing else. Unrelated to `web/package.json` — this one still has no build step, no bundler and no runtime dependency. |
 | `players.js` | **GENERATED.** 260 players by ADP. Never edit by hand. |
@@ -6004,6 +6006,290 @@ change that re-establishes what "over" means has to re-seed the edge.
 
 `tests/practice-scenarios.spec.mjs` covers all of it, and the two bug-fix
 tests were confirmed red with each fix removed and the other four still green.
+
+## Your Insights, and the difference between a share and a decision
+
+`design_handoff_your_insights` (option 1a). One panel, four views on a left
+rail, a habits sidebar that does not change with the view, and a header of
+four KPIs. It replaced the eight-card "Your Tendencies" grid and the
+three-tile KPI row above it on the screen `DraftRoomEntry`'s "Your insights"
+button opens.
+
+**The handoff's own case for the swap is that the grid answered questions
+nobody has to run a mock draft to answer.** Positional share, average round,
+most drafted, draft capital allocation: every competitor shows them, and each
+converges on the population's own base rates the more drafts somebody runs. A
+manager forty mocks in learns that they take a running back in round one.
+What is there instead is what a pick cost against the best value still on the
+board, which two or three picks actually moved projected win %, where you
+take each position against the room you drafted against, and how much your
+own sample can honestly prove.
+
+**Nothing was deleted.** `RecommendationEngine`, `MostDraftedCard`,
+`WeakestSpotCard`, `AvgRoundByPositionCard`, `DraftCapitalAllocationCard`,
+`WinPctTrendCard`, `NetAdpValueCard`, `PositionalWeaknessHeatmap` and
+`WhatToRunNext` are all complete and unrendered in `web/src/components` — the
+state `Header`, `Hero`, `RoomsGrid`, `NewMockPanel` and `phone/HomePhone` are
+already in, and the same rule the root `index.html` migration followed: prove
+the replacement works before deleting what it replaces, and check the running
+site rather than the build log. Their *imports* left `DraftLocker.jsx`,
+because an import nothing renders is a promise the screen no longer keeps.
+`WhatToRunNext` specifically left because the rail's own "Run this next" card
+is the same control aimed at the same `(format, seat)`, and two of them on one
+screen is the duplicate-affordance problem that file already records against
+the launcher it removed.
+
+### It is a replay, and it works on history that already exists
+
+`app.js` section 11d2. Every figure on the page is replayed out of
+`entry.picks` — the whole room's pick list, stored on every history entry
+since the Locker was written — against today's board. Nothing here needed a
+new stored field, so it works on a locker recorded months ago rather than
+only on drafts run after it shipped. That is the same trade `historyStats()`
+documents for its own three reconstructed cards and it costs the same thing:
+a figure drifts as the projection moves under it.
+
+**The counterfactual, stated once.** The room is fixed — it is what actually
+happened — and only your seat is asked to have chosen differently. "Best
+available" at each of your picks is the highest-`aboveReplacement()` player
+nobody had taken yet, and **each alternative is offered once across the
+draft**: a drafter who took him at pick one does not get to take him again at
+pick three. That is what makes the total a real alternate roster rather than
+the same regret counted eight times, which is what summing an unmatched
+per-pick maximum produces — and it is the one place this deliberately
+improves on the handoff's own arithmetic instead of reproducing it.
+
+**Windowed to the most recent twenty mocks**, and every count the page prints
+is a count of that window. A coverage grid drawn over two hundred mocks beside
+a bar chart drawn over the last twenty would be two denominators an inch
+apart.
+
+**Cached on `(locker, board, scoring)`**, keyed the way `PAR_CACHE` already is
+and for the same reason: this is a whole-history replay and it may not run
+once per render. Measured at **25ms warm for fourteen mocks**, 8 September
+2026.
+
+**Which mock is selected survives a move between views 01 and 02 and is
+cleared by 03 and 04**, which is half of the handoff's rule rather than all
+of it. Its reason for clearing on every rail press is sound — view 01's
+header names the selected mock, so returning to it later on a draft nobody
+chose this visit is the stale-view leak `DraftRoom.jsx` already documents for
+`view` and `soloAutopick`. What it costs is the link between the only two
+views that are ABOUT one draft: audit a mock, press "Which picks actually
+mattered", and the handoff hands you a different draft's forks with no way to
+ask for the one you were looking at — while a fork card's own click goes back
+to 01. Views 03 and 04 never read the selection, so clearing it there is
+invisible until the reader returns to 01, which is exactly the moment the
+rule is protecting.
+
+### Three things the handoff asks for that the data cannot support
+
+Each is called out rather than quietly built, because a page whose entire
+subject is evidence may not be the thing on the site that overclaims.
+
+- **"Each fork re-simulated a thousand times."** There is no simulator. There
+  is `projectedWinPctForRoom()`'s normal-difference model, which has its own
+  method note, run twice — once as drafted and once with the alternative in
+  your lineup. The copy says exactly that.
+- **"Against drafters in the same seat and format."** There is no
+  cross-account draft store. **The field on this page is the other seats in
+  your own rooms** — the CPU you actually drafted against — and it is named
+  that way in every caption, legend and KPI note. It is a real control rather
+  than a stand-in for one: same board, same ADP, same night, same rules. It is
+  not other Juke users and the page never implies it is.
+- **"Mock it with TE by 42."** There is no positional constraint in
+  `draft-engine.js`, `draftPlayer()` has no refusal for one and
+  `autoPickForMe()` would take the very player the card forbade. This is
+  `PracticeScenarios.jsx`'s own `rules.noQbBeforeRound` finding, arriving a
+  second time, and it takes the same answer: name the weakness, launch a real
+  draft at the format and seat that tests it, and do not print a rule nothing
+  enforces.
+
+### K and DST are valued and never recommended
+
+`aboveReplacement()` counts a kicker's points because a kicker really did
+score them, which is why the grade reads it rather than `replacementGap()`.
+Naming one as *the best value you passed on* is a different claim entirely —
+it is a claim about the ORDER of kickers, which this app measures at r 0.37,
+−0.09 and 0.57 across three seasons and withholds everywhere else.
+
+The first build did not make that split, and the pick table read **"10.01
+Jonathon Brooks over K Brandon Aubrey, −11"**, with "the best value on the
+board keeps being a kicker" ranked second in the sidebar's habits. That is a
+page that dashes a kicker's Juke score and then argues from a kicker, which is
+the "withholding has to be complete" rule failing in the most visible place
+available — and the same shape as the biggest-reach callout being a lottery
+among kickers.
+
+`insightsCandidates()` filters `UNRANKED_POSITIONS` out of the alternatives
+and out of nothing else. **The two directions are deliberately asymmetric**,
+and `tests/insights.spec.mjs` asserts both halves: no K or DST is ever named
+as an alternative in any mock, and your own kicker is still priced. A test for
+only the first would pass against an audit that had started dropping those
+picks instead of refusing to recommend them.
+
+### Four bugs the swing column found, and every one of them read as a result
+
+The projected-win-% counterfactual is the part of this page that can produce a
+confident, precise, absurd number, and it did four times before it did not.
+All four were found by reading the rendered values against the football rather
+than by anything failing.
+
+- **A player you drafted later is not a player you left on the board.**
+  Offering him as the alternative at an earlier pick produces a
+  counterfactual roster holding him twice, which `bestLineup()` will happily
+  start in two slots. Measured on a real mock: `1.10 Derrick Henry over James
+  Cook`, whom that same seat took at `2.01`, reported **+6.9** points of win
+  rate — a POSITIVE swing on a row the same table said cost seven points.
+  Each seat's own drafted set is excluded now, per seat rather than only for
+  yours, because the room's value-left is the baseline the KPI compares you
+  against and a baseline computed under a different rule is not one.
+- **A swap that empties a starting slot prices the hole, not the decision.**
+  `4.01 Josh Allen` swapped for a tight end leaves no quarterback at all, so
+  the model reported the collapse of a lineup with a hole in it as **+27.2**
+  points of credit for the pick. `winWith()` answers null whenever the swap
+  leaves fewer filled slots than the real lineup had. Null is honest — a
+  drafter in that counterfactual would obviously have taken a quarterback
+  later, and a frozen room has no way to let them — the points column still
+  says what the pick cost, and view 02 simply does not carry a card it cannot
+  price.
+- **"Your best call" has to be priced against the same position.** The next
+  name down the board is usually a different one, which is the previous bug
+  wearing a compliment. The runner-up is now the next player at *your own*
+  position, so the lineup shape is identical and the number is the difference
+  between two players and nothing else.
+- **The win column may not answer two questions.** A pick with no alternative
+  has no swing to report, and printing the runner-up figure there would put a
+  comparison against the next quarterback in the same column as a comparison
+  against the best player on the board. That is the right-value-wrong-column
+  bug this project shipped once already in a standings table; the column draws
+  a dash and the runner-up has its own card.
+
+### Two measurements that were arithmetic wearing a finding's clothes
+
+- **"Three starters idle in the same week" fired on 13 of 14 rosters.** Nine
+  or ten starters over ten bye weeks collide three deep by pigeonhole: a
+  failure mode nobody can avoid is a fact about the calendar. The row leads
+  with the MEAN worst week now — a number that reads at every value — and
+  four is the threshold it counts, which is the same "a week you probably
+  lose" line the grade's own squared bye penalty already draws.
+- **The design-effect deflation fired on nothing.** Effective sample is
+  `n / (1 + (n−1)·ρ)`, and with raw Jaccard roster overlap as ρ, fourteen
+  mocks whose *median* overlap was **4%** — one and a bit shared players out
+  of twenty-eight — came out worth eight drafts. A 40% penalty on a sample
+  that was very nearly independent. ρ is the excess over a baseline now: how
+  much more of itself your history repeats than two arbitrary drafters off
+  the same board do, measured against the other seats in your own rooms, which
+  is the control that already existed for value-left. Same data, 12.4 of 14,
+  and the card draws in both directions because "your mocks are close to
+  independent" is what makes every other number on the page count for more.
+
+### A reference line hidden behind the thing it is a reference for
+
+The handoff draws the room's median as a 1px rule at `bottom: 40px`, under the
+bars, and that works for the sample data it was drawn with — where the short
+bars do not reach it. On real data every bar cleared it and the line was
+invisible exactly where it mattered. It is positioned at the median's own
+height on the bars' own scale now (`report.fieldShare`, chosen by the engine
+so it can never fall off the top) and painted **after** the bars. Which bar
+clears the line is the entire reading of that chart.
+
+### The palette, and the three places it departs from the handoff
+
+Most of this handoff's hexes ARE repo tokens — its panel is `slate`
+(#1E2733), its surface `slate-panel` (#232D3A), its ink `ink` (#EDF1F5), its
+dim ink `ink-muted` (#8A9BAA), its chip ink `CELL_INK` (#16202E), and its five
+position accents are `POS_CHALK` byte for byte. Its steel/oxblood pair
+(#8AA6BE / #BE6153) is already in `NetAdpValueCard.jsx` for the same two
+meanings, which is the clearest evidence there is that it was drawn against
+this app; it moved to `insights/tokens.js` so there is one copy and that card
+imports it. Everything else is used through its existing name, which is the
+same decision the Flow v3 section already records.
+
+Three departures:
+
+1. **The handoff's mint #ABDFC7 is `POS_CHALK.RB`**, and it uses it for the
+   active rail, the "You" dot, positives and the CTA — on the one screen that
+   also draws an RB chip. A hue is spoken for when a reader could confuse two
+   meanings in the same glance, and a mint You-dot on a row labelled with a
+   mint RB chip is that glance. All of those jobs are **teal** here, which is
+   what the Draft Room's own seat bracket became in the board-palette pass
+   ("cyan hairlines"), is the app's CTA and focus colour, and is the one hue
+   documented as never being a position.
+2. **The handoff's amber card #FBD5A8 is `POS_CHALK.TE`**, and the sidebar's
+   light card is about whichever position is costing the most. A card in tight
+   end's own colour under a headline about running backs reads as a mistake.
+   `flow.gold` is the warm attention tone and is not a position chalk.
+3. **Its label ink #8A4B12 passes on the card and fails on the tiles.** 4.99
+   against #F7D9A8, and the two stat tiles inside that card carry
+   `rgba(22,32,46,0.1)` over it — rgb(225,199,156) — where the same brown is
+   **4.13**. `#78400F` is the identical hue and saturation two steps darker:
+   6.08 on the card, 5.05 on the tiles. **A colour is right on the surface it
+   actually lands on, and this one lands on two.**
+
+**And the opacity trick had to come out.** The handoff dims the "best
+available" column with `opacity: 0.45`, which composites #8A9BAA to **2.12**
+while a sweep reading `color` reports 4.9 — the third way to lie about a
+colour, and the same defect this file already records on the board card's own
+`POS · TEAM` line. It is `ink-muted` at full strength, which is the dimmest
+tone that clears the bar on that ground.
+
+Measured with transitions killed and both element and ancestor backgrounds
+composited: **zero failures across all four views**, and the sweep was
+confirmed non-vacuous by injecting a known-bad colour.
+
+### Responsive, which the handoff says is not designed
+
+It is authored at a fixed 1480px and its README says to ask before
+improvising. This page is what `DraftRoomEntry`'s "Your insights" opens **at
+every width**, phones included, so it cannot ship desktop-only — and what
+shipped is the README's own recommendation rather than something invented on
+top of it: below `xl` the sidebar drops under the panel and the rail becomes a
+horizontal strip.
+
+Four things that only exist because of that, all measured at 375px:
+
+- **The rail buttons are capped at 220px and drop their sub-line.** Uncapped
+  they size to their own titles and the strip comes out **2313px** wide with
+  the widest card at 418 — a scroller a reader drags three times to see four
+  options. The sub is also the third copy of a sentence the centre panel
+  prints in full two inches below.
+- **The "Run this next" card is not in that scroller.** A call to action
+  parked at the far end of a horizontal scroller is a control most readers
+  never reach. It is a sibling of the nav, full width below it on a phone and
+  under the four buttons in the column at `xl`.
+- **The KPI cards are two up below `sm`.** A plain 168px basis produces one
+  per row at 375 (the panel leaves 311px and two cards want 346), which is
+  four full-width tiles and most of a screen of numbers before the panel they
+  summarise.
+- **The dumbbell scale is inset by half a dot.** The widest mark on that track
+  is the 14px "you" dot, and at 100% of a 167px track it hangs 5px past the
+  grid cell — an overflow that can neither scroll nor ellipsise. `at()` and
+  `span()` map rounds onto `calc(7px + (100% − 14px) · frac)`, so the inset
+  survives whatever width the track ends up at.
+
+The overflow sweep comes back clean at 375 and 1440 on all four views, and
+`tests/insights.spec.mjs` asserts exactly that at both.
+
+### What is still open
+
+- **The startable tier rarely empties before the draft does.** The "tier
+  empties" marker is the fractional round in which the last member of a
+  position's startable tier (top `replacementRank(pos) − 1` by projection)
+  comes off the board, and on a 10-team 14-round board that is round 7 for RB
+  and 12 for TE — so no position on a CPU-drafted locker is ever past its
+  own cliff, and the first of the habit headline's three shapes never fires.
+  The other two do: measured over fourteen seeded mocks, tight end came out
+  "4 picks after the room does" with the numbers under it agreeing. So the
+  page is not short of something to say; what is untested is the shape that
+  fires when somebody is genuinely past a tier. **Do not tune the cliff
+  against seeded data** — the seeded drafter is the app's own advice.
+- **No account-side coverage.** Everything here reads `readHistory()`, which
+  is localStorage, so a signed-in reader's locker is whatever
+  `reconcileWithServer()` last merged. That is the same position every other
+  Locker surface is in and is not new; it is worth knowing before anybody
+  reads a coverage grid as a claim about an account rather than about a
+  browser.
 
 ## Flow v3: the rooms became places, and the shell became one shell
 
