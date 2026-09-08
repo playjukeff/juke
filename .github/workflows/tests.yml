@@ -100,3 +100,11 @@ jobs:
       # run with no npm install -- like every other step in this job.
       - name: Connected-league state machine
         run: node scripts/test_league_state.mjs
+
+      # The decision-ledger store, for the reason the one above exists: the
+      # surfaces that render it are all inside Clerk's <SignedIn>, which a
+      # keyless build never draws, so the machine is tested where it
+      # actually is. web/src/lib/decisionStore.js imports nothing, which is
+      # what lets this run with no npm install like every other step here.
+      - name: Decision-ledger state machine
+        run: node scripts/test_decision_state.mjs
