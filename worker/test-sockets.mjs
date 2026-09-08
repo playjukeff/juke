@@ -313,7 +313,25 @@ check("renaming rewrites what was already said",
 
    The fallback id is what keeps a timeout reporting rather than crashing:
    the reaction assertions below then fail on their own terms, in a run
-   that still gets to the end and says what else was fine. */
+   that still gets to the end and says what else was fine.
+
+   That last sentence was false for as long as it stood, and the deploy
+   that merged the fix for the poll blocks failed on THIS block within the
+   hour. `|| { id: -1 }` stops `target.id` throwing and does nothing about
+   `chat.find((m) => m.id === target.id).reacts` two checks below, where a
+   find against an id no message carries returns undefined. So the guard
+   covered the dereference it was written for and not the next one.
+
+   Which is the rule this comment already cites, applied to itself: a
+   null-returning read needs a caller that reads null, and there were two
+   callers. `?.` rather than a `blocked()` guard, deliberately, because
+   what this block wants is exactly what the paragraph above says it
+   wants -- the assertions failing on their own terms -- and there are
+   only two dependent waits below it, so nothing cascades far.
+
+   The general form, for the next one of these: grep this file for a `.`
+   immediately after a `.find(` or a `[...]`, not for the fallbacks. A
+   fallback is evidence somebody already knew, not evidence they finished. */
 const target = (await until("a stored message reaches bob",
                             () => lastState(bob)?.chat?.filter((m) => !m.system)[0])) || { id: -1 };
 check("a stored message carries an id", typeof target?.id, "number");
