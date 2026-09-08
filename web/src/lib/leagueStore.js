@@ -21,6 +21,12 @@
  * useLeague.js re-exports all of this, so no consumer changed.
  */
 
+/* The one import, and its own header explains why it does not break the
+   "this file imports nothing" property that the rest of this comment block
+   turns on: it is a dependency-free sibling, loaded by path in bare Node by
+   scripts/test_league_state.mjs exactly as this file is. */
+import { singleFlight } from './singleFlight.js'
+
 /* The connected league, and whether we know yet.
 
    ---- Four states, and the fourth one is a bug fix ----
@@ -142,8 +148,14 @@ function listKey(leagues) {
 
 /* One request at a time. Four components mounting together ask four times
    otherwise, and `refresh()` is also bound to three window events that can
-   fire in the same tick. */
-let inFlight = null
+   fire in the same tick.
+
+   The latch has a deadline now, and it did not: `fetch()` never times out on
+   its own, so one wedged request used to hold this for the life of the tab
+   and every later refresh returned at the guard without doing anything. See
+   singleFlight.js, which is also where the identical latch in tierStore.js
+   and decisionStore.js now lives — one deadline rather than three. */
+const flight = singleFlight()
 
 /* A failed read retries itself, bounded, and then stops.
 
@@ -212,7 +224,7 @@ function authToken() {
    often as anything likes. */
 export function refreshLeagues() {
   if (typeof window === 'undefined') return
-  if (inFlight) return
+  if (flight.busy()) return
 
   const auth = window.JukeAuth
   if (!auth || !auth.isSignedIn) {
@@ -227,9 +239,14 @@ export function refreshLeagues() {
      `juke:data-loaded` listener below is what closes it. */
   if (!window.Live || !window.Live.listLeagues) return
 
-  inFlight = Promise.resolve(authToken())
+  flight.run((isCurrent) => Promise.resolve(authToken())
     .then((token) => window.Live.listLeagues(token))
     .then((res) => {
+      /* A newer attempt has started, so this answer is stale by
+         construction — the deadline below is what makes two of these
+         possible at once. Same rule the player sheet follows for news: which
+         request an answer belongs to is checked when it LANDS. */
+      if (!isCurrent()) return
       if (!res.ok) {
         /* A failure is not "no league". Saying "none" here would offer
            Connect to somebody who has already connected, and pressing it
@@ -251,10 +268,19 @@ export function refreshLeagues() {
       settle(list.length ? 'connected' : 'none', list, null)
     })
     .catch(() => {
+      if (!isCurrent()) return
       settle(state.leagues.length ? 'connected' : 'error', state.leagues, 'offline')
       scheduleRetry()
-    })
-    .finally(() => { inFlight = null })
+    }),
+  /* The deadline fired: this attempt is still running and we have stopped
+     waiting for it. Reported as its own reason rather than folded into
+     "offline", because they are different facts — one is a request that
+     failed and one is a request that never came back — and only the second
+     one says anything about the connection being alive but useless. */
+  () => {
+    settle(state.leagues.length ? 'connected' : 'error', state.leagues, 'timeout')
+    scheduleRetry()
+  })
 }
 
 /* A deliberate retry: a person pressed something, or the tab came back.

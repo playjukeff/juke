@@ -34,13 +34,20 @@ import path from "node:path";
 
 let calls = 0;
 let answer = { ok: false, reason: "offline" };
+let manual = false;
+let pending = [];
 const timers = [];
 
 globalThis.window = {
   JukeAuth: { isSignedIn: true, userId: "u_test", getToken: () => Promise.resolve("tok") },
   Live: {
+    /* `manual` hands back a promise this file resolves by hand, which is the
+       only way to have TWO attempts alive at once -- the state a deadline on
+       the latch newly makes possible, and therefore the state worth
+       testing. */
     listLeagues() {
       calls += 1;
+      if (manual) return new Promise((resolve) => pending.push(resolve));
       return Promise.resolve(answer);
     }
   },
@@ -130,6 +137,85 @@ await check("signed out is 'none' and asks nobody", async () => {
   assert.equal(leagueState().status, "none");
   assert.equal(leagueState().reason, "signed-out");
   assert.equal(calls, before, "a signed-out read must not hit the worker");
+});
+
+/* ---- the latch, and the deadline it did not have ------------------- */
+
+/* fetch() has no timeout in any browser, so a connection that is accepted
+   and never answered hangs for the life of the tab. The latch was a bare
+   `if (inFlight) return`, which is a complete answer for every way a request
+   can END and no answer at all for one that does not: a single wedged
+   attempt held it forever, and from then on every retry, every juke:auth and
+   every tab focus did nothing.
+
+   Suspected during the 8 September 2026 /me/leagues outage and found
+   innocent of it -- the tail showed six requests in one sitting -- so it is
+   fixed here on its own merits rather than on that theory. */
+
+await check("a wedged request lets go of the latch on its deadline", async () => {
+  window.JukeAuth = { isSignedIn: true, userId: "u_test", getToken: () => Promise.resolve("tok") };
+  manual = true;
+  pending = [];
+
+  const before = calls;
+  refreshLeagues();
+  await settleQueue();
+  refreshLeagues();
+  await settleQueue();
+  assert.equal(calls - before, 1, "the latch must hold while one is genuinely in flight");
+
+  await drain();  // the deadline
+  assert.equal(leagueState().reason, "timeout", "a request that never came back is not 'offline'");
+
+  manual = false;
+  answer = { ok: true, leagues: [{ provider: "sleeper", leagueId: "2", name: "After The Deadline" }] };
+  refreshLeagues();
+  await settleQueue();
+  assert.equal(
+    leagueState().league.name, "After The Deadline",
+    "this is the bug: with no deadline the latch is never released and this never runs",
+  );
+});
+
+await check("a superseded answer does not overwrite a fresher one", async () => {
+  // Releasing the latch early is what makes two attempts possible at once,
+  // so the fix creates this race and has to close it in the same breath.
+  manual = true;
+  pending = [];
+
+  refreshLeagues();          // A -- hangs
+  await settleQueue();
+  await drain();             // A's deadline; the latch is free again
+  refreshLeagues();          // B -- hangs
+  await settleQueue();
+  assert.equal(pending.length, 2, "two attempts should now be alive");
+
+  pending[1]({ ok: true, leagues: [{ provider: "sleeper", leagueId: "3", name: "Fresh" }] });
+  await settleQueue();
+  assert.equal(leagueState().league.name, "Fresh");
+
+  pending[0]({ ok: true, leagues: [{ provider: "sleeper", leagueId: "4", name: "Stale" }] });
+  await settleQueue();
+  assert.equal(leagueState().league.name, "Fresh", "the older attempt's answer must be dropped");
+});
+
+await check("but a slow answer that is still the newest IS applied", async () => {
+  /* The deliberate other half: the deadline exists to stop the latch
+     wedging, not to throw away a slow success. Firing it costs a briefly
+     shown error state and never a lost answer. */
+  manual = true;
+  pending = [];
+
+  refreshLeagues();
+  await settleQueue();
+  await drain();
+  assert.equal(leagueState().reason, "timeout");
+
+  pending[0]({ ok: true, leagues: [{ provider: "sleeper", leagueId: "5", name: "Late But Only" }] });
+  await settleQueue();
+  assert.equal(leagueState().status, "connected");
+  assert.equal(leagueState().league.name, "Late But Only");
+  manual = false;
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK");

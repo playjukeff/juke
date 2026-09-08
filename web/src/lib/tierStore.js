@@ -18,10 +18,15 @@
  * token to ask with, and "not signed in" is exactly what the free tier
  * already is for every purpose this store exists to answer. */
 
+import { singleFlight } from './singleFlight.js'
+
 const state = { status: 'loading', tier: null }
 const subscribers = new Set()
 
-let inFlight = null
+/* One at a time, with a deadline. The bare `inFlight = null` latch this
+   replaces had no answer for a request that never comes back, and fetch()
+   has no timeout of its own — see singleFlight.js. */
+const flight = singleFlight()
 
 function announce() {
   subscribers.forEach((fn) => fn())
@@ -45,7 +50,7 @@ function authToken() {
    fire in the same tick). */
 export function refreshTier() {
   if (typeof window === 'undefined') return
-  if (inFlight) return
+  if (flight.busy()) return
 
   const auth = window.JukeAuth
   if (!auth || !auth.isSignedIn) {
@@ -57,9 +62,11 @@ export function refreshTier() {
   // on window.Live rather than answering 'none' early.
   if (!window.Live || !window.Live.me) return
 
-  inFlight = Promise.resolve(authToken())
+  flight.run((isCurrent) => Promise.resolve(authToken())
     .then((token) => window.Live.me(token))
     .then((res) => {
+      // A newer attempt has already answered; this one is stale.
+      if (!isCurrent()) return
       if (!res || !res.ok) {
         settle('error', state.tier)
         return
@@ -74,8 +81,11 @@ export function refreshTier() {
       }
       settle('ready', res.tier)
     })
-    .catch(() => settle('error', state.tier))
-    .finally(() => { inFlight = null })
+    .catch(() => { if (isCurrent()) settle('error', state.tier) }),
+  // Stopped waiting. 'error' rather than a guess at 'free', for this
+  // store's own reason: reading a downgrade off an infra hiccup is worse
+  // than saying we could not tell.
+  () => settle('error', state.tier))
 }
 
 export function tierState() {

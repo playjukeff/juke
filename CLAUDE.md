@@ -7755,12 +7755,52 @@ rule, used to locate a bug rather than to confirm a deploy.
   database: both rows NULL, while both platforms were serving a real draft
   time. Two independent bugs on one feature, each hiding the other's symptom.
 
-- **The `inFlight` latch in `leagueStore.js` was suspected and is innocent.**
-  It has no timeout, so a `getToken()` that never settles would wedge the
-  store for the session — a real hazard, and not this one: the tail shows six
-  `GET /me/leagues` in a single sitting, so the latch was clearing exactly as
-  written. Left alone rather than "fixed" on a theory, which is the same call
-  this file records about `DraftEngine.jitter()`.
+- **The `inFlight` latch in `leagueStore.js` was suspected and was innocent.**
+  The tail showed six `GET /me/leagues` in a single sitting, so it was
+  clearing exactly as written. It was left alone at the time rather than
+  "fixed" on a theory — the same call this file records about
+  `DraftEngine.jitter()` — and then fixed on its own merits once the real
+  cause was closed. See below.
+
+### A latch with no deadline, in three copies
+
+`fetch()` has no timeout in any browser. A connection a proxy accepts and
+never answers hangs for as long as the tab is open, and Clerk's `getToken()`
+is awaited in front of it. So the eight-line latch these stores each carried
+— a module-level `inFlight`, an early `if (inFlight) return`, and a
+`.finally` to let go — was a complete answer for every way a request can END
+and no answer at all for one that does not. One wedged attempt held it for
+the session, and from that moment every retry, every `juke:auth`, every
+`juke:data-loaded` and every tab focus hit the guard and did nothing.
+
+**It was three copies, not one.** `leagueStore`, `tierStore` and
+`decisionStore`, identical. So the deadline is in `web/src/lib/singleFlight.js`
+and the three import it — which is the one thing those files' headers say
+they never do. That rule's stated REASON is testability (CI installs no npm
+dependencies, so anything reachable only through a React hook is untestable),
+and a dependency-free sibling loaded by path in bare Node keeps it exactly.
+What the rule is against is a fact written down twice, and a
+sequence-guarded latch is subtle enough that three copies would drift.
+
+**Releasing early creates a second race, and the fix has to close it in the
+same breath.** Two attempts can now be in flight at once, which was
+impossible before, so a slow answer must not overwrite a fresher one — the
+rule the player sheet already follows for news: which request an answer
+belongs to is checked when it LANDS. `work` is handed `isCurrent()`. A late
+answer that is still the newest IS applied, deliberately: the deadline exists
+to stop the latch wedging, not to discard a slow success, so firing it costs
+a briefly shown error state and never an answer.
+
+**15000ms, derived rather than picked.** Measured against the deployed worker
+on 8 September 2026, `/me/leagues` took 24–733ms of worker time over six real
+requests — so this is about twenty times the slowest healthy one and cannot
+fire on a request that was going to succeed. It is also the last rung of the
+stores' own `RETRY_MS`, the longest wait they already treat as reasonable.
+Move the two together.
+
+`scripts/test_league_state.mjs` covers it with the stubbed timers it already
+had, and both guards were confirmed red independently: dropping the deadline
+fails three assertions, dropping `isCurrent()` fails exactly one and names it.
 
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
