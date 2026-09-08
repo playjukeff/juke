@@ -64,17 +64,58 @@ export const TABS = [
    to find out there is a Big Board tab. */
 const LOBBY_ROWS = 8
 
-function Banner() {
+/* What is known, counted from the rows rather than written down.
+ *
+ * This banner used to say Juke had "no college statistics, no combine testing
+ * and no NFL draft position for any of these players", which was true the day
+ * it was written and false the moment the CFBD pipeline ran — two of the three
+ * gaps it named had closed underneath it. Copy going stale the day a feature
+ * ships is the failure this project catalogues at length, and a banner whose
+ * whole job is honesty is the worst place for it.
+ *
+ * So the numbers are derived. A class where nothing joined says so on its own,
+ * and nobody has to remember to come back here. */
+function Banner({ rows }) {
+  let drafted = 0
+  let undrafted = 0
+  let withCollege = 0
+  for (const row of rows) {
+    const p = row.prospect
+    if (!p) continue
+    if (p.drafted) drafted += 1
+    if (p.undrafted) undrafted += 1
+    if (p.college) withCollege += 1
+  }
+  const anything = drafted || undrafted || withCollege
+
   return (
     <div className="mb-5 rounded-[12px] border border-flow-amber/30 bg-flow-amber/10 px-4 py-3">
       <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-flow-amber">
-        Thin evidence · said out loud
+        What is known, and what is not
       </div>
-      <p className="mt-1 max-w-[70ch] text-[13px] leading-relaxed text-voidInk-body">
-        Juke has no college statistics, no combine testing and no NFL draft position for any of
-        these players — none of it is in this product yet. What it has is a projection, a college,
-        a size and a depth-chart slot. The order below is real and it is thin, and it stays thin
-        until the draft says something.
+      <p className="mt-1 max-w-[72ch] text-[13px] leading-relaxed text-voidInk-body">
+        {anything ? (
+          <>
+            Where <strong className="font-semibold text-white">{drafted}</strong> of these players
+            went in the draft, and what{' '}
+            <strong className="font-semibold text-white">{withCollege}</strong> of them did in
+            college.{' '}
+            {undrafted ? (
+              <>
+                <strong className="font-semibold text-white">{undrafted}</strong> were never
+                drafted at all — which is a fact about them rather than a gap in what we know.{' '}
+              </>
+            ) : null}
+            Nobody here has a combine number: no feed in this product carries one yet, so every
+            profile still says so.
+          </>
+        ) : (
+          <>
+            No draft class has been read yet, so nothing below carries a draft position or a
+            college line. That fills on the next nightly rebuild — it is a fact about the pipeline
+            rather than about this year's rookies.
+          </>
+        )}
       </p>
     </div>
   )
@@ -191,10 +232,18 @@ export default function ProspectRoomLive({ tab }) {
      whole player pool on exactly that, and the Waiver Room reproduced it
      once before catching it. Length is what actually moves here — an empty
      board becoming 480 rows when the deferred data lands. */
+  /* rookies() stays pure — it takes lookups rather than the engine — so what
+     the pipeline learned about each player is attached HERE, once, rather
+     than read again inside knownAbout(). One interpretation of the three
+     draft states, and it is prospectFor()'s. */
   const rows = useMemo(
-    () => rookies(board, statOf, gapOf),
+    () =>
+      rookies(board, statOf, gapOf).map((row) => ({
+        ...row,
+        prospect: engine && engine.prospectFor ? engine.prospectFor(row.player) : null,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [board.length, statOf, gapOf]
+    [board.length, statOf, gapOf, engine]
   )
 
   /* Below the hooks, and that placement is the whole point.
@@ -253,7 +302,7 @@ export default function ProspectRoomLive({ tab }) {
 
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
-      <Banner />
+      <Banner rows={rows} />
       {positions.length > 1 ? (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {['ALL'].concat(positions).map((key) => (
