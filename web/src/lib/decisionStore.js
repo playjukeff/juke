@@ -184,7 +184,8 @@ export function retryDecisions() {
  *   "not-connected"  no live connection to that league. Free cannot
  *                    connect one at all, so this is the tier rule arriving
  *                    at the moment somebody tries to use the product.
- *   "refused"        the id belongs to another account. Not retryable.
+ *   "id-taken"       the id belongs to another account. Not retryable,
+ *                    and the same word /me/history answers with.
  */
 export function recordDecision(decision) {
   if (!decision || !decision.id) {

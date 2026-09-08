@@ -831,11 +831,15 @@ async function leagueIsConnected(env, clerkId, provider, leagueId) {
    as deleteHistoryEntry()'s WHERE, applied to the write rather than the
    delete.
 
-   Returns true (stored), "not-connected" (no live connection to that
-   league), "refused" (the id belongs to someone else), or false (a real
-   D1 failure, logged). */
+   Returns "ok", "not-connected" (no live connection to that league),
+   "conflict" (the id belongs to someone else) or "error" (a real D1
+   failure, logged) -- putHistoryEntry()'s own vocabulary a few functions
+   up, deliberately, and for the reason its comment gives: a boolean-plus-
+   strings shape lets a caller keep writing `if (ok)` and get it wrong,
+   because every refusal is truthy. One word per outcome, and none of them
+   truthy by accident. */
 export async function putDecision(env, clerkId, rec, dataText) {
-  if (!env.DB) return false;
+  if (!env.DB) return "error";
 
   if (!(await leagueIsConnected(env, clerkId, rec.provider, rec.leagueId))) {
     return "not-connected";
@@ -859,10 +863,10 @@ export async function putDecision(env, clerkId, rec, dataText) {
       ),
     ]);
     const write = results[1];
-    return write && write.meta && write.meta.changes ? true : "refused";
+    return write && write.meta && write.meta.changes ? "ok" : "conflict";
   } catch (err) {
     console.error("decision write failed:", err && err.message);
-    return false;
+    return "error";
   }
 }
 

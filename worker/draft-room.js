@@ -1717,11 +1717,15 @@ async function meDecisionsRoute(request, env) {
        same shape as the tier cap's own refusal. */
     return new Response(JSON.stringify({ ok: false, error: "not-connected" }), { status: 403, headers });
   }
-  if (stored === "refused") {
-    return new Response(JSON.stringify({ ok: false, error: "refused" }), { status: 409, headers });
+  /* "id-taken", the same word /me/history answers with, because it is the
+     same condition: a client-minted id that already belongs to another
+     account. Two names for one fact is the drift this project keeps
+     finding, and a screen would have to carry both sentences. */
+  if (stored === "conflict") {
+    return new Response(JSON.stringify({ ok: false, error: "id-taken" }), { status: 409, headers });
   }
   return new Response(
-    JSON.stringify(stored ? { ok: true } : { ok: false, error: "store-failed" }),
+    JSON.stringify(stored === "ok" ? { ok: true } : { ok: false, error: "store-failed" }),
     { headers }
   );
 }

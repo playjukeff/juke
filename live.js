@@ -905,8 +905,12 @@
                           "forbidden", which is originAllowed() refusing
                           the caller's Origin -- one is a product rule and
                           the other is a misconfigured page.
-         "refused"        409: the id belongs to somebody else. Nothing was
-                          written and nothing is worth retrying.
+         "id-taken"       409: the id belongs to somebody else. Nothing
+                          was written and nothing is worth retrying. The
+                          same word /me/history uses -- reasonForStatus()
+                          maps 409 to it too, so the body-read below and
+                          the fallback agree rather than giving one
+                          condition two names.
 
        `league` is optional on the read. My League asks for one league's
        decisions and History asks for all of them, and both want the same
