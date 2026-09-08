@@ -21,11 +21,34 @@ import { test, expect } from "@playwright/test";
 import { openApp, clickHidden } from "./helpers.mjs";
 
 async function startDraft(page) {
+  /* The board has to have LANDED before the button is pressed.
+   *
+   * setupProblem() refuses a draft while players.js and stats.js are still
+   * in flight -- they are deferred behind the cold-load reveal -- and
+   * startDraft() reads that refusal and returns without starting anything.
+   * The click succeeds, nothing happens, and the assertion below fails as
+   * "draft started: false", which names neither the board nor the reason.
+   *
+   * This is the third place in this suite to need the same wait: createRoom()
+   * and startPhoneDraft() both learned it earlier, each after a red run that
+   * read as a broken product. It goes stale as a flat sleep because the wait
+   * is on a CONDITION -- how long the deferred files take is a property of
+   * the connection, not a number.
+   */
+  await page.waitForFunction(
+    () => typeof dataReady === "function" && dataReady(),
+    null,
+    { timeout: 30000 },
+  );
   await page.evaluate(() => {
     document.querySelectorAll("details.setupbox").forEach((d) => (d.open = true));
     document.getElementById("startBtn").click();
   });
-  await page.waitForTimeout(300);
+  /* Wait for the thing being asserted rather than for 300ms and hoping.
+     startDraft() is synchronous once the board is there, so this settles
+     immediately in the healthy case and reports honestly in the slow one. */
+  await page.waitForFunction(() => state.started, null, { timeout: 15000 })
+    .catch(() => {});
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
 }
 

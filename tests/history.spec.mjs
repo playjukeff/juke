@@ -34,7 +34,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { openApp, SITE } from "./helpers.mjs";
+import { openApp, SITE, LOCAL_SITE } from "./helpers.mjs";
 
 const ROW = (over) =>
   Object.assign(
@@ -103,8 +103,32 @@ async function openHistory(context, opts) {
   return page;
 }
 
+/* A stub can only stand in for Clerk where Clerk is ABSENT.
+ *
+ * signIn() below writes window.JukeAuth, which useDecisions() reads directly
+ * -- deliberately, because useAuth() throws without a provider and a keyless
+ * build has none. So in a keyless build the stub is the whole truth and every
+ * signed-in surface renders.
+ *
+ * Against production it is not: that build carries a real pk_live_ key, so
+ * <SignedIn> is governed by Clerk, Clerk says signed out, and the ledger
+ * renders its signed-out half. The assertions then read the page and get
+ * "Log in / Sign up", which looks like the ledger having broken.
+ *
+ * Five of these stood red on the nightly for that reason. Same treatment and
+ * same reasoning as league-connect.spec.mjs, and the same instruction with
+ * it: VERIFY A SKIP IN BOTH DIRECTIONS or it is a deletion. Locally all seven
+ * run; against production two run and five skip.
+ *
+ * The two that survive are the ones that need no account -- the signed-out
+ * visitor, and the rail pointing at the ledger -- and they are what keeps
+ * this file meaningful against the deployed site rather than merely quiet.
+ */
+const CLERK_GATED = "signed-in rendering is Clerk's, and a keyed build ignores the stub";
+
 test.describe("the decision ledger", () => {
   test("a worker it cannot reach is not an empty record", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await openHistory(context, { answer: { ok: false, reason: "offline" } });
     const body = await screen(page).innerText();
 
@@ -137,6 +161,7 @@ test.describe("the decision ledger", () => {
   });
 
   test("an account with nothing recorded says so, distinctly", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await openHistory(context, { answer: { ok: true, decisions: [] } });
     const body = await screen(page).innerText();
 
@@ -148,6 +173,7 @@ test.describe("the decision ledger", () => {
   });
 
   test("rows draw with their verdicts, and the counts are over the whole ledger", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
     const body = await screen(page).innerText();
 
@@ -164,6 +190,7 @@ test.describe("the decision ledger", () => {
   });
 
   test("the room pills are the rooms in the ledger, not a fixed list", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
 
     /* Three rooms are represented, so three pills plus All. Waiver, Trade
@@ -179,6 +206,7 @@ test.describe("the decision ledger", () => {
   });
 
   test("every filter group actually narrows the list", async ({ context }) => {
+    test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
     const rowsNow = () => screen(page).innerText();
 
