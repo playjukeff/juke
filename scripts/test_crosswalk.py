@@ -1100,6 +1100,78 @@ def test_college_board():
 test_college_board()
 
 
+def test_board_separation():
+    """A player still in college may not reach the mock draft board.
+
+    A product rule rather than an implementation detail, and the reason it
+    gets a test: it is satisfied today by CONSTRUCTION -- the board is FFC ADP
+    joined to Sleeper's NFL master, and a college athlete is in neither file
+    -- which makes it exactly the kind of property somebody could undo without
+    noticing. "Show college players in the search too" is a reasonable-sounding
+    change that would break it silently.
+
+    The transition is the other half of the rule: once an NFL team drafts him
+    he SHOULD appear in both places, and that happens on its own. He turns up
+    in Sleeper's master with years_exp 0, FFC gives him an ADP, and the next
+    rebuild puts him on the board with a pr block carrying his draft position
+    and his final college season. He drops off COLLEGE_BOARD at the same time,
+    because he is no longer on a college roster.
+    """
+    roster = [{"id": 5079720, "firstName": "Jeremiah", "lastName": "Smith",
+               "position": "WR", "team": "Ohio State", "year": 3}]
+    season = [{"playerId": "5079720", "category": "receiving",
+               "statType": "YDS", "stat": "1243"}]
+    board = bp.build_college_board(roster, season)
+    check("separation: the college player is on the college board",
+          list(board), ["5079720"])
+
+    # ---- he is not, and cannot be, on the draft board ----
+    # join_rows() builds the board from FFC rows against Sleeper's master.
+    # Neither knows him, so he cannot arrive however he is asked for.
+    sleeper = {"99": {"full_name": "Real NFLer", "position": "WR",
+                      "team": "BUF", "college": "Duke", "years_exp": 3}}
+    indexes = bp.index_sleeper(sleeper)
+    ffc = [{"name": "Jeremiah Smith", "position": "WR", "team": "OSU",
+            "adp": "12.0", "bye": "9"}]
+    players, unmatched = bp.join_rows(ffc, sleeper, indexes)
+    # TWO independent barriers, and the first is stronger than expected. A
+    # college row never reaches the join at all: join_rows() drops anything
+    # whose team is not one of the 32 NFL clubs, and "Ohio State" is not. So
+    # he is not even an unmatched row -- there is nothing to match.
+    check("separation: a college school is not an NFL club, so the row is dropped",
+          (players, unmatched), ([], []))
+
+    # And the second barrier, reached only if a row DID carry an NFL team:
+    # the name still resolves to no Sleeper player, so the board row is
+    # id-less and reported rather than quietly kept.
+    ffc_nfl = [{"name": "Jeremiah Smith", "position": "WR", "team": "BUF",
+                "adp": "12.0", "bye": "9"}]
+    players2, unmatched2 = bp.join_rows(ffc_nfl, sleeper, indexes)
+    check("separation: and even then he joins to no Sleeper player",
+          [p["id"] for p in players2], [""])
+    check("separation: and is reported rather than silently kept",
+          len(unmatched2), 1)
+
+    # extend_deep_bench() is the other door onto the board, and it draws from
+    # the Sleeper master alone -- so a college athlete cannot come through it
+    # either, however well known he is.
+    deep = bp.extend_deep_bench([], sleeper, {"BUF": 9}, target=5)
+    check("separation: the deep bench cannot reach past Sleeper's own master",
+          [p["name"] for p in deep], ["Real NFLer"])
+    check("separation: so no college player is on it",
+          any(p["name"] == "Jeremiah Smith" for p in deep), False)
+
+    # ---- the two key spaces must not be confusable ----
+    clash = bp.check_id_spaces({"5079720": {}}, board)
+    check("separation: an id in both spaces is caught, not left to a lookup",
+          clash, ["5079720"])
+    check("separation: and a healthy pair reports nothing",
+          bp.check_id_spaces({"13287": {}}, board), [])
+
+
+test_board_separation()
+
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED: " + ", ".join(FAILURES))

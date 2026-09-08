@@ -1672,6 +1672,32 @@ COLLEGE_PER_POSITION = 20
 COLLEGE_MIN_YEAR = 3
 
 
+def check_id_spaces(stats, college_board):
+    """Two key spaces in one file, and nothing may confuse them.
+
+    PLAYER_STATS is keyed by Sleeper id and COLLEGE_BOARD by CFBD athlete id.
+    Both are numeric strings, so a collision would make a lookup that fell
+    through from one to the other -- PLAYER_STATS[id] || COLLEGE_BOARD[id] --
+    return a completely different person, with every number around it correct.
+    That is the shape of wrongness this project keeps finding.
+
+    Measured 8 September 2026: zero collisions, and the ranges do not even
+    touch -- CFBD athlete ids are 7 digits, Sleeper ids 2 to 5. But that is
+    incidental rather than guaranteed. Sleeper ids grow, and the day they
+    reach seven digits this stops being free.
+
+    Reported rather than repaired: dropping a real college player because his
+    id happens to equal some NFL player's would be the wrong trade, and the
+    room looks the two up in separate objects anyway. What matters is that
+    nobody discovers this by finding a linebacker in a running back's sheet.
+    """
+    clash = sorted(set(college_board) & set(stats))
+    if clash:
+        print(f"  ! {len(clash)} ids are BOTH a Sleeper id and a CFBD athlete id: "
+              f"{', '.join(clash[:5])}")
+    return clash
+
+
 def build_college_board(roster_rows, season_rows):
     """Players still in college, by production, for the draft after this one.
 
@@ -2461,6 +2487,9 @@ def main():
             roster_rows = fetch_cfbd(
                 f"/roster?year={PROSPECT_ROSTER_SEASON}&classification=fbs")
             college_board = build_college_board(roster_rows, season_rows)
+            prospect_report.extend(
+                f"ID SPACE | {cid} | is both a Sleeper id and a CFBD athlete id"
+                for cid in check_id_spaces(stats, college_board))
     else:
         print("CFBD: no CFBD_KEY set, so no draft position and no college line")
 
