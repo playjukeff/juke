@@ -8193,9 +8193,30 @@ finding in the whole pass was the one nothing flagged.
   generated files. Check `unmatched.txt` afterwards. **`TANK01_KEY` in the
   environment is optional**: without it the crosswalk is skipped, the build is
   otherwise identical, and news stays off. On Windows run it as
-  `py scripts/build_players.py`. A bare `python` reaches the Microsoft Store
-  stub and fails with "Python was not found" unless the installer's
-  "Add python.exe to PATH" box was ticked, which it usually isn't.
+  `py scripts/build_players.py`, which works whether or not the installer's
+  "Add python.exe to PATH" box was ticked.
+
+  **This used to say a bare `python` reaches the Microsoft Store stub, and on
+  this machine it is `python3` that does.** Measured 8 September 2026 in Git
+  Bash and PowerShell alike: `python` resolves to a real 3.13.3 at
+  `...\Programs\Python\Python313\python.exe`, `py` to the launcher beside it,
+  and **`python3` to `...\WindowsApps\python3.exe`** — the App Execution Alias
+  that answers "Python was not found". The box was ticked here, so the name
+  that fails is the one nothing warned about, and somebody following the old
+  sentence would have reached for `python3` as the safe alternative and hit
+  the exact stub it was warning them off.
+
+  The claim was a true thing about Windows written down as a fact about this
+  checkout, which is the same shape as a figure measured on one night's board:
+  **ask which interpreter answers before quoting one**, and note that
+  `Get-Command python` naming a path under `WindowsApps` is the tell.
+
+  `py` stays the instruction, because it is the one name that does not depend
+  on that box. Two things do depend on it: `playwright.config.mjs` picks `py`
+  on Windows and `python3` everywhere else, and `.claude/settings.json` wires
+  `.claude/hooks/block-whole-tree-git.py` with a bare `python` — a hook that
+  cannot start does not fail loudly, so that one is worth re-checking if this
+  ever moves.
 - App: `cd web && npm run dev`, or build and serve `web/dist` over any
   static server. Opening a file directly no longer works — see the Stack
   section on why `file://` broke once the legacy scripts became

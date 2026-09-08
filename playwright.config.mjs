@@ -175,11 +175,17 @@ export default defineConfig({
          navigates through the built artifact, the same thing a Cloudflare
          Pages deploy produces, not raw source.
 
-         `py` is the Windows launcher and is the only thing that works there;
-         it does not exist anywhere else, so this failed with "py: not found"
-         on Linux/macOS before a single test ran. Same reason CLAUDE.md tells
-         you to run the pipeline as `py scripts/build_players.py`. Picked per
-         platform rather than changed, so the Windows path is untouched. */
+         `py` is the Windows launcher and does not exist anywhere else, so
+         this failed with "py: not found" on Linux/macOS before a single test
+         ran. Picked per platform rather than changed, so the Windows path is
+         untouched.
+
+         It is the SAFE name on Windows rather than the only working one: a
+         bare `python` works here too, and it is `python3` that resolves to
+         the Store alias answering "Python was not found" — which is why the
+         two branches are not the same string. `py` needs no PATH box ticked;
+         `python3` on Windows would be the stub. CLAUDE.md's Testing section
+         carries the measurement. */
       command: "npm --prefix web run build && " +
         (process.platform === "win32" ? "py" : "python3") + " -m http.server 8765 --directory web/dist",
       port: 8765,
