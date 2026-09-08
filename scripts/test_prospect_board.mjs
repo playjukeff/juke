@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
-const { rookies, knownAbout, evidence } = await import(
+const { rookies, knownAbout, evidence, productionLine } = await import(
   pathToFileURL(path.resolve("web/src/components/rooms/prospectBoard.js")).href
 );
 
@@ -185,6 +185,127 @@ check("evidence is a count, never a confidence percentage", () => {
   assert.equal(typeof e.known, "number");
   assert.equal(typeof e.total, "number");
   assert.ok(e.total > e.known, "there is always more unknown than known about a rookie here");
+});
+
+/* ---- what the pipeline now knows, and the three states it keeps apart ----
+
+   These arrive as row.prospect, which is JukeEngine.prospectFor()'s answer.
+   The room attaches it; this module never re-reads stat.pr, because a second
+   interpretation of the same shape is how "undrafted" and "we could not tell"
+   end up meaning one thing on one screen and another somewhere else. */
+
+const withProspect = (id, prospect) => {
+  const row = rookies(BOARD, statOf, rankBy).find((r) => r.player.id === id);
+  return { ...row, prospect };
+};
+
+check("a drafted rookie's pick is KNOWN, not a gap", () => {
+  const row = withProspect("r1", {
+    drafted: { round: 1, pick: 3, overall: 3 }, undrafted: false, college: null,
+  });
+  const { known, missing } = knownAbout(row);
+  assert.equal(known.find((k) => k.label === "NFL draft").value,
+               "Round 1, pick 3 · 3 overall");
+  assert.equal(missing.includes("NFL draft position"), false,
+               "it is not missing once we know it");
+});
+
+check("UNDRAFTED is a fact and belongs with what is known", () => {
+  /* 18 of the 77 first-year players on the 8 September 2026 board were never
+     drafted. For them this is not missing information, it is information —
+     and leaving it in `missing` would tell a reader nobody had looked. */
+  const row = withProspect("r2", { drafted: null, undrafted: true, college: null });
+  const { known, missing } = knownAbout(row);
+  assert.equal(known.find((k) => k.label === "NFL draft").value, "Undrafted");
+  assert.equal(missing.includes("NFL draft position"), false);
+});
+
+check("but 'we could not tell' is still missing, and is NOT undrafted", () => {
+  /* The state that exists so the screen never claims one for the other. A
+     rookie whose name is in the draft under a spelling the join could not
+     match reaches this branch, and saying "Undrafted" about him would be a
+     fact nobody has. */
+  const row = withProspect("r3", { drafted: null, undrafted: false, college: null });
+  const { known, missing } = knownAbout(row);
+  assert.equal(known.some((k) => k.label === "NFL draft"), false);
+  assert.equal(missing.includes("NFL draft position"), true);
+});
+
+check("no prospect block at all behaves exactly as before", () => {
+  const row = rookies(BOARD, statOf, rankBy).find((r) => r.player.id === "r1");
+  const { missing } = knownAbout(row);
+  assert.equal(missing.includes("NFL draft position"), true);
+  assert.equal(missing.includes("College production"), true);
+});
+
+check("a college line moves college production out of the gaps", () => {
+  const row = withProspect("r1", {
+    drafted: null, undrafted: true,
+    college: { ry: 1372, rt: 18, rc: 27, cy: 280 },
+  });
+  const { known, missing } = knownAbout(row);
+  assert.equal(missing.includes("College production"), false);
+  // By exact label, not startsWith: 'College' (his school) sits right beside
+  // 'College production', and a prefix match found Notre Dame.
+  assert.match(known.find((k) => k.label === "College production").value,
+               /1,372 rush yds/);
+  assert.equal(known.find((k) => k.label === "College").value, "Notre Dame",
+               "and his school is still its own row");
+});
+
+check("the combine is missing for everybody, however much else we learn", () => {
+  /* CFBD publishes no combine endpoint and no other feed here carries one, so
+     this gap does not close no matter what else arrives. Named rather than
+     dropped, so the day it exists it fills a hole the screen already points
+     at. */
+  const row = withProspect("r1", {
+    drafted: { round: 1, pick: 1, overall: 1 }, undrafted: false,
+    college: { ry: 1372 },
+  });
+  assert.equal(knownAbout(row).missing.includes("Combine testing"), true);
+});
+
+check("evidence counts what was actually learned", () => {
+  const bare = rookies(BOARD, statOf, rankBy).find((r) => r.player.id === "r1");
+  const rich = withProspect("r1", {
+    drafted: { round: 1, pick: 1, overall: 1 }, undrafted: false,
+    college: { ry: 1372 },
+  });
+  assert.ok(evidence(rich).known > evidence(bare).known,
+            "knowing his draft slot and his college line is more known, not the same");
+  assert.ok(evidence(rich).total > evidence(rich).known,
+            "and there is still more unknown than known — the combine, at least");
+});
+
+/* ---- the shared formatter ---- */
+
+check("a position is formatted in the numbers it is judged on", () => {
+  assert.deepEqual(productionLine("WR", { rc: 87, cy: 1243, ct: 12 }),
+                   ["87 rec", "1,243 yds", "12 TD"]);
+  assert.deepEqual(productionLine("RB", { ry: 1372, rt: 18 }),
+                   ["1,372 rush yds", "18 TD"]);
+  assert.equal(productionLine("QB", { py: 3535, pt: 41, pi: 6 })[0], "3,535 pass yds");
+});
+
+check("and nothing formats to nothing rather than throwing", () => {
+  assert.deepEqual(productionLine("WR", null), []);
+});
+
+check("a kicker's college line is kicks, not an empty receiving line", () => {
+  /* Without a K branch he fell through to the receiving one, every key came
+     back undefined, and the row drew "College production" with nothing after
+     it -- a label claiming a fact it does not have. Found on Trey Smack, on
+     screen, not in a fixture. */
+  assert.deepEqual(productionLine("K", { fgm: 18, fga: 22, xpm: 40 }),
+                   ["18/22 FG", "40 XP"]);
+});
+
+check("a block this position cannot format is a GAP, not an empty label", () => {
+  const row = { player: { id: "k1", pos: "K", name: "K" }, stat: STATS.k1,
+                prospect: { drafted: null, undrafted: true, college: { rc: 0 } } };
+  const { known, missing } = knownAbout(row);
+  assert.equal(known.some((k) => k.label === "College production"), false);
+  assert.equal(missing.includes("College production"), true);
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the prospect board");

@@ -19,6 +19,55 @@
  * it true rather than to make it sound true.
  */
 
+/* A college stat line, in the numbers that position is actually judged on.
+ *
+ * Lives here rather than in either screen that draws it: the rookie sheet and
+ * the college board show the same quantities for the same reason, and two
+ * formatters would print the same player two ways the first time one of them
+ * gained a stat.
+ *
+ * A quarterback's receiving line is noise and a receiver's passing line is a
+ * trick play, so each position gets the ones its own row is ranked on -- the
+ * same split build_college_board() ranks by, and deliberately the same, since
+ * a column that does not descend under a heading that says it is ordered is
+ * the failure that rewrite already fixed once.
+ */
+export function productionLine(pos, c) {
+  if (!c) return []
+  const n = (v) => (v || 0).toLocaleString()
+  if (pos === 'QB') {
+    return [
+      c.py != null && `${n(c.py)} pass yds`,
+      c.pt != null && `${c.pt} TD`,
+      c.pi != null && `${c.pi} INT`,
+      c.ry ? `${n(c.ry)} rush yds` : null,
+    ].filter(Boolean)
+  }
+  if (pos === 'RB') {
+    return [
+      c.ry != null && `${n(c.ry)} rush yds`,
+      c.rt != null && `${c.rt} TD`,
+      c.rc ? `${c.rc} rec` : null,
+      c.cy ? `${n(c.cy)} rec yds` : null,
+    ].filter(Boolean)
+  }
+  if (pos === 'K') {
+    /* A kicker's college line is kicks. Without this branch he fell through
+       to the receiving one and formatted to an EMPTY string, drawing
+       "College production" with nothing after it -- a label claiming a fact
+       it does not have. Found on Trey Smack, by looking at the screen. */
+    return [
+      c.fgm != null && `${c.fgm}${c.fga != null ? '/' + c.fga : ''} FG`,
+      c.xpm != null && `${c.xpm} XP`,
+    ].filter(Boolean)
+  }
+  return [
+    c.rc != null && `${c.rc} rec`,
+    c.cy != null && `${n(c.cy)} yds`,
+    c.ct != null && `${c.ct} TD`,
+  ].filter(Boolean)
+}
+
 /* Everybody in their first NFL season, best first.
  *
  * `exp` is Sleeper's years_exp, on every matched stats record. A player
@@ -92,7 +141,57 @@ export function knownAbout(row) {
 
      `deep` is the pipeline's own flag for a player past real ADP — no
      draft has ever taken him, so the market has said nothing either. */
-  const missing = ['College production', 'Combine testing', 'NFL draft position']
+  /* What CollegeFootballData told us about him, if anything.
+   *
+   * `row.prospect` is JukeEngine.prospectFor()'s answer, attached by the room
+   * -- not re-read from stat.pr here. The three draft states have exactly one
+   * interpretation and it lives beside the data in app.js; a second reading of
+   * the same shape in this file is how "undrafted" and "we could not tell"
+   * end up meaning the same thing on one screen and different things on
+   * another.
+   *
+   * UNDRAFTED IS A FACT, and it belongs in `known` rather than being left as
+   * an absence. 18 of the 77 first-year players on the 8 September 2026 board
+   * were never drafted, and for them "NFL draft position" is not missing
+   * information -- it is information. Only `null` is missing, and that state
+   * exists precisely so this screen never claims one for the other.
+   */
+  const prospect = (row && row.prospect) || null
+  const missing = []
+
+  const line = prospect && prospect.college
+    ? productionLine(player.pos, prospect.college).join(' · ')
+    : ''
+  if (line) {
+    // One label, always. A conditional one read as two different facts, and
+    // it sits directly under the 'College' row that names his school -- so
+    // "College" and "College production" are adjacent and each says which
+    // it is.
+    known.push({ label: 'College production', value: line })
+  } else {
+    /* An EMPTY line is a gap, not a fact. A stored block whose stats this
+       position does not format drew a label with nothing after it, which
+       claims to know something and then says nothing. */
+    missing.push('College production')
+  }
+
+  // Nobody has a combine number here: CFBD publishes none, and no other feed
+  // in this project carries one. It stays named rather than quietly dropped,
+  // so the day that data exists it fills a gap the screen already points at.
+  missing.push('Combine testing')
+
+  if (prospect && prospect.drafted) {
+    const d = prospect.drafted
+    known.push({
+      label: 'NFL draft',
+      value: `Round ${d.round}, pick ${d.pick} · ${d.overall} overall`,
+    })
+  } else if (prospect && prospect.undrafted) {
+    known.push({ label: 'NFL draft', value: 'Undrafted' })
+  } else {
+    missing.push('NFL draft position')
+  }
+
   if (!stat.depth) missing.push('Depth chart role')
   if (player.deep) missing.push('Any real draft position')
   if (player.projPts === null || player.projPts === undefined) missing.push('A 2026 projection')

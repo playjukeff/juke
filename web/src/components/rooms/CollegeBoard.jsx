@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PosTile } from './sampleParts.jsx'
+// One formatter, shared with the rookie sheet -- see its own note.
+import { productionLine } from './prospectBoard.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
 /* Players who are still in college, and have never been drafted.
@@ -39,36 +41,6 @@ function classLabel(year) {
   // and a handful of nonsense values the pipeline already drops, so anything
   // arriving here is one of the four.
   return { 1: 'FR', 2: 'SO', 3: 'JR', 4: 'SR', 5: 'SR+', 6: 'SR+' }[year] || '—'
-}
-
-function statLine(pos, c) {
-  /* What a position's production actually is, rather than every key we hold.
-     A quarterback's receiving line is noise and a receiver's passing line is
-     a trick play — the same judgement USAGE_COLUMNS already makes in app.js,
-     and made here because it is about what to DRAW rather than what to
-     store. */
-  const n = (v) => (v || 0).toLocaleString()
-  if (pos === 'QB') {
-    return [
-      c.py != null && `${n(c.py)} pass yds`,
-      c.pt != null && `${c.pt} TD`,
-      c.pi != null && `${c.pi} INT`,
-      c.ry ? `${n(c.ry)} rush yds` : null,
-    ].filter(Boolean)
-  }
-  if (pos === 'RB') {
-    return [
-      c.ry != null && `${n(c.ry)} rush yds`,
-      c.rt != null && `${c.rt} TD`,
-      c.rc ? `${c.rc} rec` : null,
-      c.cy ? `${n(c.cy)} rec yds` : null,
-    ].filter(Boolean)
-  }
-  return [
-    c.rc != null && `${c.rc} rec`,
-    c.cy != null && `${n(c.cy)} yds`,
-    c.ct != null && `${c.ct} TD`,
-  ].filter(Boolean)
 }
 
 export default function CollegeBoard() {
@@ -196,11 +168,11 @@ export default function CollegeBoard() {
                     which is the shape of thing that ships when a note is
                     written from intent rather than from the markup. */}
                 <span className="mt-0.5 block truncate font-mono text-[11px] text-voidInk-primary sm:hidden">
-                  {statLine(row.pos, row.college).join(' · ')}
+                  {productionLine(row.pos, row.college).join(' · ')}
                 </span>
               </span>
               <span className="hidden shrink-0 text-right font-mono text-[11px] text-voidInk-primary sm:block">
-                {statLine(row.pos, row.college).join(' · ')}
+                {productionLine(row.pos, row.college).join(' · ')}
               </span>
             </div>
           ))}
