@@ -38,6 +38,7 @@ export function parseHashRoute(hash) {
   if (path === 'my-league') return { view: 'my-league', slug: null }
   if (path === 'you') return { view: 'you', slug: null }
   if (path === 'drafts') return { view: 'drafts', slug: null }
+  if (path === 'history') return { view: 'history', slug: null }
   return { view: 'home', slug: null }
 }
 

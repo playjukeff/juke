@@ -30,7 +30,20 @@ export function useRailItems() {
     { divider: true },
     ...roomItems,
     { divider: true },
-    { key: 'history', label: 'History', glyph: '🗓', accent: '#00E5FF', href: '#/drafts' },
+    /* #/history, not #/drafts.
+
+       This pointed at the mock-draft archive for as long as there was
+       no ledger to point at -- the phase 1 plan recorded that as a
+       deliberate stand-in, because Juke Journey v3's History is the
+       cross-room decision record and nothing wrote one. Something does
+       now, so the rail names the thing it always meant.
+
+       #/drafts is not orphaned by this: it is still the archive, still
+       linked from the Draft Room's entry ('See all N drafts'), and
+       still where a finished mock is read back. Two screens, two
+       questions -- 'drafts I have run' and 'calls Juke made on my real
+       roster'. */
+    { key: 'history', label: 'History', glyph: '🗓', accent: '#00E5FF', href: '#/history' },
   ]
 }
 
@@ -41,6 +54,10 @@ export function useRailItems() {
 function activeFromHash(hash) {
   if (hash.startsWith('#/my-league')) return 'my-league'
   if (hash.startsWith('#/rooms/')) return hash.slice('#/rooms/'.length).split(/[/?]/)[0]
+  if (hash.startsWith('#/history')) return 'history'
+  /* The archive keeps lighting the same lamp. It is the rail's nearest
+     item and the only one it could light -- an unlit rail on a screen
+     the rail can reach reads as the nav having lost its place. */
   if (hash.startsWith('#/drafts')) return 'history'
   return null
 }

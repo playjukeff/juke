@@ -97,6 +97,23 @@ export default {
           // a different hue; this is the handoff's value and it sits beside
           // `mint` as its opposite (a bye week, a ▼ in the power column).
           rose: '#F7A8A8',
+          // The third state colour, and the only one the palette had no
+          // answer for. `mint` is already this codebase's positive and
+          // `rose` its negative (the comment above says so); a verdict can
+          // also be neither — "inconclusive", "circumstances changed",
+          // "recommendation changed" — and those are a warning rather than
+          // a result.
+          //
+          // NOT `flow.gold`, which is four lines up and looks like it would
+          // do: gold is the League Room's identity, and this group's own
+          // opening comment is that a room is not a state. Spending an
+          // identity on a state is how a colour comes to mean two things,
+          // which is the drift draftRoomPositions.js was rewritten to end.
+          //
+          // Juke Journey v3's own `--warn`. Measured on all three grounds a
+          // verdict badge can land on: 8.40 on #161D26, 7.47 on flow.hero,
+          // 8.73 on surface.card.
+          amber: '#E7AC4B',
           // The lit half of the CTA gradient, and the only place this value
           // appears alone: the avatar circle's own gradient start. It is a
           // step off `teal` (#00E5FF) rather than a second teal — solving
