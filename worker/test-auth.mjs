@@ -2,11 +2,23 @@
 
    auth.js and store.js's touchUser() are the two halves; this covers the
    route that joins them, the same way test-sockets.mjs covers DraftRoom
-   rather than re-testing room.js's own pure rules. It cannot cover the
-   signed-in path — that needs a real Clerk-signed token, which nothing
-   offline can produce — so every case here is a way of being signed out,
-   and the one thing they all have to prove is that none of them ever
-   throws or returns anything but signedIn: false.
+   rather than re-testing room.js's own pure rules. Every case here is a way
+   of being signed out, and the one thing they all have to prove is that
+   none of them ever throws or returns anything but signedIn: false.
+
+   This header used to say the signed-in path could not be covered at all —
+   "that needs a real Clerk-signed token, which nothing offline can produce"
+   — and that was true of this file and false of the claim it made. It is
+   corrected rather than left standing: `verifyToken` takes `apiUrl`, so a
+   locally generated key pair served as JWKS at a local endpoint verifies
+   through the real library with nothing stubbed inside it.
+
+   test-verified-user.mjs does that for auth.js and test-me-routes.mjs does
+   it for the routes, both offline, both in the deploy workflow, and both
+   confirmed red against the bug that lived in the gap. What is still only
+   coverable HERE is this file's own subject: those two run the handler in
+   process, and this runs it inside a real workerd behind a real HTTP
+   server.
 
        cd worker && wrangler dev --port 8787 --local
        node worker/test-auth.mjs
