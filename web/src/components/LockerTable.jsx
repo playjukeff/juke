@@ -333,6 +333,15 @@ function StorageNote({ count, signedIn, syncStatus, earlyAccessRef }) {
         what: "Juke reached your account but couldn't save to it",
         next: 'That is our end, not yours, and nothing is lost here while it is sorted out.',
       },
+      'id-taken': {
+        // The one reason here that will not clear on its own, so it must
+        // not borrow offline's "they will sync once the connection is
+        // back" — the connection is fine and the retry is the thing that
+        // cannot work. recordHistory() mints the id, so a fresh mock gets
+        // a fresh one and syncs normally; only this entry is stuck.
+        what: `Juke could not add ${one ? 'this mock' : 'one of these mocks'} to your account`,
+        next: 'Its id is already in use. Nothing is lost here, and later mocks will sync as usual.',
+      },
       offline: {
         what: "Juke can't reach your account right now",
         next: `${one ? 'It' : 'They'} will sync on ${one ? 'its' : 'their'} own once the connection is back.`,

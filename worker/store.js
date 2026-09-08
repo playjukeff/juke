@@ -653,25 +653,63 @@ export async function listDraftHistory(env, clerkId) {
    mints that id client-side and it never changes, so this is always an
    insert in practice; ON CONFLICT DO UPDATE exists for the same reason
    touchUser()'s does, a retried request landing twice rather than a real
-   edit. */
+   edit.
+
+   ---- The DO UPDATE is scoped to the owner, and that is the whole point ----
+
+   `draft_history.id` is the PRIMARY KEY and `clerk_id` is an ordinary
+   column beside it, so a conflict on that id is NOT necessarily the
+   caller's own row. The id arrives in the request body — meHistoryRoute()
+   reads `parsed.id` — and recordHistory() mints it as
+   "h" + Date.now().toString(36) + a short random tail, which is
+   semi-random rather than unguessable. Without a WHERE, any signed-in
+   account that knew or guessed another account's entry id could overwrite
+   that entry's `data` with its own. Low severity — one archived mock
+   overwritten, nothing read — and a cross-account write all the same.
+
+   deleteHistoryEntry() below has scoped its WHERE to `clerk_id` since it
+   was written, for the reason its own comment gives. The write did not,
+   which is the asymmetry worth remembering: an id a client supplies is a
+   claim about WHICH row and never a claim about WHOSE.
+
+   `WHERE draft_history.clerk_id = excluded.clerk_id` refuses the update
+   rather than erroring — verified against sqlite3, which is what D1 is:
+   the first insert reports 1 change, the owner's own retry reports 1, and
+   a second account reusing the id reports 0 with the stored row untouched.
+   That is why the answer is read off `changes` rather than off the absence
+   of a throw. Nothing here distinguishes "refused" from "the id was never
+   real", by construction, the same way the delete below does not.
+
+   Three states rather than a boolean, deliberately. "Refused" is truthy in
+   every shape that would let a caller keep writing `if (ok)` and get it
+   wrong — and getting it wrong means reporting a sync that did not
+   happen, which is this project's own "claims a backup it does not have"
+   failure with somebody else's row underneath it. */
 export async function putHistoryEntry(env, clerkId, id, dataText, completedAt) {
-  if (!env.DB) return false;
+  if (!env.DB) return "error";
 
   try {
     const stamp = nowSeconds();
-    await env.DB.batch([
+    const results = await env.DB.batch([
       upsertUser(env, clerkId, stamp),
       env.DB.prepare(
         "INSERT INTO draft_history (id, clerk_id, data, completed_at, updated_at)" +
         " VALUES (?, ?, ?, ?, ?)" +
         " ON CONFLICT(id) DO UPDATE SET data = excluded.data," +
-        "   completed_at = excluded.completed_at, updated_at = excluded.updated_at"
+        "   completed_at = excluded.completed_at, updated_at = excluded.updated_at" +
+        " WHERE draft_history.clerk_id = excluded.clerk_id"
       ).bind(id, clerkId, dataText, completedAt, stamp)
     ]);
-    return true;
+
+    // The SQL is what enforces the ownership; this only decides what to
+    // SAY about it. So an unreadable `meta` reports written rather than
+    // refused: a binding that did not report `changes` would otherwise
+    // turn every ordinary save into a 409, and the row is safe either way.
+    const meta = results && results[1] && results[1].meta;
+    return meta && meta.changes === 0 ? "conflict" : "ok";
   } catch (err) {
     console.error("history write failed:", err && err.message);
-    return false;
+    return "error";
   }
 }
 

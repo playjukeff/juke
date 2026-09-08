@@ -1616,8 +1616,26 @@ async function meHistoryRoute(request, env) {
     return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
   }
 
-  const ok = await putHistoryEntry(env, user.id, id, text, Math.floor(completedAtMs / 1000));
-  return new Response(JSON.stringify(ok ? { ok: true } : { ok: false, error: "store-failed" }), { headers });
+  const wrote = await putHistoryEntry(env, user.id, id, text, Math.floor(completedAtMs / 1000));
+
+  /* 409, and it is the one failure here with a status rather than a body.
+
+     `draft_history.id` is minted client-side and arrives in this body, so
+     it is a claim about which row and never about whose — putHistoryEntry()
+     scopes its DO UPDATE to the owner and answers "conflict" when the id
+     already belongs to somebody else. Answering `{ ok: true }` would tell
+     the client a locker entry synced when the stored row is another
+     account's and untouched, which is the "claims a backup it does not
+     have" failure with a stranger's data underneath it.
+
+     "store-failed" keeps its 200 for the reason it always had — read the
+     body, not the status — and this does not, because a status is the only
+     thing live.js can tell apart before parsing, and the two want different
+     sentences on screen. */
+  if (wrote === "conflict") {
+    return new Response(JSON.stringify({ ok: false, error: "id-taken" }), { status: 409, headers });
+  }
+  return new Response(JSON.stringify(wrote === "ok" ? { ok: true } : { ok: false, error: "store-failed" }), { headers });
 }
 
 /* A decision is a card, not a draft: a room slug, a week, a sentence and
