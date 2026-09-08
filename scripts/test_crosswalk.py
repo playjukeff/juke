@@ -821,6 +821,13 @@ def test_cfbd_crosswalk():
 
     _n, strange_report = link([pick("Jeremiyah Love", "Offensive Weapon",
                                     "Notre Dame", "ARI", 33, 4003)])
+    # A position that is simply not fantasy-relevant must NOT be reported.
+    # Nine of these arrive on every real run, about 175 of 257 picks, and a
+    # report that always says the same nine things stops being read.
+    _q, quiet_report = link([pick("Some Corner", "Cornerback", "LSU", "NYJ", 55, 4005)])
+    check("CFBD: a defensive position is expected, so it is not reported",
+          [l for l in quiet_report if l.startswith("POSITION |")], [])
+
     check("CFBD: an unrecognised position is reported, not silently dropped",
           any(l.startswith("POSITION |") and "OFFENSIVE WEAPON" in l
               for l in strange_report), True)
@@ -891,6 +898,278 @@ def test_cfbd_crosswalk():
 
 
 test_cfbd_crosswalk()
+
+
+def test_build_prospects():
+    """record["pr"], and the three states a draft position can be in.
+
+    The dangerous one is the middle. An unmatched rookie is either genuinely
+    undrafted or a join this file got wrong, and from inside the join those
+    look identical -- so claiming "undrafted" off a failed match would put a
+    fact on screen that nobody has. Every assertion below is about keeping
+    those three apart.
+    """
+    sleeper = {
+        "1": {"full_name": "Cam Ward", "position": "QB",
+              "team": "TEN", "college": "Miami (FL)"},
+        "2": {"full_name": "Lake McRee", "position": "TE",
+              "team": "LAC", "college": "USC"},
+        "3": {"full_name": "Two Way", "position": "WR",
+              "team": "JAX", "college": "Colorado"},
+        "4": {"full_name": "Old Timer", "position": "TE",
+              "team": "KC", "college": "Alabama"},
+    }
+    stats = {
+        "1": {"exp": 0}, "2": {"exp": 0}, "3": {"exp": 0},
+        "4": {"exp": 4},          # a veteran: never gets a pr block
+    }
+    indexes = bp.index_sleeper(sleeper)
+    college_index = bp.index_sleeper_by_college(sleeper)
+
+    picks = [
+        {"name": "Cam Ward", "position": "Quarterback", "collegeTeam": "Miami",
+         "nflTeam": "Tennessee", "overall": 1, "round": 1, "pick": 1,
+         "year": 2026, "collegeAthleteId": 4001},
+        # Our WR, their CB -- the two-way player. He IS drafted, and the join
+        # cannot see him because index_sleeper only carries fantasy positions.
+        {"name": "Two Way", "position": "Cornerback", "collegeTeam": "Colorado",
+         "nflTeam": "Jacksonville", "overall": 2, "round": 1, "pick": 2,
+         "year": 2026, "collegeAthleteId": 4003},
+    ]
+    season = [
+        {"playerId": "4001", "category": "passing", "statType": "YDS", "stat": "3535"},
+        {"playerId": "4001", "category": "passing", "statType": "TD", "stat": "41"},
+        {"playerId": "4001", "category": "rushing", "statType": "YDS", "stat": "276"},
+        # A zero, which must be dropped rather than stored as a nought.
+        {"playerId": "4001", "category": "receiving", "statType": "REC", "stat": "0"},
+        # A category this file deliberately ignores.
+        {"playerId": "4001", "category": "defensive", "statType": "SOLO", "stat": "1"},
+        # An athlete nobody on our board is.
+        {"playerId": "9999", "category": "rushing", "statType": "YDS", "stat": "800"},
+    ]
+
+    written, report = bp.build_prospects(stats, sleeper, indexes, college_index,
+                                         picks, season)
+
+    check("prospects: a drafted rookie carries round, pick and overall",
+          stats["1"]["pr"]["d"], [1, 1, 1])
+    check("prospects: and his final college season, in this file's own keys",
+          stats["1"]["pr"]["c"], {"py": 3535, "pt": 41, "ry": 276})
+    check("prospects: a zero is dropped rather than stored as a nought",
+          "rc" in stats["1"]["pr"]["c"], False)
+    check("prospects: a category this room does not draw is not carried",
+          any(k not in ("py", "pt", "ry") for k in stats["1"]["pr"]["c"]), False)
+
+    # ---- the state that must never be guessed ----
+    check("prospects: a rookie whose name is in NO pick is undrafted, a fact",
+          stats["2"]["pr"]["d"], 0)
+    check("prospects: a rookie the join missed but the draft KNOWS is left unstated",
+          "d" in stats["3"].get("pr", {}), False)
+    check("prospects: and he is reported rather than quietly marked undrafted",
+          any("could not join" in line for line in report), True)
+
+    check("prospects: a veteran gets no block at all",
+          "pr" in stats["4"], False)
+    # Two, not three: the two-way player got neither a draft position we
+    # could state nor a college line, so there is nothing to write for him.
+    # An empty block is not stored -- a key whose value says nothing is worse
+    # than no key, because a reader cannot tell it from data.
+    check("prospects: the count is what was written",
+          written, 2)
+
+    # ---- a class nobody drafted is not a class of undrafted players ----
+    # If the picks call fails, every rookie's name is trivially "in no pick",
+    # and marking all of them undrafted would be inventing a whole draft that
+    # did not happen. main() only calls this with picks in hand, and this
+    # pins the shape rather than trusting that.
+    fresh = {"1": {"exp": 0}, "2": {"exp": 0}, "3": {"exp": 0}}
+    bp.build_prospects(fresh, sleeper, indexes, college_index, [], [])
+    check("prospects: with no picks at all, nobody is declared undrafted",
+          [r.get("pr", {}).get("d") for r in fresh.values()].count(0), 0)
+
+
+test_build_prospects()
+
+
+def test_college_board():
+    """COLLEGE_BOARD: players who have never been drafted.
+
+    The only block in stats.js not keyed by a Sleeper id, because these
+    players are not on any Juke board and never will be until somebody drafts
+    them. What is pinned here is mostly what it REFUSES to include, since a
+    board that quietly filled with ineligible players or with names carrying
+    no statistics would look exactly like a working one.
+    """
+    def player(pid, first, last, pos, team, year):
+        return {"id": pid, "firstName": first, "lastName": last,
+                "position": pos, "team": team, "year": year}
+
+    roster = [
+        player(1, "Jeremiah", "Smith", "WR", "Ohio State", 3),
+        # Same name, different school and position -- both are really on the
+        # 2026 FBS rosters, which is why the key is an athlete id.
+        player(2, "Jeremiah", "Smith", "LB", "Louisiana Tech", 1),
+        player(3, "Big", "Arm", "QB", "Texas", 4),
+        player(4, "Young", "Freshman", "WR", "Georgia", 2),
+        player(5, "Nonsense", "Year", "RB", "Utah", 2026),
+        player(6, "No", "Stats", "TE", "Duke", 4),
+        player(7, "Second", "Receiver", "WR", "Oregon", 4),
+        player(8, "Third", "Receiver", "WR", "Miami", 3),
+        player(9, "Lineman", "Guy", "OT", "Iowa", 4),
+    ]
+
+    def stat(pid, cat, st, value):
+        return {"playerId": str(pid), "category": cat, "statType": st, "stat": str(value)}
+
+    season = [
+        stat(1, "receiving", "YDS", 1243), stat(1, "receiving", "REC", 87),
+        stat(1, "receiving", "TD", 12), stat(1, "rushing", "YDS", 0),
+        stat(1, "defensive", "SOLO", 2),
+        stat(2, "defensive", "TOT", 60),
+        stat(3, "passing", "YDS", 3900), stat(3, "passing", "TD", 30),
+        stat(4, "receiving", "YDS", 1500),      # eligible only by production
+        stat(5, "rushing", "YDS", 1200),        # nonsense class year
+        stat(7, "receiving", "YDS", 900),
+        stat(8, "receiving", "YDS", 1400),
+        stat(9, "receiving", "YDS", 5),
+    ]
+
+    board = bp.build_college_board(roster, season)
+
+    check("college: a draft-eligible producer is on the board",
+          board.get("1", {}).get("n"), "Jeremiah Smith")
+    check("college: with his school and class year, as facts from the feed",
+          (board["1"]["t"], board["1"]["y"], board["1"]["p"]), ("Ohio State", 3, "WR"))
+    check("college: and last season's production in this file's own keys",
+          board["1"]["c"], {"cy": 1243, "rc": 87, "ct": 12})
+    check("college: a zero is dropped rather than stored",
+          "ry" in board["1"]["c"], False)
+    check("college: a category the room does not draw is not carried",
+          sorted(board["1"]["c"]), ["ct", "cy", "rc"])
+
+    # ---- what must never be on it ----
+    check("college: a player too junior to be drafted next is not on it",
+          "4" in board, False)
+    check("college: nor is a class year the feed got wrong",
+          "5" in board, False)
+    check("college: nor a position this room does not cover",
+          "9" in board, False)
+    check("college: nor a name with no production behind it",
+          "6" in board, False)
+    check("college: nor the namesake at another position",
+          "2" in board, False)
+
+    # ---- the cut is per position, and by production ----
+    wide = [player(100 + i, "Rec", f"Number{chr(97+i)}", "WR", "State", 4)
+            for i in range(bp.COLLEGE_PER_POSITION + 5)]
+    wide_stats = [stat(100 + i, "receiving", "YDS", 2000 - i * 10)
+                  for i in range(bp.COLLEGE_PER_POSITION + 5)]
+    capped = bp.build_college_board(wide, wide_stats)
+    check("college: no more than the cap survives at a position",
+          len(capped), bp.COLLEGE_PER_POSITION)
+    check("college: and it is the most productive who do",
+          min(v["c"]["cy"] for v in capped.values()),
+          2000 - (bp.COLLEGE_PER_POSITION - 1) * 10)
+
+    # ---- an outage draws nothing rather than a board with no numbers ----
+    check("college: no roster is an empty board", bp.build_college_board([], season), {})
+    check("college: no season is an empty board", bp.build_college_board(roster, []), {})
+    check("college: neither is an empty board", bp.build_college_board([], []), {})
+
+    # And it SAYS which, because the three lines above pass whether or not the
+    # guard exists -- the filters would empty the board on their own, and a
+    # mutation proved that by deleting the return and failing nothing. An
+    # empty board from an outage and an empty board from a class where nobody
+    # qualified are the same value and different facts, so the log has to
+    # separate them.
+    def build_quietly(r, sn):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            bp.build_college_board(r, sn)
+        return buffer.getvalue()
+
+    check("college: an outage says so rather than reporting an empty board",
+          "nothing is built" in build_quietly([], season), True)
+    check("college: and it names which feed was missing",
+          "no roster" in build_quietly([], season)
+          and "no season" in build_quietly(roster, []), True)
+    check("college: a real build does NOT claim an outage",
+          "nothing is built" in build_quietly(roster, season), False)
+
+
+test_college_board()
+
+
+def test_board_separation():
+    """A player still in college may not reach the mock draft board.
+
+    A product rule rather than an implementation detail, and the reason it
+    gets a test: it is satisfied today by CONSTRUCTION -- the board is FFC ADP
+    joined to Sleeper's NFL master, and a college athlete is in neither file
+    -- which makes it exactly the kind of property somebody could undo without
+    noticing. "Show college players in the search too" is a reasonable-sounding
+    change that would break it silently.
+
+    The transition is the other half of the rule: once an NFL team drafts him
+    he SHOULD appear in both places, and that happens on its own. He turns up
+    in Sleeper's master with years_exp 0, FFC gives him an ADP, and the next
+    rebuild puts him on the board with a pr block carrying his draft position
+    and his final college season. He drops off COLLEGE_BOARD at the same time,
+    because he is no longer on a college roster.
+    """
+    roster = [{"id": 5079720, "firstName": "Jeremiah", "lastName": "Smith",
+               "position": "WR", "team": "Ohio State", "year": 3}]
+    season = [{"playerId": "5079720", "category": "receiving",
+               "statType": "YDS", "stat": "1243"}]
+    board = bp.build_college_board(roster, season)
+    check("separation: the college player is on the college board",
+          list(board), ["5079720"])
+
+    # ---- he is not, and cannot be, on the draft board ----
+    # join_rows() builds the board from FFC rows against Sleeper's master.
+    # Neither knows him, so he cannot arrive however he is asked for.
+    sleeper = {"99": {"full_name": "Real NFLer", "position": "WR",
+                      "team": "BUF", "college": "Duke", "years_exp": 3}}
+    indexes = bp.index_sleeper(sleeper)
+    ffc = [{"name": "Jeremiah Smith", "position": "WR", "team": "OSU",
+            "adp": "12.0", "bye": "9"}]
+    players, unmatched = bp.join_rows(ffc, sleeper, indexes)
+    # TWO independent barriers, and the first is stronger than expected. A
+    # college row never reaches the join at all: join_rows() drops anything
+    # whose team is not one of the 32 NFL clubs, and "Ohio State" is not. So
+    # he is not even an unmatched row -- there is nothing to match.
+    check("separation: a college school is not an NFL club, so the row is dropped",
+          (players, unmatched), ([], []))
+
+    # And the second barrier, reached only if a row DID carry an NFL team:
+    # the name still resolves to no Sleeper player, so the board row is
+    # id-less and reported rather than quietly kept.
+    ffc_nfl = [{"name": "Jeremiah Smith", "position": "WR", "team": "BUF",
+                "adp": "12.0", "bye": "9"}]
+    players2, unmatched2 = bp.join_rows(ffc_nfl, sleeper, indexes)
+    check("separation: and even then he joins to no Sleeper player",
+          [p["id"] for p in players2], [""])
+    check("separation: and is reported rather than silently kept",
+          len(unmatched2), 1)
+
+    # extend_deep_bench() is the other door onto the board, and it draws from
+    # the Sleeper master alone -- so a college athlete cannot come through it
+    # either, however well known he is.
+    deep = bp.extend_deep_bench([], sleeper, {"BUF": 9}, target=5)
+    check("separation: the deep bench cannot reach past Sleeper's own master",
+          [p["name"] for p in deep], ["Real NFLer"])
+    check("separation: so no college player is on it",
+          any(p["name"] == "Jeremiah Smith" for p in deep), False)
+
+    # ---- the two key spaces must not be confusable ----
+    clash = bp.check_id_spaces({"5079720": {}}, board)
+    check("separation: an id in both spaces is caught, not left to a lookup",
+          clash, ["5079720"])
+    check("separation: and a healthy pair reports nothing",
+          bp.check_id_spaces({"13287": {}}, board), [])
+
+
+test_board_separation()
 
 
 print()
