@@ -4,7 +4,7 @@
  * when it recommends something; My League's week strip and the History
  * screen read them back.
  *
- * ---- Why this imports nothing ----
+ * ---- Why this imports one thing, and only one ----
  *
  * The same argument leagueStore.js makes for itself, and it is not a style
  * preference: CI installs no npm dependencies at all -- every step in
@@ -14,9 +14,16 @@
  * this one all sit inside Clerk's <SignedIn>, which a keyless build never
  * renders, so driving it through the page is not available either.
  *
+ * The one import is singleFlight.js, a dependency-free sibling loaded by
+ * path in bare Node exactly as this file is -- so the property that rule
+ * protects is untouched. See its own header for why the latch it holds
+ * could not stay written down three times.
+ *
  * useDecisions.js is the React subscription over it and re-exports
  * everything, so no consumer imports from here directly.
  */
+
+import { singleFlight } from './singleFlight.js'
 
 /* ---- Four states, the same four and for the same reasons ----
  *
@@ -62,7 +69,9 @@ function listKey(decisions) {
   return JSON.stringify(decisions || [])
 }
 
-let inFlight = null
+/* One at a time, with a deadline. See singleFlight.js: the bare latch this
+   replaces had no answer for a request that never comes back. */
+const flight = singleFlight()
 
 /* Bounded retry, then stop -- leagueStore's shape and its reasoning: a
    blip should heal without anybody pressing anything, and an unreachable
@@ -122,7 +131,7 @@ function authToken() {
  */
 export function refreshDecisions() {
   if (typeof window === 'undefined') return
-  if (inFlight) return
+  if (flight.busy()) return
 
   const auth = window.JukeAuth
   if (!auth || !auth.isSignedIn) {
@@ -134,9 +143,11 @@ export function refreshDecisions() {
   // juke:data-loaded listener in the hook is what re-runs this.
   if (!window.Live || !window.Live.loadDecisions) return
 
-  inFlight = Promise.resolve(authToken())
+  flight.run((isCurrent) => Promise.resolve(authToken())
     .then((token) => window.Live.loadDecisions(token))
     .then((res) => {
+      // A newer attempt has already answered; this one is stale.
+      if (!isCurrent()) return
       if (!res.ok) {
         // Keep what we already have rather than blanking a ledger that is
         // on screen, and say why -- the same call leagueStore makes when a
@@ -150,10 +161,17 @@ export function refreshDecisions() {
       settle(list.length ? 'ready' : 'none', list, null)
     })
     .catch(() => {
+      if (!isCurrent()) return
       settle(state.decisions.length ? 'ready' : 'error', state.decisions, 'offline')
       scheduleRetry()
-    })
-    .finally(() => { inFlight = null })
+    }),
+  // Stopped waiting on an attempt that never came back. Its own reason
+  // rather than "offline": a dead request and a failed one are different
+  // facts about the connection.
+  () => {
+    settle(state.decisions.length ? 'ready' : 'error', state.decisions, 'timeout')
+    scheduleRetry()
+  })
 }
 
 /* A deliberate retry: somebody pressed something, or the tab came back.
@@ -311,7 +329,7 @@ export function subscribeDecisions(fn) {
  * a broken store would look consistent while doing it. */
 export function __resetDecisions() {
   clearRetries()
-  inFlight = null
+  flight.__reset()
   state.status = 'loading'
   state.decisions = []
   state.reason = null
