@@ -11025,6 +11025,34 @@ window.JukeEngine = {
      order for those two no better than chance, and a targets list that
      ranked them would be selling a number the app itself withholds. */
   replacementGap: replacementGap,
+  /* A player's projection PER GAME, as a number.
+
+     The Strategy Room asks a weekly question — start him or him, this
+     week — and `projPts` on a board row is a SEASON total. Summing four
+     starters' season projections and printing it as "you project 808.0"
+     reads as a weekly score and is out by a factor of seventeen; the
+     swaps built on it were season-long differences offered as a one-week
+     call. Caught by driving the room, not by reading it.
+
+     Not computed in React, for the reason this file's own perGame()
+     comment already gives: `gp` on a projection is not a games count for
+     every position. Sleeper forecasts a team defense as one aggregate row
+     stamped gp:1, so a naive `projPts / 17` would be right for skill
+     players and wildly wrong for a DST — which is the exact bug
+     projGames() exists to prevent, and it lives here.
+
+     Null rather than 0 when there is no projection or no games to divide
+     by. perGame() above returns an em dash because it renders; this
+     returns a number or nothing, because its caller does arithmetic on
+     it and a 0 would be a real and very different projection. */
+  projPerGame: function (player) {
+    if (!player) return null;
+    const s = statOf(player);
+    const block = s && s.p;
+    const games = projGames(player.pos, block);
+    if (!games || player.projPts === null || player.projPts === undefined) return null;
+    return player.projPts / games;
+  },
   shotPicks:    shotPicks,
   fetchScores:  fetchScores,
   readSave:     readSave,

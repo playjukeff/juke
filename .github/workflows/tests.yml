@@ -134,3 +134,10 @@ jobs:
       # content renders and nothing errors.
       - name: Tier ladder
         run: node scripts/test_tiers.mjs
+
+      # The Strategy Room's arithmetic. It answers "start him, not him",
+      # which is the most consequential sentence this product says to
+      # somebody in-season, and the room that renders it only ever draws
+      # inside Clerk's <SignedIn>.
+      - name: Strategy board
+        run: node scripts/test_strategy_board.mjs
