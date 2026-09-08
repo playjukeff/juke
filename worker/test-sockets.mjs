@@ -343,8 +343,25 @@ const reacted = await until("reaction reaches alice", () => {
 }) || {};
 check("alice sees the count and that it was not her",
       reacted.reacts, [{ emoji: "\u{1F525}", count: 1, you: false }]);
+/* Bob's own copy needs its own wait, and this is the line the deploy
+   workflow actually died on -- twice, on 7 and 8 September 2026, both
+   times AFTER `wrangler deploy` had already succeeded.
+
+   The until() above waits for ALICE to see the reaction. Bob's state is a
+   separate broadcast to a separate socket, so against production it is
+   sometimes a beat behind: .find() returns undefined and .reacts throws.
+
+   The poll section's own rewrite guarded every block of this shape and
+   until() now swallows a throwing PREDICATE -- but this is an assertion,
+   outside any predicate, so neither reaches it. It is the one instance the
+   sweep did not cover, which is worth saying plainly: the fix landed on
+   the section that had never crashed and left the line that had. */
+const mine = (await until("bob sees his own reaction", () => {
+  const line = (lastState(bob) || {}).chat?.find((m) => m.id === target.id);
+  return line && line.reacts ? line : false;
+})) || {};
 check("bob sees that it was him",
-      lastState(bob).chat.find((m) => m.id === target.id)?.reacts,
+      mine.reacts,
       [{ emoji: "\u{1F525}", count: 1, you: true }]);
 check("a reaction leaks no member id",
       JSON.stringify(lastState(alice)).includes("bob") === false, true);
