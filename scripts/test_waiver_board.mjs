@@ -14,7 +14,9 @@ import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 
-const { rosteredIds, myTeam, freeAgents, rosterGaps } = await import(
+const {
+  rosteredIds, myTeam, freeAgents, rosterGaps, dropList, rivalNeeds, demandByPosition,
+} = await import(
   pathToFileURL(path.resolve("web/src/components/rooms/waiverBoard.js")).href
 );
 
@@ -154,6 +156,93 @@ check("a roster holding players the board has never heard of does not throw", ()
   const team = { players: ["1", "ghost"], starters: [] };
   const gaps = rosterGaps(team, byId, freeAgents(BOARD, SNAPSHOT, gapOf), gapOf);
   assert.ok(Array.isArray(gaps));
+});
+
+/* ---- the drop list ---- */
+
+/* A roster with a starter, a bench player, a kicker and a defense — which
+   is every real roster, and the shape the exclusions below are about. */
+const DROP_TEAM = {
+  rosterId: 1,
+  ownerId: "me",
+  players: ["1", "3", "5", "6", "7"],
+  starters: ["1"],
+};
+
+check("a drop list is worst first", () => {
+  const rows = dropList(DROP_TEAM, byId, gapOf);
+  const gaps = rows.map((r) => r.gap);
+  assert.deepEqual(gaps, gaps.slice().sort((a, b) => a - b));
+  assert.equal(rows[0].player.name, "Weak Receiver", "WR 90 against a 110 replacement is the cut");
+});
+
+check("a kicker and a defense are never on it", () => {
+  const rows = dropList(DROP_TEAM, byId, gapOf).map((r) => r.player.pos);
+  assert.equal(
+    rows.includes("K"), false,
+    "an ascending sort puts the positions Juke refuses to rank at the TOP of a list headed 'cut these'"
+  );
+  assert.equal(rows.includes("DST"), false);
+});
+
+check("a starter is not a drop candidate", () => {
+  const rows = dropList(DROP_TEAM, byId, gapOf).map((r) => r.player.id);
+  assert.equal(
+    rows.includes("1"), false,
+    "whatever the projection says, benching a starter is another room's question"
+  );
+});
+
+check("an empty or unknown roster does not throw", () => {
+  assert.deepEqual(dropList(null, byId, gapOf), []);
+  assert.deepEqual(dropList({ players: ["ghost"], starters: [] }, byId, gapOf), []);
+});
+
+/* ---- league intel ---- */
+
+const INTEL_SNAPSHOT = {
+  teams: [
+    { rosterId: 1, ownerId: "me", teamName: "Mine", players: ["1"], starters: [] },
+    { rosterId: 2, ownerId: "a", teamName: "Rival A", players: ["1"], starters: [] },
+    { rosterId: 3, ownerId: "b", teamName: "Rival B", players: ["3"], starters: [] },
+  ],
+};
+
+check("league intel never includes your own team", () => {
+  const mine = INTEL_SNAPSHOT.teams[0];
+  const rows = rivalNeeds(
+    INTEL_SNAPSHOT, mine, byId, freeAgents(BOARD, SNAPSHOT, gapOf), gapOf
+  );
+  assert.equal(
+    rows.some((r) => r.team.rosterId === 1), false,
+    "excluded by id, because a league where your roster is not first is the normal case"
+  );
+  assert.equal(rows.length, 2);
+});
+
+check("rivals come back widest need first", () => {
+  const rows = rivalNeeds(
+    INTEL_SNAPSHOT, INTEL_SNAPSHOT.teams[0], byId, freeAgents(BOARD, SNAPSHOT, gapOf), gapOf
+  );
+  const widest = rows.map((r) => r.gaps[0].improvement);
+  assert.deepEqual(widest, widest.slice().sort((a, b) => b - a));
+});
+
+check("demand counts every gap a rival has, not only their widest", () => {
+  const rows = rivalNeeds(
+    INTEL_SNAPSHOT, INTEL_SNAPSHOT.teams[0], byId, freeAgents(BOARD, SNAPSHOT, gapOf), gapOf, 5
+  );
+  const demand = demandByPosition(rows);
+  const total = demand.reduce((n, d) => n + d.count, 0);
+  const gapsSeen = rows.reduce((n, r) => n + r.gaps.length, 0);
+  assert.equal(
+    total, gapsSeen,
+    "a manager with a second-priority hole at TE still bids on one"
+  );
+  assert.deepEqual(
+    demand.map((d) => d.count), demand.map((d) => d.count).slice().sort((a, b) => b - a),
+    "most-wanted position first, which is the number a bid turns on"
+  );
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the waiver board");

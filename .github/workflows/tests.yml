@@ -127,3 +127,10 @@ jobs:
       # nobody can reach" was not an acceptable place for it to live.
       - name: Waiver board
         run: node scripts/test_waiver_board.mjs
+
+      # The tier ladder, which decides what content a reader can see now
+      # that UpgradeGate asks it. Three lines that fail OPEN if they fail,
+      # and a gate that fails open is indistinguishable from no gate — the
+      # content renders and nothing errors.
+      - name: Tier ladder
+        run: node scripts/test_tiers.mjs

@@ -118,3 +118,86 @@ export function rosterGaps(team, byId, available, gapOf) {
   gaps.sort((a, b) => b.improvement - a.improvement)
   return gaps
 }
+
+/* Who on your own roster is worth least — the Drop List.
+ *
+ * The counterpart to the targets board, and it needs the same care in the
+ * other direction: this is a screen suggesting somebody cut a player, so
+ * the ordering has to be a judgement it can defend.
+ *
+ * ---- It is not simply "sorted ascending by gap" ----
+ *
+ * A player the app REFUSES to rank must not appear on a drop list at all.
+ * replacementGap() answers null for a kicker and a defense, and null sorts
+ * as whatever the comparator says — so an ascending sort quietly puts the
+ * two positions Juke declines to have an opinion about at the very top of
+ * a list headed "cut these". Every roster carries one of each, so that is
+ * not an edge case; it is what the list would open with every week.
+ *
+ * They are excluded for the same reason they are excluded from the targets
+ * board, and it is worth saying plainly because the two look like opposite
+ * decisions: withholding has to be complete. A room that will not rank a
+ * kicker to add him cannot rank him to drop him.
+ *
+ * `starters` are excluded too. Sleeper says who is in the lineup, and a
+ * roster's own starter is not a drop candidate however the projection
+ * reads — that is a start/sit question and it belongs to another room.
+ */
+export function dropList(team, byId, gapOf, limit) {
+  if (!team || !byId) return []
+  const starting = new Set((team.starters || []).map(String))
+  const out = []
+  for (const id of team.players || []) {
+    const key = String(id)
+    if (starting.has(key)) continue
+    const player = byId.get(key)
+    if (!player) continue
+    const gap = gapOf ? gapOf(player) : null
+    if (gap === null || gap === undefined) continue
+    out.push({ player, gap })
+  }
+  out.sort((a, b) => a.gap - b.gap)
+  return limit ? out.slice(0, limit) : out
+}
+
+/* What every OTHER manager is thin at — the League Intel tab.
+ *
+ * The same rosterGaps() question asked of everybody else, which is what
+ * makes it worth a tier rather than a nicety: knowing that three rivals
+ * all need a tight end is the difference between bidding $4 and bidding
+ * $22 on the one available.
+ *
+ * Your own team is excluded by id rather than by position in the array —
+ * a league where the reader's roster is not first is the normal case, and
+ * an off-by-one here would show somebody their own needs as a rival's.
+ */
+export function rivalNeeds(snapshot, mine, byId, available, gapOf, perTeam) {
+  const teams = (snapshot && snapshot.teams) || []
+  const rows = []
+  for (const team of teams) {
+    if (mine && team.rosterId === mine.rosterId) continue
+    const gaps = rosterGaps(team, byId, available, gapOf)
+    if (!gaps.length) continue
+    rows.push({ team, gaps: gaps.slice(0, perTeam || 2) })
+  }
+  // Widest need first, so the reader sees who is most likely to bid.
+  rows.sort((a, b) => b.gaps[0].improvement - a.gaps[0].improvement)
+  return rows
+}
+
+/* How many rivals need each position, out of rivalNeeds().
+ *
+ * The number a bid actually turns on. Counted over every gap a rival has
+ * rather than only their widest, because a manager with a second-priority
+ * hole at tight end still bids on one. */
+export function demandByPosition(rivals) {
+  const counts = new Map()
+  for (const row of rivals) {
+    for (const gap of row.gaps) {
+      counts.set(gap.pos, (counts.get(gap.pos) || 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    .map(([pos, count]) => ({ pos, count }))
+    .sort((a, b) => b.count - a.count)
+}
