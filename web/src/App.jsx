@@ -4,6 +4,7 @@ import RoomPage from './components/RoomPage.jsx'
 import MyLeagueScreen from './components/MyLeagueScreen.jsx'
 import YouScreen from './components/YouScreen.jsx'
 import DraftsScreen from './components/DraftsScreen.jsx'
+import HistoryScreen from './components/HistoryScreen.jsx'
 import { useHashRoute } from './hooks/useHashRoute.js'
 
 /* The one tree #root renders, and the only place the routes React owns are
@@ -22,5 +23,6 @@ export default function App() {
   if (view === 'my-league') return <MyLeagueScreen />
   if (view === 'you') return <YouScreen />
   if (view === 'drafts') return <DraftsScreen />
+  if (view === 'history') return <HistoryScreen />
   return <Homepage />
 }

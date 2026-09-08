@@ -734,6 +734,160 @@ export async function deleteHistoryEntry(env, clerkId, id) {
   }
 }
 
+/* ---- The decision ledger (0010_decisions.sql) ----
+
+   "Juke said -> you did -> reality -> verdict". A room writes one of these
+   when it recommends something; My League and History read them back.
+
+   ---- There is no schema ladder here, and that is not an oversight ----
+
+   listLeagues()/putLeague() ladder because a COLUMN arrived under code
+   that already names it, and there is an older statement that still
+   works. A whole new TABLE has no older rung: against a database without
+   0010 there is no query that answers. So the fallback is the one
+   listDraftHistory() already uses for exactly this shape -- catch, log,
+   answer empty -- and the write's own `false` is what tells the client the
+   ledger is not there yet. Read the body, not the status: `{ ok: false }`
+   under a 200 is what a worker deployed ahead of its migration looks like
+   from the page, and it is the only thing that distinguishes it from an
+   account with no decisions.
+
+   ---- verdict is a column and never a field in `data` ----
+
+   The client owns `data` whole (0004_drafts.sql's reasoning, applied
+   again). It does NOT own the verdict -- a grading job writes that, after
+   the week is over, from the archived actuals. Two copies of the same
+   judgement would drift the first time one of them moved, so the read
+   merges the graded columns onto the parsed blob on the way out and the
+   write never touches them. */
+export async function listDecisions(env, clerkId, leagueId) {
+  if (!env.DB) return [];
+
+  try {
+    const sql =
+      "SELECT data, verdict, graded_at FROM decisions WHERE clerk_id = ?" +
+      (leagueId ? " AND league_id = ?" : "") +
+      " ORDER BY decided_at DESC";
+    const bind = leagueId ? [clerkId, leagueId] : [clerkId];
+    const rows = await env.DB.prepare(sql).bind(...bind).all();
+    return (rows.results || []).map((row) =>
+      Object.assign(JSON.parse(row.data), {
+        verdict: row.verdict || null,
+        gradedAt: row.graded_at || null,
+      })
+    );
+  } catch (err) {
+    console.error("decisions read failed:", err && err.message);
+    return [];
+  }
+}
+
+/* Is this league one this account actually has connected right now?
+
+   A decision is about a real roster, so recording one requires a live
+   connection -- which is what keeps Free, who cannot connect anything,
+   from accumulating a ledger. Reading is deliberately not gated the same
+   way: a row outlives the connection it was made under, because
+   disconnecting a league must not erase what was decided while it was
+   connected.
+
+   ---- Why this is a separate read, when the tier cap is not ----
+
+   putLeague() folds its cap check INTO the insert because a cap is a hard
+   limit somebody has an incentive to race: two concurrent connects both
+   reading the same pre-connect count is a paying account connecting past
+   its own cap. Nothing here has that shape. Nobody gains by recording a
+   decision against a league they just disconnected, and the worst a stale
+   answer produces is one extra row that the ledger's own rules already
+   allow to exist. So the atomicity argument does not transfer, and paying
+   for it would buy nothing. */
+async function leagueIsConnected(env, clerkId, provider, leagueId) {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT 1 FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+    ).bind(clerkId, provider, leagueId).first();
+    return !!row;
+  } catch (err) {
+    /* A missing table or an unreachable D1 cannot answer "is it
+       connected", and refusing a real write on an infra hiccup is the
+       worse failure -- the same call getTier() makes about the tier cap.
+       The write below still fails on its own if the table is genuinely
+       absent, which is the honest signal. */
+    console.error("decision league check failed:", err && err.message);
+    return true;
+  }
+}
+
+/* One decision, added or replaced whole by its own id.
+
+   ---- The DO UPDATE carries a WHERE, and that is the security half ----
+
+   The id is minted client-side, so a conflict on it is not necessarily
+   this account's own row -- a client that guessed or learned somebody
+   else's id would otherwise overwrite their record by POSTing it back.
+   `WHERE decisions.clerk_id = excluded.clerk_id` makes that a no-op
+   instead: nothing is written and `changes` is 0, which reads out here as
+   a plain refusal without saying whether the id was real. Same reasoning
+   as deleteHistoryEntry()'s WHERE, applied to the write rather than the
+   delete.
+
+   Returns "ok", "not-connected" (no live connection to that league),
+   "conflict" (the id belongs to someone else) or "error" (a real D1
+   failure, logged) -- putHistoryEntry()'s own vocabulary a few functions
+   up, deliberately, and for the reason its comment gives: a boolean-plus-
+   strings shape lets a caller keep writing `if (ok)` and get it wrong,
+   because every refusal is truthy. One word per outcome, and none of them
+   truthy by accident. */
+export async function putDecision(env, clerkId, rec, dataText) {
+  if (!env.DB) return "error";
+
+  if (!(await leagueIsConnected(env, clerkId, rec.provider, rec.leagueId))) {
+    return "not-connected";
+  }
+
+  try {
+    const stamp = nowSeconds();
+    const results = await env.DB.batch([
+      upsertUser(env, clerkId, stamp),
+      env.DB.prepare(
+        "INSERT INTO decisions" +
+        " (id, clerk_id, provider, league_id, season, week, room, data, decided_at, updated_at)" +
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+        " ON CONFLICT(id) DO UPDATE SET data = excluded.data," +
+        "   week = excluded.week, room = excluded.room," +
+        "   updated_at = excluded.updated_at" +
+        " WHERE decisions.clerk_id = excluded.clerk_id"
+      ).bind(
+        rec.id, clerkId, rec.provider, rec.leagueId, rec.season,
+        rec.week, rec.room, dataText, rec.decidedAt, stamp
+      ),
+    ]);
+    const write = results[1];
+    return write && write.meta && write.meta.changes ? "ok" : "conflict";
+  } catch (err) {
+    console.error("decision write failed:", err && err.message);
+    return "error";
+  }
+}
+
+/* Scoped to the caller's own id in the WHERE, for deleteHistoryEntry()'s
+   own reason: a delete that matched nothing because the id belonged to
+   somebody else is indistinguishable from one that matched nothing
+   because the id was never real, and neither leaks which. */
+export async function deleteDecision(env, clerkId, id) {
+  if (!env.DB) return false;
+
+  try {
+    await env.DB.prepare(
+      "DELETE FROM decisions WHERE clerk_id = ? AND id = ?"
+    ).bind(clerkId, id).run();
+    return true;
+  } catch (err) {
+    console.error("decision delete failed:", err && err.message);
+    return false;
+  }
+}
+
 /* Everything Juke holds for one person, removed.
 
    Clerk owns the account and deletes it on its own; this is the half Juke
@@ -767,6 +921,13 @@ export async function deleteUserData(env, clerkId) {
       // league somebody plays in. Anything keyed by clerk_id belongs in
       // this list the day its migration lands.
       env.DB.prepare("DELETE FROM connected_leagues WHERE clerk_id = ?").bind(clerkId),
+      // Added with 0010_decisions.sql, on the instruction the comment above
+      // already gives: anything keyed by clerk_id belongs in this list the
+      // day its migration lands. Left out, an account deletion FAILS rather
+      // than leaking -- decisions.clerk_id references users(clerk_id), so
+      // the parent DELETE hits the constraint and the whole batch rolls
+      // back, which is the loud half of this particular mistake.
+      env.DB.prepare("DELETE FROM decisions WHERE clerk_id = ?").bind(clerkId),
       env.DB.prepare("DELETE FROM users WHERE clerk_id = ?").bind(clerkId)
     ]);
     return true;

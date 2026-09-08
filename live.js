@@ -889,6 +889,93 @@
             .catch(() => syncResult(false, "bad-response"));
         })
         .catch(() => syncResult(false, "offline"));
+    },
+
+    /* ---- The decision ledger (/me/decisions) ----
+
+       Same contract as every account method above: resolves, never
+       rejects, and `reason` says which failure it was. Two reasons are
+       specific to this route and neither may collapse into the generic
+       ones, for the reason the syncResult note above already records --
+       three causes behind one message cost a real bug once:
+
+         "not-connected"  403, and the body says so: a decision is about a
+                          real roster, and this account has no live
+                          connection to that league. Distinct from
+                          "forbidden", which is originAllowed() refusing
+                          the caller's Origin -- one is a product rule and
+                          the other is a misconfigured page.
+         "id-taken"       409: the id belongs to somebody else. Nothing
+                          was written and nothing is worth retrying. The
+                          same word /me/history uses -- reasonForStatus()
+                          maps 409 to it too, so the body-read below and
+                          the fallback agree rather than giving one
+                          condition two names.
+
+       `league` is optional on the read. My League asks for one league's
+       decisions and History asks for all of them, and both want the same
+       newest-first order the worker already returns. */
+    loadDecisions: function (token, leagueId) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", { decisions: [] }));
+      const http = WORKER.replace(/^ws/, "http");
+      const q = leagueId ? "?league=" + encodeURIComponent(leagueId) : "";
+      return fetch(http + "/me/decisions" + q, { headers: { "authorization": "Bearer " + token } })
+        .then(function (r) {
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status), { decisions: [] });
+          return r.json()
+            .then((body) => syncResult(true, null, {
+              decisions: (body && Array.isArray(body.decisions)) ? body.decisions : []
+            }))
+            .catch(() => syncResult(false, "bad-response", { decisions: [] }));
+        })
+        .catch(() => syncResult(false, "offline", { decisions: [] }));
+    },
+
+    /* One decision, added or replaced by its own id -- which is also how a
+       room records that the manager ACTED on a recommendation it made
+       earlier: same id, same row, a `did` the second write carries. */
+    saveDecision: function (token, decision) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out"));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/me/decisions", {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+        body: JSON.stringify(decision)
+      })
+        .then(function (r) {
+          // 403 and 409 both carry their own `error`, told apart by the
+          // body rather than guessed from the status -- the same call
+          // connectLeague() makes a few methods up, and for the same
+          // reason: a product rule and a misconfigured origin are
+          // different problems with different fixes.
+          if (r.status === 403 || r.status === 409) {
+            return r.json()
+              .then((body) => syncResult(false, (body && body.error) || reasonForStatus(r.status)))
+              .catch(() => syncResult(false, reasonForStatus(r.status)));
+          }
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status));
+          return r.json()
+            .then((body) => (body && body.ok) ? syncResult(true) : syncResult(false, "store-failed"))
+            .catch(() => syncResult(false, "bad-response"));
+        })
+        .catch(() => syncResult(false, "offline"));
+    },
+
+    deleteDecision: function (token, id) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out"));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/me/decisions?id=" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: { "authorization": "Bearer " + token }
+      })
+        .then(function (r) {
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status));
+          return r.json()
+            .then((body) => (body && body.ok) ? syncResult(true) : syncResult(false, "store-failed"))
+            .catch(() => syncResult(false, "bad-response"));
+        })
+        .catch(() => syncResult(false, "offline"));
     }
   };
 })(window);
+

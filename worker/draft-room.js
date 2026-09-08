@@ -32,6 +32,7 @@ import {
   syncPlayerPool, cachedNews, storeNews, usableNews, storeSignup, touchUser, deleteUserData,
   getSavedDraft, putSavedDraft, deleteSavedDraft,
   listDraftHistory, putHistoryEntry, deleteHistoryEntry,
+  listDecisions, putDecision, deleteDecision,
   listLeagues, putLeague, deleteLeague, selectLeague, resolveSleeperIds,
   refreshLeagueCache, getTier, LEAGUE_CAP
 } from "./store.js";
@@ -1637,6 +1638,98 @@ async function meHistoryRoute(request, env) {
   return new Response(JSON.stringify(wrote === "ok" ? { ok: true } : { ok: false, error: "store-failed" }), { headers });
 }
 
+/* A decision is a card, not a draft: a room slug, a week, a sentence and
+   a handful of evidence rows. HISTORY_BODY_MAX is 400KB because a finished
+   draft carries its whole frozen report; nothing here is remotely that,
+   and a cap sized for the wrong payload is not a cap. */
+const DECISION_BODY_MAX = 16 * 1024;
+
+/* GET/POST/DELETE /me/decisions — the cross-room decision ledger.
+
+   GET takes an optional `?league=` and filters to it, because that is
+   what My League asks (the active league's decisions) while History asks
+   for all of them. Both orders are the same one — newest first — so the
+   route hands the array straight on, as /me/history already does.
+
+   POST writes one record. `verdict` and `gradedAt` are NOT read off the
+   body even if a client sends them: the grader owns those columns, and
+   accepting a client's copy would let a page mark its own calls correct.
+   That is the one field in this payload with an incentive attached. */
+async function meDecisionsRoute(request, env) {
+  const { user, error } = await requireUser(request, env);
+  if (error) return error;
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+
+  if (request.method === "GET") {
+    const leagueId = (new URL(request.url).searchParams.get("league") || "").slice(0, 64);
+    return new Response(
+      JSON.stringify({ decisions: await listDecisions(env, user.id, leagueId || null) }),
+      { headers }
+    );
+  }
+
+  if (request.method === "DELETE") {
+    const id = (new URL(request.url).searchParams.get("id") || "").slice(0, 64);
+    if (!id) return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+    const ok = await deleteDecision(env, user.id, id);
+    return new Response(JSON.stringify({ ok }), { headers });
+  }
+
+  const text = await request.text();
+  if (!text || text.length > DECISION_BODY_MAX) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "bad-json" }), { status: 400, headers });
+  }
+
+  /* Every column the table needs, off the body and bounded here rather
+     than trusted. `week` is a number the grader selects on, so a string
+     that happens to look like one would silently never match. */
+  const rec = {
+    id: String((parsed && parsed.id) || "").slice(0, 64),
+    provider: String((parsed && parsed.provider) || "").slice(0, 32),
+    leagueId: String((parsed && parsed.leagueId) || "").slice(0, 64),
+    season: String((parsed && parsed.season) || "").slice(0, 8),
+    week: Math.floor(Number(parsed && parsed.week)),
+    room: String((parsed && parsed.room) || "").slice(0, 32),
+    // decidedAt is milliseconds on the client (Date.now(), the same unit
+    // recordHistory() uses) and every D1 timestamp in this project is
+    // epoch seconds -- converted once, here, exactly as /me/history
+    // converts completedAt, rather than asking store.js which unit a
+    // caller meant.
+    decidedAt: Math.floor(Number((parsed && parsed.decidedAt) || 0) / 1000),
+  };
+  if (!rec.id || !rec.provider || !rec.leagueId || !rec.season ||
+      !rec.room || !rec.decidedAt || !(rec.week >= 0)) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const stored = await putDecision(env, user.id, rec, text);
+  if (stored === "not-connected") {
+    /* 403 rather than 400: the request is well-formed and the account is
+       real, and what is missing is a live connection to that league --
+       which is the whole gate, since Free cannot connect one at all. The
+       same shape as the tier cap's own refusal. */
+    return new Response(JSON.stringify({ ok: false, error: "not-connected" }), { status: 403, headers });
+  }
+  /* "id-taken", the same word /me/history answers with, because it is the
+     same condition: a client-minted id that already belongs to another
+     account. Two names for one fact is the drift this project keeps
+     finding, and a screen would have to carry both sentences. */
+  if (stored === "conflict") {
+    return new Response(JSON.stringify({ ok: false, error: "id-taken" }), { status: 409, headers });
+  }
+  return new Response(
+    JSON.stringify(stored === "ok" ? { ok: true } : { ok: false, error: "store-failed" }),
+    { headers }
+  );
+}
+
 /* POST /webhooks/clerk — Clerk telling us an account is gone.
 
    Clerk owns the account; this is the half Juke owns. Without it, deleting
@@ -1821,6 +1914,17 @@ export default {
         }, corsFor(request)) });
       }
       return meHistoryRoute(request, env);
+    }
+
+    if (url.pathname === "/me/decisions") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET, POST, DELETE",
+          "access-control-allow-headers": "authorization, content-type",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return meDecisionsRoute(request, env);
     }
 
     if (url.pathname === "/news") {
