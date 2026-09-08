@@ -63,11 +63,62 @@ function blocked(what) {
    other way to be misread — 108 ok lines and no mention that four sections
    never ran is a pass with a hole in it. */
 let reported = false;
+/* Sockets that went away without being asked to.
+
+   ---- Why this is worth its own channel ----
+
+   On 8 September 2026 the deploy gate went red with 83 assertions passing
+   and 39 failing, and not one of the 39 said what had happened. Read in
+   source order the first three were `bob joined` wanting seat 1 and getting
+   0, `bob is not host` PASSING, and `bob sees two chairs taken` getting 1.
+   That combination has exactly one meaning — the room still existed with
+   alice as its host, and alice's chair was free, which is `leave()`,
+   because a dropped socket frees the chair in the lobby.
+
+   So the host's socket had been closed underneath her, which is what a
+   Durable Object's WebSockets do when a new version of the worker takes
+   over. Reproduced value for value against a local wrangler dev by closing
+   the host's socket by hand between the two joins.
+
+   Everything after that point is downstream of one event, and thirty-nine
+   restatements of it are what this file's own `blocked()` comment already
+   calls "a page of consequential failures that all restate the one thing
+   that went wrong". The gate is a step nobody reads if it cries wolf; this
+   is the line that makes a residual occurrence take five seconds to
+   diagnose instead of forty minutes.
+
+   `expected` is set when the suite closes a socket on purpose — the
+   reconnect section does that deliberately — so only a close nobody asked
+   for is recorded. */
+const closures = [];
+const startedAt = Date.now();
+function watchForClose(ws, who) {
+  ws.addEventListener("close", () => {
+    if (ws.expected) return;
+    closures.push(`${who} at ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  });
+}
+
 function report() {
   if (reported) return;
   reported = true;
   console.log(note.join("\n"));
   console.log("");
+  /* Before the failures rather than after them, because it explains them.
+     Printed even on a green run, where it should be empty and its absence
+     is the claim being made. */
+  if (closures.length) {
+    console.log(
+      "SOCKETS CLOSED WITHOUT BEING ASKED: " + closures.join(", ") + "\n" +
+      "  A Durable Object's sockets are closed when a new worker version\n" +
+      "  takes over, so this is very likely a deploy landing mid-run rather\n" +
+      "  than a fault in the room. worker/wait-for-worker.mjs holds a socket\n" +
+      "  open before this step for exactly that reason; if it passed and\n" +
+      "  this still happened, the rollout window is longer than its hold.\n" +
+      "  Re-run against the deployed worker before believing the failures\n" +
+      "  below — every one of them is downstream of this.\n"
+    );
+  }
   if (fails.length) {
     console.log("FAIL " + fails.length);
     fails.forEach((f) => console.log("  x " + f));
@@ -103,6 +154,7 @@ function connect(member, name, extra, room = ROOM) {
   const ws = new WebSocket(`${BASE}/room/${room}?${q}`);
   ws.inbox = [];
   ws.addEventListener("message", (e) => ws.inbox.push(JSON.parse(e.data)));
+  watchForClose(ws, member);
   return new Promise((res, rej) => {
     ws.addEventListener("open", () => res(ws));
     ws.addEventListener("error", rej);
@@ -150,8 +202,17 @@ function lastOfType(ws, type) {
   return null;
 }
 
+/* until(), not sleep(400) — and these two were the last of them.
+
+   The comment on until() above says a fixed 400ms is "generous against
+   localhost and not always enough against a worker at the other end of a
+   real network", and the whole file adopted it except the opening moves,
+   which is this project's own "when a fix is applied to every caller, count
+   the callers". Nothing here waits on the value being asserted: it waits for
+   the state to EXIST and then checks what is in it, so a wrong seat still
+   fails rather than timing out into silence. */
 const alice = await connect("alice", "Alice");
-await sleep(400);
+await until("alice's first state arrives", () => lastState(alice));
 
 let s = lastState(alice);
 check("alice gets a state on connect", !!s, true);
@@ -161,14 +222,18 @@ check("alice is host", s && s.isHost, true);
 check("alice took seat 0", s && s.yourSeat, 0);
 
 const bob = await connect("bob", "Bob");
-await sleep(400);
+await until("bob's first state arrives", () => lastState(bob));
 
 s = lastState(bob);
 check("bob joined", s && s.yourSeat, 1);
 check("bob is not host", s && s.isHost, false);
 check("bob sees two chairs taken", s && s.seats.filter((x) => x.taken).length, 2);
 
-// alice's socket should have been told about bob without asking
+/* alice's socket should have been told about bob without asking — and this
+   one waits on the broadcast rather than on bob's own state, because the two
+   are separate sends and alice's is the one under test. */
+await until("alice hears about bob",
+            () => (lastState(alice) || {}).seats?.filter((x) => x.taken).length === 2 || undefined);
 s = lastState(alice);
 check("alice was pushed the update", s && s.seats.filter((x) => x.taken).length, 2);
 check("alice cannot see bob's member id",
@@ -182,7 +247,7 @@ check("still in lobby", lastState(alice)?.status, "lobby");
 
 // host starts
 alice.send(JSON.stringify({ type: "start" }));
-await sleep(400);
+await until("the room starts drafting", () => lastState(alice)?.status === "drafting" || undefined);
 check("drafting after host start", lastState(alice)?.status, "drafting");
 check("both sockets saw it", lastState(bob)?.status, "drafting");
 check("a countdown arrived", typeof lastState(bob)?.msLeft, "number");
@@ -434,10 +499,11 @@ const claimed = await until("bob's typing reaches alice",
 check("the seat comes from the socket, not the message", claimed.seat, 1);
 
 // storage survives a reconnect: alice drops and comes back
+alice.expected = true;  // the reconnect section drops her deliberately
 alice.close();
 await sleep(400);
 const alice2 = await connect("alice", "Alice");
-await sleep(500);
+await until("alice's state after reconnecting", () => lastState(alice2));
 s = lastState(alice2);
 check("room survived a reconnect", s?.picks.length >= 2, true);
 check("alice keeps her seat mid-draft", s?.yourSeat, 0);
@@ -475,7 +541,13 @@ check("history includes the arrival lines",
 
 // a client on a different data build is turned away
 const stale = await connect("carol", "Carol", { data: "v2-different" });
-await sleep(400);
+/* The ROOM closes this one, which is the whole point of the section — so it
+   is marked before the refusal lands rather than at the tidy-up below, or the
+   close watcher reports a healthy run as a worker replacing itself. A
+   diagnostic that fires on a green run is the crying-wolf problem it exists
+   to fix, wearing the fix's clothes. */
+stale.expected = true;
+await until("the stale build is refused", () => lastOfType(stale, "rejected"));
 const rej = lastOfType(stale, "rejected");
 check("stale build refused", rej?.code, "stale-data");
 check("refusal names both versions",
@@ -619,6 +691,7 @@ check("a flood is refused", floodRejects() > 0, true);
 
 // and the connection survives it
 check("the socket is not closed for flooding", flooder.readyState, 1);
+flooder.expected = true;  // the rate-limit section is finished with it
 flooder.close();
 
 /* ---- reply threading, over a real socket ----
@@ -869,8 +942,10 @@ await until("the late swap is refused", () => rejectsOn(host) > beforeLateSwap);
 check("the order cannot be changed once drafting",
       lastOfType(host, "rejected").code, "not-in-lobby");
 
+host.expected = true; guest.expected = true;  // tidying up at the end
 host.close(); guest.close();
 
+bob.expected = true; alice2.expected = true; stale.expected = true;  // tidying up at the end
 bob.close(); alice2.close(); try { stale.close(); } catch {}
 await sleep(200);
 

@@ -127,7 +127,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/src/hooks/useAccountUiReady.js` | "Is it safe to render Clerk's components yet": a key exists *and* we are past the first client pass. Both halves fail silently on their own — see the Accounts section. |
 | `web/.env.example` | The local-dev template. Keeps a `pk_test_` key on purpose: production's `pk_live_` belongs in the Pages dashboard, and a developer running `vite dev` against the production Clerk instance would be polluting the real user list. |
 | `worker/auth.js` | `verifiedUser()` — the one place the worker decides who is asking. Answers null for a missing, malformed, expired or forged token alike, and for no key configured at all. Read its comment before touching it: the public `verifyToken` export does not have the return shape its own internals document. |
-| `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Waits for a message sent to come back as a broadcast — twice, spaced — because `wrangler deploy` returning is not the moment the worker serves. Costs 3.8s healthy; the alternative was a gate that went red three times in ninety minutes on healthy deploys. |
+| `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Two round trips, then **one socket held open for 15s and asked again** — because the thing the verify step trips over is not a worker that has yet to serve, it is a socket closed under it by the rollout. Costs ~18s healthy, against a gate that went red on healthy deploys. |
 | `worker/test-auth.mjs` | Every way of being signed out, against a real `wrangler dev` — the one suite that runs the routes inside a real workerd rather than in process. |
 | `worker/test-verified-user.mjs` | The signed-in half of `auth.js`, offline. Generates a key pair, serves it as JWKS, and lets the real `verifyToken` do the real verification — `apiUrl` is the seam. Nothing is mocked, because the bug it exists for was in a real call's return shape. |
 | `worker/test-me-routes.mjs` | The `/me` routes with somebody signed in: `signedIn: true` at all, `requireUser()` letting somebody through, and `POST /me/history`'s 409. `draft-room.js` imports into Node, so no wrangler and no ports. |
@@ -8308,6 +8308,59 @@ finding in the whole pass was the one nothing flagged.
   gate exists for. Waiting for readiness removes the race and hides no
   failure — and the two stay legible apart: the settle step says "it never
   came up", the verify says "it came up and is wrong".
+
+### And the probe was watching the wrong property
+
+**It passed, and the verify step behind it went red anyway** — 8 September
+2026, 83 assertions passing and 39 failing. The paragraphs above diagnose
+that failure as "the worker has not started serving", and everything about
+that reading was wrong except the conclusion that there is a rollout window.
+
+**The report says which, once it is read in source order rather than as a
+count.** The first three failures were `bob joined` wanting seat 1 and
+getting 0, `bob is not host` **passing**, and `bob sees two chairs taken`
+getting 1. There is one arrangement that produces exactly those: the room
+still exists with alice as its host, and alice's CHAIR is free. That is
+`leave()` — a dropped socket frees the chair in the lobby.
+
+So alice's socket had been closed underneath her. **Reproduced value for
+value** against a local `wrangler dev` by closing the host's socket by hand
+between the two joins: seat 0, not host, one chair taken, matching production
+on every field. That is what a Durable Object's WebSockets do when a new
+version takes over — the object is evicted, storage survives, sockets do not.
+
+**Which is why a probe that opens a socket, hears itself, and closes could
+not see it.** "A message I send comes back" was true throughout the failure
+and true when the probe ran. The property the suite depends on is that a
+socket opened now still EXISTS in fifteen seconds, and nothing was asking
+that. `survives()` holds one open across a settle window and round-trips it
+again at the end — the closing trip matters as much as the silence, because a
+socket can stay open against an object that has stopped answering.
+
+Healthy cost went 3.8s to **18.2s**, measured. Verified in both directions:
+killing the worker mid-hold reports `a held socket errored — still rolling
+out, starting over` and retries, and a worker that never comes back still
+exits 1 at the deadline saying it never returned a broadcast — which stays
+distinguishable from the verify step's own failures.
+
+**The suite names the event now instead of restating it thirty-nine times.**
+Every socket `connect()` hands out is watched, closes the suite makes on
+purpose are marked, and `report()` leads with the ones nobody asked for.
+Confirmed in both directions, which is the half that matters for a
+diagnostic: unmarking a deliberate close reports `SOCKETS CLOSED WITHOUT
+BEING ASKED: alice at 2.6s`, and a healthy run prints nothing at all. **It
+printed on a green run first** — the stale-build client is closed by the
+ROOM, by design, and was being marked at the tidy-up rather than at its own
+creation. A diagnostic that fires on a healthy run is the crying-wolf problem
+it exists to fix, wearing the fix's clothes.
+
+**And the opening waits were still `sleep(400)`**, which `until()`'s own
+comment condemns in this same file — "generous against localhost and not
+always enough against a worker at the other end of a real network". The whole
+suite had adopted `until()` except the first two moves and three later ones.
+Not the cause of this failure, and the same class of latent flake: **when a
+fix is applied to every caller, count the callers.** One deliberate `sleep`
+remains, after a close, where there is no client-side condition to poll.
 - Engine: `py scripts/test_engine.py` — runs `draft-engine.js` and `room.js`
   outside a browser and asserts the snake maths, the turn order, the legality
   checks, the determinism of the CPU wobble, and the parts of a room that a
