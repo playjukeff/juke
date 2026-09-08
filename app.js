@@ -11419,6 +11419,79 @@ window.JukeEngine = {
   teamRanksMeta: function () {
     return typeof TEAM_RANKS_META !== "undefined" ? TEAM_RANKS_META : null;
   },
+  /* COLLEGE_BOARD: players still in college, who are NOT on any Juke board.
+   *
+   * The same cross-script-tag read as TEAM_RANKS above and guarded the same
+   * way, and it is the one thing this bridge returns that is NOT keyed by a
+   * Sleeper id -- these players have none, because nobody has drafted them.
+   * Keyed by CFBD athlete id, and the two spaces must never be merged: a
+   * lookup falling through from one to the other would return a different
+   * person with every number around it correct. check_id_spaces() in
+   * build_players.py reports a collision; nothing here may create one.
+   *
+   * An ARRAY rather than the raw object, because every caller wants to draw
+   * a list and turning it back into one at each call site is the shape that
+   * drifts. The id travels on each row as `id`, since a React key needs it
+   * and the object's own key is otherwise lost in the conversion.
+   *
+   * Empty until the nightly runs with CFBD_KEY, and empty for ever without
+   * one -- so the room must draw "nothing here" rather than assume rows.
+   */
+  collegeBoard: function () {
+    const COLLEGE_POS_ORDER = ["QB", "RB", "WR", "TE"];
+    if (typeof COLLEGE_BOARD === "undefined" || !COLLEGE_BOARD) return [];
+    /* Sorted by the STORED rank, never by re-deriving one here.
+     *
+     * These keys are numeric strings and JavaScript re-orders integer-like
+     * object keys into ascending numeric order on parse, so the order this
+     * arrives in is athlete id and nothing else. The room drew a list headed
+     * "By college production" that was really ordered by id until this sort
+     * existed -- a right list under a wrong label, which is the failure this
+     * project keeps finding.
+     *
+     * `r` comes from build_college_board(), which also makes the top-N cut,
+     * so the selection and the ordering are one decision in one place rather
+     * than the same arithmetic written out in Python and again here. */
+    return Object.keys(COLLEGE_BOARD).map(function (id) {
+      const row = COLLEGE_BOARD[id];
+      return {
+        id: id, name: row.n, pos: row.p, school: row.t,
+        classYear: row.y, college: row.c || {}, rank: row.r || 0,
+      };
+    }).sort(function (a, b) {
+      /* Rank first, then position order, so an unfiltered board reads as
+         tiers -- the best at each position, then the second at each -- rather
+         than as twenty quarterbacks followed by everybody else. */
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return COLLEGE_POS_ORDER.indexOf(a.pos) - COLLEGE_POS_ORDER.indexOf(b.pos);
+    });
+  },
+  collegeBoardMeta: function () {
+    return typeof COLLEGE_BOARD_META !== "undefined" ? COLLEGE_BOARD_META : null;
+  },
+  /* What a FIRST-YEAR player did before he got here: record["pr"].
+   *
+   * Three states for the draft, and a caller has to keep them apart:
+   *   { round, pick, overall }  drafted, and we know where
+   *   undrafted: true           not drafted, and that is a FACT
+   *   null                      we could not tell -- say nothing
+   *
+   * The third is not the same as the second and must not be drawn as it.
+   * build_prospects() only claims "undrafted" when the player's name is in no
+   * pick at all; anything else is left unstated on purpose, because
+   * "Undrafted" on a screen reads as certainty.
+   */
+  prospectFor: function (player) {
+    const stat = statOf(player);
+    const block = stat && stat.pr;
+    if (!block) return null;
+    const d = block.d;
+    return {
+      drafted: Array.isArray(d) ? { round: d[0], pick: d[1], overall: d[2] } : null,
+      undrafted: d === 0,
+      college: block.c || null,
+    };
+  },
   // Returns null when nflverse never wrote a `u` block — a defence, an
   // unjoined player, or a run where nflverse was down. The tab is hidden on
   // null rather than drawn empty, the same way the news tab is.
