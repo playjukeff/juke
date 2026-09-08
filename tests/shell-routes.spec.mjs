@@ -29,6 +29,7 @@ const CASES = [
   { hash: "#/my-league", needs: "Connect a real league", tab: "My League" },
   { hash: "#/rooms/draft", needs: "Mock Drafts", tab: "Rooms" },
   { hash: "#/drafts", needs: "Your Drafts", tab: "Drafts" },
+  { hash: "#/history", needs: "Juke said", tab: "History" },
   { hash: "#/you", needs: "You", tab: "You" },
 ];
 

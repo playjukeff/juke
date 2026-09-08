@@ -1,5 +1,5 @@
 import AppShell from './shell/AppShell.jsx'
-import RoomHero from './shell/RoomHero.jsx'
+import RoomShell from './shell/RoomShell.jsx'
 import LockedPreview from './shell/LockedPreview.jsx'
 import { useRooms } from '../hooks/useRooms.js'
 import WaiverPreview from './rooms/WaiverPreview.jsx'
@@ -169,32 +169,77 @@ export default function RoomPage({ slug }) {
         .join(' · ')
     : null
 
+  /* What the shell's identity row says.
+
+     A room with no connected league has no week and no platform, so it
+     says what it actually is rather than inventing a "Week 6" the way the
+     prototype's sample data can afford to. Once a room goes live the same
+     three fields carry the real thing — which is why they are computed
+     here and not written into PREVIEWS: the live and preview cases are one
+     header with different values, not two headers. */
+  const shell = live
+    ? {
+        title: snapshot && snapshot.week ? `Week ${snapshot.week}` : 'Connected',
+        meta: [league.name, `${league.totalTeams} team`].filter(Boolean).join(' · '),
+        stats: [],
+      }
+    : {
+        title: 'Preview',
+        meta: `${room.season} · sample data`,
+        stats: [],
+      }
+
   return (
     <AppShell active="rooms">
-      <RoomHero
-        accent={room.accent}
-        glyph={room.glyph}
-        eyebrow={liveEyebrow || (preview ? preview.eyebrow : `${room.season.toUpperCase()} · PREVIEW`)}
-        title={room.name.replace(/^The /, '')}
+      <RoomShell
+        room={room.name}
+        title={shell.title}
+        meta={shell.meta}
+        stats={shell.stats}
+        backHref="#/rooms"
+        backLabel="Rooms"
       >
-        {live
-          ? 'Where every manager stands, read from your league.'
-          : preview
-            ? preview.sub
-            : room.blurb}
-      </RoomHero>
-      {live ? (
-        (() => {
-          const Live = LIVE_ROOMS[slug]
-          return (
-            <Live league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
-          )
-        })()
-      ) : (
-        <LockedPreview headline={preview ? preview.headline : `See your real ${slug} room`}>
-          {Body ? <Body /> : null}
-        </LockedPreview>
-      )}
+        {/* The room's own name is an H1 in the BODY, not in the bar —
+            Juke Journey v3 draws it that way (screenshot 07) and the
+            reason is structural: the bar is sticky and 52px, so a title
+            that lived in it would be the only heading on the page and
+            would scroll with the chrome rather than with the content it
+            names. The accent survives here, on the eyebrow, which is the
+            one place a room's identity colour can go without sitting
+            under text. */}
+        <div className="mx-auto max-w-[1280px] px-5 pt-6 sm:px-10 sm:pt-8">
+          <div
+            className="mb-1.5 font-mono text-[11px] tracking-[0.1em]"
+            style={{ color: room.accent }}
+          >
+            <span className="mr-1.5" aria-hidden="true">{room.glyph}</span>
+            {liveEyebrow || (preview ? preview.eyebrow : `${room.season.toUpperCase()} · PREVIEW`)}
+          </div>
+          <h1 className="m-0 font-display text-[30px] font-extrabold text-white sm:text-[40px]">
+            {room.name}
+          </h1>
+          <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-voidInk-body">
+            {live
+              ? 'Where every manager stands, read from your league.'
+              : preview
+                ? preview.sub
+                : room.blurb}
+          </p>
+        </div>
+
+        {live ? (
+          (() => {
+            const Live = LIVE_ROOMS[slug]
+            return (
+              <Live league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+            )
+          })()
+        ) : (
+          <LockedPreview headline={preview ? preview.headline : `See your real ${slug} room`}>
+            {Body ? <Body /> : null}
+          </LockedPreview>
+        )}
+      </RoomShell>
     </AppShell>
   )
 }
