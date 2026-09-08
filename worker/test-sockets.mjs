@@ -29,6 +29,65 @@ function check(name, got, want) {
   else note.push("ok  " + name);
 }
 
+/* Assertions that were never attempted, said out loud.
+
+   A section whose own wait timed out has nothing left to check against, and
+   running its checks anyway produces a page of consequential failures that
+   all restate the one thing that went wrong. Skipping them silently is
+   worse: the run would end green-ish and shorter, and nobody counts. */
+function blocked(what) {
+  fails.push(what + "\n    not attempted — the wait above it timed out");
+}
+
+/* ---- The report has to survive a crash, because the crash IS the result ----
+
+   Every result in this file is buffered into note/fails and printed at the
+   very bottom, and `until()` reports its own timeout by pushing a failure and
+   returning undefined. Several blocks below then read two fields deep off
+   what it did not find — `pollState[pollState.length - 1].type` after a
+   `|| []`, say — which throws, and a throw at top level skipped the report
+   entirely.
+
+   Measured, on the post-deploy gate: a run that had already passed 108
+   assertions and timed out on ONE slow poll broadcast printed a bare
+   TypeError and not a single `ok` line. That is the worst available output
+   on the one check that runs against a just-promoted worker, because it
+   reads as "everything is broken" when what happened is "one broadcast was
+   slow" — and it is the same tell CLAUDE.md's testing section already
+   records, a failure that names nothing being far more expensive than one
+   that names a value.
+
+   So the report is a function on `exit`: whatever happens, whatever ran gets
+   printed. `uncaughtException` records the crash as a failure of its own and
+   says the run stopped there, because a report that is merely SHORT is the
+   other way to be misread — 108 ok lines and no mention that four sections
+   never ran is a pass with a hole in it. */
+let reported = false;
+function report() {
+  if (reported) return;
+  reported = true;
+  console.log(note.join("\n"));
+  console.log("");
+  if (fails.length) {
+    console.log("FAIL " + fails.length);
+    fails.forEach((f) => console.log("  x " + f));
+    return;
+  }
+  console.log(`OK — ${note.length} assertions over real sockets`);
+}
+
+function crashed(err) {
+  fails.push(
+    "the run stopped here, so any section below this one never ran\n" +
+    "    " + ((err && err.stack) || err)
+  );
+  process.exitCode = 1;
+  report();
+}
+process.on("uncaughtException", crashed);
+process.on("unhandledRejection", crashed);
+process.on("exit", report);
+
 /* `room` last and defaulted, so every existing call site still reads as
    connect(member, name) and only the sections that need a room of their own
    have to say so. The host-only messages do: they are lobby-only, and this
@@ -540,26 +599,32 @@ const pollState = await until("the poll arrives", () => {
   return last && last.type === "poll" ? c : false;
 }) || [];
 const pollLine = pollState[pollState.length - 1];
-check("a poll carries its type over the wire", pollLine.type, "poll");
-check("choices arrive in order", pollLine.poll.options.map((o) => o.choice), ["Yes", "No"]);
-check("nobody has voted yet", pollLine.poll.options.map((o) => o.count), [0, 0]);
+if (!pollLine) blocked("everything the poll section checks");
+else {
+  check("a poll carries its type over the wire", pollLine.type, "poll");
+  check("choices arrive in order", pollLine.poll.options.map((o) => o.choice), ["Yes", "No"]);
+  check("nobody has voted yet", pollLine.poll.options.map((o) => o.count), [0, 0]);
 
-bob.send(JSON.stringify({ type: "poll-vote", id: pollLine.id, choice: 0 }));
-const bobVoted = await until("bob's vote reaches alice", () => {
-  const line = (lastState(alice2) || {}).chat.find((m) => m.id === pollLine.id);
-  return line && line.poll.options[0].count === 1 ? line : false;
-}) || {};
-check("alice sees bob's vote counted", bobVoted.poll.options[0].count, 1);
-check("and that it was not her own", bobVoted.poll.options[0].you, false);
-check("bob sees it was him",
-      lastState(bob).chat.find((m) => m.id === pollLine.id).poll.options[0].you, true);
-check("a poll vote leaks no member id",
-      JSON.stringify(lastState(alice2)).includes('"bob"') === false, true);
+  bob.send(JSON.stringify({ type: "poll-vote", id: pollLine.id, choice: 0 }));
+  const bobVoted = await until("bob's vote reaches alice", () => {
+    const line = (lastState(alice2) || {}).chat.find((m) => m.id === pollLine.id);
+    return line && line.poll.options[0].count === 1 ? line : false;
+  });
+  if (!bobVoted) blocked("what alice and bob each see of that vote");
+  else {
+    check("alice sees bob's vote counted", bobVoted.poll.options[0].count, 1);
+    check("and that it was not her own", bobVoted.poll.options[0].you, false);
+    check("bob sees it was him",
+          lastState(bob).chat.find((m) => m.id === pollLine.id).poll.options[0].you, true);
+    check("a poll vote leaks no member id",
+          JSON.stringify(lastState(alice2)).includes('"bob"') === false, true);
+  }
 
-alice2.send(JSON.stringify({ type: "poll-vote", id: pollLine.id, choice: 99 }));
-await until("the bad choice is rejected", () => lastOfType(alice2, "rejected")?.code === "no-such-choice");
-check("an out-of-range choice is refused",
-      lastOfType(alice2, "rejected")?.code, "no-such-choice");
+  alice2.send(JSON.stringify({ type: "poll-vote", id: pollLine.id, choice: 99 }));
+  await until("the bad choice is rejected", () => lastOfType(alice2, "rejected")?.code === "no-such-choice");
+  check("an out-of-range choice is refused",
+        lastOfType(alice2, "rejected")?.code, "no-such-choice");
+}
 
 // ---- anon: counts are visible, who voted never is ----
 alice2.send(JSON.stringify({
@@ -573,13 +638,19 @@ const anonPollState = await until("the anon poll arrives", () => {
 }) || [];
 const anonPoll = anonPollState[anonPollState.length - 1];
 
-bob.send(JSON.stringify({ type: "poll-vote", id: anonPoll.id, choice: 1 }));
-const anonView = await until("the anon vote reaches alice", () => {
-  const line = (lastState(alice2) || {}).chat.find((m) => m.id === anonPoll.id);
-  return line && line.poll.options[1].count === 1 ? line : false;
-}) || {};
-check("an anonymous poll still shows a count", anonView.poll.options[1].count, 1);
-check("but names nobody", anonView.poll.options[1].voters, undefined);
+if (!anonPoll) blocked("what an anonymous poll shows and withholds");
+else {
+  bob.send(JSON.stringify({ type: "poll-vote", id: anonPoll.id, choice: 1 }));
+  const anonView = await until("the anon vote reaches alice", () => {
+    const line = (lastState(alice2) || {}).chat.find((m) => m.id === anonPoll.id);
+    return line && line.poll.options[1].count === 1 ? line : false;
+  });
+  if (!anonView) blocked("what an anonymous poll shows and withholds");
+  else {
+    check("an anonymous poll still shows a count", anonView.poll.options[1].count, 1);
+    check("but names nobody", anonView.poll.options[1].voters, undefined);
+  }
+}
 
 // ---- multi-choice: an index toggles rather than replacing ----
 alice2.send(JSON.stringify({
@@ -593,18 +664,24 @@ const multiPollState = await until("the multi poll arrives", () => {
 }) || [];
 const multiPoll = multiPollState[multiPollState.length - 1];
 
-bob.send(JSON.stringify({ type: "poll-vote", id: multiPoll.id, choice: [0, 2] }));
-await until("bob's multi vote lands", () => {
-  const line = (lastState(alice2) || {}).chat.find((m) => m.id === multiPoll.id);
-  return line && line.poll.options[0].count === 1 && line.poll.options[2].count === 1 ? line : false;
-});
-bob.send(JSON.stringify({ type: "poll-vote", id: multiPoll.id, choice: [0] }));
-const toggled = await until("the toggle-off lands", () => {
-  const line = (lastState(alice2) || {}).chat.find((m) => m.id === multiPoll.id);
-  return line && line.poll.options[0].count === 0 ? line : false;
-}) || {};
-check("a multi-choice vote toggles one option without touching the rest",
-      toggled.poll.options.map((o) => o.count), [0, 0, 1]);
+if (!multiPoll) blocked("the multi-choice toggle");
+else {
+  bob.send(JSON.stringify({ type: "poll-vote", id: multiPoll.id, choice: [0, 2] }));
+  await until("bob's multi vote lands", () => {
+    const line = (lastState(alice2) || {}).chat.find((m) => m.id === multiPoll.id);
+    return line && line.poll.options[0].count === 1 && line.poll.options[2].count === 1 ? line : false;
+  });
+  bob.send(JSON.stringify({ type: "poll-vote", id: multiPoll.id, choice: [0] }));
+  const toggled = await until("the toggle-off lands", () => {
+    const line = (lastState(alice2) || {}).chat.find((m) => m.id === multiPoll.id);
+    return line && line.poll.options[0].count === 0 ? line : false;
+  });
+  if (!toggled) blocked("the multi-choice toggle");
+  else {
+    check("a multi-choice vote toggles one option without touching the rest",
+          toggled.poll.options.map((o) => o.count), [0, 0, 1]);
+  }
+}
 
 /* ---- voice and photo, through the real /media route ----
 
@@ -736,11 +813,5 @@ host.close(); guest.close();
 bob.close(); alice2.close(); try { stale.close(); } catch {}
 await sleep(200);
 
-console.log(note.join("\n"));
-console.log("");
-if (fails.length) {
-  console.log("FAIL " + fails.length);
-  fails.forEach((f) => console.log("  x " + f));
-  process.exit(1);
-}
-console.log(`OK — ${note.length} assertions over real sockets`);
+if (fails.length) process.exitCode = 1;
+report();
