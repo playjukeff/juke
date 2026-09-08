@@ -241,12 +241,24 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
     setNotifyStatus('submitting')
     const signup = typeof window !== 'undefined' && window.Live && window.Live.signup
     // The tier ABOVE the one that was hit — a Free account capped at zero
-    // wants Season Pass; a Season Pass account with its one league already
-    // connected wants Multi-League.
-    const nextTier = tierInfo.tier === 'pro' ? 'allaccess' : 'pro'
-    const result = signup ? await signup(trimmed, 'upgrade:' + nextTier) : { ok: false }
+    // wants Season Pass, and a Season Pass account with its one league
+    // already connected wants Multi-League. This form never renders for
+    // 'allaccess' (see atTopTier below) — there is nothing above it to
+    // sell — so nextTier only needs to resolve for the two tiers that can
+    // actually reach this handler. It still says so explicitly rather
+    // than falling through to 'pro' by default, which is what silently
+    // told a Multi-League account already at its cap to "upgrade" to the
+    // cheaper tier it had already outgrown.
+    const nextTier = tierInfo.tier === 'free' ? 'pro' : tierInfo.tier === 'pro' ? 'allaccess' : null
+    const result = nextTier && signup ? await signup(trimmed, 'upgrade:' + nextTier) : { ok: false }
     setNotifyStatus(result && result.ok ? 'success' : 'error')
   }
+
+  // Multi-League is the top of the ladder (see tiers.js) — an account that
+  // hit ITS cap has nothing left to upgrade to, so the branch below offers
+  // a real way forward (disconnect a league) instead of an upgrade pitch
+  // for a tier that doesn't exist.
+  const atTopTier = tierInfo.tier === 'allaccess'
 
   /* The picking step renders one list. Sleeper fills it with leagues and
      ESPN with the chosen league's teams — different things to choose, the
@@ -357,10 +369,26 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
           <>
             <p className="mt-2 text-[14px] leading-[1.5] text-voidInk-body">
               {tierLabel(tierInfo.tier)} connects{' '}
-              {tierInfo.cap ? `${tierInfo.cap} ${tierInfo.cap === 1 ? 'league' : 'leagues'}` : 'no leagues'}.
-              Upgrading isn't live yet — leave an email and we'll tell you when it is.
+              {tierInfo.cap ? `${tierInfo.cap} ${tierInfo.cap === 1 ? 'league' : 'leagues'}` : 'no leagues'}.{' '}
+              {atTopTier
+                ? 'Disconnect one to connect another.'
+                : "Upgrading isn't live yet — leave an email and we'll tell you when it is."}
             </p>
-            {notifyStatus === 'success' ? (
+            {atTopTier ? (
+              // The top of the ladder — see tiers.js — so there is nothing
+              // above this to sell. "Manage your leagues" is a real,
+              // working destination (YouScreen.jsx's ConnectedLeagues,
+              // "disconnect lives here and nowhere else") rather than an
+              // upgrade pitch for a tier that does not exist.
+              <button
+                type="button"
+                onClick={() => { close(); window.location.hash = '#/you' }}
+                className="mt-4 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01]"
+                style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
+              >
+                Manage your leagues
+              </button>
+            ) : notifyStatus === 'success' ? (
               <p className="mt-4 flex items-center gap-2 text-[15px] text-mint">
                 <Check className="h-5 w-5 shrink-0" />
                 You're on the list.
