@@ -38,9 +38,13 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp } from "./helpers.mjs";
+import { openApp, awaitBoard } from "./helpers.mjs";
 
 async function draftInto(page, picks) {
+  // The board first -- this presses #startBtn through evaluate(), which a
+  // disabled attribute cannot refuse, so without it startDraft() returns
+  // false and state.started never flips. See awaitBoard() in helpers.mjs.
+  await awaitBoard(page);
   await page.evaluate((n) => {
     window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
     // startDraft() calls runCPUs(), which arms a single cpuStep() timer to

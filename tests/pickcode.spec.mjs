@@ -16,9 +16,13 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp } from "./helpers.mjs";
+import { openApp, awaitBoard } from "./helpers.mjs";
 
 async function startAt(page, teams) {
+  // The board first -- this presses #startBtn through evaluate(), which a
+  // disabled attribute cannot refuse, so without it startDraft() returns
+  // false and state.started never flips. See awaitBoard() in helpers.mjs.
+  await awaitBoard(page);
   await page.evaluate((t) => {
     document.querySelectorAll("details.setupbox").forEach((d) => (d.open = true));
     if (t !== 10) {

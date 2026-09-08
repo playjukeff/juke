@@ -39,13 +39,17 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp } from "./helpers.mjs";
+import { openApp, awaitBoard } from "./helpers.mjs";
 
 /* Through the bridge rather than through the setup screen's DOM. The legacy
    version had to open three <details>, write a <select> and click #startBtn;
    startDraft() is the same sequence with the DOM read removed, which is what
    the React settings screen calls too. */
 async function draftInto(page, picks, teams = 10) {
+  // The board first -- this presses #startBtn through evaluate(), which a
+  // disabled attribute cannot refuse, so without it startDraft() returns
+  // false and state.started never flips. See awaitBoard() in helpers.mjs.
+  await awaitBoard(page);
   await page.evaluate(({ n, t }) => {
     if (t !== 10) window.JukeEngine.setLeague({ teams: t });
     window.JukeEngine.startDraft({ mySlot: 3, clockLength: 90 });
