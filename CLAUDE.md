@@ -127,6 +127,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/src/hooks/useAccountUiReady.js` | "Is it safe to render Clerk's components yet": a key exists *and* we are past the first client pass. Both halves fail silently on their own — see the Accounts section. |
 | `web/.env.example` | The local-dev template. Keeps a `pk_test_` key on purpose: production's `pk_live_` belongs in the Pages dashboard, and a developer running `vite dev` against the production Clerk instance would be polluting the real user list. |
 | `worker/auth.js` | `verifiedUser()` — the one place the worker decides who is asking. Answers null for a missing, malformed, expired or forged token alike, and for no key configured at all. Read its comment before touching it: the public `verifyToken` export does not have the return shape its own internals document. |
+| `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Waits for a message sent to come back as a broadcast — twice, spaced — because `wrangler deploy` returning is not the moment the worker serves. Costs 3.8s healthy; the alternative was a gate that went red three times in ninety minutes on healthy deploys. |
 | `worker/test-auth.mjs` | Every way of being signed out, against a real `wrangler dev`. Cannot cover the signed-in path — that needs a token Clerk actually signed — which is precisely the gap the `verifyToken` bug lived in. |
 | `web/src/` | The React homepage: `Homepage.jsx` composes `Header`, `Hero`, `ScoresStrip`, `ShowYourWorking`, `RoomsGrid`, `ClosingCta`. Every one of them reads real data through `window.JukeEngine` (or `window.DraftEngine` directly, for `pickCode()`) rather than inventing sample content — the header ticker used to be six fabricated stats and is now five real ones read off the live board. |
 | `web/vite.config.js` | The Vite build config, plus a dev-server middleware that serves the same `LEGACY_FILES`/`LEGACY_DIRS` list `copy-legacy-assets.mjs` uses, from the true repo root, so `window.JukeEngine` carries real data under `vite dev` too — not just after a full build. |
@@ -8075,6 +8076,38 @@ finding in the whole pass was the one nothing flagged.
   after 8000ms`, one `blocked` entry, and every later section still run.** A
   hard throw injected mid-file reports 31 `ok` lines and names the file and
   line, where it used to report nothing at all.
+
+  **And the first thing the readable report showed was that the gate races
+  the deploy it verifies.** `wrangler deploy` returns when the upload
+  succeeds; a Durable Object created inside the rollout window is torn down
+  when the new version takes over, and the suite is then holding a socket
+  nobody is behind. The signature is unmistakable once the report survives:
+  **79 `ok` lines and 40 failures, every failure a wait for a broadcast that
+  follows a client message** — connect works, the first state arrives, and
+  nothing after it does.
+
+  It failed three times in ninety minutes across three separate merges, every
+  one transient, every one with the deployed worker measuring 109 clean
+  minutes later. **A gate that cries wolf three times an hour is one nobody
+  reads by the end of the week**, which is this file's own standing-red rule
+  arriving at the single check that runs against production.
+
+  `worker/wait-for-worker.mjs` sits between the deploy and the verify and
+  waits for the property the suite actually depends on — a message sent
+  coming back as a broadcast — rather than for a number of seconds. Same
+  argument as `until()`: a sleep short enough to be cheap proves nothing and
+  one long enough to be safe is paid on every deploy. **Two round trips,
+  spaced, not one**: a single probe can succeed a moment before the object it
+  spoke to is replaced, which is the exact window being closed. Measured at
+  **3.8s on a healthy worker**, and its two failure paths — nothing
+  listening, and a socket that opens and stays quiet — both end at the
+  deadline with what they last saw rather than hanging.
+
+  **Deliberately not a retry of the verify step.** A retry makes a worker
+  that is broken half the time look green, which is the opposite of what this
+  gate exists for. Waiting for readiness removes the race and hides no
+  failure — and the two stay legible apart: the settle step says "it never
+  came up", the verify says "it came up and is wrong".
 - Engine: `py scripts/test_engine.py` — runs `draft-engine.js` and `room.js`
   outside a browser and asserts the snake maths, the turn order, the legality
   checks, the determinism of the CPU wobble, and the parts of a room that a
