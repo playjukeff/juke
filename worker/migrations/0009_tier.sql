@@ -2,7 +2,7 @@
 --
 -- Three tiers: 'free' (mock drafts and demo data only — no real league may
 -- be connected), 'pro' (Season Pass, one connected league), 'allaccess'
--- (Multi-League, up to six). Nothing enforced any of this before now — any
+-- (Multi-League). Nothing enforced any of this before now — any
 -- signed-in account could connect any number of leagues — so this column
 -- is a new restriction rather than a description of one already in place.
 --
@@ -14,4 +14,9 @@
 -- Same shape as every other column added to this table: touchUser()'s own
 -- upsert already runs on every request that matters, so nothing new has to
 -- create the row this lives on.
+-- The per-tier league counts are NOT in this file and never were — they
+-- live in worker/store.js's LEAGUE_CAP, mirrored by web/src/lib/tiers.js,
+-- and scripts/test_tiers.mjs asserts the two agree. This comment named
+-- Multi-League's number until 8 September 2026, when it moved to 20 and
+-- the number here was a second copy that had already gone stale.
 ALTER TABLE users ADD COLUMN tier TEXT NOT NULL DEFAULT 'free';

@@ -500,7 +500,7 @@ export async function touchUser(env, clerkId) {
 /* How many leagues each tier may connect. 'free' is zero on purpose — a
    free account is a guest in every way that matters here, demo data only —
    so this is also the map meLeaguesRoute() refuses a connect against. */
-export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 6 };
+export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 20 };
 
 /* Which plan an account is on, or null if the question could not be
    answered.

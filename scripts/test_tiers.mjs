@@ -19,6 +19,15 @@ const { meetsTier, tierLabel, leagueCap, TIER_ORDER, TIER_LABEL, LEAGUE_CAP } = 
   pathToFileURL(path.resolve("web/src/lib/tiers.js")).href
 );
 
+/* The worker's own copy, imported rather than restated -- the same call
+   test_history_ownership.py makes about store.js's SQL. A second literal
+   here would be a third place the caps are written down, and it would pass
+   while the two deployables disagreed. store.js imports only names.js,
+   which is dependency-free, so this still needs no npm install. */
+const { LEAGUE_CAP: WORKER_LEAGUE_CAP } = await import(
+  pathToFileURL(path.resolve("worker/store.js")).href
+);
+
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log("ok  " + name); }
@@ -93,6 +102,24 @@ check("the ladder's caps rise with it", () => {
      one of these two and not the other. */
   const caps = TIER_ORDER.map((t) => leagueCap(t));
   assert.deepEqual(caps, caps.slice().sort((a, b) => a - b));
+});
+
+check("the client's caps and the worker's are the same caps", () => {
+  /* Two copies across the client/worker boundary, because those are two
+     separate deployables with no module system between them -- tiers.js's
+     own header says so, and says "keep the values in sync if either
+     changes". Nothing enforced that until this check.
+
+     A drift does not throw. It fails as a gate disagreeing with the thing
+     it gates: raise the client's cap alone and the reader is invited to
+     connect a league the worker then refuses with a bare tier-limit 403;
+     raise the worker's alone and a cap the account has actually paid for
+     is never offered. Both render, both look deliberate, and neither is a
+     number anybody re-reads. */
+  assert.deepEqual(
+    LEAGUE_CAP, WORKER_LEAGUE_CAP,
+    "web/src/lib/tiers.js and worker/store.js disagree about LEAGUE_CAP"
+  );
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the tier ladder");

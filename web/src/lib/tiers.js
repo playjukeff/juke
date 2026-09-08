@@ -11,7 +11,7 @@
 
 export const TIER_LABEL = { free: 'Free', pro: 'Season Pass', allaccess: 'Multi-League' }
 
-export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 6 }
+export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 20 }
 
 export function tierLabel(tier) {
   return TIER_LABEL[tier] || TIER_LABEL.free
@@ -24,7 +24,7 @@ export function leagueCap(tier) {
 /* The ladder, in order, so a gate can ask "is this tier at least that
    one" without every caller writing the ordering down again.
  *
- * The worker's LEAGUE_CAP happens to be monotonic (0, 1, 6) and it would
+ * The worker's LEAGUE_CAP happens to be monotonic (0, 1, 20) and it would
  * be tempting to compare caps instead. That is the same fact by
  * coincidence rather than by definition: a tier gates FEATURES as well as
  * league count, and the first feature that a paid tier gets without also
