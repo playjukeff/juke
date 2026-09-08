@@ -34,9 +34,11 @@ import { useLeague } from '../../hooks/useLeague.js'
    the pill in the hero, on the eyebrow's own row (2ag/2au), not in the
    header — so it is `hidden sm:inline-flex` here and every mobile hero
    renders its own. One component, two homes, and the breakpoint is `sm`
-   because that is the phone/desktop product split everywhere else in
-   web/src (usePhoneWidth, FloatingNavPill's own `sm:hidden`); a third
-   breakpoint here would be a second answer to the same question.
+   because that is the phone/desktop *content* split everywhere else in
+   web/src (usePhoneWidth); a third breakpoint here would be a second answer
+   to the same question. FloatingNavPill no longer shares this one — its own
+   comment explains why its nav chrome runs on `lg` instead, to meet
+   RailNav with no gap between them.
 
    **The connected chip says what is true.** The design draws a league
    switcher — a platform badge, "Dynasty Degens · Wk 3", a caret. Sleeper
