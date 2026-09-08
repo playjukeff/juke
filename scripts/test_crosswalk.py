@@ -821,6 +821,13 @@ def test_cfbd_crosswalk():
 
     _n, strange_report = link([pick("Jeremiyah Love", "Offensive Weapon",
                                     "Notre Dame", "ARI", 33, 4003)])
+    # A position that is simply not fantasy-relevant must NOT be reported.
+    # Nine of these arrive on every real run, about 175 of 257 picks, and a
+    # report that always says the same nine things stops being read.
+    _q, quiet_report = link([pick("Some Corner", "Cornerback", "LSU", "NYJ", 55, 4005)])
+    check("CFBD: a defensive position is expected, so it is not reported",
+          [l for l in quiet_report if l.startswith("POSITION |")], [])
+
     check("CFBD: an unrecognised position is reported, not silently dropped",
           any(l.startswith("POSITION |") and "OFFENSIVE WEAPON" in l
               for l in strange_report), True)
@@ -891,6 +898,97 @@ def test_cfbd_crosswalk():
 
 
 test_cfbd_crosswalk()
+
+
+def test_build_prospects():
+    """record["pr"], and the three states a draft position can be in.
+
+    The dangerous one is the middle. An unmatched rookie is either genuinely
+    undrafted or a join this file got wrong, and from inside the join those
+    look identical -- so claiming "undrafted" off a failed match would put a
+    fact on screen that nobody has. Every assertion below is about keeping
+    those three apart.
+    """
+    sleeper = {
+        "1": {"full_name": "Cam Ward", "position": "QB",
+              "team": "TEN", "college": "Miami (FL)"},
+        "2": {"full_name": "Lake McRee", "position": "TE",
+              "team": "LAC", "college": "USC"},
+        "3": {"full_name": "Two Way", "position": "WR",
+              "team": "JAX", "college": "Colorado"},
+        "4": {"full_name": "Old Timer", "position": "TE",
+              "team": "KC", "college": "Alabama"},
+    }
+    stats = {
+        "1": {"exp": 0}, "2": {"exp": 0}, "3": {"exp": 0},
+        "4": {"exp": 4},          # a veteran: never gets a pr block
+    }
+    indexes = bp.index_sleeper(sleeper)
+    college_index = bp.index_sleeper_by_college(sleeper)
+
+    picks = [
+        {"name": "Cam Ward", "position": "Quarterback", "collegeTeam": "Miami",
+         "nflTeam": "Tennessee", "overall": 1, "round": 1, "pick": 1,
+         "year": 2026, "collegeAthleteId": 4001},
+        # Our WR, their CB -- the two-way player. He IS drafted, and the join
+        # cannot see him because index_sleeper only carries fantasy positions.
+        {"name": "Two Way", "position": "Cornerback", "collegeTeam": "Colorado",
+         "nflTeam": "Jacksonville", "overall": 2, "round": 1, "pick": 2,
+         "year": 2026, "collegeAthleteId": 4003},
+    ]
+    season = [
+        {"playerId": "4001", "category": "passing", "statType": "YDS", "stat": "3535"},
+        {"playerId": "4001", "category": "passing", "statType": "TD", "stat": "41"},
+        {"playerId": "4001", "category": "rushing", "statType": "YDS", "stat": "276"},
+        # A zero, which must be dropped rather than stored as a nought.
+        {"playerId": "4001", "category": "receiving", "statType": "REC", "stat": "0"},
+        # A category this file deliberately ignores.
+        {"playerId": "4001", "category": "defensive", "statType": "SOLO", "stat": "1"},
+        # An athlete nobody on our board is.
+        {"playerId": "9999", "category": "rushing", "statType": "YDS", "stat": "800"},
+    ]
+
+    written, report = bp.build_prospects(stats, sleeper, indexes, college_index,
+                                         picks, season)
+
+    check("prospects: a drafted rookie carries round, pick and overall",
+          stats["1"]["pr"]["d"], [1, 1, 1])
+    check("prospects: and his final college season, in this file's own keys",
+          stats["1"]["pr"]["c"], {"py": 3535, "pt": 41, "ry": 276})
+    check("prospects: a zero is dropped rather than stored as a nought",
+          "rc" in stats["1"]["pr"]["c"], False)
+    check("prospects: a category this room does not draw is not carried",
+          any(k not in ("py", "pt", "ry") for k in stats["1"]["pr"]["c"]), False)
+
+    # ---- the state that must never be guessed ----
+    check("prospects: a rookie whose name is in NO pick is undrafted, a fact",
+          stats["2"]["pr"]["d"], 0)
+    check("prospects: a rookie the join missed but the draft KNOWS is left unstated",
+          "d" in stats["3"].get("pr", {}), False)
+    check("prospects: and he is reported rather than quietly marked undrafted",
+          any("could not join" in line for line in report), True)
+
+    check("prospects: a veteran gets no block at all",
+          "pr" in stats["4"], False)
+    # Two, not three: the two-way player got neither a draft position we
+    # could state nor a college line, so there is nothing to write for him.
+    # An empty block is not stored -- a key whose value says nothing is worse
+    # than no key, because a reader cannot tell it from data.
+    check("prospects: the count is what was written",
+          written, 2)
+
+    # ---- a class nobody drafted is not a class of undrafted players ----
+    # If the picks call fails, every rookie's name is trivially "in no pick",
+    # and marking all of them undrafted would be inventing a whole draft that
+    # did not happen. main() only calls this with picks in hand, and this
+    # pins the shape rather than trusting that.
+    fresh = {"1": {"exp": 0}, "2": {"exp": 0}, "3": {"exp": 0}}
+    bp.build_prospects(fresh, sleeper, indexes, college_index, [], [])
+    check("prospects: with no picks at all, nobody is declared undrafted",
+          [r.get("pr", {}).get("d") for r in fresh.values()].count(0), 0)
+
+
+test_build_prospects()
 
 
 print()

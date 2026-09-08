@@ -1363,7 +1363,7 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
             # rather than listed one by one: whoever reads the report is
             # looking for a string that SHOULD have mapped, and 200 lines of
             # "Cornerback" is how they would miss it.
-            if raw_position:
+            if raw_position and raw_position not in CFBD_IGNORED_POSITIONS:
                 unknown_positions[raw_position] = unknown_positions.get(raw_position, 0) + 1
             continue
 
@@ -1433,6 +1433,189 @@ def link_cfbd_draft(stats, sleeper, indexes, college_index, picks):
         print("  ! not one of these matched on college -- COLLEGE_ALIASES is "
               "probably wrong about CFBD's naming")
     return linked, report
+
+
+# ---------------------------------------------------------------------------
+# CollegeFootballData: the fetch, and the one key it writes
+# ---------------------------------------------------------------------------
+#
+# Optional throughout, exactly like TANK01_KEY. Without CFBD_KEY this is
+# skipped, the rebuild is otherwise identical, and the Prospect Room keeps
+# working with one more gap named. A pipeline that cannot run without
+# somebody's key is a pipeline that stops running the day the key lapses.
+CFBD_KEY = os.environ.get("CFBD_KEY", "")
+CFBD_BASE = os.environ.get("CFBD_BASE", "https://api.collegefootballdata.com")
+
+# Which class, and which college season it played.
+#
+# Derived from STAT_SEASONS rather than written down: its last entry is the
+# last COMPLETED NFL season, so the coming draft is the year after it and the
+# class's final college year is that same last entry. One constant to bump in
+# January, and this follows.
+PROSPECT_DRAFT_YEAR = STAT_SEASONS[-1] + 1
+PROSPECT_COLLEGE_SEASON = STAT_SEASONS[-1]
+
+# The college stat lines worth storing, in the SHORT KEYS this file already
+# uses for the same quantities. Reusing them rather than inventing a second
+# vocabulary is the "nothing written down twice" rule: a college receiving
+# yard and an NFL receiving yard are the same measurement, and a sheet that
+# put them under two names could not place them side by side.
+#
+# Everything else CFBD sends for a skill player is deliberately dropped:
+# defensive, fumbles, kick and punt returns are 61k of the 141k rows in a
+# season and none of them is what "college production" means on this screen.
+CFBD_STAT_KEYS = {
+    ("passing", "YDS"): "py", ("passing", "TD"): "pt", ("passing", "INT"): "pi",
+    ("passing", "ATT"): "pa", ("passing", "COMPLETIONS"): "pc",
+    ("rushing", "YDS"): "ry", ("rushing", "TD"): "rt", ("rushing", "CAR"): "ra",
+    ("receiving", "YDS"): "cy", ("receiving", "TD"): "ct", ("receiving", "REC"): "rc",
+    ("kicking", "FGM"): "fgm", ("kicking", "FGA"): "fga", ("kicking", "XPM"): "xpm",
+}
+
+
+# Positions CFBD sends that will never be fantasy-relevant, so their absence
+# from CFBD_POSITIONS is not news.
+#
+# Without this the report carries a line per defensive position on EVERY run
+# -- nine of them, about 175 of the 257 picks -- and a file that always says
+# the same nine things is a file nobody reads by the end of the week. The same
+# reason IGNORED_KEYS exists for Sleeper stats, and the same lesson the
+# COLLEGE_ALIASES alarm had to learn one commit earlier.
+#
+# What is left after this filter is a string that is in NEITHER table, which
+# is the only kind worth a line: either CFBD has renamed a position we score,
+# or they have invented one.
+CFBD_IGNORED_POSITIONS = frozenset({
+    "CORNERBACK", "DEFENSIVE TACKLE", "DEFENSIVE EDGE", "LINEBACKER",
+    "SAFETY", "OFFENSIVE TACKLE", "OFFENSIVE GUARD", "CENTER", "PUNTER",
+    "LONG SNAPPER", "FULLBACK", "DEFENSIVE END", "DEFENSIVE BACK",
+})
+
+
+def fetch_cfbd(path):
+    """One CFBD call, optional, through the keyed helper this file already has.
+
+    CFBD_BASE is the seam a test points at a stub, the same way TANK01_BASE
+    already is -- the provider cannot be reached from a test and a key cannot
+    live in the repository.
+    """
+    if not CFBD_KEY:
+        return []
+    rows = fetch_json_headers(CFBD_BASE + path,
+                              {"Authorization": "Bearer " + CFBD_KEY},
+                              optional=True)
+    return rows if isinstance(rows, list) else []
+
+
+def build_prospects(stats, sleeper, indexes, college_index, picks, season_rows):
+    """Write record["pr"] for every first-year player, and report the rest.
+
+    Runs AFTER the records are built, and it has to for build_usage()'s own
+    reason: compact() returns a fresh dict assembled only from STAT_FIELDS, so
+    anything merged into a record before it runs is discarded without a word.
+
+    ---- Three states for a draft position, because two would lie ----
+
+      "d": [round, pick, overall]   we know where he went
+      "d": 0                        he was not drafted, and that is a FACT
+      absent                        we could not tell
+
+    The middle one is the whole reason this function is careful. An unmatched
+    rookie is either genuinely undrafted or a join this file got wrong, and
+    those look identical from inside the join -- so "undrafted" is claimed
+    only when the player's name appears NOWHERE in the entire draft, at any
+    position and any school, rather than merely nowhere among the picks that
+    joined. Anything else is reported and left absent, because "Undrafted"
+    on a screen reads as certainty and would be a fact we invented.
+
+    Measured 8 September 2026 against the real 2026 class: 59 of 77 board
+    rookies drafted, 18 undrafted with their names absent from all 257 picks,
+    and ZERO ambiguous. The ambiguous branch has never fired; it exists
+    because the year it does is the year this would otherwise start lying.
+
+    ---- Rookies only ----
+
+    A player leaves this block the season he stops being one. The Prospect
+    Room is the only thing that reads it and it draws exp === 0, so carrying
+    college lines for a fourth-year pro would be bytes on every page load for
+    a screen nobody can reach them from -- the argument that kept the fourteen
+    role and snap keys out of stats.js.
+    """
+    # No class is not a class of undrafted players.
+    #
+    # An empty picks list is what an outage, a rate limit or a tier change
+    # looks like from in here -- and with no names to check against, EVERY
+    # rookie is trivially "in no pick" and would be stamped undrafted. That is
+    # 77 invented facts from one failed request, and it is the same shape as
+    # this file already refuses elsewhere: a season that has not started is a
+    # 404 rather than a fault, and the answer is to write nothing.
+    #
+    # Caught by its own test rather than in production; main() happens to
+    # guard the second fetch on this, which would have hidden it.
+    if not picks:
+        print("  prospects: CFBD returned no picks, so nothing is claimed")
+        return 0, ["CFBD returned no picks; no draft position was written"]
+
+    linked, report = link_cfbd_draft(stats, sleeper, indexes, college_index, picks)
+
+    # Their final college season, keyed by the athlete id the pick carried --
+    # an identifier join, not a second name match. CFBD's `playerId` on a stat
+    # row IS collegeAthleteId; checked against Fernando Mendoza, 4837248.
+    athletes = {str(v["athlete"]): our_id
+                for our_id, v in linked.items() if v.get("athlete")}
+    college = {}
+    for row in season_rows or []:
+        our_id = athletes.get(str(row.get("playerId")))
+        if our_id is None:
+            continue
+        key = CFBD_STAT_KEYS.get((row.get("category"), row.get("statType")))
+        if key is None:
+            continue
+        try:
+            value = float(row.get("stat"))
+        except (TypeError, ValueError):
+            continue
+        # Zeros are dropped, as compact() drops them from a season block: a
+        # quarterback carries no receiving line rather than a row of noughts.
+        if value:
+            college.setdefault(our_id, {})[key] = (
+                int(value) if value == int(value) else round(value, 1))
+
+    # Every name in the WHOLE draft, not only the picks that joined -- see the
+    # three-states note above. Defensive picks included, deliberately: a
+    # two-way player we file as a receiver and they file as a corner is
+    # exactly the case where "undrafted" would be wrong.
+    drafted_names = {normalise(p.get("name") or "") for p in picks or []}
+
+    written, undrafted, unclear = 0, 0, []
+    for our_id, record in stats.items():
+        if record.get("exp") != 0:
+            continue
+        block = {}
+        pick = linked.get(our_id)
+        if pick and pick.get("overall"):
+            block["d"] = [pick.get("round"), pick.get("pick"), pick.get("overall")]
+        elif normalise((sleeper.get(our_id) or {}).get("full_name") or "") not in drafted_names:
+            block["d"] = 0
+            undrafted += 1
+        else:
+            entry = sleeper.get(our_id) or {}
+            unclear.append(f"{entry.get('full_name') or our_id} | "
+                           f"{entry.get('position') or '?'} | {entry.get('college') or '?'} | "
+                           f"in the draft under a name we could not join")
+        if college.get(our_id):
+            block["c"] = college[our_id]
+        if block:
+            record["pr"] = block
+            written += 1
+
+    report.extend(unclear)
+    drafted = sum(1 for r in stats.values() if isinstance(r.get("pr", {}).get("d"), list))
+    with_college = sum(1 for r in stats.values() if r.get("pr", {}).get("c"))
+    print(f"  prospects: {written} first-year players ({drafted} drafted, "
+          f"{undrafted} undrafted, {len(unclear)} unclear), "
+          f"{with_college} with a college line")
+    return written, report
 
 
 def link_nflverse(stats, sleeper, indexes, nfl_rows):
@@ -2096,6 +2279,34 @@ def main():
     ep_seasons = fetch_expected_points() if nfl_linked else {}
     usage_written = build_usage(stats, nfl_linked, nfl_seasons, ep_seasons)
 
+    # ---- CollegeFootballData: what a rookie did before he got here ----
+    #
+    # After the records exist, for the reason build_usage() states: compact()
+    # rebuilds each one from STAT_FIELDS alone and would discard `pr` without
+    # a word.
+    #
+    # Two calls, not one per player. /draft/picks is the whole class, and
+    # /stats/player/season is the whole college season -- 23.6 MB and about
+    # 12s, measured, against 59 per-player calls that would spend a rate limit
+    # to arrive at the same rows. The season is fetched only when a pick
+    # actually joined, so an outage on the first call does not pay for the
+    # second.
+    prospect_report = []
+    if CFBD_KEY:
+        print(f"Fetching the {PROSPECT_DRAFT_YEAR} draft class from CFBD...")
+        picks = fetch_cfbd(f"/draft/picks?year={PROSPECT_DRAFT_YEAR}")
+        season_rows = []
+        if picks:
+            print(f"  {len(picks)} picks; fetching {PROSPECT_COLLEGE_SEASON} "
+                  f"college season totals (this one is large)...")
+            season_rows = fetch_cfbd(
+                f"/stats/player/season?year={PROSPECT_COLLEGE_SEASON}")
+        _written, prospect_report = build_prospects(
+            stats, sleeper, indexes, index_sleeper_by_college(sleeper),
+            picks, season_rows)
+    else:
+        print("CFBD: no CFBD_KEY set, so no draft position and no college line")
+
     audit_lines, audit_flagged = audit_against_nflverse(stats, nfl_linked, nfl_seasons)
     band_lines, band_off = check_miss_bands(stats)
 
@@ -2193,6 +2404,13 @@ def main():
             "     x            this player's id at other sources, so nothing\n"
             "                  has to match on a name at request time\n"
             "     w            week by week logs, keyed by season\n"
+            "     pr           prospect: what a FIRST-YEAR player did before\n"
+            "                  he got here. d is [round, pick, overall], or 0\n"
+            "                  for undrafted -- which is a fact rather than a\n"
+            "                  gap, and is claimed only when his name is in no\n"
+            "                  pick at all. Absent d means we could not tell.\n"
+            "                  c is his final college season in the same short\n"
+            "                  keys as s. Absent entirely without CFBD_KEY.\n"
             "     u            usage from nflverse, keyed by season like s:\n"
             "                  ts/ays/wo share and WOPR, ep/rep/pep EPA,\n"
             "                  cpo CPOE, r20 20-yard rushes, gwa/gwm\n"
