@@ -67,21 +67,31 @@ function IconDraft({ tone }) {
   )
 }
 
+/* A link, not an arrow into a bracket.
+
+   The first version of this drew the arrow-into-a-bracket, which is the
+   universal SIGN-IN glyph — on a card that is not sign-in, that says
+   "bring your league", and that navigates to the room catalogue. The emoji
+   it replaced was a door: vague, but not actively wrong. Replacing a
+   generic mark with a specific and incorrect one is worse than leaving the
+   generic mark, and the critique scored it exactly that way.
+
+   Two interlocking links is the established mark for joining an external
+   account to a product, which is what this card does. */
 function IconConnect({ tone }) {
   return (
     <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden="true">
       <path
-        d="M11.6 2.8H15a1.6 1.6 0 0 1 1.6 1.6v11.2A1.6 1.6 0 0 1 15 17.2h-3.4"
+        d="M8.4 11.6a3.4 3.4 0 0 1 0-4.8l2.4-2.4a3.4 3.4 0 0 1 4.8 4.8l-1.1 1.1"
         stroke={tone}
         strokeWidth="1.4"
         strokeLinecap="round"
       />
       <path
-        d="M8.4 6.4 12 10l-3.6 3.6M11.6 10H3.4"
+        d="M11.6 8.4a3.4 3.4 0 0 1 0 4.8l-2.4 2.4a3.4 3.4 0 0 1-4.8-4.8l1.1-1.1"
         stroke={tone}
         strokeWidth="1.4"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   )

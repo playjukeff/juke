@@ -487,10 +487,59 @@ function readFormats(engine) {
   for (const f of FORMATS) ranked[f] = rank(f)
   if (!ranked.half.length) return null
 
-  const baseline = new Map(ranked.half.map((r, i) => [r.id, i]))
+  /* ONE set of players, re-ranked under each format — not the top six of
+     each, computed independently.
+
+     Two reasons, and the second is the argument this pair exists to make.
+
+     Independently-computed lists mean rows appear and disappear between
+     formats: Derrick Henry is in Standard's top six and out of PPR's. A
+     reader watching that cannot tell reordering from replacement, and the
+     `layout` animation has nothing coherent to animate — it is not a list
+     rearranging, it is a different list.
+
+     And the set has to span positions or the claim cannot be seen. The top
+     six by value over replacement is five running backs and a receiver
+     under half PPR, and SIX running backs under standard — measured. A
+     scoring change that only ever moves running backs past running backs
+     demonstrates that the order is sensitive to rules; it does not
+     demonstrate the thing Juke actually claims, which is that the rules
+     move positions past each other. This is the same defect BoardPeek was
+     carrying in the hero, 800px up, and it takes the same fix. */
+  const seed = []
+  const taken = new Set()
+  for (const pos of ['QB', 'RB', 'WR', 'TE']) {
+    const best = ranked.half.find((r) => r.pos === pos && !taken.has(r.id))
+    if (best) {
+      seed.push(best)
+      taken.add(best.id)
+    }
+  }
+  for (const r of ranked.half) {
+    if (seed.length >= 6) break
+    if (!taken.has(r.id)) {
+      seed.push(r)
+      taken.add(r.id)
+    }
+  }
+  if (!seed.length) return null
+
+  // Where this fixed set sits under half PPR, which is what every move is
+  // measured against. Rank within the SET, not within the whole board:
+  // a reader comparing two rows on screen is comparing their positions in
+  // the six rows on screen.
+  const order = (format) => {
+    const table = new Map(ranked[format].map((r) => [r.id, r]))
+    return seed
+      .map((s) => table.get(s.id))
+      .filter(Boolean)
+      .sort((a, b) => b.vorp - a.vorp)
+  }
+  const baseline = new Map(order('half').map((r, i) => [r.id, i]))
+
   const out = {}
   for (const f of FORMATS) {
-    out[f] = ranked[f].slice(0, 6).map((r, i) => ({
+    out[f] = order(f).map((r, i) => ({
       ...r,
       moved: baseline.has(r.id) ? baseline.get(r.id) - i : null,
     }))
@@ -501,7 +550,16 @@ function readFormats(engine) {
 function PairYourRules() {
   const [ref, near] = useNearViewport()
   const d = useEngineData(readFormats, near)
-  const [format, setFormat] = useState('half')
+  /* Standard, not half.
+
+     `moved` is measured against half PPR, so defaulting to half rendered
+     six em-dashes — the page's one interactive proof opening on its own
+     null result, under a heading promising the order changes. A column of
+     dashes reads as missing data rather than as zero change, and the
+     evidence was only reachable by pressing a button the reader had no
+     reason to press. Standard opens on real movement and half is one click
+     away. */
+  const [format, setFormat] = useState('standard')
   const reduce = useReducedMotion()
 
   const rows = d ? d.ranked[format] : null
