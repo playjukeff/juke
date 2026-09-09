@@ -30,13 +30,18 @@ import { POS_CHALK, CELL_INK } from './draftRoomPositions.js'
 
    The Mock Drafts screen — what #/rooms/draft is on a phone.
 
-   The desktop Lobby is a real analytics dashboard: three KPI tiles, a
-   twelve-cell tendencies grid, a recommendation engine, a positional
-   weakness heatmap and a full history table. That is the right screen for
+   The desktop Lobby is a real analytics screen: a header of four KPIs, a
+   four-view decision panel, a habits sidebar and a full history table. (It
+   was a twelve-cell tendencies grid when this note was written;
+   design_handoff_your_insights replaced that with web/src/components/
+   insights — see DraftLocker.jsx's own note on what left and what is
+   unrendered rather than deleted. The argument below is unchanged by it,
+   which is the point: whichever analytics this screen carries, they are not
+   the first thing a 390px phone should show.) That is the right screen for
    somebody sitting at a desk between drafts, and it is emphatically the
-   wrong one on a 390px phone, where all twelve cells stack into one column
-   and the button the screen exists to offer ends up somewhere past the
-   fourth chart.
+   wrong one on a phone, where every panel stacks into one column and the
+   button the screen exists to offer ends up somewhere past the fourth
+   chart.
 
    So the phone gets the launcher: what you can start, what you were in the
    middle of, and what you have already run. Nothing is deleted — the

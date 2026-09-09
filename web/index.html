@@ -40,7 +40,7 @@
        project's own source tree, where this file does not live. Root-
        relative is also just correct at runtime regardless of the build: it
        resolves the same way whether you are at "/" or "/#/draft". -->
-  <script src="/theme.js?v=202609081450"></script>
+  <script src="/theme.js?v=202609082150"></script>
 
   <!-- The cold-load overlay's two scripts, both blocking and both before
        first paint, for two different reasons.
@@ -62,7 +62,7 @@
        LEGACY_FILES nor stamped by hand — Vite copies public/ verbatim and
        the nightly's global ?v= sed in this file stamps it along with
        everything else. -->
-  <script src="/juke-mark.js?v=202609081450"></script>
+  <script src="/juke-mark.js?v=202609082150"></script>
 
   <!-- Homepage v4 pass 1: Archivo and IBM Plex Mono moved off Google Fonts
        entirely — self-hosted from /fonts/, @font-face declared in
@@ -158,7 +158,7 @@
 
   <link rel="preload" as="font" type="font/woff2" fetchpriority="low" href="/fonts/archivo-variable-latin.woff2" crossorigin>
   <link rel="preload" as="font" type="font/woff2" fetchpriority="low" href="/fonts/ibm-plex-mono-500-latin.woff2" crossorigin>
-  <!-- ?v=202609081450 on every local file below, and it has to be bumped on any deploy
+  <!-- ?v=202609082150 on every local file below, and it has to be bumped on any deploy
        that changes one of them.
 
        Without a version in the address a returning visitor runs today's HTML
@@ -173,7 +173,7 @@
        keep this convention. The React homepage bundle is Vite's own
        content-hashed output, injected automatically, which makes this exact
        bug structurally impossible for that half of the page. -->
-  <link rel="stylesheet" href="/style.css?v=202609081450">
+  <link rel="stylesheet" href="/style.css?v=202609082150">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/juke-icon-tile-180.png">
@@ -539,7 +539,7 @@
        the flash both branches exist to prevent. A parser-blocking script
        immediately after the markup is the only position where the element is
        real and nothing has painted. -->
-  <script src="/splash-boot.js?v=202609081450"></script>
+  <script src="/splash-boot.js?v=202609082150"></script>
 
   <!-- The shield <symbol> that used to live here is gone. It was 2.7KB of
        traced path data on every page load, cloned by <use> into the two
@@ -1061,7 +1061,7 @@
     <form method="dialog"><button class="primary">Got it</button></form>
   </dialog>
 
-  <!-- Every one of these carries the same ?v=202609081450 as the stylesheet. See the note
+  <!-- Every one of these carries the same ?v=202609082150 as the stylesheet. See the note
        beside it in <head>: bump them together or don't bump them at all.
        Root-relative for the same reason theme.js and style.css are above.
 
@@ -1092,10 +1092,10 @@
        real data, deferred-load or not. -->
   <!-- The socket to a shared room. Loaded always, connected never unless a
        manager asks for it: a solo draft touches nothing. -->
-  <script src="/live.js?v=202609081450"></script>
+  <script src="/live.js?v=202609082150"></script>
   <!-- Before app.js, which calls backToTop() on the last line of its setup. -->
-  <script src="/back-to-top.js?v=202609081450"></script>
-  <script src="/app.js?v=202609081450"></script>
+  <script src="/back-to-top.js?v=202609082150"></script>
+  <script src="/app.js?v=202609082150"></script>
 
   <!-- The React homepage. A module script, so it runs after the classic
        scripts above regardless of source order — modules always behave as

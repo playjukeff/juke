@@ -1,6 +1,8 @@
 import { platformFor } from '../shell/leaguePlatforms.js'
 import DraftCountdown from '../shell/DraftCountdown.jsx'
 import { draftPhase } from '../../lib/countdown.js'
+import KpiStrip from '../decision/KpiStrip.jsx'
+import { signOf } from '../decision/tokens.js'
 
 /* A connected league's real standings — moved here, unchanged, from the
    old League Room (rooms/LeagueRoomLive.jsx) when League graduated from a
@@ -39,6 +41,17 @@ import { draftPhase } from '../../lib/countdown.js'
    rank and record for its own LeagueBar without a second sort. */
 export function ordered(teams) {
   return [...teams].sort((a, b) => (b.wins - a.wins) || (b.pointsFor - a.pointsFor))
+}
+
+/* 1st / 2nd / 3rd. LeagueBar carries its own copy for its own line and the
+   two are four lines apart in a directory; this one is here because the
+   strip below is here, and merging them is a change to LeagueBar's
+   signature for two characters of output. Worth noticing if a third
+   appears. */
+function ordinalSuffix(n) {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return 'th'
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
 }
 
 /* The draft's date and time, in the reader's own timezone.
@@ -130,8 +143,92 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
      load. */
   const banner = draft.phase === 'soon' || draft.phase === 'drafting' || draft.phase === 'late'
 
+  /* P4. The four numbers a connected league can actually answer for.
+
+     MyLeagueDemo has shown a guest a KPI strip since the decision system
+     landed and the CONNECTED screen had none, which is the wrong way round
+     -- the reader with a real league was getting less of the product than
+     the reader looking at a sample of it.
+
+     The guide's own screen 05 asks for seed, win probability and bye odds.
+     Seed is here; the other two are not, and the reason is written down one
+     directory along: seasonPhase.js already refuses to name a playoff week
+     because neither adapter says how many weeks a regular season runs, and
+     a win probability additionally needs the matchup fetch that costs the
+     Strategy Room three of its seven tabs. Points against is what a league
+     really does report and it answers a question of the same shape -- how
+     much of your record is you.
+
+     The median is the league's own, not a constant, so the delta says
+     "against these nine teams" rather than against a number from nowhere.
+     Absent, not zero, before a league has played: `pointsFor` is 0 for
+     everybody until the season starts, and a "+0.0 vs median" on ten rows
+     of zeros is a real number answering a question nobody asked. */
+  const played = table.some((t) => t.pointsFor > 0 || t.wins > 0 || t.losses > 0)
+  const me = mine ? table.find((t) => t.ownerId === mine) : null
+  const myRank = me ? table.indexOf(me) + 1 : null
+  const medianOf = (nums) => {
+    const s = nums.slice().sort((a, b) => a - b)
+    const mid = Math.floor(s.length / 2)
+    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
+  }
+  const pfMedian = table.length ? medianOf(table.map((t) => t.pointsFor)) : 0
+  const paMedian = table.length ? medianOf(table.map((t) => t.pointsAgainst || 0)) : 0
+  const pfDelta = me ? me.pointsFor - pfMedian : 0
+  const paDelta = me ? (me.pointsAgainst || 0) - paMedian : 0
+
+  const kpis = me && played
+    ? [
+        {
+          label: 'Standing',
+          value: `${myRank}${ordinalSuffix(myRank)}`,
+          accent: 'evidence',
+          note: `Of ${table.length}, on wins then points for.`,
+        },
+        {
+          label: 'Record',
+          value: `${me.wins}-${me.losses}${me.ties ? `-${me.ties}` : ''}`,
+          accent: 'evidence',
+          note: 'As your platform reports it.',
+        },
+        {
+          label: 'Points for',
+          value: me.pointsFor.toFixed(1),
+          delta: Math.abs(pfDelta).toFixed(1),
+          deltaSign: signOf(Math.round(pfDelta * 10)) || undefined,
+          accent: pfDelta >= 0 ? 'gain' : 'cost',
+          note: `Against a league median of ${pfMedian.toFixed(1)}.`,
+        },
+        {
+          label: 'Points against',
+          value: (me.pointsAgainst || 0).toFixed(1),
+          /* Pre-signed, and this is the one card on the strip that has to
+             be.
+
+             `signed()` prepends a minus for `sign: 'cost'`, which is right
+             everywhere the magnitude IS the cost -- a habit costing 4.1
+             points a week. Points against is the case where the two part
+             company: conceding 10.8 more than the league is bad AND the
+             number went UP, so the plain call printed "−10.8" for a
+             value that is 10.8 above the median. A sign that says the
+             number fell when it rose is a wrong fact, not a styling
+             choice.
+
+             `signed()` passes a string that already carries a real sign
+             straight through -- its own comment says so -- so the
+             direction is written here and `deltaSign` is left to do the
+             only other thing it does, which is choose the colour. */
+          delta: (paDelta >= 0 ? '+' : '−') + Math.abs(paDelta).toFixed(1),
+          deltaSign: paDelta > 0 ? 'cost' : paDelta < 0 ? 'gain' : undefined,
+          accent: paDelta > 0 ? 'cost' : 'gain',
+          note: `Against a league median of ${paMedian.toFixed(1)}.`,
+        },
+      ]
+    : []
+
   return (
     <div className="mx-auto max-w-[1280px] px-5 pb-10 pt-2 sm:px-10 sm:pt-4">
+      <KpiStrip items={kpis} className="mb-3" />
       {banner ? (
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[14px] border border-line-hairline bg-[#151920] px-4 py-3">
           <DraftCountdown league={snapshot} variant="chip" />

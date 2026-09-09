@@ -361,6 +361,22 @@ export default function RoomPage({ slug }) {
           </p>
         </div>
 
+        {/* P8: the body is keyed on the room AND the tab, so every entrance
+            in it replays when either changes.
+
+            A tab is a different set of facts about the same room, and the
+            staggered arrival is most of how a reader is told that the panel
+            they were reading has been replaced rather than edited. Keying on
+            `slug` alone would replay on a route change and sit still on a tab
+            change, which is the half nobody would notice was missing.
+
+            The KPI strip itself is rendered by each room's own Body rather
+            than being lifted into the hero above: only the body has the
+            snapshot the numbers come out of, and passing four figures up
+            through RoomPage so they can be drawn two elements higher is a
+            second copy of a room's own data living in the shell. It lands in
+            the same place on screen either way. */}
+        <div key={slug + ':' + tab}>
         {live ? (
           (() => {
             const Live = LIVE_ROOMS[slug].Body
@@ -384,6 +400,7 @@ export default function RoomPage({ slug }) {
             {Body ? <Body /> : null}
           </LockedPreview>
         )}
+        </div>
       </RoomShell>
     </AppShell>
   )

@@ -68,7 +68,7 @@ export default function TradePreview() {
 
         <div className="mt-2 flex justify-between font-mono text-[10px] text-ink-muted">
           <span>FAIR · −0.8 FOR YOU</span>
-          <span className="text-mint">COUNTER GETS +3.1</span>
+          <span className="text-gain">COUNTER GETS +3.1</span>
         </div>
       </SampleCard>
 

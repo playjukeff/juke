@@ -65,6 +65,25 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
    controls all said "D/ST" while the two position filters said "DST". */
 function posLabel(pos) { return pos === "DST" ? "D/ST" : pos; }
 
+/* The same six in prose, for the sentences this file writes rather than the
+   chips it draws — the Insights page's habit headlines name a position in
+   the middle of a sentence and "TE" does not read as one there.
+
+   THIS EXISTS IN TWO PLACES AND THEY MUST NOT DRIFT: POS_NAMES in
+   web/src/components/draftRoomPositions.js is the React half, and its own
+   header says that file is the one position reference for the site. The
+   copy is deliberate rather than an oversight, and it is the same shape as
+   normalise() living in both build_players.py and worker/names.js: one side
+   is a classic script and the other is an ES module, app.js loads first, and
+   a module-scope read of window.JukeEngine would be undefined during the
+   prerender (entry-server.jsx runs in Node, where there is no window). Six
+   English nouns are the cheapest possible thing to keep in step; a
+   build-time bridge for them would not be. */
+const POS_NAMES_LONG = {
+  QB: "Quarterback", RB: "Running back", WR: "Wide receiver",
+  TE: "Tight end", DST: "Defense", K: "Kicker"
+};
+
 // The order starting slots are listed and filled, with FLEX after the
 // positions it draws from so the better player lands in the named slot.
 const SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "SFLEX", "DST", "K"];
@@ -277,10 +296,18 @@ const FLEX_SHARE = { RB: 0.40, WR: 0.55, TE: 0.05 };
 // The remainder is the handful of managers who take the better skill player.
 const SFLEX_SHARE = { QB: 0.85, RB: 0.05, WR: 0.09, TE: 0.01 };
 
-function replacementRank(pos) {
-  const base = league.teams * (league.starters[pos] || 0);
-  const flex = league.teams * league.flex * (FLEX_SHARE[pos] || 0);
-  const sflex = league.teams * league.superflex * (SFLEX_SHARE[pos] || 0);
+/* `lg` is optional and defaults to the live league, which is what every
+   caller but one passes. The exception is the Insights page, which replays a
+   12-team mock while you may be sitting in a 10-team one — replacement level
+   is a property of the league a draft was played in, and reading the live
+   one there would price a historical roster against a room it was never in.
+   Pure and league-shape-only either way, which is what let buildProjections()
+   and vorpTableUnder() already share it. */
+function replacementRank(pos, lg) {
+  const shape = lg || league;
+  const base = shape.teams * ((shape.starters && shape.starters[pos]) || 0);
+  const flex = shape.teams * (shape.flex || 0) * (FLEX_SHARE[pos] || 0);
+  const sflex = shape.teams * (shape.superflex || 0) * (SFLEX_SHARE[pos] || 0);
   return Math.round(base + flex + sflex) + 1;
 }
 
@@ -7679,9 +7706,25 @@ const HISTORY_KEY = "juke.draft-history.v1";
 // keeps this well inside what a browser actually allows per origin.
 const HISTORY_LIMIT = 200;
 
+/* The locker as it sits in storage, unparsed.
+
+   Split out of readHistory() below for one caller: insightsReport() runs on
+   every render of a screen whose hover state re-renders it, and the only
+   thing it needs before deciding whether its cache is still good is whether
+   the bytes moved. At the 200-entry limit that is about 1.5MB of JSON, so
+   parsing it to answer "has anything changed" costs ~2.8ms per hovered bar
+   for an answer that is almost always no. */
+function historyRaw() {
+  try {
+    return localStorage.getItem(HISTORY_KEY) || "";
+  } catch (err) {
+    return "";
+  }
+}
+
 function readHistory() {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = historyRaw();
     const data = raw ? JSON.parse(raw) : [];
     return Array.isArray(data) ? data : [];
   } catch (err) {
@@ -7871,19 +7914,29 @@ function teamWeeklyStats(team, cv) {
 // logs once per entry for the identical answer. A live caller (the bridge,
 // for the currently-loaded draft) has exactly one room to ask about and
 // can afford to let this compute its own.
+/* One team's expected win rate against a set of opponents whose weekly
+   stats are already in hand. Split out of projectedWinPctForRoom() below so
+   the Insights page can ask it directly: a per-pick counterfactual only ever
+   moves YOUR lineup, so the other seats' stats are computed once and this is
+   the only part that has to run again. Written down once rather than twice
+   for the usual reason — two normal-difference approximations that drifted
+   would disagree by a fraction of a point and nothing would say so. */
+function winRateAgainst(mine, others) {
+  if (!others.length) return null;
+  const wins = others.map(function (theirs) {
+    const diffMean = mine.mean - theirs.mean;
+    const diffStdev = Math.sqrt(mine.stdev * mine.stdev + theirs.stdev * theirs.stdev);
+    if (diffStdev === 0) return diffMean > 0 ? 1 : diffMean < 0 ? 0 : 0.5;
+    return normalCdf(diffMean / diffStdev);
+  });
+  return wins.reduce((a, b) => a + b, 0) / wins.length;
+}
+
 function projectedWinPctForRoom(all, cv) {
   const cvTable = cv || positionWeeklyCV();
   const weekly = all.map((t) => teamWeeklyStats(t, cvTable));
   return weekly.map(function (mine, i) {
-    const others = weekly.filter((_, j) => j !== i);
-    if (!others.length) return null;
-    const wins = others.map(function (theirs) {
-      const diffMean = mine.mean - theirs.mean;
-      const diffStdev = Math.sqrt(mine.stdev * mine.stdev + theirs.stdev * theirs.stdev);
-      if (diffStdev === 0) return diffMean > 0 ? 1 : diffMean < 0 ? 0 : 0.5;
-      return normalCdf(diffMean / diffStdev);
-    });
-    return wins.reduce((a, b) => a + b, 0) / wins.length;
+    return winRateAgainst(mine, weekly.filter((_, j) => j !== i));
   });
 }
 
@@ -8955,6 +9008,1190 @@ function showResumeBar() {
       <button class="primary" id="resumeBtn">${done ? "Reopen it" : "Resume"}</button>
       <button class="ghost" id="discardBtn">Discard</button>
     </div>`;
+}
+
+
+/* ---- 11d2. Your Insights --------------------------------
+
+   The four questions the Insights page asks, and the one thing they have in
+   common: every number below is replayed out of `entry.picks` — the whole
+   room's pick list, already stored on every history entry — against today's
+   board. Nothing here needs a new stored field, so it works on history that
+   already exists rather than only on drafts run after it shipped. That is
+   the same trade historyStats() documents for its own three reconstructed
+   cards, and it costs the same thing: a figure drifts as the projection
+   moves under it.
+
+   What is deliberately NOT here is anything about other Juke accounts.
+   "The field" on this page is the OTHER SEATS IN YOUR OWN ROOMS — the CPU
+   you actually drafted against — and every caption this file writes says
+   so. There is no cross-account draft store to average, and a page whose
+   whole premise is a comparison must not silently mean something other than
+   what it says. Every sentence the page prints is written here, beside the
+   arithmetic that produced it, for the reason usageFor() and parText()
+   already are: a component that renders a verdict it also computes is the
+   written-down-twice rule in React.
+
+   Windowed to the most recent INSIGHTS_WINDOW mocks, and every count the
+   page prints is a count of that window rather than of the whole locker — a
+   coverage grid drawn over 200 mocks beside a bar chart drawn over the last
+   twenty would be two different denominators an inch apart. */
+
+const INSIGHTS_WINDOW = 20;
+
+/* Below this, none of it means anything. Three mocks cannot support "your
+   costliest habit" — the sidebar's own headline is a claim about a tendency
+   — and view 03's field comparison is one room's CPU against one drafter.
+   MIN_MOCKS_FOR_ANALYTICS in DraftLocker.jsx is the number the screen this
+   replaced already gated on, and it is the same reader asking the same
+   question, so this is deliberately the same number rather than a second
+   opinion about what "enough" means. */
+const MIN_MOCKS_FOR_INSIGHTS = 5;
+
+/* A win-% swing at or past this is what the page calls high leverage. One
+   percentage point: under it the counterfactual is inside the projection's
+   own error — MAE 6.8 points on a season, which is a fraction of a point of
+   weekly win rate — so calling it a decision would be calling noise one. */
+const LEVERAGE_PCT = 1;
+
+let INSIGHTS_CACHE = null;
+
+/* Everything the report is derived from other than the locker itself: the
+   board (the nightly rebuild) and the scoring table. BEST_VOR is the cheapest
+   tell for the second of those — every rescore rewrites it — and
+   league.teams/scoring/bench ride along because bestLineup(),
+   replacementRank() and lineupSlots() all read the LIVE league, so a
+   historical roster is scored against whatever shape is loaded now. Same key
+   shape PAR_CACHE already uses, and for the same reason: this is a
+   whole-history replay and it may not run once per render.
+
+   The locker's own half of the key is the raw string, compared by ===. That
+   is exact where a length-and-newest-id summary is a guess, and it is far
+   cheaper than the parse it replaces — see historyRaw(). */
+function insightsShapeKey() {
+  return [BEST_VOR, league.teams, league.scoring, league.bench].join("|");
+}
+
+/* The fractional round a pick landed in: overall 1..teams is round 1.00 to
+   1.9x. "You take tight end at 7.4" is then a real average of real picks,
+   where a mean of Math.ceil()'d round numbers collapses everything inside a
+   round onto the same integer and loses the only difference worth seeing —
+   the two picks between you and the room. */
+function fracRound(overall, teams) { return (overall - 1) / teams + 1; }
+
+function medianOf(nums) {
+  if (!nums.length) return null;
+  const s = nums.slice().sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function meanOf(nums) {
+  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+}
+
+/* Sample standard deviation. Fewer than two values has no spread to report
+   and answers null rather than 0 — a zero error bar drawn off one mock is
+   the most confident thing on the page and the least earned, which is the
+   whole subject of view 04. */
+function stdevOf(nums) {
+  if (nums.length < 2) return null;
+  const m = meanOf(nums);
+  const v = nums.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (nums.length - 1);
+  return Math.sqrt(v);
+}
+
+/* The whole board, ordered by what a player is worth over a replacement
+   starter at his own position.
+
+   aboveReplacement(), not replacementGap(): the gap refuses K and DST
+   (UNRANKED_POSITIONS), and this page has to be able to say that taking a
+   kicker in round eight left a receiver on the board. That is the same
+   deliberate split the grade already makes and CLAUDE.md already records —
+   how well a forecast RANKS kickers is a different question from what a
+   kicker was worth, and only the first one failed. Two functions doing the
+   same arithmetic with the refusal in one of them is the point. */
+function insightsRanked() {
+  return board
+    .map((p) => ({ player: p, worth: aboveReplacement(p) }))
+    .sort((a, b) => b.worth - a.worth);
+}
+
+/* The players this page is willing to say you SHOULD have taken, which is
+   not the same list as the players it is willing to price.
+
+   aboveReplacement() counts a kicker's points because a kicker really did
+   score them, and that is right for what a roster is worth. Naming one as
+   the best value you passed on is a different claim entirely — it is a claim
+   about the ORDER of kickers, which this app measures at r 0.37, -0.09 and
+   0.57 across three seasons and therefore withholds everywhere else:
+   overallScore() answers null for K and DST, the sheet draws a dash, and the
+   method note changes rather than arguing from a number it has just told the
+   reader to distrust.
+
+   Withholding has to be complete or it is worse than not withholding. A page
+   that dashes a kicker's Juke score and then tells you to have drafted him
+   over a running back has done exactly that, and it is the same shape as the
+   "biggest reach" callout being a lottery among kickers — this project's own
+   standing example of a right number nobody can believe.
+
+   So the two directions are deliberately asymmetric, and it is the same
+   asymmetry the grade already keeps: your own kicker is valued, and no
+   kicker is ever the alternative. */
+function insightsCandidates(ranked) {
+  return ranked.filter((r) => UNRANKED_POSITIONS.indexOf(r.player.pos) < 0);
+}
+
+/* Which players at a position are inside the starting tier a league can
+   actually field. The last of them to come off the board is view 03's "tier
+   empties" marker: the pick after which nobody left at that position can
+   start for anybody in the room. That is a fact about the room rather than
+   about a ranking, which is why it is drawn for K and DST too — those two
+   are withheld from the Juke score and are not withheld from arithmetic. */
+function startableTier(pos, lg) {
+  const cut = replacementRank(pos, lg) - 1;
+  if (cut < 1) return [];
+  return board
+    .filter((p) => p.pos === pos && p.projPts !== null && p.projPts !== undefined)
+    .sort((a, b) => b.projPts - a.projPts)
+    .slice(0, cut)
+    .map((p) => p.name);
+}
+
+/* One finished mock, replayed.
+
+   The counterfactual the whole page is built on, stated once: the room is
+   fixed — it is what actually happened — and only YOUR seat is asked to
+   have chosen differently. So "best available" at each of your picks is the
+   highest-worth player nobody had taken yet, and each alternative is
+   offered ONCE across the draft (`offered`), because a drafter who took him
+   at pick one does not get to take him again at pick three. That is what
+   makes the total a real alternate roster rather than the same regret
+   counted eight times, which is what summing an unmatched per-pick maximum
+   produces — and it is the one place this deliberately improves on the
+   design handoff's own arithmetic rather than reproducing it.
+
+   `delta` is floored at zero for the one case that can run the other way: a
+   player the alternate drafter already holds is off its list, so your own
+   later pick of him can leave you ahead. Zero there is honest — you took
+   the top of the board — where a negative would read as credit for a pick
+   this comparison cannot actually price.
+
+   Passing the entry's own `league` rather than a bare team count is what
+   makes a linear or third-round-reversal mock replay in the order it was
+   really drafted in. historyStats() passes the number, which means a plain
+   snake whatever the entry says; that is a real (small, pre-existing)
+   inaccuracy there and there is no reason to repeat it here. */
+function auditMock(entry, ctx) {
+  const teams = entry.teams || (entry.league && entry.league.teams);
+  if (!teams || !entry.picks || !entry.picks.length) return null;
+  const rounds = Math.floor(entry.picks.length / teams);
+  if (rounds < 1) return null;
+  const shape = entry.league && entry.league.teams ? entry.league : teams;
+  const mySlot = entry.mySlot || 0;
+
+  const rosters = Array.from({ length: teams }, () => []);
+  const rows = Array.from({ length: teams }, () => []);
+  const offered = Array.from({ length: teams }, () => new Set());
+  /* Everything each seat ended up with, read before the walk starts.
+
+     A player you took in round two is not a player you left on the board in
+     round one, and offering him as the alternative there produces a
+     counterfactual roster holding him twice — which bestLineup() will
+     happily start in two slots, so the swing comes back POSITIVE on a pick
+     the same table says cost you points. Measured on a real mock: Derrick
+     Henry at 1.10 was "over" James Cook, whom that seat took at 2.01, and
+     the fork reported +6.9 points of win rate for a regret.
+
+     Applied per seat rather than to yours alone, because the room's own
+     value-left is the baseline the KPI compares you against and a baseline
+     computed under a different rule is not one. */
+  const seatNames = Array.from({ length: teams }, () => new Set());
+  // Which pick each name actually went at in this room, so a regret can say
+  // how long the alternative really stayed on the board. Read here, in the
+  // pass that is already walking every pick, rather than by re-parsing the
+  // locker once per mock the way the first version did.
+  const goneAt = new Map();
+  for (let o = 1; o <= teams * rounds; o++) {
+    const nm = entry.picks[o - 1];
+    if (!nm) continue;
+    seatNames[DraftEngine.pickInfo(o, shape).slot].add(nm);
+    if (!goneAt.has(nm)) goneAt.set(nm, o);
+  }
+  // First fractional round each seat took each position — view 03's "you"
+  // and "field" dots are both this, averaged over different sets of seats.
+  const firstAt = Array.from({ length: teams }, () => ({}));
+  const taken = new Set();
+
+  // The startable tier per position and how much of it is left; the round it
+  // empties is recorded the moment the count reaches zero. A tier that never
+  // empties leaves the key undefined rather than parked at the last round —
+  // "the tier was still there when the draft ended" is a different fact from
+  // "it emptied at 14.0", and only one of them can make somebody late.
+  const tierLeft = {}, cliff = {};
+  POSITIONS.forEach((pos) => { tierLeft[pos] = new Set(startableTier(pos, entry.league || league)); });
+
+  const last = teams * rounds;
+  for (let overall = 1; overall <= last; overall++) {
+    const info = DraftEngine.pickInfo(overall, shape);
+    const slot = info.slot;
+    const name = entry.picks[overall - 1];
+    const mine = name ? ctx.byName.get(name) : null;
+
+    /* The best value still on the board for this seat, skipping anything
+       already drafted and anything this seat has already been offered. The
+       scan starts at the top of a list sorted once, so it walks past only
+       the players actually consumed — never the whole board. */
+    let best = null, second = null;
+    const seen = offered[slot];
+    const ownPicks = seatNames[slot];
+    for (let i = 0; i < ctx.candidates.length; i++) {
+      const cand = ctx.candidates[i];
+      const nm = cand.player.name;
+      if (taken.has(nm) || seen.has(nm)) continue;
+      if (cand.player !== mine && ownPicks.has(nm)) continue;
+      best = cand;
+      break;
+    }
+    // A name today's board no longer carries is skipped rather than guessed
+    // at — the same rule historyStats() already applies to a stale pick.
+    if (!mine) continue;
+    taken.add(name);
+    rosters[slot].push(mine);
+    POSITIONS.forEach((pos) => {
+      if (tierLeft[pos].has(name)) {
+        tierLeft[pos].delete(name);
+        if (tierLeft[pos].size === 0 && cliff[pos] === undefined) cliff[pos] = fracRound(overall, teams);
+      }
+    });
+    if (firstAt[slot][mine.pos] === undefined) firstAt[slot][mine.pos] = fracRound(overall, teams);
+
+    const mineWorth = ctx.worth.get(mine) || 0;
+    const bestWorth = best ? best.worth : 0;
+    const delta = best ? Math.max(0, bestWorth - mineWorth) : 0;
+    if (best && best.player !== mine) seen.add(best.player.name);
+
+    /* The next player at YOUR OWN position, which is what a "your best call"
+       card is priced against. Deliberately not simply the next name down:
+       swapping your only quarterback for a tight end empties the QB slot, so
+       the model reports the collapse of a lineup with a hole in it as credit
+       for the pick — measured at +27.2 points of win rate on one real mock.
+       Same position keeps the lineup shape identical, so the number is the
+       difference between two players and nothing else.
+
+       Scanned only where it is going to be read: your own seat, on a pick
+       that cost nothing, at a position the candidate list actually carries.
+       Unguarded it is a full walk of ~450 candidates on every pick of every
+       seat — and it never terminates early for a kicker, whose position is
+       not in that list at all, so the worst case is also the commonest. */
+    if (delta === 0 && slot === mySlot && UNRANKED_POSITIONS.indexOf(mine.pos) < 0) {
+      for (let i = 0; i < ctx.candidates.length; i++) {
+        const cand = ctx.candidates[i];
+        const nm = cand.player.name;
+        if (cand.player === mine || cand.player.pos !== mine.pos) continue;
+        if (taken.has(nm) || seen.has(nm) || ownPicks.has(nm)) continue;
+        second = cand;
+        break;
+      }
+    }
+    rows[slot].push({
+      overall: overall,
+      round: info.round,
+      code: DraftEngine.pickCode(overall, shape),
+      mine: mine,
+      best: delta > 0 ? best.player : null,
+      /* The next name down, kept only where you already took the top of the
+         board: it is what a "your best decision" card is priced against, and
+         this loop is the only moment it can be read. */
+      runnerUp: delta > 0 ? null : (second ? second.player : null),
+      delta: delta,
+      winDelta: null
+    });
+  }
+
+  /* Projected win % for the room as drafted, and for each of your picks
+     taken the other way.
+
+     Only your own seat's lineup moves, so the other seats' weekly stats are
+     computed once and reused. A full projectedWinPctForRoom() per
+     counterfactual would re-walk every roster in the room for an answer that
+     cannot have changed, once per pick, once per mock.
+
+     This is a first-order counterfactual and the page says so: the player
+     you would have taken instead really was drafted by somebody else later,
+     and swapping him into your lineup does not take him back off theirs.
+     Calling it "re-simulated a thousand times" — which is what the design
+     handoff's own copy says — would be describing a simulator this app does
+     not have. What it is is projectedWinPctForRoom()'s own model, which has
+     its own method note above it, run twice. */
+  const lineups = rosters.map((r) => ({ lineup: bestLineup(r) }));
+  const weekly = lineups.map((t) => teamWeeklyStats(t, ctx.cv));
+  const winPct = weekly.map((m, i) => winRateAgainst(m, weekly.filter((_, j) => j !== i)));
+  const others = weekly.filter((_, j) => j !== mySlot);
+  const base = winPct[mySlot];
+
+  const baseFilled = lineups[mySlot].lineup.filter((s) => s.player).length;
+
+  /* One pick taken the other way, priced.
+
+     Answers null rather than a number whenever the swap leaves a starting
+     slot EMPTY that was filled before. That happens whenever your pick was
+     the only player you held at a mandatory position — one quarterback, one
+     kicker — and the model then reports the collapse of a lineup with a hole
+     in it as the cost of the decision. It is not: a drafter in that
+     counterfactual would obviously have taken a quarterback at some later
+     pick, and this frozen-room comparison has no way to let them. Null is
+     the honest answer, the points column still says what the pick cost, and
+     view 02 simply does not carry a card it cannot price. */
+  function winWith(swapOut, swapIn) {
+    const roster = rosters[mySlot].map((p) => (p === swapOut ? swapIn : p));
+    const lineup = bestLineup(roster);
+    if (lineup.filter((s) => s.player).length < baseFilled) return null;
+    const alt = winRateAgainst(teamWeeklyStats({ lineup: lineup }, ctx.cv), others);
+    return alt === null || base === null ? null : (base - alt) * 100;
+  }
+
+  rows[mySlot].forEach(function (row) {
+    if (row.best) row.winDelta = winWith(row.mine, row.best);
+    else if (row.runnerUp) row.winDelta = winWith(row.mine, row.runnerUp);
+  });
+
+  return {
+    id: entry.id,
+    completedAt: entry.completedAt,
+    teams: teams,
+    rounds: rounds,
+    mySlot: mySlot,
+    seat: mySlot + 1,
+    scoring: (entry.league && entry.league.scoring) || league.scoring,
+    formatLabel: scoringLabel(entry.league && entry.league.scoring),
+    grade: entry.grade || null,
+    gradeScore: typeof entry.gradeScore === "number" ? entry.gradeScore : null,
+    rows: rows[mySlot],
+    goneAt: goneAt,
+    /* Every seat's own value-left, which is the only honest baseline this
+       app has for "is 82 a lot": the same board, the same night, the same
+       rules, nine other drafters. It is not other Juke users and the page
+       never calls it that. */
+    valueLeft: rows.map((seatRows) => seatRows.reduce((a, r) => a + r.delta, 0)),
+    winPct: winPct,
+    firstAt: firstAt,
+    cliff: cliff,
+    rosters: rosters,
+    lineups: lineups
+  };
+}
+
+/* The scoring formats the coverage grid has columns for, in the order the
+   settings screen offers them, filtered to the ones a mock could actually
+   have been run in. Read off SCORING_NAMES rather than written out again —
+   a fourth format arriving would otherwise be a cell nobody can ever fill
+   and a denominator that never grows. */
+function insightsFormats() { return Object.keys(SCORING_NAMES); }
+
+/* View 03. Where you take each position against the other seats in the same
+   rooms, and where that position's startable tier ran out.
+
+   Scoped to ONE scoring format wherever there is enough of one to scope to,
+   because a half-PPR receiver and a standard receiver are not the same
+   question — and the badge on screen names the scope rather than leaving it
+   to be assumed, which is the whole point of scoping in the first place. A
+   silent fallback to "everything" would be the failure this page is about.
+
+   `field` averages every seat that is not yours, across every mock in
+   scope. That is the CPU, and calling it anything else would be inventing a
+   population. What it is honestly good for is exactly what the row claims:
+   these are drafters working off the same board and the same ADP, so being
+   a round and a half adrift of them is a fact about you rather than about
+   the market. */
+function insightsField(audits, scope) {
+  const rows = [];
+  const scoped = audits.filter((a) => !scope || a.scoring === scope);
+  const use = scoped.length >= 3 ? scoped : audits;
+  POSITIONS.forEach(function (pos) {
+    const mine = [], field = [], cliffs = [];
+    use.forEach(function (a) {
+      if (a.firstAt[a.mySlot][pos] !== undefined) mine.push(a.firstAt[a.mySlot][pos]);
+      a.firstAt.forEach(function (seat, i) {
+        if (i !== a.mySlot && seat[pos] !== undefined) field.push(seat[pos]);
+      });
+      if (a.cliff[pos] !== undefined) cliffs.push(a.cliff[pos]);
+    });
+    if (!mine.length || !field.length) return;
+    const you = meanOf(mine), them = meanOf(field), cliff = cliffs.length ? meanOf(cliffs) : null;
+    const late = cliff !== null && you > cliff;
+    rows.push({
+      pos: pos,
+      name: POS_NAMES_LONG[pos],
+      you: you,
+      field: them,
+      cliff: cliff,
+      late: late,
+      delta: you - them,
+      // Three states, not two: past the tier is a different claim from
+      // merely later than the room, and the row is coloured off which one
+      // it is rather than off the sign alone.
+      tone: late ? "bad" : you < them ? "good" : "neutral",
+      note: late ? "after the tier empties" : you < them ? "earlier than the room" : "later than the room"
+    });
+  });
+  return { rows: rows, scoped: scoped.length >= 3 ? scope : null, mocks: use.length };
+}
+
+/* View 04's grid. One cell per (format, seat), counting the mocks in the
+   window that landed in it.
+
+   The seat axis runs to the deepest room in the window rather than to the
+   live league's team count: RecommendationEngine.jsx filters to
+   league.teams because it compares seat scores, and seat 3 of 10 and seat 3
+   of 12 really are different questions there. This grid is answering "what
+   have you actually tried", and dropping every 12-team mock because you are
+   currently sitting in a 10-team league would answer it wrongly. The team
+   count rides along in each cell's tooltip so a mixed column says so. */
+function insightsCoverage(audits) {
+  const seats = Math.max(10, ...audits.map((a) => a.teams));
+  const formats = insightsFormats();
+  const grid = formats.map(function (key) {
+    const counts = Array.from({ length: seats }, () => 0);
+    const teamsSeen = Array.from({ length: seats }, () => new Set());
+    audits.forEach(function (a) {
+      if (a.scoring !== key) return;
+      if (a.seat < 1 || a.seat > seats) return;
+      counts[a.seat - 1]++;
+      teamsSeen[a.seat - 1].add(a.teams);
+    });
+    return {
+      key: key,
+      format: SCORING_NAMES[key],
+      counts: counts,
+      teams: teamsSeen.map((s) => [...s].sort((x, y) => x - y))
+    };
+  });
+  let sampled = 0;
+  grid.forEach((row) => row.counts.forEach((n) => { if (n > 0) sampled++; }));
+  return { seats: seats, rows: grid, sampled: sampled, total: formats.length * seats };
+}
+
+/* How much your own mocks repeat each other, which is the one thing a
+   count of drafts cannot tell you.
+
+   Overlap is Jaccard on the drafted roster — shared names over the union —
+   taken over every pair in the window. The effective sample is the standard
+   design-effect deflation, n / (1 + (n-1)·rho), with the mean pairwise
+   overlap standing in for rho: fourteen drafts that share two thirds of
+   their rosters are not fourteen independent looks at anything, and the
+   win-percentage trend drawn from them is thinner evidence than its own
+   x-axis implies. That sentence is the entire reason view 04 exists. */
+function jaccard(a, b) {
+  let both = 0;
+  a.forEach((n) => { if (b.has(n)) both++; });
+  const union = a.size + b.size - both;
+  return union > 0 ? both / union : 0;
+}
+
+function insightsSampleQuality(audits) {
+  const rosters = audits.map((a) => new Set(a.rosters[a.mySlot].map((p) => p.name)));
+  const others = audits.map((a) => a.rosters
+    .filter((_, s) => s !== a.mySlot)
+    .map((r) => new Set(r.map((p) => p.name))));
+  const firstEight = audits.map((a) => new Set(a.rows.slice(0, 8).map((r) => r.mine.name)));
+  const overlaps = [], baseline = [];
+  let repeated = 0;
+  for (let i = 0; i < rosters.length; i++) {
+    let echoes = false;
+    for (let j = 0; j < rosters.length; j++) {
+      if (i === j) continue;
+      let shared = 0;
+      firstEight[i].forEach((n) => { if (firstEight[j].has(n)) shared++; });
+      if (shared >= 6) echoes = true;
+      if (j > i) overlaps.push(jaccard(rosters[i], rosters[j]));
+      /* What two DIFFERENT drafters working the same board share anyway.
+
+         Any two rosters drawn off one ADP list overlap somewhat whatever
+         either drafter does — the top of the board is the top of the board —
+         so raw overlap cannot separate "you keep drafting the same team"
+         from "everybody drafts the same players". The other seats in your
+         own rooms are the control that already exists for exactly this, the
+         same way they are the control for value left on the board, and the
+         difference between the two figures is the only part that is about
+         you.
+
+         Without it the deflation below fires on nothing: measured over
+         fourteen mocks whose median roster overlap was 4% — one and a bit
+         shared players out of twenty-eight — the raw design effect still
+         called fourteen drafts worth eight, a 40% penalty on a sample that
+         was very nearly independent. */
+      others[j].forEach((r) => baseline.push(jaccard(rosters[i], r)));
+    }
+    if (echoes) repeated++;
+  }
+  const raw = overlaps.length ? meanOf(overlaps) : 0;
+  const floor = baseline.length ? meanOf(baseline) : 0;
+  /* The design-effect deflation wants an intraclass correlation, and this is
+     the closest honest thing the data holds: how much more of itself your
+     own history repeats than two arbitrary drafters off this board do. */
+  const rho = Math.max(0, raw - floor);
+  const n = audits.length;
+  const median = overlaps.length ? medianOf(overlaps) : null;
+  const effective = Math.max(1, n / (1 + (n - 1) * rho));
+  /* Both directions, because this card is as worth drawing when the answer
+     is good as when it is bad — "your drafts barely repeat each other" is
+     the one thing on view 04 that makes every other number on the page
+     count for more, and a card written only for the bad case would simply
+     be absent on the reader who earned it. */
+  const heavy = effective < n * 0.75;
+  return {
+    mocks: n,
+    repeated: repeated,
+    medianOverlap: median,
+    baselineOverlap: floor,
+    effective: effective,
+    tone: heavy ? "bad" : "good",
+    line: heavy
+      ? (repeated
+          ? repeated + " of your " + n + " mocks repeat six or more of another one\u2019s first eight picks. "
+          : "") +
+        "The median roster overlap between any two of your mocks is " +
+        (median === null ? "\u2014" : Math.round(median * 100) + "%") + "."
+      : "Your mocks are close to independent of one another: any two of them share " +
+        (median === null ? "\u2014" : Math.round(median * 100) + "%") +
+        " of a roster, against " + Math.round(floor * 100) +
+        "% for two arbitrary drafters off the same board.",
+    sub: "Effective independent sample: about " + Math.round(effective) + " draft" +
+      (Math.round(effective) === 1 ? "" : "s") + " out of " + n + ". " +
+      (heavy
+        ? "Any trend on this page is thinner evidence than its own x-axis implies."
+        : "Every number on this page is worth close to what its count suggests.")
+  };
+}
+
+/* The sidebar's habits, and they are one computation rather than three.
+
+   A habit here is a POSITION you keep passing on: for every pick where the
+   best value left on the board was at that position, the points it cost you
+   and the projected win % it cost you. Ranked by the first of those. That
+   is a direct answer to "what is costing me the most", derived from the
+   same audit view 01 draws, so the sidebar and the centre panel can never
+   disagree about which decision was expensive.
+
+   The headline is written here, beside the arithmetic, and it has three
+   shapes because the evidence has three shapes — past the tier, merely
+   later than the room, or neither (you are simply passing value at that
+   position for some other reason). Only the first two can name a number of
+   picks, so only those two do. */
+function insightsHabits(audits, field) {
+  const teams = medianOf(audits.map((a) => a.teams)) || 10;
+  const byPos = {};
+  audits.forEach(function (a) {
+    const seen = {};
+    a.rows.forEach(function (row) {
+      if (!row.best) return;
+      const pos = row.best.pos;
+      const cell = byPos[pos] || (byPos[pos] = { pos: pos, points: 0, win: 0, mocks: 0, picks: 0 });
+      cell.points += row.delta;
+      cell.win += row.winDelta === null ? 0 : Math.min(0, row.winDelta);
+      cell.picks++;
+      if (!seen[pos]) { seen[pos] = true; cell.mocks++; }
+    });
+  });
+
+  return Object.keys(byPos)
+    .map(function (pos) {
+      const cell = byPos[pos];
+      const row = field.rows.find((r) => r.pos === pos) || null;
+      const lower = POS_NAMES_LONG[pos].toLowerCase();
+      const cost = cell.points / audits.length;
+      const win = cell.win / audits.length;
+      /* Two titles, and the second is not a truncation of the first.
+
+         The sidebar's lead card is 316px of headline at 26px and can carry a
+         sentence; the two rows under it are one line each beside a cost, and
+         three variations on "the best value on the board keeps being a ..."
+         stacked vertically read as one paragraph repeated rather than as
+         three findings. Short says which position and what is wrong with the
+         timing, which is the whole of what a row that size can hold. */
+      let title, short, evidence;
+      const Upper = POS_NAMES_LONG[pos];
+      /* The headline's pick count is derived from the SAME rounded figures the
+         evidence prints, never from the raw ones.
+
+         Measured on a real locker: you at 8.30 and the room at 7.85 is 0.45 of
+         a round, which rounds to five picks in the headline while the sentence
+         under it reads "around round 7.9 ... yours at 8.3" and implies four. A
+         headline disagreeing with its own evidence by one is the same class of
+         defect as a caption describing a different quantity from the bar above
+         it, and it is the half a reader is most likely to quote. */
+      const s = (n) => (n === 1 ? "" : "s");
+      if (row && row.late) {
+        const cliffPick = Math.round((row.cliff - 1) * teams + 1);
+        const yourPick = Math.round((row.you - 1) * teams + 1);
+        const picks = Math.max(1, yourPick - cliffPick);
+        title = "You take " + lower + " " + picks + " pick" + s(picks) + " after the tier empties";
+        short = Upper + " after the tier empties";
+        evidence = "The last startable " + lower + " goes around pick " + cliffPick +
+          ". Your average is pick " + yourPick + ". The " + picks + " pick" + s(picks) +
+          " in between are the difference between a starter and a body.";
+      } else if (row && row.delta > 0.15) {
+        const yours = +row.you.toFixed(1), theirs = +row.field.toFixed(1);
+        const picks = Math.max(1, Math.round((yours - theirs) * teams));
+        title = "You take " + lower + " " + picks + " pick" + s(picks) + " after the room does";
+        short = Upper + " " + picks + " pick" + s(picks) + " late";
+        evidence = "The other seats take their first " + lower + " around round " + theirs.toFixed(1) +
+          ". You take yours at " + yours.toFixed(1) + ", and the best value on the board was a " +
+          lower + " on " + cell.picks + " of your picks.";
+      } else {
+        title = "The best value on the board keeps being a " + lower;
+        short = "You pass the best " + lower;
+        evidence = "On " + cell.picks + " pick" + (cell.picks === 1 ? "" : "s") + " across " + cell.mocks +
+          " of " + audits.length + " mocks, the most valuable player left was a " + lower +
+          " and you took somebody else.";
+      }
+      return {
+        pos: pos,
+        title: title,
+        short: short,
+        evidence: evidence,
+        frequency: cell.mocks + " of " + audits.length + " mocks",
+        costPoints: cost,
+        winPct: win,
+        picks: cell.picks
+      };
+    })
+    .filter((h) => h.costPoints > 0)
+    .sort((a, b) => b.costPoints - a.costPoints);
+}
+
+/* How these rosters fail — three properties of the rosters themselves,
+   which is a different question from how they were drafted and the reason
+   this block sits under the habits rather than inside them.
+
+   Every one is measured over the same window and states its own
+   denominator. `value` is what the row prints; `note` says exactly what was
+   counted, because "week-1 starter certainty" could mean four things and
+   only one of them is the arithmetic below. */
+function insightsFailures(audits) {
+  /* How many starters have to share a week before it is a defect rather
+     than arithmetic. Three was the first threshold and it measured nothing:
+     nine or ten starters spread over ten bye weeks collide three deep by
+     pigeonhole, and the row came back 13 of 14 on a set of drafts the app
+     itself made — a failure mode nobody can avoid is a fact about the
+     calendar, not about drafting. Four is a week you probably lose, which
+     is the same distinction the grade's own squared bye penalty draws.
+
+     The row leads with the MEAN worst week rather than the share, because
+     that number is meaningful at every value: "your worst week costs 2.6
+     starters" is a reading, where "0 of 14" is only the absence of one. */
+  const BYE_STACK = 4;
+  let stacked = 0;
+  const worstWeeks = [], benchMine = [], benchRoom = [], certainty = [];
+
+  audits.forEach(function (a) {
+    const lineup = a.lineups[a.mySlot].lineup;
+    const byes = {};
+    let worst = 0;
+    lineup.forEach(function (s) {
+      if (!s.player || !s.player.bye) return;
+      byes[s.player.bye] = (byes[s.player.bye] || 0) + 1;
+      if (byes[s.player.bye] > worst) worst = byes[s.player.bye];
+    });
+    worstWeeks.push(worst);
+    if (worst >= BYE_STACK) stacked++;
+
+    const started = new Set(lineup.filter((s) => s.player).map((s) => s.player.name));
+    const real = lineup.filter((s) => s.player && aboveReplacement(s.player) > 0).length;
+    if (lineup.length) certainty.push(real / lineup.length);
+
+    a.rosters.forEach(function (roster, slot) {
+      const seatStarters = slot === a.mySlot ? started
+        : new Set(a.lineups[slot].lineup.filter((s) => s.player).map((s) => s.player.name));
+      const spare = roster.filter((p) => !seatStarters.has(p.name) && aboveReplacement(p) > 0).length;
+      if (slot === a.mySlot) benchMine.push(spare); else benchRoom.push(spare);
+    });
+  });
+
+  const mine = meanOf(benchMine), room = meanOf(benchRoom), cert = meanOf(certainty);
+  const worstMean = meanOf(worstWeeks);
+  return [
+    {
+      key: "bye",
+      title: "Starters idle in your worst week",
+      note: "Averaged over " + audits.length + " rosters. " +
+            (stacked
+              ? stacked + " of them lose" + (stacked === 1 ? "s" : "") + " " + BYE_STACK +
+                " or more starters in one week."
+              : "None of them loses " + BYE_STACK + " or more in one week."),
+      value: worstMean === null ? "—" : worstMean.toFixed(1),
+      tone: worstMean === null ? "neutral" : worstMean >= BYE_STACK ? "bad" : worstMean >= 3 ? "warn" : "good"
+    },
+    {
+      key: "bench",
+      title: "Startable bench",
+      note: room === null
+        ? "Bench players who would be above replacement if you had to start them."
+        : "You carry " + mine.toFixed(1) + "; the other seats in the same rooms carry " +
+          room.toFixed(1) + ".",
+      value: mine === null ? "—" : mine.toFixed(1),
+      tone: mine !== null && room !== null && mine < room ? "warn" : "good"
+    },
+    {
+      key: "certainty",
+      title: "Week-1 starter certainty",
+      note: "Share of your starting slots filled by a player above replacement at his own position.",
+      value: cert === null ? "—" : Math.round(cert * 100) + "%",
+      tone: cert !== null && cert >= 0.85 ? "good" : cert !== null && cert >= 0.7 ? "warn" : "bad"
+    }
+  ];
+}
+
+/* Three mocks that would tighten the read, and every one of them is a real
+   (format, seat) this screen's own button can launch — the same
+   setLeague()/onRunAtSeat pair recommendation.js already uses, so a card
+   here and the Recommendation Engine's own footer can never point at a
+   combination the other cannot run.
+
+   The three answer three different questions on purpose: test the habit,
+   fill the widest hole, and try a format at all. A list of three variations
+   on "run more mocks" would be one card printed three times. */
+function insightsExperiments(audits, coverage, habits, seErr) {
+  /* What pressing the card actually does, said on the card.
+
+     The titles below are prescriptions - "three mocks", "two mocks" - because
+     that is what would tighten the read, and the button starts ONE. In the
+     design handoff these cards are not wired to anything, so the gap does not
+     exist there; here it would be a control whose label promises three drafts
+     and delivers one, which is the dead-control problem in its quieter form.
+     Each card carries the sentence for the press as well as the sentence for
+     the advice. */
+  const runLabel = (scoring, seat) => "Start one — " + SCORING_NAMES[scoring] + ", seat " + seat;
+  const out = [];
+  const formats = insightsFormats();
+  const counts = {};
+  coverage.rows.forEach(function (row) {
+    counts[row.key] = row.counts.reduce((a, b) => a + b, 0);
+  });
+  const ranked = formats.slice().sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+  const top = ranked[0];
+  const topRow = coverage.rows.find((r) => r.key === top);
+
+  // 1. The habit, in the cell you have most of — the fastest test there is,
+  //    because the baseline is already there to compare against.
+  if (habits.length && topRow) {
+    let seat = 1, best = -1;
+    topRow.counts.forEach(function (n, i) { if (n > best) { best = n; seat = i + 1; } });
+    out.push({
+      key: "habit",
+      title: SCORING_NAMES[top] + ", seat " + seat + " — one mock",
+      tag: "tests habit 1",
+      note: "Your costliest habit in your deepest cell. One run against " + best +
+            " you have already logged is enough to see whether it holds.",
+      runLabel: runLabel(top, seat),
+      scoring: top,
+      seat: seat
+    });
+  }
+
+  // 2. The widest unsampled stretch of seats in that same format. A run
+  //    rather than a single seat, because the middle of a room behaves
+  //    differently from the turns and one mock there reads as an anecdote.
+  if (topRow) {
+    let runStart = -1, runLen = 0, bestStart = -1, bestLen = 0;
+    topRow.counts.forEach(function (n, i) {
+      if (n === 0) {
+        if (runStart < 0) { runStart = i; runLen = 0; }
+        runLen++;
+        if (runLen > bestLen) { bestLen = runLen; bestStart = runStart; }
+      } else { runStart = -1; runLen = 0; }
+    });
+    if (bestLen > 0) {
+      const a = bestStart + 1, b = bestStart + bestLen;
+      const add = Math.min(3, bestLen);
+      const projected = seErr === null ? null : seErr * Math.sqrt(audits.length / (audits.length + add));
+      out.push({
+        key: "coverage",
+        title: SCORING_NAMES[top] + ", seat" + (bestLen > 1 ? "s " + a + "–" + b : " " + a) +
+               " — " + add + " mock" + (add === 1 ? "" : "s"),
+        tag: seErr === null ? "new ground" : "±" + seErr.toFixed(1) + " → ±" + projected.toFixed(1),
+        note: (bestLen > 1 ? "Those seats are" : "That seat is") +
+              " unsampled, and a chair you have never drafted from is a guess rather than a read.",
+        runLabel: runLabel(top, Math.round((a + b) / 2)),
+        scoring: top,
+        seat: Math.round((a + b) / 2)
+      });
+    }
+  }
+
+  // 3. A format you have barely run at all. Zero mocks in one is the
+  //    strongest version of this card and the most common.
+  const thin = ranked[ranked.length - 1];
+  if (thin && thin !== top) {
+    out.push({
+      key: "format",
+      title: SCORING_NAMES[thin] + ", seat " + Math.max(1, Math.round(coverage.seats / 3)) +
+             " — 2 mocks",
+      tag: (counts[thin] || 0) === 0 ? "never run" : "thin format",
+      note: (counts[thin] || 0) === 0
+        ? "You have never run " + SCORING_NAMES[thin] + ". Value at running back moves most between formats, so nothing on this page is a read on it."
+        : (counts[thin] || 0) + " mock" + ((counts[thin] || 0) === 1 ? "" : "s") +
+          " in " + SCORING_NAMES[thin] + " is not a read on it.",
+      runLabel: runLabel(thin, Math.max(1, Math.round(coverage.seats / 3))),
+      scoring: thin,
+      seat: Math.max(1, Math.round(coverage.seats / 3))
+    });
+  }
+  return out.slice(0, 3);
+}
+
+/* The whole page, in one object, computed once per (locker, board, scoring)
+   and cached. React reads it and draws it; every sentence on it is written
+   above and nothing on the page is derived a second time in a component.
+
+   Answers `{ ready: false }` — with a real count and the bar it has to
+   clear — rather than a half-populated object whenever there is no engine,
+   no board, or not enough history yet. A caller cannot mistake "not yet"
+   for "zero", which is the same "absent, not zeroed" rule this file keeps
+   everywhere. */
+function insightsReport() {
+  const raw = historyRaw();
+  const shape = insightsShapeKey();
+  if (INSIGHTS_CACHE && INSIGHTS_CACHE.raw === raw && INSIGHTS_CACHE.shape === shape) {
+    return INSIGHTS_CACHE.report;
+  }
+
+  const all = readHistory();
+  const list = all.slice(0, INSIGHTS_WINDOW);
+  const thin = {
+    ready: false,
+    mocks: all.length,
+    minMocks: MIN_MOCKS_FOR_INSIGHTS,
+    reason: typeof DraftEngine === "undefined" || !board.length ? "loading" : "thin"
+  };
+  if (thin.reason === "loading" || all.length < MIN_MOCKS_FOR_INSIGHTS) return thin;
+
+  const ranked = insightsRanked();
+  const worth = new Map();
+  ranked.forEach((r) => worth.set(r.player, r.worth));
+  const byName = new Map();
+  board.forEach((p) => byName.set(p.name, p));
+  // positionWeeklyCV() walks every weekly log on the board, so it is
+  // computed once here and threaded through every mock — the same reason
+  // historyStats() hoists it out of its own per-entry loop.
+  const ctx = { byName: byName, ranked: ranked, candidates: insightsCandidates(ranked),
+                worth: worth, cv: positionWeeklyCV() };
+
+  // Oldest first, so the bar chart reads left to right as a timeline the
+  // same way every other per-mock chart in this app already does.
+  const audits = list.map((e) => auditMock(e, ctx)).filter(Boolean).reverse();
+  if (audits.length < MIN_MOCKS_FOR_INSIGHTS) return thin;
+
+  const mine = audits.map((a) => a.valueLeft[a.mySlot]);
+  const roomValues = [];
+  audits.forEach((a) => a.valueLeft.forEach((v, i) => { if (i !== a.mySlot) roomValues.push(v); }));
+  const fieldMedian = medianOf(roomValues);
+
+  const myWin = audits.map((a) => a.winPct[a.mySlot]).filter((v) => typeof v === "number");
+  const roomWin = [];
+  audits.forEach((a) => a.winPct.forEach((v, i) => { if (i !== a.mySlot && typeof v === "number") roomWin.push(v); }));
+
+  const leverage = audits.map((a) =>
+    a.rows.filter((r) => r.winDelta !== null && r.winDelta <= -LEVERAGE_PCT).length);
+
+  const grades = audits.map((a) => a.gradeScore).filter((v) => typeof v === "number");
+  const sd = stdevOf(grades);
+  const seErr = sd === null ? null : sd / Math.sqrt(grades.length);
+
+  // The dominant format is what view 03 scopes to when it can — see
+  // insightsField(). Counted here rather than there so the badge and the
+  // scope come from the same tally.
+  const fmtCounts = {};
+  audits.forEach((a) => { fmtCounts[a.scoring] = (fmtCounts[a.scoring] || 0) + 1; });
+  const dominant = Object.keys(fmtCounts).sort((a, b) => fmtCounts[b] - fmtCounts[a])[0];
+
+  const coverage = insightsCoverage(audits);
+  const field = insightsField(audits, dominant);
+  const habits = insightsHabits(audits, field);
+  const failures = insightsFailures(audits);
+  const sample = insightsSampleQuality(audits);
+  const experiments = insightsExperiments(audits, coverage, habits, seErr);
+
+  const meanMine = meanOf(mine);
+  const meanWin = myWin.length ? meanOf(myWin) * 100 : null;
+  const meanRoomWin = roomWin.length ? meanOf(roomWin) * 100 : null;
+
+  const kpis = [
+    {
+      key: "value",
+      label: "VALUE LEFT ON BOARD",
+      value: String(Math.round(meanMine)),
+      // Signed against the room's own median rather than against a
+      // population that does not exist. Above the room is the bad
+      // direction here, which is why the tone is inverted from its sign.
+      // "vs room", not "vs the room": at the card's own width the extra word
+      // wraps onto a second line under a 27px value, which reads as a
+      // two-line number rather than as a delta.
+      delta: fieldMedian === null ? null
+        : (meanMine >= fieldMedian ? "+" : "−") + Math.round(Math.abs(meanMine - fieldMedian)) + " vs room",
+      tone: fieldMedian === null ? "neutral" : meanMine > fieldMedian ? "bad" : "good",
+      accent: "bad",
+      note: "Points of starter value per draft. The room's median is " +
+            (fieldMedian === null ? "—" : Math.round(fieldMedian)) + "."
+    },
+    {
+      key: "win",
+      label: "WIN % FROM YOUR SEATS",
+      value: meanWin === null ? "—" : Math.round(meanWin) + "%",
+      delta: meanWin === null || meanRoomWin === null ? null
+        : (meanWin >= meanRoomWin ? "+" : "−") + Math.abs(meanWin - meanRoomWin).toFixed(1),
+      tone: meanWin === null || meanRoomWin === null ? "neutral" : meanWin >= meanRoomWin ? "good" : "bad",
+      accent: "blue",
+      note: "Projected, against the other seats in the same rooms."
+    },
+    {
+      key: "leverage",
+      label: "HIGH-LEVERAGE MISSES",
+      value: meanOf(leverage) === null ? "—" : meanOf(leverage).toFixed(1),
+      delta: "per draft",
+      tone: "neutral",
+      accent: "warn",
+      note: "Picks that moved projected win % by a point or more."
+    },
+    {
+      key: "read",
+      label: "READ CONFIDENCE",
+      value: coverage.sampled + "/" + coverage.total,
+      delta: seErr === null ? null : "±" + seErr.toFixed(1),
+      tone: "neutral",
+      accent: "good",
+      note: "Seat-and-format cells with a mock in them, and the error on your mean grade."
+    }
+  ];
+
+  const featured = audits[audits.length - 1];
+  /* The room's median has to be INSIDE the chart, because the whole point of
+     that chart is which bars clear it. Scaling to the tallest bar alone puts
+     the line off the top on any history where every draft beat the room,
+     which is exactly the reader who most deserves to see it. */
+  const maxLeft = Math.max(...mine, fieldMedian || 0, 1);
+  const bars = audits.map((a, i) => ({
+    id: a.id,
+    n: String(i + 1).padStart(2, "0"),
+    seat: a.seat,
+    teams: a.teams,
+    formatLabel: a.formatLabel,
+    valueLeft: Math.round(a.valueLeft[a.mySlot]),
+    // The share of the tallest bar, computed here so the chart is drawing a
+    // number rather than deciding one.
+    share: a.valueLeft[a.mySlot] / maxLeft,
+    aboveRoom: fieldMedian !== null && a.valueLeft[a.mySlot] > fieldMedian,
+    title: "Mock " + (i + 1) + " · seat " + a.seat + " · " + a.teams + "-team " + a.formatLabel +
+           " · " + Math.round(a.valueLeft[a.mySlot]) + " left"
+  }));
+
+  const scopeLabel = field.scoped ? SCORING_NAMES[field.scoped] : "all formats";
+
+  const report = {
+    ready: true,
+    mocks: audits.length,
+    totalMocks: all.length,
+    windowed: all.length > audits.length,
+    eyebrow: audits.length + " MOCKS · " + coverage.sampled + " OF " + coverage.total +
+             " SEAT-FORMAT CELLS",
+    kpis: kpis,
+    bars: bars,
+    fieldMedian: fieldMedian === null ? null : Math.round(fieldMedian),
+    // Where the median line sits on the same 0..1 scale the bars use, so the
+    // chart never has to re-derive a denominator the engine already chose.
+    fieldShare: fieldMedian === null ? null : fieldMedian / maxLeft,
+    featuredId: featured.id,
+    field: field,
+    fieldScope: scopeLabel,
+    coverage: coverage,
+    sample: sample,
+    habits: habits,
+    failures: failures,
+    experiments: experiments,
+    runNext: insightsRunNext(experiments, habits),
+    // View 03's resting footnote — the reading of the rows rather than a
+    // restatement of the legend, and it is written here for the same reason
+    // parText() is: the panel under a chart may not describe a different
+    // quantity from the chart.
+    fieldNote: insightsFieldNote(field, scopeLabel, field.mocks),
+    // Every view's own header. The centre panel is one component with four
+    // contents, and a title/sub/badge trio written in the component would be
+    // four more sentences nobody could reconcile against the numbers under
+    // them.
+    views: {
+      left: {
+        title: "What you left on the board",
+        sub: "Every pick against the best value still on the board at that slot.",
+        badge: audits.reduce((n, a) => n + a.rows.length, 0) + " PICKS AUDITED"
+      },
+      leverage: {
+        title: "Which picks actually mattered",
+        sub: "Each fork re-scored with the alternative in your lineup instead.",
+        badge: "SWING OF " + LEVERAGE_PCT + " POINT OR MORE"
+      },
+      field: {
+        title: "You against the room",
+        sub: "The round you take each position, against the other seats in the same rooms.",
+        badge: (field.scoped ? SCORING_NAMES[field.scoped].toUpperCase() : "ALL FORMATS") +
+               " · " + field.mocks + " MOCKS"
+      },
+      trust: {
+        title: "What these mocks can prove",
+        sub: "Coverage, error, and how much your drafts repeat each other.",
+        badge: audits.length + " MOCKS · " + coverage.sampled + " OF " + coverage.total + " CELLS"
+      }
+    }
+  };
+
+  INSIGHTS_CACHE = { raw: raw, shape: shape, report: report, audits: audits };
+  return report;
+}
+
+/* The rail's "run this next" card. It is experiment 1 with the habit's own
+   sentence attached, rather than a second recommendation derived a second
+   way — two cards on one screen pointing at different mocks is the failure
+   describeRecommendation() already exists to prevent for the two cards that
+   came before these. */
+function insightsRunNext(experiments, habits) {
+  const exp = experiments[0];
+  if (!exp) return null;
+  const habit = habits[0];
+  return {
+    scoring: exp.scoring,
+    seat: exp.seat,
+    line: SCORING_NAMES[exp.scoring] + " from seat " + exp.seat + ". " +
+          (habit
+            ? "One more run at your deepest cell, against the " +
+              POS_NAMES_LONG[habit.pos].toLowerCase() + " habit costing you the most."
+            : "One more run at the cell you already have the most of."),
+    label: "Run " + SCORING_NAMES[exp.scoring] + ", seat " + exp.seat
+  };
+}
+
+function insightsFieldNote(field, scopeLabel, mocks) {
+  const late = field.rows.filter((r) => r.late);
+  const early = field.rows.filter((r) => r.tone === "good");
+  if (!field.rows.length) return "Not enough mocks in one format to read the room yet.";
+  if (!late.length) {
+    return "No position sits past its own cliff: every starting tier still had somebody in it when you took yours. " +
+      "Measured over " + mocks + " mocks in " + scopeLabel + ".";
+  }
+  const names = late.map((r) => r.name.toLowerCase());
+  const list = names.length === 1 ? names[0] : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  return (names.length === 1 ? "Only " + list + " sits" : list.charAt(0).toUpperCase() + list.slice(1) + " sit") +
+    " past the pick where the starting tier empties, and " +
+    (names.length === 1 ? "it is" : "those are") + " the row" + (names.length === 1 ? "" : "s") +
+    " where being late has actually cost points." +
+    (early.length ? " " + early[0].name + " ahead of the room is the trade that buys it." : "");
+}
+
+/* One mock, drawn out for view 01's table and view 02's cards. Reads the
+   audits the report already built rather than replaying the draft again —
+   insightsReport() has to have been called first, and it is, because
+   nothing can select a mock before the page that lists them has rendered. */
+function insightsMock(id) {
+  const report = insightsReport();
+  if (!report.ready || !INSIGHTS_CACHE) return null;
+  const audits = INSIGHTS_CACHE.audits;
+  const idx = audits.findIndex((a) => a.id === id);
+  const a = idx >= 0 ? audits[idx] : audits[audits.length - 1];
+  const n = (idx >= 0 ? idx : audits.length - 1) + 1;
+
+  const goneAt = a.goneAt;
+
+  const maxDelta = Math.max(1, ...a.rows.map((r) => r.delta));
+  const total = a.rows.reduce((sum, r) => sum + r.delta, 0);
+  const label = "MOCK " + String(n).padStart(2, "0") + " · SEAT " + a.seat;
+
+  const picks = a.rows.map((r) => ({
+    code: r.code,
+    you: { name: r.mine.name, pos: r.mine.pos },
+    best: r.best ? { name: r.best.name, pos: r.best.pos } : null,
+    delta: Math.round(r.delta),
+    share: r.delta / maxDelta,
+    winDelta: r.winDelta === null ? null : Math.round(r.winDelta * 10) / 10
+  }));
+
+  const regrets = a.rows
+    .filter((r) => r.best && r.winDelta !== null && r.winDelta <= -LEVERAGE_PCT)
+    .sort((x, y) => x.winDelta - y.winDelta);
+  /* The one decision that went the other way, and it answers to the same bar
+     the regrets do.
+
+     Without the threshold every mock carries a positive card, and thirteen of
+     fourteen measured under a point — one at +0.1. That is a card headed
+     "your best call" sitting under an intro that has just said only the picks
+     past a point are worth talking about, which is the panel contradicting
+     itself in the space of two inches. A draft where nothing you did moved
+     the number by a point had no best call worth the name, and view 02 says
+     so by not drawing one. */
+  let bestCall = null;
+  a.rows.forEach(function (r) {
+    if (r.best || r.winDelta === null || r.winDelta < LEVERAGE_PCT) return;
+    if (!bestCall || r.winDelta > bestCall.winDelta) bestCall = r;
+  });
+
+  const forks = regrets.map(function (r) {
+    const went = goneAt.get(r.best.name);
+    return {
+      code: r.code,
+      mockLabel: label + " · " + a.formatLabel.toUpperCase(),
+      title: shortName(r.mine) + " over " + shortName(r.best),
+      note: (went && went > r.overall
+        ? shortName(r.best) + " was the best value on the board when you picked, and stayed there " +
+          (went - r.overall) + " more pick" + (went - r.overall === 1 ? "" : "s") + ". "
+        : went
+          ? shortName(r.best) + " was the best value on the board when you picked. "
+          : shortName(r.best) + " was the best value on the board when you picked, and nobody in the room took him at all. ") +
+        "Taking him instead is worth " + Math.round(r.delta) + " points of starter value.",
+      winDelta: Math.round(r.winDelta * 10) / 10,
+      axisNote: "win % if you take " + shortName(r.best) + " instead",
+      good: false
+    };
+  });
+  if (bestCall) {
+    forks.push({
+      code: bestCall.code,
+      mockLabel: label + " · " + a.formatLabel.toUpperCase(),
+      title: shortName(bestCall.mine) + " over the next " + POS_NAMES_LONG[bestCall.mine.pos].toLowerCase(),
+      note: "Your best call in this draft. You took the top of the board, and the next " +
+        POS_NAMES_LONG[bestCall.mine.pos].toLowerCase() + " on it — " + shortName(bestCall.runnerUp) +
+        " — would have cost you the swing on the right.",
+      winDelta: Math.round(bestCall.winDelta * 10) / 10,
+      axisNote: "win % you kept by taking him",
+      good: true
+    });
+  }
+
+  return {
+    id: a.id,
+    n: n,
+    label: label,
+    seat: a.seat,
+    teams: a.teams,
+    formatLabel: a.formatLabel,
+    grade: a.grade,
+    heroSub: "Mock " + String(n).padStart(2, "0") + " · seat " + a.seat + " · " + a.teams +
+             "-team " + a.formatLabel + ". Click any bar above to audit another.",
+    total: Math.round(total),
+    picks: picks,
+    forks: forks,
+    // Said out loud rather than left to be inferred from four cards: the
+    // other picks in this draft were not decisions worth relitigating, and
+    // that is the most useful thing view 02 has to say.
+    /* The count, and only the count. This used to open "Each fork below was
+       re-scored with the alternative in your lineup instead", which is the
+       view's own sub-line verbatim, rendered directly under it. A header that
+       says the method and a paragraph that says what the method found is one
+       sentence each; saying the method twice is the reader's first impression
+       of a page about rigour. */
+    forkIntro:
+      (forks.length
+        ? "Only " + forks.length + " of your " + a.rows.length +
+          " picks in this mock moved projected win % by a point or more — the rest were noise."
+        : "None of your " + a.rows.length + " picks in this mock moved projected win % by a point or more.")
+  };
 }
 
 
@@ -11242,6 +12479,23 @@ window.JukeEngine = {
   // each field means and why a stat that can't be computed cleanly is just
   // absent rather than zeroed.
   historyStats: historyStats,
+  /* Your Insights, whole — see section 11d2. One call rather than eight,
+     because the page is one panel and the four views it swaps between all
+     read the same replay: splitting it would mean replaying the locker once
+     per view and getting four independently-cached answers to one question.
+     Answers { ready: false } with a real count when there is not enough
+     history to say anything, which is what the screen draws its own
+     pre-sample state from. */
+  insightsReport: insightsReport,
+  // One mock out of that same replay — the pick table and the fork cards.
+  // Reads the cache insightsReport() already filled rather than replaying
+  // the draft a second time.
+  insightsMock: insightsMock,
+  /* The six positions in prose. React has its own copy in
+     draftRoomPositions.js and the two must not drift — see POS_NAMES_LONG's
+     own comment for why there are two at all. Bridged so anything reading
+     the engine's own sentences can label a chart axis in the same words. */
+  posNames: () => POS_NAMES_LONG,
   /* "off" | "ok" | "error" — whether the locker above is only in this
      browser, safely in an account, or signed in and failing to reach one.
      See noteSyncResult()'s own comment: every layer under this answers a

@@ -1,172 +1,53 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { Calendar, ChevronLeft, TrendingUp, Shield } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { useEngine, useJukeTick } from '../hooks/useJukeEngine.js'
-import NewMockPanel from './NewMockPanel.jsx'
 import InProgressBand from './InProgressBand.jsx'
 import LockerTable from './LockerTable.jsx'
-import WhatToRunNext from './WhatToRunNext.jsx'
 import DraftInsightsDashboard from './DraftInsightsDashboard.jsx'
-import TrendChart from './TrendChart.jsx'
-import RecommendationEngine from './RecommendationEngine.jsx'
-import MostDraftedCard from './MostDraftedCard.jsx'
-import WeakestSpotCard from './WeakestSpotCard.jsx'
-import AvgRoundByPositionCard from './AvgRoundByPositionCard.jsx'
-import DraftCapitalAllocationCard from './DraftCapitalAllocationCard.jsx'
-import WinPctTrendCard from './WinPctTrendCard.jsx'
-import NetAdpValueCard from './NetAdpValueCard.jsx'
-import PositionalWeaknessHeatmap from './PositionalWeaknessHeatmap.jsx'
+import YourInsights from './insights/YourInsights.jsx'
 
-// One shell for the three header stat tiles — a bordered card with a label
-// row (an optional icon beside it) and a big value, rather than the plain
-// stacked text these used to be. sparkline is a full element rather than a
-// boolean so only the win-rate tile has to know it draws one.
-function KpiCard({ icon: Icon, label, value, valueColor, sub, sparkline }) {
-  return (
-    <div className="flex min-w-[132px] flex-col gap-1.5 rounded-lg border border-white/[0.09] bg-slate-panel/60 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-white/50">{label}</span>
-        {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-white/30" aria-hidden="true" />}
-      </div>
-      <p className="font-display text-[22px] font-bold leading-none tabular-nums" style={{ color: valueColor || '#fff' }}>
-        {value}
-      </p>
-      {sub && <p className="text-[10px] text-ink-muted">{sub}</p>}
-      {sparkline}
-    </div>
-  )
-}
+/* What this screen shows, and what left it.
 
-// Below this many completed mocks, none of the eight chart cells have
-// enough to say — every one of them would independently render its own
-// "not enough data yet" box, which is the same repetitive-empty-boxes
-// problem the retired TendenciesStrip.jsx's own single gate already existed
-// to avoid. One combined prompt stands in for all eight instead; once past
-// it, each card still gates itself on whatever narrower sample it
-// specifically needs (a format needs two full formats, the heatmap needs
-// two entries with the field stored, and so on).
-//
-// New Mock Draft is deliberately NOT behind this gate. It is the launcher,
-// not a piece of analytics — a brand-new visitor with zero mocks still
-// needs a working "Start mock draft" button. Folding it into the same
-// conditional as the eight chart cards was tried once already and is
-// exactly the regression this comment exists to prevent: it deleted the
-// one button this whole screen exists to offer for anyone who hadn't
-// already run five mocks.
-const MIN_MOCKS_FOR_ANALYTICS = 5
+   design_handoff_your_insights (option 1a) replaced the eight-card "Your
+   Tendencies" grid, and the three-tile KPI row above it, with one panel:
+   four views on a left rail, a persistent habits sidebar, and a header of
+   four KPIs that are about decisions rather than about shares. The whole of
+   it is web/src/components/insights, and every number and every sentence on
+   it comes off app.js section 11d2.
 
-// The analytics grid. A plain 4-column, 3-row grid — 12 cells, and every
-// panel here fills exactly one of them except Recommendation Engine (2
-// cols) and the Heatmap (3 cols). New Mock does NOT need an explicit
-// row-span to look as tall as its row-mates: CSS Grid stretches every item
-// to its row's own height by default, and row 1's height is set by
-// whichever sibling needs the most room (Recommendation Engine, once it's
-// drawing a real per-seat bar chart) — NewMockPanel's own `h-full` just
-// rides that stretch. An earlier version of this file read the design
-// brief's "New Mock spans rows 1-2" as a literal grid-row-span, which
-// doesn't fit a 4x3 grid alongside Recommendation Engine's 2-column span
-// and the heatmap's 3-column span (13 cell-units of content into 12 cells)
-// and had to invent a fourth row to make the arithmetic work. It didn't
-// need to: the spec was describing a visual proportion, not a grid mechanic.
-/* This screen is what "Your insights" opens, and it is analytics only.
+   The handoff's own case for the swap is that the grid reported positional
+   shares and averages — what every competitor shows, and figures that
+   converge on the population's own base rates the more mocks somebody runs.
+   A reader who has run forty drafts learns that they take a running back in
+   round one.
 
-   It used to lead with NewMockPanel — a whole second draft launcher, with
-   its own Teams/Scoring/Rounds/Seat selects, its own "Start mock draft"
-   and its own "Edit setup". That was right when this WAS the Draft Room's
-   Lobby at desktop width. It is not any more: design_handoff_v3_alive puts
-   the launcher on DraftRoomEntry at every width, and this sits one press
-   behind that screen's "Your insights" button. Offering the setup again,
-   underneath the screen you just left to look at your numbers, is the
-   duplicate-affordance problem — reported exactly that way.
+   NOTHING WAS DELETED. RecommendationEngine, MostDrafted, WeakestSpot,
+   AvgRoundByPosition, DraftCapitalAllocation, WinPctTrend, NetAdpValue and
+   PositionalWeaknessHeatmap are all still in web/src/components, complete
+   and unrendered — the same state Header, Hero, RoomsGrid, NewMockPanel and
+   phone/HomePhone are in, and the same rule this project followed through
+   the root index.html migration: prove the replacement works before deleting
+   what it replaces, and check the running site rather than the build log.
+   Their imports left THIS file rather than being kept as dead ones, because
+   an import nothing renders is a promise the screen no longer keeps.
 
-   So the launcher is gone from here and the analytics take the full width.
-   Starting a draft is the entry screen's job, and its "Draft settings"
-   button is now the single way into the settings modal from this route.
+   WhatToRunNext left with them, for a different reason: the rail's own "Run
+   this next" card is the same control aimed at the same (format, seat), and
+   two of them on one screen is the duplicate-affordance problem this file
+   already records against the launcher it removed. describeRecommendation()
+   and runRecommendation() are untouched and still shared with
+   RecommendationEngine.
 
-   NewMockPanel itself is untouched and still in web/src/components,
-   unrendered — the same state Header, Hero, LobbyBar and the rest of the
-   pre-handoff surfaces are in. */
-function AnalyticsGrid({ engine, league, stats, roomActive, onRunAtSeat }) {
-  const totalMocks = stats.total || 0
-  const thin = totalMocks < MIN_MOCKS_FOR_ANALYTICS
+   MIN_MOCKS_FOR_ANALYTICS moved with the gate it guarded, into app.js as
+   MIN_MOCKS_FOR_INSIGHTS, and is deliberately the same number: same reader,
+   same question, and a second opinion about what "enough mocks" means is
+   worth less than one answer both halves agree on. */
 
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {thin ? (
-        <div className="sm:col-span-2 lg:col-span-4 lg:col-start-1 lg:row-start-1 flex min-h-[420px] flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.14] bg-slate-panel/40 p-10 text-center">
-          <p className="max-w-[360px] text-sm text-white/60">
-            Run {MIN_MOCKS_FOR_ANALYTICS - totalMocks} more mock{MIN_MOCKS_FOR_ANALYTICS - totalMocks === 1 ? '' : 's'} and
-            Juke will start showing your tendencies, your projected win rate, and where each draft left value on the board.
-          </p>
-          {/* Five dots, one per mock still needed — the same fact the
-              caption below states in words, made visible at a glance before
-              anyone reads the number. totalMocks is always <
-              MIN_MOCKS_FOR_ANALYTICS in this branch (that's the gate this
-              branch renders under), so no clamping needed on the fill
-              count. */}
-          <div
-            className="mt-4 flex items-center gap-2"
-            role="img"
-            aria-label={`${totalMocks} of ${MIN_MOCKS_FOR_ANALYTICS} mocks logged`}
-          >
-            {Array.from({ length: MIN_MOCKS_FOR_ANALYTICS }, (_, i) => (
-              <span
-                key={i}
-                className={
-                  'h-2 w-2 rounded-full transition-colors duration-300 ' +
-                  (i < totalMocks ? 'bg-teal-400 shadow-[0_0_6px_rgba(0,229,255,0.6)]' : 'border border-white/15')
-                }
-              />
-            ))}
-          </div>
-          <p className="mt-2 text-xs tabular-nums text-ink-muted">
-            {totalMocks} of {MIN_MOCKS_FOR_ANALYTICS} logged so far
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* col-start-1/span-3, where this used to be col-start-2/span-2:
-              the launcher held column one of row one and no longer does, so
-              closing the row up is what stops an empty cell opening beside
-              it. */}
-          <div className="sm:col-span-2 lg:col-start-1 lg:col-span-3 lg:row-start-1">
-            <RecommendationEngine engine={engine} league={league} stats={stats} roomActive={roomActive} onRunAtSeat={onRunAtSeat} />
-          </div>
-          <div className="lg:col-start-4 lg:row-start-1">
-            <MostDraftedCard stats={stats} />
-          </div>
-
-          <div className="lg:col-start-1 lg:row-start-2">
-            <WeakestSpotCard stats={stats} />
-          </div>
-          <div className="lg:col-start-2 lg:row-start-2">
-            <AvgRoundByPositionCard stats={stats} />
-          </div>
-          <div className="lg:col-start-3 lg:row-start-2">
-            <DraftCapitalAllocationCard stats={stats} />
-          </div>
-          <div className="lg:col-start-4 lg:row-start-2">
-            <WinPctTrendCard stats={stats} />
-          </div>
-
-          <div className="lg:col-start-1 lg:row-start-3">
-            <NetAdpValueCard stats={stats} />
-          </div>
-          <div className="sm:col-span-2 lg:col-start-2 lg:col-span-3 lg:row-start-3">
-            <PositionalWeaknessHeatmap stats={stats} />
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// Replaces the old tabbed card list (DraftHistoryCard.jsx,
-// DraftInProgressCard.jsx, both deleted) with the handoff's launcher-and-
-// record layout: a title row, an in-progress band when one exists, the
-// launcher beside "Your tendencies," then the full history table. Every
-// child here is presentational — this component owns the one thing that
-// has to live above all of them, which is knowing whether an in-progress
-// draft or history entry changed and needs a re-render.
+// What is left on this screen after the swap above: the way back, the
+// in-progress band, the Your Insights panel and the history table. Every
+// child is presentational — this component owns the one thing that has to
+// live above all of them, which is knowing whether an in-progress draft or a
+// history entry changed and needs a re-render.
 /* Five props left with the launcher: onStartNew, problem, lobbySlot,
    onSetLobbySlot, onOpenSettings and onDraftWithFriends were all
    NewMockPanel's, and nothing else here read one. Dropped rather than
@@ -251,17 +132,13 @@ export default function DraftLocker({ onRunAtSeat, roomActive, initialAnalyzeId,
 
   if (!engine) return null
 
-  const league = engine.league()
   const inProgress = engine.inProgressSummary()
   const completed = engine.historyList()
-  const stats = engine.historyStats()
-  // historyStats() returns {} outright with no history at all, so
-  // stats.total is undefined rather than 0 in that case — totalMocks folds
-  // both into one real number, "0" included, rather than the sentence
-  // reading "undefined mocks run."
-  const totalMocks = stats.total || 0
-  const mocksRunSentence = `${totalMocks} mock${totalMocks === 1 ? '' : 's'} run. Unlimited, always free.`
-  const hasWinTrend = stats.winPctHistory && stats.winPctHistory.length >= 2
+  const league = engine.league()
+  /* historyStats() left with the analytics grid: this screen no longer reads
+     it, and the panel below asks the engine for its own report rather than
+     being handed a second summary of the same locker. `league` stays because
+     the frozen-report dashboard above still takes one. */
 
   const resume = () => { engine.resumeSavedDraft(); location.hash = '#/draft-room' }
   // engine.restart() — clearSave() plus goHome() — not clearSave() alone.
@@ -299,13 +176,13 @@ export default function DraftLocker({ onRunAtSeat, roomActive, initialAnalyzeId,
   }
   const deleteEntry = (id) => { engine.deleteHistoryDraft(id); forceLocal() }
 
-  // A report replaces the Lobby screen while it's open, the same way
+  // A report replaces the whole screen while it's open, the same way
   // DraftRoom.jsx's own `view === 'insights'` replaces the board tab
-  // instead of appending below it — this used to render *after* the KPI
-  // row, "Your Tendencies," and the full history table inside the same
-  // flex-1 scroll region, so opening a report from any row of a long
-  // table left it sitting below all of that, off the bottom of the
-  // screen. Reported directly: users had to scroll to find it.
+  // instead of appending below it — this used to render *after* the
+  // analytics and the full history table inside the same flex-1 scroll
+  // region, so opening a report from any row of a long table left it
+  // sitting below all of that, off the bottom of the screen. Reported
+  // directly: users had to scroll to find it.
   //
   // onRunAnother does the extra local reset DraftRoom.jsx's own default
   // (bare engine.restart()) doesn't need: DraftRoom listens for the
@@ -346,163 +223,75 @@ export default function DraftLocker({ onRunAtSeat, roomActive, initialAnalyzeId,
   }
 
   return (
-    // min-h-full + flex-col, with the Locker table wrapper below taking
-    // flex-1: the table's own card stretches down to the bottom of the
-    // scroll container instead of stopping wherever its (often short) row
-    // list ends and leaving bare background beneath it. min-h-full rather
-    // than h-full so a long history — many rows, "Load 20 more" pressed a
-    // few times — is still free to grow taller than the viewport and let
-    // the real ancestor scroller (DraftRoom.jsx's own overflow-y-auto) take
-    // over, rather than being capped at 100% and clipping.
-    <div className="mx-auto flex min-h-full max-w-[1600px] flex-col px-4 py-5 lg:px-8 lg:py-7">
-      {/* Only when somebody arrived here from a screen that is still behind
-          this one, which is what `onBackToList` being passed at all means.
+    /* Two wrappers, because the ground has to be full-bleed and the content
+       has to be a 1600px column.
 
-          It used to carry `lg:hidden` as well, on the reasoning that at
-          every width but a phone's this IS the screen and a back control on
-          something you cannot go back from is the dead-control problem.
-          That was true and stopped being true: design_handoff_v3_alive's
-          screen c is the Draft Room's entry at EVERY width now
-          (DraftRoomEntry), and this dashboard sits behind its "Your
-          insights" button on a desktop exactly as it already did on a
-          phone. Hiding the way out above `lg` left the desktop dashboard
-          with no way back at all — the same dead-control rule, inverted:
-          the control became necessary and stayed hidden. The condition that
-          answers "is there something behind this" is the prop, and it
-          always was. */}
-      {onBackToList && (
-        <button
-          type="button"
-          onClick={onBackToList}
-          className="-ml-2 mb-2 flex items-center gap-1 self-start rounded-[10px] py-2 pl-2 pr-3 text-[14px] font-semibold text-white/70 transition-colors hover:text-white active:bg-white/[0.05]"
-        >
-          <ChevronLeft className="h-5 w-5" />
-          Mock drafts
-        </button>
-      )}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          {/* "Your Insights", not "Draft Lobby". This screen stopped being
-              a lobby when the launcher left it: it is what the entry's
-              "Your insights" button opens, and a heading naming the button
-              that opened it is how a reader knows they are where they
-              meant to go. */}
-          <h1 className="font-display text-[32px] font-bold text-white">Your Insights</h1>
-          {/* Mobile: one honest sentence with the real count in it, instead
-              of the desktop stat block to the right — that block doesn't
-              fit this row below lg, and "N mocks run" is the one fact it
-              carries that a single line can say without a second column. */}
-          <p className="mt-1 text-sm text-white/50 lg:hidden">
-            {mocksRunSentence}
-          </p>
-          <p className="mt-1 hidden text-sm text-white/50 lg:block">
-            How you draft, across every mock you have run — tendencies, projected win rate, and
-            where each draft left value on the board.
-          </p>
-        </div>
-        {/* The three header KPIs: mocks run, mean projected win % (with its
-            own trailing sparkline), mean roster VORP (with a bar against
-            THIS BROWSER'S OWN drafted rooms, not a "league" — there is no
-            persistent league concept in Juke to baseline against, and
-            inventing one nobody derives from would be exactly the kind of
-            number this codebase's own rules say not to print). All three
-            are absent, not zeroed, until there's a real mock behind them. */}
-        {stats.total > 0 && (
-          <div className="hidden items-stretch gap-3 lg:flex">
-            <KpiCard icon={Calendar} label="Mocks Run" value={stats.total} sub="All formats" />
-            {typeof stats.avgWinPct === 'number' && (
-              <KpiCard
-                icon={TrendingUp}
-                label="Avg Win Probability"
-                value={`${Math.round(stats.avgWinPct)}%`}
-                valueColor="#34D399"
-                sparkline={
-                  hasWinTrend && (
-                    <div className="mt-0.5 h-4 opacity-90">
-                      <TrendChart entries={stats.winPctHistory.slice(-12)} compact height={16} scaleToData />
-                    </div>
-                  )
-                }
-              />
-            )}
-            {stats.avgRosterVorp && (
-              <KpiCard
-                icon={Shield}
-                label="Avg Roster VORP"
-                value={`${stats.avgRosterVorp.mine >= 0 ? '+' : ''}${stats.avgRosterVorp.mine.toFixed(1)}`}
-                valueColor="#34D399"
-                sub={typeof stats.avgRosterVorp.room === 'number' ? 'vs. room average' : undefined}
-                sparkline={
-                  typeof stats.avgRosterVorp.room === 'number' && (
-                    <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/[0.08]">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          background: 'linear-gradient(90deg, #7B1FA2, #00E5FF)',
-                          width: `${Math.max(4, Math.min(100,
-                            50 + ((stats.avgRosterVorp.mine - stats.avgRosterVorp.room) / 40) * 50
-                          ))}%`,
-                        }}
-                      />
-                    </div>
-                  )
-                }
-              />
-            )}
-          </div>
+       bg-slate-sunk, where every other screen in the Draft Room renders on
+       bg-slate: the Your Insights panel below is bg-slate and its own inner
+       surfaces are bg-slate-panel, so the page has to be the step under both
+       or the panel has no edge to read against. Those three are the handoff's
+       own three (#151C25 / #1E2733 / #232D3A) and this palette already had
+       two of them exactly; slate-sunk is #161D26 against its #151C25, which
+       is a difference nobody can see and a token nobody has to maintain. */
+    <div className="min-h-full bg-slate-sunk">
+      {/* min-h-full + flex-col, with the Locker table wrapper below taking
+          flex-1: the table's own card stretches down to the bottom of the
+          scroll container instead of stopping wherever its (often short) row
+          list ends and leaving bare background beneath it. min-h-full rather
+          than h-full so a long history — many rows, "Load 20 more" pressed a
+          few times — is still free to grow taller than the viewport and let
+          the real ancestor scroller (DraftRoom.jsx's own overflow-y-auto)
+          take over, rather than being capped at 100% and clipping. */}
+      <div className="mx-auto flex min-h-full max-w-[1600px] flex-col px-4 py-5 lg:px-8 lg:py-7">
+        {/* Only when somebody arrived here from a screen that is still behind
+            this one, which is what `onBackToList` being passed at all means.
+
+            It used to carry `lg:hidden` as well, on the reasoning that at
+            every width but a phone's this IS the screen and a back control on
+            something you cannot go back from is the dead-control problem.
+            That was true and stopped being true: design_handoff_v3_alive's
+            screen c is the Draft Room's entry at EVERY width now
+            (DraftRoomEntry), and this dashboard sits behind its "Your
+            insights" button on a desktop exactly as it already did on a
+            phone. Hiding the way out above `lg` left the desktop dashboard
+            with no way back at all — the same dead-control rule, inverted:
+            the control became necessary and stayed hidden. The condition that
+            answers "is there something behind this" is the prop, and it
+            always was. */}
+        {onBackToList && (
+          <button
+            type="button"
+            onClick={onBackToList}
+            className="-ml-2 mb-2 flex items-center gap-1 self-start rounded-[10px] py-2 pl-2 pr-3 text-[14px] font-semibold text-white/70 transition-colors hover:text-white active:bg-white/[0.05]"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            Mock drafts
+          </button>
         )}
-      </div>
+        {/* The page heading, its eyebrow and the four KPIs are all inside the
+            panel below — the handoff draws them as one header row with the KPI
+            cards on its right, and a second "Your Insights" above it would be
+            the same two words twice. What is left on this screen is the way
+            back, the resume band and the record: none of those is analytics,
+            and none of them was part of the swap. */}
+        {inProgress && <InProgressBand draft={inProgress} onResume={resume} onDiscard={discard} />}
 
-      {inProgress && <InProgressBand draft={inProgress} onResume={resume} onDiscard={discard} />}
+        <YourInsights engine={engine} roomActive={roomActive} onRunAtSeat={onRunAtSeat} />
 
-      {/* Only when there's no in-progress draft already asking for a
-          decision — competing with the resume banner's own "pick this
-          back up" would bury the more urgent of the two asks. */}
-      {!inProgress && (
-        <WhatToRunNext
-          engine={engine}
-          league={league}
-          stats={stats}
-          roomActive={roomActive}
-          onRunAtSeat={onRunAtSeat}
-        />
-      )}
-
-      <div className="mb-7">
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-[19px] font-bold text-white">Your Tendencies</h2>
-          {totalMocks > 0 && (
-            <span className="text-xs text-white/50">Across all {totalMocks} mock{totalMocks === 1 ? '' : 's'}</span>
-          )}
+        <div className="min-h-0 flex-1">
+          {/* syncStatus, not a boolean: the table's own footer has to tell
+              "in this browser only" from "in your account" from "signed in
+              and failing to reach it," and only the engine knows the third
+              one — see app.js's noteSyncResult(). Guarded here rather than
+              in the table because syncStatus() is a newer bridge entry than
+              this component and a cached app.js will not have it. */}
+          <LockerTable
+            entries={completed}
+            onAnalyze={analyze}
+            onDeleteConfirmed={deleteEntry}
+            syncStatus={engine.syncStatus ? engine.syncStatus() : 'off'}
+          />
         </div>
-
-        {/* Analytics only — the launcher that used to lead this grid is
-            gone; see AnalyticsGrid's own comment. `roomActive`/`onRunAtSeat`
-            stay because RecommendationEngine still offers "run this one",
-            which is a recommendation acting on itself rather than a second
-            setup form. */}
-        <AnalyticsGrid
-          engine={engine}
-          league={league}
-          stats={stats}
-          roomActive={roomActive}
-          onRunAtSeat={onRunAtSeat}
-        />
-      </div>
-
-      <div className="min-h-0 flex-1">
-        {/* syncStatus, not a boolean: the table's own footer has to tell
-            "in this browser only" from "in your account" from "signed in
-            and failing to reach it," and only the engine knows the third
-            one — see app.js's noteSyncResult(). Guarded here rather than
-            in the table because syncStatus() is a newer bridge entry than
-            this component and a cached app.js will not have it. */}
-        <LockerTable
-          entries={completed}
-          onAnalyze={analyze}
-          onDeleteConfirmed={deleteEntry}
-          syncStatus={engine.syncStatus ? engine.syncStatus() : 'off'}
-        />
       </div>
     </div>
   )

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PosTile } from './sampleParts.jsx'
+import BarRow from '../decision/Bar.jsx'
+import { signed } from '../decision/tokens.js'
 import { myTeam, rivalNeeds } from './waiverBoard.js'
 import { freeAgents } from './waiverBoard.js'
 import { rosterTotal, rosterValues, tradeSwing, valueBoard } from './tradeBoard.js'
@@ -32,11 +34,16 @@ const BOARD_ROWS = 40
 
 function Val({ value }) {
   if (value === null || value === undefined) {
-    return <span className="font-mono text-[13px] text-ink-muted">—</span>
+    return <span className="font-plex text-[13px] text-ink-muted">—</span>
   }
   const n = Math.round(value)
+  /* Unsigned ink, not a sign colour. A player's trade value is a quantity
+     without a direction -- he is worth what he is worth, to either side --
+     and colouring it green would make every row on the value board read as
+     a gain to somebody. The sign colours are for the swing, which is the
+     one number on this screen that actually has a direction. */
   return (
-    <span className={'font-mono text-[15px] font-semibold ' + (n >= 0 ? 'text-white' : 'text-ink-muted')}>
+    <span className={'font-plex text-[15px] font-semibold tabular-nums ' + (n >= 0 ? 'text-ink' : 'text-ink-muted')}>
       {n > 0 ? '+' : ''}
       {n}
     </span>
@@ -244,13 +251,24 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
   const toggle = (setter, list) => (id) =>
     setter(list.indexOf(id) >= 0 ? list.filter((x) => x !== id) : list.concat(id))
 
+  /* Both bars against the larger of the two, so the pair is symmetric --
+     which it must be, because the two numbers ARE symmetric: `them` is
+     exactly `-you`. Scaling each to its own value would draw two bars of
+     identical length pointing opposite ways whatever the deal was, which is
+     a chart that cannot say anything. Floored at 1 so a dead-even trade
+     divides by something. */
+  const swingMax = Math.max(Math.abs(swing.you), Math.abs(swing.them), 1)
+
   const verdict = !swing.priced
     ? { text: 'Juke will not call this one', tone: 'text-ink-muted' }
     : Math.abs(swing.you) < 5
       ? { text: 'Close to even', tone: 'text-voidInk-body' }
       : swing.you > 0
-        ? { text: 'This favours you', tone: 'text-mint' }
-        : { text: 'This favours them', tone: 'text-flow-rose' }
+        // The swing number a line above is already `gain`/`cost`; this
+        // sentence is the same fact in words and was mint/rose, so one
+        // trade said one thing in two palettes an inch apart.
+        ? { text: 'This favours you', tone: 'text-gain' }
+        : { text: 'This favours them', tone: 'text-cost' }
 
   const builder = (
     <div className="grid gap-4 lg:grid-cols-[1fr_260px_1fr]">
@@ -275,15 +293,50 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
               <>
                 <div
                   className={
-                    'font-display text-[34px] font-extrabold ' +
-                    (swing.you > 0 ? 'text-mint' : swing.you < 0 ? 'text-flow-rose' : 'text-white')
+                    'font-decision text-[34px] font-extrabold ' +
+                    (swing.you > 0 ? 'text-gain' : swing.you < 0 ? 'text-cost' : 'text-ink')
                   }
                 >
-                  {swing.you > 0 ? '+' : ''}
-                  {Math.round(swing.you)}
+                  {signed(Math.round(swing.you))}
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                <div className="font-plex text-label uppercase text-ink-label">
                   for you, over the season
+                </div>
+
+                {/* P1 / P3. The two sides of one deal on a zero axis.
+
+                    A single signed number says which way the trade goes and
+                    nothing about how far, and "over the season" is a unit a
+                    reader has no feel for until something else is drawn in
+                    it. Two bars sharing a centre line and a scale say the
+                    size and the direction at once, and they say the second
+                    thing a trade screen has to: that the swing is
+                    zero-sum -- what you gain is exactly what they lose.
+
+                    A zero axis specifically, not two bars from the left. A
+                    negative fill growing left-to-right travels THROUGH the
+                    centre line on its way out and reads, for a third of a
+                    second, as a gain; the Bar primitive's own note records
+                    why the origin flips on the negative side. */}
+                <div className="mt-4 text-left">
+                  <BarRow
+                    index={0}
+                    label="You"
+                    value={swing.you}
+                    max={swingMax}
+                    zeroAxis
+                    sign={swing.you < 0 ? 'cost' : 'gain'}
+                    display={signed(Math.round(swing.you))}
+                  />
+                  <BarRow
+                    index={1}
+                    label={partner ? partner.teamName : 'Them'}
+                    value={swing.them}
+                    max={swingMax}
+                    zeroAxis
+                    sign={swing.them < 0 ? 'cost' : 'gain'}
+                    display={signed(Math.round(swing.them))}
+                  />
                 </div>
               </>
             ) : (

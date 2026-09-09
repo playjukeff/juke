@@ -1,6 +1,43 @@
+import { useEffect } from 'react'
 import ShellHeader from './ShellHeader.jsx'
 import RailNav from './RailNav.jsx'
 import FloatingNavPill, { NAV_PILL_CLEARANCE } from '../phone/FloatingNavPill.jsx'
+
+/* Bricolage Grotesque, fetched when an APP route opens and never before.
+
+   `font-decision` is the decision system's display face and it is used by
+   the app side only -- the rooms, My League, the ledger. No marketing page
+   draws it, so a <link rel=preload> in index.html would pull 41KB on the
+   homepage for a face that page never shows. index.html's two existing
+   preloads are already at fetchpriority="low" because they were measured
+   pulling 49KB past the one stylesheet the first paint waits on, and a third
+   unconditional one would spend that measurement.
+
+   AppShell rather than RoomShell, which is where this went first: My League
+   is not a room, it sits ABOVE the five in the rail, and it draws the Move
+   card and the stake card in this face. The boundary that actually matches
+   the face's use is "an app screen", and this component is that boundary by
+   construction -- it is the thing every app screen is wrapped in.
+
+   Module scope rather than a ref, because moving between two app routes
+   unmounts and remounts this and a ref would append a second <link> each
+   time. The browser would serve the second from cache; the tag would still
+   accumulate. */
+let facePreloaded = false
+
+function useDecisionFace() {
+  useEffect(() => {
+    if (facePreloaded || typeof document === 'undefined') return
+    facePreloaded = true
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'font'
+    link.type = 'font/woff2'
+    link.crossOrigin = 'anonymous'
+    link.href = '/fonts/bricolage-grotesque-variable-latin.woff2'
+    document.head.appendChild(link)
+  }, [])
+}
 
 /* Rail, header, content, bottom nav — the pieces every screen in
    design_handoff_v3_alive / Juke Journey v3 has, wrapped once so no screen
@@ -31,6 +68,7 @@ import FloatingNavPill, { NAV_PILL_CLEARANCE } from '../phone/FloatingNavPill.js
    (a room page pads below the locked preview, not around it). */
 
 export default function AppShell({ active = null, pad = true, children }) {
+  useDecisionFace()
   return (
     <div className="lg:flex lg:items-stretch">
       <RailNav />

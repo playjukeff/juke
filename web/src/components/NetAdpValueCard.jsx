@@ -1,4 +1,5 @@
 import AnalyticsCard from './AnalyticsCard.jsx'
+import { STEEL, OXBLOOD } from './insights/tokens.js'
 
 // The card's own fixed slot count — historyStats() already windows
 // netAdpValueHistory to the same ten in app.js, so this is naming that
@@ -16,6 +17,14 @@ const SLOT_COUNT = 10
 // an ordinary outcome, not the kind of real problem the heatmap's red is
 // flagging, and borrowing that colour for it would overstate that; #BE6153
 // is a muted oxblood, not #F87171.
+//
+// The pair moved to insights/tokens.js when the Your Insights panel turned
+// out to want exactly these two hexes for exactly these two meanings — the
+// room, and what a decision cost. Imported rather than re-typed there: two
+// copies of a data-series colour drift the first time either is retuned, and
+// nothing would say so. This card is unrendered today (DraftLocker.jsx's own
+// note on what left that screen) and the import is what keeps it correct
+// rather than merely present.
 // flex-1 rather than a fixed pixel width: a fixed width is what "tucked to
 // the left" in a wide card actually was — ten bars each claiming exactly
 // 5px left the other 90% of the card as bare background. flex-1 makes
@@ -39,7 +48,7 @@ function Bar({ entry, index, maxAbs }) {
       <div
         className="absolute left-0 right-0 rounded-[1px]"
         style={{
-          background: positive ? '#8AA6BE' : '#BE6153',
+          background: positive ? STEEL : OXBLOOD,
           ...(positive ? { bottom: '50%', height: `${pct}%` } : { top: '50%', height: `${pct}%` }),
         }}
       />
@@ -103,7 +112,7 @@ export default function NetAdpValueCard({ stats }) {
         typeof agg === 'number' ? (
           <span
             className="font-display text-sm font-bold tabular-nums"
-            style={{ color: agg >= 0 ? '#8AA6BE' : '#BE6153' }}
+            style={{ color: agg >= 0 ? STEEL : OXBLOOD }}
           >
             {agg >= 0 ? '+' : ''}{Math.round(agg)}
           </span>

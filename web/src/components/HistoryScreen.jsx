@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react'
 import { SignUpButton, SignedOut } from '@clerk/clerk-react'
 import AppShell from './shell/AppShell.jsx'
 import VerdictBadge from './ledger/VerdictBadge.jsx'
-import { matchesConfidence, matchesOutcome, CONFIDENCE_BUCKETS } from './ledger/verdicts.js'
+import KpiStrip from './decision/KpiStrip.jsx'
+import {
+  confidenceLabel,
+  matchesConfidence,
+  matchesOutcome,
+  CONFIDENCE_BUCKETS,
+} from './ledger/verdicts.js'
 import { useDecisions } from '../hooks/useDecisions.js'
 import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
 
@@ -65,6 +71,19 @@ function roomLabel(slug) {
   return slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : slug
 }
 
+/* One filter tab, drawn the way the rail beside it draws a room.
+ *
+ * The guide asks for "filters -> rail-style tabs", and the difference is
+ * narrower than it sounds: this was already mint-on-mintDark when on. What
+ * it was not was a LOZENGE -- it carried an outline in both states, so a
+ * row of nine of them read as nine equal controls with one tinted, where
+ * RailNav reads as a filled marker sitting in a row of grounds. Same two
+ * colours, same radius, and the off state is `flow.tile` rather than a
+ * border, which is what makes the on state the only edge in the row.
+ *
+ * `aria-pressed` stays rather than becoming `aria-current`: the rail's
+ * items are links to a place and these are toggles over a list, which is
+ * a different thing however alike they look. */
 function Chip({ label, on, onClick }) {
   return (
     <button
@@ -72,23 +91,12 @@ function Chip({ label, on, onClick }) {
       onClick={onClick}
       aria-pressed={on}
       className={
-        'rounded-full border px-3.5 py-[7px] text-[13px] font-semibold transition-colors duration-150 ' +
-        (on
-          ? 'border-mint bg-flow-mintDark text-mint'
-          : 'border-line-hairline text-voidInk-body hover:text-white')
+        'rounded-xl px-3.5 py-[7px] text-[13px] font-semibold transition-colors duration-150 ' +
+        (on ? 'bg-flow-mintDark text-mint' : 'bg-flow-tile text-ink-muted hover:text-white')
       }
     >
       {label}
     </button>
-  )
-}
-
-function Tile({ label, value, tone = 'text-white' }) {
-  return (
-    <div className="rounded-[12px] border border-line-hairline bg-surface-card p-4">
-      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">{label}</div>
-      <div className={'mt-1 font-display text-[24px] font-extrabold ' + tone}>{value}</div>
-    </div>
   )
 }
 
@@ -100,15 +108,26 @@ function Tile({ label, value, tone = 'text-white' }) {
 function DecisionRow({ decision }) {
   const when = decision.week === 0 ? 'Draft' : `Wk ${decision.week}`
   return (
-    /* 190px, not 150. The meta line is "STRATEGY · WK 4 · 68%" at 11px
+    /* 190px, not 150. The meta line is "STRATEGY · WK 4 · HIGH" at 11px
        mono with 0.1em tracking, which measures past 150 and wrapped the
        confidence onto its own line on exactly the rows that carry one --
        so two of five rows were a different height than the rest for no
-       reason a reader could see. */
+       reason a reader could see. It read "· 68%" when that was measured
+       and the band that replaced it is wider, so the column has less slack
+       than it did rather than more. */
     <div className="grid grid-cols-1 gap-2 border-b border-line-hairline py-3.5 lg:grid-cols-[190px_1fr_1fr_1fr_auto] lg:items-center lg:gap-4">
       <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
         {(decision.room || '').toUpperCase()} · {when}
-        {typeof decision.confidence === 'number' ? ` · ${decision.confidence}%` : ''}
+        {/* The band, not the number. A bare percentage on a row is the one
+            thing the decision system's global rules name outright, and the
+            usual replacement -- <Confidence> -- cannot be drawn here: it
+            shows signals, error and sample, and a decision record carries
+            none of the three. `confidenceLabel()` reads the same thresholds
+            the filter above this list already sorts on, so the row and the
+            filter cannot disagree about which band it is in. */}
+        {confidenceLabel(decision.confidence)
+          ? ` · ${confidenceLabel(decision.confidence)}`
+          : ''}
       </div>
       <div className="min-w-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
@@ -213,8 +232,62 @@ export default function HistoryScreen() {
       // A rate over nothing is not 0%, it is unknown -- the same rule
       // perGame() already follows about dividing by a fallback.
       rate: graded ? Math.round((good / graded) * 100) + '%' : '—',
+      graded,
     }
   }, [decisions])
+
+  /* P4. The five tiles become four KPI cards, and two of the guide's own
+     four are not among them.
+ 
+     It asks for hits, misses, inconclusive and NET PTS. Net points needs a
+     decision to carry what its call was worth, and nothing writes one: the
+     `decisions` table stores the record whole in `data`, no room writes a
+     decision at all yet, and there is no grader -- `verdict` is the only
+     thing grading will ever set. A KPI strip is the most confident
+     furniture on a page and this one's whole subject is a record you can
+     check, so a made-up total here would be the worst available place in
+     the product to invent a number. It arrives with the grader.
+ 
+     "Inconclusive" gives its card to PENDING for a smaller reason, and one
+     the store already states: a decision is written when it is made and
+     graded only after the week is over, so ungraded is the state this
+     ledger spends most of its life in. Inconclusive is one of five verdicts
+     behind the "Other" filter and a reader can reach it there; pending is
+     most of the list and had nowhere else to be counted.
+ 
+     Every count is over the WHOLE ledger and never the filtered slice --
+     see the note on `stats` above, which is why they are read off it. */
+  const kpis = useMemo(
+    () => [
+      {
+        label: 'Good calls',
+        value: stats.good,
+        accent: 'gain',
+        note: stats.graded ? `Of ${stats.graded} graded so far.` : 'Nothing graded yet.',
+      },
+      {
+        label: 'Bad calls',
+        value: stats.bad,
+        accent: 'cost',
+        note: 'Calls the week went against.',
+      },
+      {
+        label: 'Pending',
+        value: stats.pending,
+        accent: 'evidence',
+        note: 'Written down, not yet gradeable.',
+      },
+      {
+        label: 'Hit rate',
+        value: stats.rate,
+        accent: 'evidence',
+        note: stats.graded
+          ? 'Good calls as a share of graded ones.'
+          : 'A rate over nothing is unknown, not zero.',
+      },
+    ],
+    [stats]
+  )
 
   if (status === 'loading') {
     return (
@@ -296,7 +369,11 @@ export default function HistoryScreen() {
 
   return (
     <Shell eyebrow={`DECISION HISTORY · ${stats.total} RECORDED`}>
-      <div className="mb-3.5 flex flex-wrap gap-4">
+      {/* gap-6 between groups against gap-1 within one. With the outlined
+          pill gone every tab is a filled lozenge, so the only thing left
+          telling three filter groups apart is the space between them --
+          and two of the three open with a chip reading "All". */}
+      <div className="mb-3.5 flex flex-wrap gap-x-6 gap-y-2">
         {rooms.length > 1 ? (
           <div role="group" aria-label="Room" className="flex flex-wrap gap-1">
             {['All'].concat(rooms).map((key) => (
@@ -321,13 +398,10 @@ export default function HistoryScreen() {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Tile label="Recorded" value={stats.total} />
-        <Tile label="Good calls" value={stats.good} tone="text-mint" />
-        <Tile label="Bad calls" value={stats.bad} tone="text-flow-rose" />
-        <Tile label="Pending" value={stats.pending} tone="text-ink-soft" />
-        <Tile label="Hit rate" value={stats.rate} />
-      </div>
+      {/* "Recorded" is not a fifth card: the eyebrow above already reads
+          "DECISION HISTORY · N RECORDED", and a strip of five under a
+          four-column grid leaves one card alone on its own row. */}
+      <KpiStrip items={kpis} className="mb-4" />
 
       <section className="rounded-[14px] border border-line-hairline bg-surface-card px-4 sm:px-6">
         {page.length ? (
