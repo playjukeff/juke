@@ -52,6 +52,7 @@
 import { normalise } from "./names.js";
 import { rulesFromEspn } from "./scoring.js";
 import { lineupFromEspn } from "./lineup.js";
+import { scheduleFromEspn } from "./matchups.js";
 
 export const ESPN_API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
 
@@ -497,7 +498,12 @@ function draftBoard(league, rawTeams, resolveId) {
    requests. */
 export async function leagueSnapshot(leagueId, season, base, resolve) {
   const res = await getJson(
-    leaguePath(leagueId, season, ["mTeam", "mRoster", "mSettings", "mDraftDetail"]),
+    /* mMatchupScore rides along rather than taking its own request: ESPN
+       stacks views on one call, and the measured cost is +30% upstream on a
+       response cached for 120s against ~1.4 KB on the wire. See
+       matchups.js. */
+    leaguePath(leagueId, season,
+      ["mTeam", "mRoster", "mSettings", "mDraftDetail", "mMatchupScore"]),
     base
   );
   if (!res.ok || !res.body || !res.body.id) {
@@ -586,6 +592,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const snapDraft = draftInfo(league, Date.now());
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
   const lineup = lineupFromEspn(settings.rosterSettings);
+  const schedule = scheduleFromEspn(league.schedule);
   const draft = snapDraft.status === "complete"
     ? draftBoard(league, rawTeams, sleeperId)
     : null;
@@ -618,6 +625,10 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          rather than the one the Draft Room is set to — the same bug as
          scoring it with the mock table, in a different field. */
       lineup,
+      /* Who plays whom, all fourteen weeks, published before the season
+         starts. ESPN's own projections and win probability are dropped on
+         the way through -- see matchups.js. */
+      schedule,
       rules: scoring.rules,
       /* What this league scores that Juke cannot name. Reported rather than
          dropped, the same discipline unmatched.txt applies to a stat the

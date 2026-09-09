@@ -8261,6 +8261,65 @@ engine change with its own measurements and its own branch.
 in this order is the right way round regardless: every day this waits is a
 day of dropped players that can no longer be named.
 
+
+### The schedule, and what it is measured to cost
+
+The third of the league's own shapes, after its scoring and its lineup, and
+the one three rooms were explicitly waiting on — `RoomPage.jsx`'s own comment
+records the Strategy Room's KPI bar as wanting "the week's matchup margin,
+which needs the matchups fetch three of its tabs are also waiting on".
+
+**ESPN publishes the whole season before a ball is thrown.** 70 matchups over
+14 weeks, in the preseason, which is what makes it worth having early: a
+reader sees week one's opponent before the season starts.
+
+**It rides on the shared call, and that was measured rather than assumed.**
+ESPN stacks `view=` parameters on one request, so this needs no second fetch
+and no second cache. Measured 9 September 2026 against a real league:
+
+```
+snapshot's existing call            1163 KB upstream
+with mMatchupScore added            1509 KB   (+30%)
+what it distils to on the wire        8.3 KB
+```
+
+A separate route was the alternative and buys nothing: it trades 346 KB of
+upstream once every 120 seconds for a second round trip and a second thing to
+invalidate. **The client payload is the ceiling this project actually has**,
+and 8.3 KB against a 22 KB snapshot is the number that matters.
+
+**ESPN's own projections and win probability are deliberately dropped.** Both
+ride on the payload — `totalProjectedPoints` and `winProbability` — and both
+are somebody else's answer to a question Juke answers itself, from rosters it
+already holds, under the league's own scoring. Carrying them would put two
+numbers side by side for one question and leave the reader to choose, which
+is the written-down-twice failure with a second author. What is kept is what
+happened: points scored, and who won.
+
+**An unplayed week scores 0 on both sides, and 0 is not a result.** Stored as
+`null`, or a screen averages a season of zeroes into a plausible
+points-per-week. The same rule the pipeline applies to a 0 from any feed.
+
+**The result is read from ESPN's stated winner, never derived from the
+points** — comparing them calls an unplayed 0-0 week a draw.
+
+**A bye is a week, not a missing one.** Some league sizes produce them, and a
+screen that dropped the row would silently renumber somebody's season.
+
+**Sleeper answers null, and is named rather than omitted.** It publishes no
+season schedule at all: its matchups endpoint answers one week at a time, so
+a full season is fourteen calls rather than a view on a request already being
+made. That is a different feature with a different cost, and fetching only
+the current week would give Sleeper leagues a schedule that cannot answer
+"who do I play next". The gap is visible from the adapter instead of from an
+empty panel.
+
+**The margin is two readings of one method.** The opponent's total goes
+through the same `projectedTotal()` under the same `weekPts` as the reader's,
+and it is null unless BOTH sides project — a margin against a
+partially-projected opponent reads as a lead that is really a gap in the
+data.
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a
