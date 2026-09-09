@@ -190,6 +190,28 @@ function ownerNames(league) {
    as drafting from the moment its grid was built -- the same bug this
    fixes, arriving from the one direction the fix could reintroduce it.
 
+   ---- And ESPN publishes those picks only when the draft ENDS ----
+
+   Measured 8 September 2026 across a real ten-team draft, polled every ten
+   seconds for ninety-nine minutes with no errors and no loss of access: the
+   draft ran for forty-two minutes -- 78 of its 140 picks made by hand on a
+   sixty-second clock -- and this endpoint reported `made=0/140` and
+   `rostered=0` for the whole of it, then published all 140 in a single
+   ten-second window as it completed. `mRoster` is blind the same way, so
+   there is no cheaper route to the same fact.
+
+   So a pick PROVES a draft has started and its absence proves nothing,
+   which is why the scheduled instant is the second half of the test. Room
+   open, plus the hour having come, is what a live ESPN draft looks like
+   from out here. Without that clause the status falls to `pre_draft`
+   against an instant in the past, which draftPhase() renders as DRAFT TIME
+   PASSED -- over a draft that is running.
+
+   Neither clause fires early on its own: before the scheduled hour there is
+   no pick and nothing is due, which is the bug this pair replaced. And a
+   draft nobody ever held keeps `late`, because the room is shut, so
+   `inProgress` is false and no amount of elapsed time makes it drafting.
+
    ---- A date with `drafted: true` behind it still points at the past ----
 
    ESPN keeps the scheduled date after the draft has run, so a countdown
@@ -198,14 +220,21 @@ function ownerNames(league) {
    why both providers report a status beside the instant and nothing draws
    one without the other. `drafted` is therefore read FIRST: a finished
    draft is finished whatever the other boolean says. */
-function draftInfo(league) {
+function draftInfo(league, now) {
   const settings = (league.settings || {}).draftSettings || {};
   const detail = league.draftDetail || {};
   const at = Number(settings.date) || null;
 
   const picks = Array.isArray(detail.picks) ? detail.picks : null;
-  const started = picks
+  const picked = picks
     ? picks.some((p) => p && p.playerId > 0 && !p.keeper && !p.reservedForKeeper)
+    : false;
+  // The hour having come, which is the only evidence a live ESPN draft
+  // gives: see the measurement above.
+  const due = at !== null && now >= at;
+
+  const started = picks
+    ? picked || due
     /* No picks in hand, so the view was refused or the shape moved. The old
        reading is wrong early and right once a draft is genuinely under way,
        and being early beats printing DRAFT TIME PASSED over a live draft. */
@@ -246,7 +275,7 @@ export async function lookupLeague(leagueId, season, base) {
   const settings = league.settings || {};
   const owners = ownerNames(league);
   const teams = (Array.isArray(league.teams) ? league.teams : []).slice(0, MAX_TEAMS);
-  const draft = draftInfo(league);
+  const draft = draftInfo(league, Date.now());
 
   return {
     reason: null,
@@ -444,7 +473,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
      drawing nothing — the same rule the pipeline follows about a 0 from an
      API meaning missing. */
   const week = Number(league.scoringPeriodId) || null;
-  const snapDraft = draftInfo(league);
+  const snapDraft = draftInfo(league, Date.now());
 
   return {
     reason: null,

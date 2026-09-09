@@ -8186,6 +8186,37 @@ The fallback when no picks are in hand is deliberately the old reading: it is
 wrong early and right mid-draft, which beats printing DRAFT TIME PASSED over
 a draft that is genuinely running.
 
+**And a pick is not evidence a live draft gives you.** Measured 8 September
+2026 across the whole of a real ten-team draft, polled every ten seconds for
+ninety-nine minutes with **zero errors and no loss of read access**: the
+draft ran for forty-two minutes, **78 of its 140 picks made by hand** on a
+sixty-second clock, and `mDraftDetail` reported **`made=0/140` throughout**,
+then published all 140 in a single ten-second window as it completed.
+`mRoster` was blind in exactly the same way — `rostered=0` until the end —
+so there is no cheaper route to the same fact.
+
+**So ESPN's public read API does not expose a draft in progress; it exposes
+a draft that has finished.** A live pick-by-pick feature is not buildable on
+it at any effort, and this paragraph exists so nobody scopes one from the
+encouraging half of the section above. Real-time draft state reaches ESPN's
+own draft client by another channel that is not this one. What IS buildable
+on this endpoint is everything after the fact — the picks, the order, the
+rosters — plus the draft order and roster shape *before* it, both of which
+are readable in advance.
+
+**Which left the fix above wrong in a new place.** With picks the only
+evidence, a running draft reports `pre_draft` against an instant in the
+past, and `draftPhase()` renders that as **DRAFT TIME PASSED** — over a
+draft that is happening. So the test is a pair: **a pick, OR the scheduled
+hour having come**, either one alongside `inProgress`. Neither fires early
+on its own, because before that hour there is no pick and nothing is due.
+
+**`late` survives, and deliberately.** A draft nobody ever held has its room
+shut, so `inProgress` is false and no amount of elapsed time makes it
+drafting — which is what that phase is for, and it is the case a naive
+"the time has passed" test would have swallowed.
+
+
 ### One vocabulary for two providers, decided in the adapter
 
 `'pre_draft' | 'drafting' | 'complete'` — Sleeper's own strings, passed
