@@ -51,6 +51,7 @@
 
 import { normalise } from "./names.js";
 import { rulesFromEspn } from "./scoring.js";
+import { lineupFromEspn } from "./lineup.js";
 
 export const ESPN_API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
 
@@ -584,6 +585,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const week = Number(league.scoringPeriodId) || null;
   const snapDraft = draftInfo(league, Date.now());
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
+  const lineup = lineupFromEspn(settings.rosterSettings);
   const draft = snapDraft.status === "complete"
     ? draftBoard(league, rawTeams, sleeperId)
     : null;
@@ -612,6 +614,10 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          than sent always: it is ~8KB of picks that mean nothing until the
          draft has run, on a payload every room fetches. */
       draft,
+      /* The starting lineup, so a room grades the league the reader plays
+         rather than the one the Draft Room is set to — the same bug as
+         scoring it with the mock table, in a different field. */
+      lineup,
       rules: scoring.rules,
       /* What this league scores that Juke cannot name. Reported rather than
          dropped, the same discipline unmatched.txt applies to a stat the

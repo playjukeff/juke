@@ -168,6 +168,12 @@ jobs:
       - name: Verify the league scoring translation
         run: node worker/test-scoring.mjs
 
+      # And its lineup. The slot ids were derived from what actually sits
+      # in each slot on a real league's rosters; a wrong one grades a
+      # lineup the league does not field, silently.
+      - name: Verify the league lineup translation
+        run: node worker/test-lineup.mjs
+
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a

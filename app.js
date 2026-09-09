@@ -304,7 +304,7 @@ const SFLEX_SHARE = { QB: 0.85, RB: 0.05, WR: 0.09, TE: 0.01 };
    Pure and league-shape-only either way, which is what let buildProjections()
    and vorpTableUnder() already share it. */
 function replacementRank(pos, lg) {
-  const shape = lg || league;
+  const shape = lg || gradedLeague();
   const base = shape.teams * ((shape.starters && shape.starters[pos]) || 0);
   const flex = shape.teams * (shape.flex || 0) * (FLEX_SHARE[pos] || 0);
   const sflex = shape.teams * (shape.superflex || 0) * (SFLEX_SHARE[pos] || 0);
@@ -4158,8 +4158,18 @@ const GRADE_SCALE = ["A+", "A", "A−", "B+", "B", "B−", "C+", "C", "C−",
    rank: "we don't know" may not quietly become "he is worth his draft slot",
    which is the same rule the pipeline already applies to a missing season. */
 function aboveReplacement(player) {
-  if (!player || player.projPts === null || player.projPts === undefined) return 0;
-  return Math.max(0, player.projPts - (REPLACEMENT_PTS[player.pos] || 0));
+  if (!player) return 0;
+  /* Under a foreign league the points AND the bar both move: its scoring
+     table is not this session's, and its roster shape sets a different
+     replacement rank. Reading the live globals here would grade a connected
+     league with the Draft Room's rules -- the bug #210 fixed, in the half of
+     the app that decides a letter. One choke point, because analyseTeam()
+     reads a projection through nothing else. */
+  const ctx = GRADE_CTX;
+  const pts = ctx && ctx.proj ? ctx.proj[player.id] : player.projPts;
+  if (pts === null || pts === undefined) return 0;
+  const bar = ctx && ctx.replacement ? ctx.replacement[player.pos] : REPLACEMENT_PTS[player.pos];
+  return Math.max(0, pts - (bar || 0));
 }
 
 // The best legal starting lineup a roster can field.
@@ -4599,9 +4609,143 @@ function withGrading(ctx, fn) {
 
    Answers analyseDraft()'s array untouched, so every consumer that already
    reads a graded room reads this one, and there is exactly one grader. */
-function gradeDraft(picks, shape) {
+/* Every board player's projection under a foreign league's rules, and the
+   replacement bar its roster shape sets.
+
+   Modelled on vorpTableUnder() and deliberately not it: that one takes a
+   named FORMAT where a real league has a rules table of its own, and it
+   withholds K and DST because it exists to RANK them. The grade must not --
+   a kicker really did score those points, which is why analyseTeam()
+   computes its own gap rather than calling replacementGap(). The same rule,
+   arriving in a third place.
+
+   Side-effect-free: touches no player's projPts and not REPLACEMENT_PTS,
+   both of which the scoring editor owns. */
+function gradeProjections(rules) {
+  const proj = {};
+  const byPos = {};
+  board.forEach(function (p) {
+    const s = statOf(p);
+    const pts = s && s.p && s.p.gp > 0 ? pointsUnder(s.p, rules) : null;
+    proj[p.id] = pts;
+    if (pts !== null) (byPos[p.pos] = byPos[p.pos] || []).push(pts);
+  });
+
+  const replacement = {};
+  POSITIONS.forEach(function (pos) {
+    const list = (byPos[pos] || []).sort(function (a, b) { return b - a; });
+    if (!list.length) { replacement[pos] = 0; return; }
+    // replacementRank() reads gradedLeague(), so this has to run INSIDE the
+    // context it is being computed for.
+    const cut = Math.min(replacementRank(pos), list.length) - 1;
+    replacement[pos] = cut >= 0 ? list[cut] : list[list.length - 1];
+  });
+  return { proj: proj, replacement: replacement };
+}
+
+/* Grade an arbitrary draft under an arbitrary league.
+
+   `rules` is optional, and omitting it grades on the live board's own
+   projections -- right for a draft that shares this session's scoring, and
+   wrong for a connected league, so a caller holding a league's own table
+   passes it. */
+/* A connected league's own completed draft, graded.
+
+   The one place the three halves meet: the worker's capture (#212), the
+   league's real lineup and scoring, and gradeDraft(). Everything it needs
+   is on the snapshot, so this reads and never fetches.
+
+   ---- It refuses a draft whose seat maths it does not model ----
+
+   Juke's grade prices a seat against par, and par is a snake's par. ESPN
+   runs linear and auction drafts too, so a `type` this does not model is
+   answered with a refusal a screen can print rather than a number nobody
+   should trust -- the "a control that cannot act must not merely fail"
+   rule, applied to a figure.
+
+   ---- A pick it cannot place is counted, never guessed ----
+
+   A player who has left the board since -- retired, or off the deep bench
+   -- has no projection to grade, and a roster silently one player short
+   would read as a worse draft rather than an incomplete reading. The count
+   rides on the report so a screen can say so. */
+function leagueDraftReport(input) {
+  const d = input && input.draft;
+  const shapeIn = input && input.lineup;
+  if (!d || !shapeIn || !Array.isArray(d.picks) || !d.picks.length) return null;
+
+  const order = Array.isArray(d.order) ? d.order.map(String) : [];
+  if (!order.length) return null;
+  if (d.type && d.type !== "SNAKE") return { unsupported: d.type, teams: order.length };
+
+  const shape = Object.assign({}, league, {
+    teams: order.length,
+    rounds: shapeIn.rounds,
+    starters: Object.assign({}, shapeIn.starters),
+    flex: shapeIn.flex || 0,
+    superflex: shapeIn.superflex || 0,
+    bench: shapeIn.bench || 0,
+  });
+
+  const seatOf = new Map(order.map(function (t, i) { return [t, i]; }));
+  const byId = new Map(board.map(function (p) { return [String(p.id), p]; }));
+
+  let unplaceable = 0;
+  const picks = [];
+  d.picks.forEach(function (p) {
+    const slot = seatOf.get(String(p.teamId));
+    const player = p.id ? byId.get(String(p.id)) : null;
+    if (slot === undefined || !player) { unplaceable++; return; }
+    picks.push({ slot: slot, round: p.round, overall: p.overall, player: player });
+  });
+  if (!picks.length) return null;
+
+  const rooms = gradeDraft(picks, shape, rulesFromLeague(input.rules));
+  if (!rooms) return null;
+
+  /* Seat -> the team that drafted from it, so a screen never has to know
+     that `order` is round one's team ids. `mine` comes from the connection,
+     which is the only thing that knows which of these people the reader
+     is. */
+  const teams = Array.isArray(input.teams) ? input.teams : [];
+  const byOwner = new Map(teams.map(function (t) { return [String(t.ownerId), t]; }));
+  const seats = order.map(function (teamId, i) {
+    const t = byOwner.get(teamId) || null;
+    return {
+      slot: i,
+      teamId: teamId,
+      // `teamName`, which is what the snapshot calls it. Reading `name`
+      // produced ten undefineds and a table with no teams in it.
+      name: (t && t.teamName) || "Seat " + (i + 1),
+      manager: t ? t.manager : null,
+      mine: !!(input.ownerId && String(input.ownerId) === teamId),
+      grade: rooms[i] ? rooms[i].grade : null,
+      rank: rooms[i] ? rooms[i].rank : null,
+      total: rooms[i] ? rooms[i].total : null,
+    };
+  });
+
+  return {
+    rooms: rooms,
+    seats: seats,
+    shape: shape,
+    counted: picks.length,
+    unplaceable: unplaceable,
+    /* Whether the grade used the league's own scoring or fell back to this
+       session's. A screen that cannot say which is a screen repeating the
+       bug #210 fixed. */
+    scored: rulesFromLeague(input.rules) ? "league" : "default",
+  };
+}
+
+function gradeDraft(picks, shape, rules) {
   if (!Array.isArray(picks) || !shape) return null;
   return withGrading({ picks: picks, league: shape }, function () {
+    if (rules) {
+      const t = gradeProjections(rules);
+      GRADE_CTX.proj = t.proj;
+      GRADE_CTX.replacement = t.replacement;
+    }
     return analyseDraft();
   });
 }
@@ -12414,6 +12558,7 @@ window.JukeEngine = {
   /* Grade a draft that is not the one in progress — a connected league's
      own, replayed against today's board. Mutates nothing: see withGrading. */
   gradeDraft:   gradeDraft,
+  leagueDraftReport: leagueDraftReport,
   projPerGameUnder: projPerGameUnder,
   projPerGame: function (player) {
     if (!player) return null;

@@ -7,6 +7,7 @@ import WeekStrip from './myleague/WeekStrip.jsx'
 import StandingsPanel from './myleague/StandingsPanel.jsx'
 import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
 import PastWeekPanel from './myleague/PastWeekPanel.jsx'
+import DraftReportPanel from './myleague/DraftReportPanel.jsx'
 import { useDecisions, decisionsForWeek, weekMark } from '../hooks/useDecisions.js'
 
 /* #/my-league — the connected-league home. Absorbs the old League Room
@@ -204,7 +205,13 @@ export default function MyLeagueScreen() {
           onBack={() => setOpenWeek(null)}
         />
       ) : (
-        <StandingsPanel league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+        <>
+          <StandingsPanel league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
+          {/* Below the standings on purpose: the draft is how the season
+              started and the table is how it is going, so the live fact
+              leads. Draws nothing at all before a draft has run. */}
+          <DraftReportPanel league={league} snapshot={snapshot} />
+        </>
       )}
     </AppShell>
   )
