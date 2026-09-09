@@ -206,3 +206,16 @@ jobs:
       # worse than one that says nothing.
       - name: Trade deadline
         run: node scripts/test_trade_deadline.mjs
+
+      # The connected league's schedule, and the season it adds up to.
+      #
+      # This file shipped with NO offline suite at all and My League's
+      # past-week panel has drawn on it since — so the gap is older than the
+      # season summary that walked into it, and both halves are covered here.
+      #
+      # Every case that matters is a week that is not a played game: a bye,
+      # an unplayed week, a preseason schedule ESPN publishes all fourteen
+      # weeks of. Each reads as a plausible zero if it is not refused, and a
+      # season of zeroes averages into a points-per-week a reader believes.
+      - name: The schedule and the season
+        run: node scripts/test_schedule.mjs
