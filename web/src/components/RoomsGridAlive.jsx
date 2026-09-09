@@ -98,11 +98,42 @@ function LockedCard({ room, wide = false, lgSpan }) {
           Which means the margins and line-heights below have to match
           LeadCard's too, and a change to one of them is a change to both. */}
       <span>
-        <span className="block font-mono text-[10px] tracking-[0.1em] text-ink-muted">
-          <span aria-hidden="true">🔒</span> {room.season.toUpperCase()}
+        {/* The lock is drawn and it is announced.
+
+            It was `<span aria-hidden="true">🔒</span>`, so with
+            aria-hidden content stripped the card read "IN-SEASON Waiver
+            Room Preview: 4 claims worth making this week" and nothing in
+            it said locked — three of the five cards in this row led
+            somewhere the reader was never warned about. An emoji is also
+            not an icon system; this is the one stroke weight the rest of
+            the row uses. */}
+        <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] text-ink-muted">
+          <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
+            <path
+              d="M3.4 5.2V3.6a2.6 2.6 0 0 1 5.2 0v1.6"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+            <rect x="2.4" y="5.2" width="7.2" height="5.4" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
+          </svg>
+          <span className="sr-only">Locked. </span>
+          {room.season.toUpperCase()}
         </span>
-        <span className="mt-[3px] block font-display text-[20px] font-bold leading-[1.05] text-white sm:text-[22px]">
-          {room.name.replace(/^The /, '')}
+        {/* The article stays. PRODUCT.md is explicit that a room is a
+            proper name taking "The", and stripping it here put two
+            spellings of the same room within one screenful — the strip
+            read "The Draft Room / Waiver Room / Trade Room" while the
+            footer 200px below listed all five with it. Confirmed in the
+            accessibility tree, card named "Waiver Room" against footer
+            link "The Waiver Room".
+
+            text-[20px] at every width rather than stepping up to 22:
+            "The Strategy Room" needs the extra line at 246px and the
+            card already reserves a two-line box below the title, so the
+            bottom-anchored baseline is unaffected. */}
+        <span className="mt-[3px] block font-display text-[20px] font-bold leading-[1.05] text-white">
+          {room.name}
         </span>
         {/* No `block` here: `line-clamp-*` works by setting
             `display:-webkit-box`, and a `block` in the same layer wins and

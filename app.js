@@ -689,7 +689,7 @@ const ROOMS = [
     blurb: "Run unlimited draft simulations against a board that automatically adjusts for ADP, tiers, and your custom scoring rules." },
 
   { name: "The Waiver Room", slug: "waiver", glyph: "⚡", accent: "#00E5FF",
-    hook: "Preview: 4 claims worth making this week", live: false, season: "In-season",
+    hook: "Preview: the week's claims, priced", live: false, season: "In-season",
     lead: "Win the wire.",
     blurb: "Connect your live league to simulate waiver claims and evaluate which free agents will actually impact your bottom line." },
   { name: "The Trade Room", slug: "trade", glyph: "⇄", accent: "#CDBDEF",

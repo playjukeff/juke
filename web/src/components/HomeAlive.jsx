@@ -3,6 +3,7 @@ import ConnectLeagueCta from './shell/ConnectLeagueCta.jsx'
 import KickoffPill from './shell/KickoffPill.jsx'
 import RoomsGridAlive from './RoomsGridAlive.jsx'
 import HomeProof from './HomeProof.jsx'
+import BoardPeek from './BoardPeek.jsx'
 import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
 import { useLeague } from '../hooks/useLeague.js'
 import { LINE as PLATFORM_LINE, LIVE_NAMES as PLATFORM_NAMES } from './shell/leaguePlatforms.js'
@@ -38,6 +39,54 @@ import { LINE as PLATFORM_LINE, LIVE_NAMES as PLATFORM_NAMES } from './shell/lea
    about them; this note exists because its previous version said they were
    still under this and that stopped being true. */
 
+/* The hero's two icons, drawn.
+
+   These were football and door emoji. The rooms strip below still carries
+   the ROOMS `glyph` characters, and that is deliberate rather than half a
+   job: CLAUDE.md records that choice — the glyph is a character so the
+   legacy homepage and React can both read one array — so changing it is a
+   decision about that array's consumers, not about this card. What was in
+   scope is the hero, where the icons are local and answer to nothing else.
+
+   One stroke weight, one cap style, sized to the 40px tile they sit in. */
+function IconDraft({ tone }) {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path
+        d="M4.2 15.8c-1-3.6-.2-8 2.6-10.8C9.6 2.2 14 1.4 17.6 2.4c1 3.6.2 8-2.6 10.8-2.8 2.8-7.2 3.6-10.8 2.6Z"
+        stroke={tone}
+        strokeWidth="1.4"
+      />
+      <path
+        d="M7.6 12.4 12.4 7.6M9.1 9.4l1.5 1.5M11 7.5l1.5 1.5M7.2 11.3l1.5 1.5"
+        stroke={tone}
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function IconConnect({ tone }) {
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path
+        d="M11.6 2.8H15a1.6 1.6 0 0 1 1.6 1.6v11.2A1.6 1.6 0 0 1 15 17.2h-3.4"
+        stroke={tone}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.4 6.4 12 10l-3.6 3.6M11.6 10H3.4"
+        stroke={tone}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function Card({ gradient, eyebrow, eyebrowColor, title, sub, glyph, href, dataHeroCta }) {
   const style = gradient
     ? { background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }
@@ -50,7 +99,19 @@ function Card({ gradient, eyebrow, eyebrowColor, title, sub, glyph, href, dataHe
       className="flex min-h-[150px] flex-col justify-between rounded-[18px] p-4 transition-transform duration-150 hover:scale-[1.01] sm:min-h-[170px] sm:rounded-[20px] sm:p-[22px]"
       style={style}
     >
-      <span className="text-[26px] sm:text-[30px]" aria-hidden="true">
+      {/* A drawn tile, not an emoji.
+
+          These were 🏈 and 🚪 at 30px, which made three icon languages on
+          one page — emoji here, emoji in the rooms strip, drawn SVG in the
+          header — and put the most recognisable generated-content tell
+          there is on the product's first screen. This is the same 40px
+          rounded tile RoomsGridAlive already gives every room card, so the
+          hero and the strip below it now speak one language. */}
+      <span
+        className="grid h-10 w-10 place-items-center rounded-xl"
+        style={gradient ? { background: 'rgba(11,14,20,0.14)' } : { background: '#0f2e34' }}
+        aria-hidden="true"
+      >
         {glyph}
       </span>
       <span>
@@ -88,7 +149,7 @@ function TrustStrip() {
     <div className="mt-[22px] hidden grid-cols-3 gap-3.5 border-t border-line-hairline pt-[18px] sm:grid">
       {[
         ['One call per room', 'Draft, waivers, trades, lineups. No feeds.'],
-        ['Value, not vibes', 'Every move shows points over replacement.'],
+        ['Every number, shown', 'Points over replacement, and the arithmetic behind it.'],
         ['Any platform', 'Read-only connect. We never touch your league.'],
       ].map(([title, body]) => (
         <span key={title}>
@@ -248,8 +309,13 @@ function AccountCard() {
 
   const card = (
     <div className="rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] sm:rounded-[22px] sm:p-[26px]">
-      <span className="font-mono text-[11px] tracking-[0.14em] text-teal">OPTIONAL</span>
-      <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
+      {/* The OPTIONAL eyebrow is gone, for two reasons that point the
+          same way. It made the largest object on the right half announce
+          its own dispensability, and an eyebrow above a heading is a label
+          the heading already carries. The honesty it was doing is not
+          lost: the body still says mocks run fine without an account, and
+          the hero's own caption still says "Free · no account needed". */}
+      <div className="font-display text-[22px] font-bold text-white sm:text-[28px]">
         Keep your drafts on every device
       </div>
       <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
@@ -390,7 +456,7 @@ export default function HomeAlive() {
                 data-hero-eyebrow
                 className="whitespace-nowrap font-display text-[11px] font-bold italic tracking-[0.07em] text-mint sm:text-[14px] sm:tracking-[0.12em]"
               >
-                <span aria-hidden="true">✨</span> AGILITY THROUGH ANALYTICS
+                AGILITY THROUGH ANALYTICS
               </span>
               {/* ShellHeader carries this above `sm`; here below it. See
                   that file's own note on the two homes. */}
@@ -398,7 +464,12 @@ export default function HomeAlive() {
             </div>
 
             <h1 className="mt-3.5 font-display text-[54px] font-extrabold uppercase italic leading-[0.9] text-white sm:mt-4 sm:text-[72px] lg:text-[88px]">
-              Know the move
+              {/* The space is real, not decorative. `<br />` yields no
+                  character, so the accessible name came out
+                  "Know the movebefore your league." and some assistive
+                  tech announces it that way. A space before the break
+                  costs nothing visually and fixes the string. */}
+              Know the move{' '}
               <br />
               <span className="text-mint">before your league.</span>
             </h1>
@@ -421,7 +492,7 @@ export default function HomeAlive() {
               <Card
                 gradient
                 dataHeroCta
-                glyph="🏈"
+                glyph={<IconDraft tone="#0D2E36" />}
                 eyebrow="PRACTICE"
                 eyebrowColor="#14343d"
                 title="Mock Draft"
@@ -445,7 +516,7 @@ export default function HomeAlive() {
                   four working integrations is what this whole change is
                   about. */}
               <Card
-                glyph="🚪"
+                glyph={<IconConnect tone="#00E5FF" />}
                 eyebrow={leagueStatus === 'connected' && connectedLeague ? 'YOUR LEAGUE' : 'BRING YOUR LEAGUE'}
                 eyebrowColor="#00E5FF"
                 title={leagueStatus === 'connected' && connectedLeague ? connectedLeague.name : 'Connect'}
@@ -459,9 +530,6 @@ export default function HomeAlive() {
               className="mt-2.5 flex max-w-[560px] items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-[14px] text-voidInk-primary transition-colors duration-150 hover:border-teal/50 sm:px-[18px] sm:py-3.5"
             >
               <span className="flex items-center gap-2.5">
-                <span className="text-teal" aria-hidden="true">
-                  ✨
-                </span>
                 Or draft with friends — same board, real managers
               </span>
               <span className="text-ink-muted" aria-hidden="true">
@@ -470,7 +538,24 @@ export default function HomeAlive() {
             </a>
           </div>
 
-          <div className="mt-[18px] lg:mt-9">
+          <div className="mt-[18px] space-y-3 lg:mt-9">
+            {/* The board leads this column now.
+
+                Measured on the built page: this half was empty from y=517
+                to y=916 and the loudest thing in it was a card labelled
+                OPTIONAL, while the one asset no competitor has did not
+                appear until y=916 — below the fold, after the visitor had
+                already decided whether to keep reading. BoardPeek puts
+                five real players and five checkable numbers on the first
+                screen and fills the void the watermark was sitting behind
+                rather than filling.
+
+                Above the account ask rather than below it, because the
+                page's own binding promise is that a solo mock needs
+                neither. Reading order is now: what this knows, then what
+                an account would add. */}
+            <BoardPeek />
+
             {/* 3ag puts the account card here and 3au puts the decision
                 card. Same slot, same job — "the one thing to do next" —
                 and which one is true depends on whether there is an
@@ -503,15 +588,52 @@ export default function HomeAlive() {
               section label — 3ag puts it there, not at the foot of the
               page where this build had it. `justify-between` with a
               baseline alignment is the handoff's own rule. */}
-          <div className="mb-3 flex items-baseline justify-between gap-3 sm:mb-3.5">
+          {/* Wraps below `sm`, and that is a fix rather than a tidy-up.
+
+              Measured at 375: "THE ROOMS" wrapped to two lines ending at
+              x=76 and the device line wrapped to two starting at x=88 —
+              twelve pixels between two wrapped blocks in a
+              `justify-between` baseline row, which reads as a collision
+              because it is one. Neither string can shrink (both are
+              tracked mono caps), so the row cannot hold them side by side
+              at this width and should stop trying. The device line takes
+              its own line on a phone and rejoins the baseline at `sm`. */}
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 sm:mb-3.5 sm:flex-nowrap">
             <span className="font-mono text-[11px] tracking-[0.14em] text-voidInk-primary">
-              <span aria-hidden="true">🚪</span> THE ROOMS
+              THE ROOMS
             </span>
             {deviceLine}
           </div>
           {/* Five across on a desktop, not the lobby's three: 3ag/3au
               draw this section as one `repeat(5,1fr)` strip. */}
           <RoomsGridAlive columns="home" />
+        </div>
+
+        {/* A closing action, because the page had none.
+
+            ClosingCta was removed with the two proof sections, so the last
+            interactive thing before the footer was a padlocked room card
+            and the final line was a data-provenance note. Peak-end says the
+            ending shapes memory out of proportion to its length, and this
+            one ended on absence — five rooms, three of them locked, then
+            copyright.
+
+            It repeats the hero's own action rather than introducing a new
+            one: by this point the reader has seen four pairs of arithmetic,
+            and the honest ask is the same one the page opened with. The
+            line under it is the binding promise from PRODUCT.md, which is
+            also the answer to the objection three padlocks just raised —
+            most of this needs nothing from you. */}
+        <div className="mt-12 border-t border-line-hairline pt-8 text-center sm:mt-16 sm:pt-10">
+          <a
+            href="#/rooms/draft"
+            className="inline-flex min-h-[44px] items-center rounded-full bg-teal px-7 text-[15px] font-semibold text-[#0B0E14] transition-transform duration-150 hover:scale-[1.02]"
+          >
+            Start a mock draft
+          </a>
+          <p className="mt-3.5 font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
+            Free · no account · runs in your browser
+          </p>
         </div>
 
       </div>

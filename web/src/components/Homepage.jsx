@@ -194,7 +194,7 @@ function FooterBrandStack({ onSocialClick, linkClass }) {
             type="button"
             onClick={() => onSocialClick(social.label)}
             aria-label={social.label}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line-hairline text-voidInk-muted transition-colors hover:border-teal-400/40 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-line-hairline text-voidInk-muted transition-colors hover:border-teal-400/40 hover:text-white"
           >
             <SocialIcon path={social.path} />
           </button>
