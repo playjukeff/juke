@@ -574,6 +574,27 @@ export default function HomeAlive() {
               />
             </div>
 
+            {/* The read-only promise, at every width, next to the ask.
+
+                It lived only in TrustStrip, which is `hidden sm:grid` — so
+                measured across the entire 375px page text, "read-only"
+                occurred 0 times and "never touch your league" occurred 0
+                times. The page asks for a league connection three times and
+                on the device most visitors use it never said what it does
+                with one. PRODUCT.md names read-only as a promise, and
+                TrustStrip's own comment claimed "a phone reaches the same
+                claims by scrolling", which was checked and is false.
+
+                Here rather than inside the Connect card's caption: that
+                caption already carries the platform line, which is what
+                corrects the subhead's "any major platform" 200px above, and
+                a third line in one card of a two-card grid is also what
+                pushes the two titles out of alignment. A row under both
+                cards belongs to the ask without belonging to one card. */}
+            <p className="mt-2.5 max-w-[560px] font-mono text-[11px] uppercase tracking-[0.1em] text-voidInk-muted">
+              Read-only &middot; Juke never edits your league
+            </p>
+
             <a
               href="#/rooms/draft"
               className="mt-2.5 flex max-w-[560px] items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-[14px] text-voidInk-primary transition-colors duration-150 hover:border-teal/50 sm:px-[18px] sm:py-3.5"

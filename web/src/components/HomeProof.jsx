@@ -294,6 +294,38 @@ function Pair({ claim, children }) {
   )
 }
 
+/* The door to the working, at the point the working is claimed.
+
+   The published method is this product's stated first differentiator, and
+   it was linked exactly once on the whole page: 13px, footer, third
+   column, y~3,946 of 4,366. Not one proof pair linked to its own section,
+   though the anchors already existed. A page that spends 2,384px arguing
+   "we show our working" and never offers the working is arguing against
+   itself, and the reader who most wants that door is the one this product
+   is built for.
+
+   Each link names the section it actually reaches, which is the rule
+   Homepage.jsx already learned the hard way: a footer link labelled "How
+   scoring works" pointed at a section about league settings, so somebody
+   clicking to learn how points are calculated got a summary of roster
+   defaults. The label owes the reader the section, not the claim above it.
+
+   Pair 4 deliberately has no link. Its subject is the projection's own
+   record against outcomes, and no section of the document covers that —
+   pointing it at "Where the numbers come from" would repeat exactly the
+   mistake above. A missing door beats one that opens on the wrong room. */
+function MethodLink({ href, children }) {
+  return (
+    <a
+      href={href}
+      className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
+    >
+      {children}
+      <span aria-hidden="true">&rarr;</span>
+    </a>
+  )
+}
+
 function Skeleton({ lines = 4 }) {
   return (
     <div aria-hidden="true" className="space-y-3">
@@ -442,6 +474,9 @@ function PairRankReason() {
                   {d.posRank}
                 </p>
               )}
+              <MethodLink href="/docs/draft-room-how-it-works.html#s07">
+                How the Juke score is built
+              </MethodLink>
             </>
           ) : (
             <Skeleton />
@@ -657,6 +692,9 @@ function PairYourRules() {
             move against half PPR. Juke has 49 of these rules and every one of them is yours to
             change.
           </p>
+          <MethodLink href="/docs/draft-room-how-it-works.html#s03">
+            How your league shapes the board
+          </MethodLink>
         </Lit>
       </div>
     </Pair>
@@ -817,6 +855,9 @@ function PairGraded() {
                 makes the middle team the honest one to show. The four add up to the number above,
                 so you can check it rather than believe it.
               </p>
+              <MethodLink href="/docs/draft-room-how-it-works.html#s06">
+                How the grade is worked out
+              </MethodLink>
             </>
           ) : (
             <Skeleton lines={6} />
