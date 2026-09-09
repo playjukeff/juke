@@ -190,12 +190,6 @@ jobs:
       - name: Verify the league standings
         run: node worker/test-standings.mjs
 
-      # The Trade Room's two lists. A roster is read in lineup order and a
-      # board of everything tradeable is read best first; the same file
-      # answers both, and it sorted the roster like the board until
-      # somebody looked at a real team.
-      - name: Verify the trade board
-
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a
