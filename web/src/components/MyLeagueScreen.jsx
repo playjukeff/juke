@@ -7,6 +7,7 @@ import WeekStrip from './myleague/WeekStrip.jsx'
 import StandingsPanel from './myleague/StandingsPanel.jsx'
 import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
 import PastWeekPanel from './myleague/PastWeekPanel.jsx'
+import { gameInWeek } from '../lib/schedule.js'
 import DraftReportPanel from './myleague/DraftReportPanel.jsx'
 import { useDecisions, decisionsForWeek, weekMark } from '../hooks/useDecisions.js'
 
@@ -187,6 +188,24 @@ export default function MyLeagueScreen() {
     ? decisionsForWeek(league.leagueId, openWeek === 'draft' ? 0 : Number(openWeek), decisions)
     : []
 
+  /* The week's own result, for the panel that until now could only show the
+     calls made in it. Both of these answer null all the way down — no
+     schedule at all (Sleeper), no ownerId, a bye, the draft cell — and
+     PastWeekPanel draws the block only when both scores are real numbers.
+
+     Resolved here rather than inside the panel because the opponent is a row
+     of `snapshot.teams` and the panel is handed rows rather than the
+     snapshot; that is the same split StrategyRoomLive already makes, and it
+     keeps the panel a thing that draws what it is given. */
+  const pastGame =
+    showingPast && openWeek !== 'draft'
+      ? gameInWeek(snapshot && snapshot.schedule, league.ownerId, Number(openWeek))
+      : null
+  const pastOpponent =
+    pastGame && pastGame.opponentId && snapshot
+      ? (snapshot.teams || []).find((t) => t.ownerId === pastGame.opponentId) || null
+      : null
+
   return (
     <AppShell active="my-league">
       {TITLE}
@@ -202,6 +221,8 @@ export default function MyLeagueScreen() {
         <PastWeekPanel
           weekKey={openWeek}
           rows={pastRows}
+          game={pastGame}
+          opponent={pastOpponent}
           onBack={() => setOpenWeek(null)}
         />
       ) : (

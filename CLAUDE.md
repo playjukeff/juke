@@ -6236,11 +6236,21 @@ available place in the product to put a guess.
   writes one: `decisions` stores the record whole in `data`, no room writes
   a decision at all yet, and there is no grader — `verdict` is the only
   field grading will ever set. It arrives with the grader.
-- **08's win probability and 04's "lost by 9".** Both need
-  `/league/<id>/matchups/<week>`, which nothing fetches — the single
-  missing call `StrategyRoomLive.jsx`'s own header already records as
-  costing that room three of its seven tabs. It is the highest-value thing
-  anybody could add to the connected half of this product.
+- **~~08's win probability and 04's "lost by 9"~~ — unblocked within the
+  day, by somebody else.** This entry said both needed
+  `/league/<id>/matchups/<week>`, "which nothing fetches", and called it the
+  highest-value thing anybody could add. It was added hours later (#215,
+  "Read the league's schedule, and price the week's matchup"), and
+  `lib/schedule.js`'s `gameInWeek()` now answers a week's points, the
+  opponent's, and the result. **04 is built**; the Strategy Room reads the
+  same call for its own margin.
+
+  Worth keeping as a record of how a blocker in this file ages. It was true
+  when written and false the same evening, and nothing about the sentence
+  announced that — which is the argument for re-measuring a documented
+  blocker before re-asserting it, exactly as this file already says about
+  any figure measured on one night's board. The screens below are in that
+  position now: check what `lib/` holds before believing them.
 - **05's win-% and bye odds, 12's season-end state, 14's trade deadline,
   15's offseason.** Every one of them needs the app to know where in a
   season it is, and `seasonPhase.js` already refuses to name a playoff week
@@ -6376,11 +6386,14 @@ Move card), **02** (the connect list's stagger), **05** (the connected
 standings strip), **06** (the Analysis panel's numerals and the queue's
 value bars), **07** (Waiver), **08** (Strategy), **09** (Trade's swing),
 **10** (Prospect's thin-evidence notice), **11** (History), **13** (the
-guest previews' value colours and the wire as bars) and **15** (the empty
-wire's `<RunNextCard>`).
+guest previews' value colours and the wire as bars), **15** (the empty
+wire's `<RunNextCard>`) and **04** (the past week's own result, two bars on
+one max, once the schedule existed to draw it from).
 
-Open, and each blocked on data rather than on effort: **04, 12, 14, 16, 19,
-20**, plus the halves of **05** and **08** named above. See the section on
+Open: **12, 14, 16, 19, 20**, plus the halves of **05** and **08** named
+above. Several of those were blocked on a season phase and a matchup fetch
+that now partly exist — `lib/schedule.js` marks playoff weeks and knows
+which week is last — so they want re-measuring rather than re-asserting. See the section on
 what the data cannot answer; **19** is the Waiver Room at phone width,
 which is the same responsive component part 2 already changed and cannot be
 driven live for the reason `league-connect.spec.mjs` records — every
