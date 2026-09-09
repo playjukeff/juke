@@ -44,6 +44,33 @@ check("the table names 53", ESPN_STAT_IDS.rec, 53);
 /* A defence's real number lives in pointsOverrides["16"] with points: 0
    beside it, so reading `points` reports every defensive rule as zero --
    an unscored defence rather than an error. */
+/* One ESPN rule paying several of Juke's.
+ *
+ * ESPN does not band a short field goal the way the pipeline does: statId
+ * 80 is worth 3 and covers every make under forty, where STAT_FIELDS keeps
+ * fgm_0_19, fgm_20_29 and fgm_30_39 apart. The season-totals derivation
+ * could not reach it -- ESPN has no total corresponding to "makes under
+ * forty" -- and ESPN's own applied points did: every kicker in a real 2025
+ * boxscore came out exactly 6 short with two field goals inside forty, and
+ * "Juke's points plus three per short make" fit 37 of 38 kicker-weeks. */
+console.log("");
+console.log("--- one id, several rules ---");
+{
+  const { rules } = rulesFromEspn([item(80, 3), item(198, 5), item(88, -1)]);
+  check("every short band takes the same rate",
+        [rules.fgm_0_19, rules.fgm_20_29, rules.fgm_30_39], [3, 3, 3]);
+  check("and the long bands keep their own", rules.fgm_50_59, 5);
+}
+{
+  // A league that does not score short field goals at all still says so.
+  const { rules } = rulesFromEspn([item(198, 5)]);
+  check("an absent shared id is a real zero, like any other",
+        [rules.fgm_0_19, rules.fgm_20_29, rules.fgm_30_39], [0, 0, 0]);
+}
+check("and it is not reported as unmapped, having been claimed",
+      rulesFromEspn([item(80, 3)]).unmapped, []);
+
+
 console.log("\n--- a defence is scored through its override ---");
 {
   const { rules } = rulesFromEspn([item(95, 0, { 16: 2 }), item(98, 0, { 16: 4 }), item(89, 0, { 16: 5 })]);

@@ -8480,6 +8480,69 @@ assertions in it, and the duplicate was deleted rather than kept. **Before
 adding a suite, grep for the module name, not for the directory you expect
 its tests to live in.**
 
+
+### Boxscores: one rule closed, and a feed deliberately not built
+
+`mBoxscore` gives every player's applied points for a week. Two things came
+of reading it, and only one of them is a feature.
+
+**The league has seven previous seasons — 2019 to 2025 — and all of them
+read.** That is what made any of this checkable: the 2026 season has not
+started, so every number in its boxscore is 0, and a shape with no values in
+it cannot tell you what a field means.
+
+### What ESPN's own points are worth: they found a rule the totals could not
+
+Juke's stat-id derivation matched a statId to a rule by comparing season
+TOTALS, and there is no ESPN total corresponding to "field goals made under
+forty" — so `fgm_0_19`, `fgm_20_29` and `fgm_30_39` stayed unmapped and a
+kicker scored three points short for every chip shot, silently.
+
+The applied points expose it directly. Measured against the real 2025
+boxscores, weeks 1 to 6: **every kicker came out exactly 6 short, each with
+two field goals inside forty.** Stated as a prediction — ESPN's points should
+equal Juke's plus three per short make — and tested: **37 of 38 kicker-weeks
+fit.** The one that does not is left alone rather than fitted around.
+
+`ESPN_SHARED_IDS` is the shape that was missing: one ESPN id paying several
+of Juke's rules at the same rate. It is written after the one-to-one pass so
+a key can never be filled twice, and the id is claimed so it stops being
+reported as unmapped. Unmapped went 29 to 28.
+
+### And the feed is not built, because its numbers do not reconcile
+
+The point of a boxscore feed is grading advice against what actually
+happened, which needs ESPN's per-player points and Juke's to agree.
+Measured across weeks 1-6 of 2025, on skill players only:
+
+```
+week 1  90%     week 4  79%
+week 2  78%     week 5  66%
+week 3  83%     week 6  66%
+```
+
+**About a fifth disagree and the cause is unresolved.** It is not the roster
+field — `rosterForCurrentScoringPeriod` gives 78% and `rosterForMatchupPeriod`
+81%, and `rosterForMatchupPeriodDelayed` is absent entirely. It is not the
+weekly index being compacted: the array is 17 long. The mismatches are not
+one shape — some are ESPN reporting 0 for a player who demonstrably played,
+some are ESPN reporting *more* than Juke, some differ by two.
+
+So the feed waits. **A ledger that grades past advice against a number that
+is wrong a fifth of the time is worse than one that grades nothing**, and
+shipping it would be this file's own "a grade can be correct and still be
+unbelievable" failure with a season of evidence behind it.
+
+**The kicker finding is kept because it is a different quality of evidence.**
+It was an exact, constant discrepancy with a specific mechanism, stated as a
+prediction before it was tested, holding at 97% — not a correlation read off
+a rate that was never near 100 to begin with.
+
+**What re-opens this** is understanding the remaining 20%. The likeliest
+candidates, none checked: ESPN applying stat corrections the pipeline does
+not carry, a rule in the 28 still unmapped that skill players trip, or the
+comparison pairing a week's roster with another week's points.
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a
