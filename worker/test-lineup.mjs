@@ -9,7 +9,7 @@
  * reported rather than guessed.
  */
 
-import { lineupFromEspn, lineupFromSleeper } from "./lineup.js";
+import { lineupFromEspn, lineupFromSleeper, slotRank } from "./lineup.js";
 
 let failures = 0;
 function check(what, got, want) {
@@ -85,6 +85,35 @@ check("SUPER_FLEX is a superflex",
 check("an unknown seat is reported",
       lineupFromSleeper(["QB", "BN", "DL"]).unmapped, ["DL"]);
 check("nothing to read is null", lineupFromSleeper(null), null);
+
+/* ---- The order a manager reads a lineup in ----
+
+   ESPN returns roster entries in no useful order: measured on a real team,
+   WR, WR, QB, FLEX, RB, RB, bench, bench, bench, TE, bench, bench, DST, K.
+   espn.js was pushing `starters` in exactly that order while
+   strategyBoard.js's own comment states the opposite contract -- "`starters`
+   is Sleeper's own array and its ORDER is the league's roster" -- which
+   Sleeper honours and ESPN was quietly breaking, so "Your lineup, as set"
+   listed a lineup nobody sets. */
+console.log("");
+console.log("--- the lineup order ---");
+{
+  const espnEntryOrder = [4, 4, 0, 23, 2, 2, 20, 20, 20, 6, 20, 20, 16, 17];
+  const sorted = espnEntryOrder.slice().sort((a, b) => slotRank(a) - slotRank(b));
+  // QB, RB, RB, WR, WR, TE, FLEX, DST, K, then the five bench.
+  check("it comes back in the order a lineup is fielded",
+        sorted, [0, 2, 2, 4, 4, 6, 23, 16, 17, 20, 20, 20, 20, 20]);
+}
+check("the flex sits after the named starters, not last",
+      slotRank(23) > slotRank(6) && slotRank(23) < slotRank(16), true);
+check("a superflex sits after the flex", slotRank(7) > slotRank(23), true);
+check("the narrow flexes sort with the flex", slotRank(3), slotRank(23));
+check("bench comes after every starter", slotRank(20) > slotRank(17), true);
+check("and IR after the bench", slotRank(21) > slotRank(20), true);
+/* An unknown seat is far likelier to be a bench variant than a starter, and
+   guessing it into the lineup would reorder a real one. */
+check("a slot nobody has named sorts with the bench, not into the lineup",
+      slotRank(999) > slotRank(17), true);
 
 console.log(failures ? `\nFAIL — ${failures} failing` : "\nOK — league lineup, offline");
 process.exit(failures ? 1 : 0);

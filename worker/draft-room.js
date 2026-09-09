@@ -50,7 +50,7 @@ import {
 import { lookupUser, leagueSnapshot, nflState, SNAPSHOT_TTL, SLEEPER_API } from "./sleeper.js";
 import {
   lookupLeague as espnLookupLeague,
-  leagueSnapshot as espnLeagueSnapshot,
+  leagueSnapshot as espnLeagueSnapshot, leagueTransactions as espnLeagueTransactions,
   ESPN_API
 } from "./espn.js";
 
@@ -1248,6 +1248,67 @@ async function espnLookupRoute(request, env) {
   return new Response(JSON.stringify(Object.assign({ season }, found)), { headers });
 }
 
+/* The league's recent adds, drops and trades.
+ *
+ * Its own route rather than a field on the snapshot: only the Waiver Room
+ * wants it, it grows all season, and naming a dropped player needs a second
+ * upstream call the snapshot would otherwise make on every room load for
+ * nothing. See transactions.js.
+ *
+ * Cached like the snapshot and for the same reason -- a room re-rendering
+ * must not re-ask ESPN -- and a league that has made no moves answers a
+ * plain empty feed rather than an error, because "nothing has happened
+ * yet" is an answer. */
+async function espnTransactionsRoute(request, env, ctx) {
+  if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+  const url = new URL(request.url);
+  const leagueId = (url.searchParams.get("league") || "").trim().slice(0, 24);
+  if (!/^[0-9]{1,12}$/.test(leagueId)) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
+  const season = espnSeason(url, state);
+  if (!season) {
+    return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
+  }
+
+  const cache = caches.default;
+  /* Built rather than taken from the request, the same rule the news route
+     follows: caches.default keys on the whole URL, so an Origin or any
+     stray parameter would make one entry per way of asking. */
+  const key = new Request(
+    "https://juke.internal/espn/transactions?league=" + leagueId + "&season=" + season,
+    { method: "GET" }
+  );
+  const hit = await cache.match(key);
+  if (hit) return new Response(await hit.text(), { headers });
+
+  const resolve = (wanted) => resolveSleeperIds(env, wanted);
+  const out = await espnLeagueTransactions(
+    leagueId, season, env.ESPN_BASE || ESPN_API, resolve
+  );
+
+  if (out.reason) {
+    const status = out.reason === "private" ? 403 : out.reason === "not-found" ? 404 : 503;
+    return new Response(JSON.stringify({ error: out.reason }), { status, headers });
+  }
+
+  // No moves is a fact, not a fault, and it is worth caching so a quiet
+  // week costs one upstream call every two minutes rather than one a render.
+  const body = JSON.stringify(out.feed || { moves: [], unnamed: 0, window: 0 });
+  after(ctx, cache.put(key, new Response(body, {
+    headers: { "content-type": "application/json", "cache-control": "max-age=" + SNAPSHOT_TTL }
+  })));
+  return new Response(body, { headers });
+}
+
 async function espnSnapshotRoute(request, env, ctx) {
   if (!originAllowed(request)) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
@@ -1901,6 +1962,17 @@ const handler = {
         }, corsFor(request)) });
       }
       return espnLookupRoute(request, env);
+    }
+
+    if (url.pathname === "/espn/transactions") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET",
+          "access-control-allow-headers": "content-type",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return espnTransactionsRoute(request, env, ctx);
     }
 
     if (url.pathname === "/espn/snapshot") {

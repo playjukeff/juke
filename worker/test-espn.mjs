@@ -356,6 +356,36 @@ console.log("--- the request asks for the picks ---");
   check("the lookup asks for mDraftDetail", lookupAsked.includes("view=mDraftDetail"), true);
   check("and so does the snapshot", snapAsked.includes("view=mDraftDetail"), true);
 }
+/* The roster comes back in LINEUP order, not the order ESPN returned its
+   entries in. Measured on a real team, ESPN gives WR, WR, QB, FLEX, RB, RB,
+   ... and espn.js was passing that straight through, against the contract
+   strategyBoard.js states in its own comment. */
+console.log("");
+console.log("--- the roster's order ---");
+{
+  const OUT_OF_ORDER = {
+    ...LEAGUE,
+    teams: [{
+      ...LEAGUE.teams[0],
+      roster: { entries: [
+        // Deliberately back to front: defence, bench, then the running back.
+        { lineupSlotId: 16, playerPoolEntry: { player: { id: 2, fullName: "Texans D/ST", defaultPositionId: 16, proTeamId: 34 } } },
+        { lineupSlotId: 20, playerPoolEntry: { player: { id: 3, fullName: "Bench Guy", defaultPositionId: 2, proTeamId: 12 } } },
+        { lineupSlotId: 2, playerPoolEntry: { player: { id: 1, fullName: "Marvin Harrison Jr.", defaultPositionId: 3, proTeamId: 22 } } },
+      ] },
+    }],
+  };
+  await withFetch(200, OUT_OF_ORDER, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    const t = snapshot.teams[0];
+    // Slot 2 sorts before slot 16, whatever order the entries arrived in.
+    check("starters come out by slot, not by entry order", t.starters, ["11628", "HOU"]);
+    // And the bench follows the starters rather than keeping its place.
+    check("with the bench after them", t.players, ["11628", "HOU", "5555"]);
+  });
+}
+
+
 
 console.log("\n--- normalise agrees with build_players.py ---");
 [

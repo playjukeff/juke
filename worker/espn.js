@@ -51,8 +51,9 @@
 
 import { normalise } from "./names.js";
 import { rulesFromEspn } from "./scoring.js";
-import { lineupFromEspn } from "./lineup.js";
+import { lineupFromEspn, slotRank } from "./lineup.js";
 import { scheduleFromEspn } from "./matchups.js";
+import { feedFromEspn, playersInFeed, FEED_LIMIT } from "./transactions.js";
 
 export const ESPN_API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
 
@@ -102,10 +103,12 @@ const PRO_TEAMS = {
    module alone. */
 export { normalise } from "./names.js";
 
-async function getJson(path, base) {
+async function getJson(path, base, extra) {
   try {
     const res = await fetch((base || ESPN_API) + path, {
-      headers: { accept: "application/json" },
+      // `extra` carries X-Fantasy-Filter, which is how ESPN takes a query
+      // rather than a path -- see leagueTransactions().
+      headers: Object.assign({ accept: "application/json" }, extra || null),
     });
     /* 401 is a private league and 404 is no league. Both are answers
        rather than faults, and the caller needs to tell them apart, so the
@@ -551,7 +554,13 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
     const entries = (t.roster && Array.isArray(t.roster.entries)) ? t.roster.entries : [];
     const players = [];
     const starters = [];
-    entries.forEach((e) => {
+    /* In the order a manager reads a lineup in, not the order ESPN happens
+       to return entries -- measured as WR, WR, QB, FLEX, RB, RB on a real
+       team. strategyBoard.js's own comment states the contract this was
+       breaking; see slotRank(). Sorted on a copy, because `entries` is the
+       response object and everything below reads it too. */
+    entries.slice().sort((a, b) => slotRank(a.lineupSlotId) - slotRank(b.lineupSlotId))
+      .forEach((e) => {
       const p = e && e.playerPoolEntry && e.playerPoolEntry.player;
       if (!p) return;
       const id = sleeperId(p);
@@ -649,4 +658,67 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       unmatchedCount: unmatched.length,
     },
   };
+}
+
+
+/* The league's recent moves, with the dropped players named.
+ *
+ * Its own call rather than a view on the snapshot, for the reasons
+ * transactions.js gives: one room wants it, it grows all season, and naming
+ * a DROP needs a second request the snapshot would otherwise make on every
+ * room load for nothing.
+ *
+ * ---- Two requests, and the second is bounded by the first ----
+ *
+ * mTransactions2 is 58 KB and carries bare player ids. The names come from
+ * `kona_player_info` filtered to exactly the ids in the window -- about
+ * 7 KB each, measured -- so the cost is set by how much the league has
+ * actually done, not by the size of the player universe. A quiet week costs
+ * almost nothing; the 3.9 MB unfiltered fetch is never made.
+ *
+ * The filter goes in a header because that is where ESPN takes it. */
+export async function leagueTransactions(leagueId, season, base, resolve, limit) {
+  const res = await getJson(
+    leaguePath(leagueId, season, ["mTransactions2"]), base
+  );
+  if (!res.ok || !res.body) {
+    return { reason: res.status === 401 || res.status === 403 ? "private"
+                   : (res.status === 404 || res.status === 400) ? "not-found"
+                   : "offline", feed: null };
+  }
+
+  const all = res.body.transactions;
+  const ids = playersInFeed(all, limit || FEED_LIMIT);
+  if (!ids.length) return { reason: null, feed: null };
+
+  const filtered = await getJson(
+    leaguePath(leagueId, season, ["kona_player_info"]), base,
+    { "x-fantasy-filter": JSON.stringify({ players: { filterIds: { value: ids } } }) }
+  );
+
+  const byId = new Map();
+  const everyPlayer = [];
+  ((filtered.ok && filtered.body && filtered.body.players) || []).forEach((e) => {
+    const p = e && e.player;
+    if (!p) return;
+    byId.set(Number(e.id !== undefined ? e.id : p.id), p);
+    everyPlayer.push(p);
+  });
+
+  /* The same crosswalk the rosters use, so a move reaches the board through
+     one join rather than a second opinion about who a name is. */
+  const resolved = everyPlayer.length && resolve ? await crosswalk(everyPlayer, resolve) : new Map();
+  const byName = resolved || new Map();
+
+  const nameFor = (playerId) => {
+    const p = byId.get(Number(playerId));
+    if (!p) return null;
+    const k = espnKey(p);
+    if (!k.name) return null;
+    const id = k.pos === "DST" ? (k.team || null)
+             : byName.get(normalise(k.name) + "|" + k.pos) || null;
+    return { name: k.name, pos: k.pos, team: k.team, id };
+  };
+
+  return { reason: null, feed: feedFromEspn(all, nameFor, limit) };
 }

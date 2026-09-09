@@ -1,3 +1,6 @@
+import { ordered, hasPlayed } from '../../lib/standings.js'
+import { useState } from 'react'
+import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 import { platformFor } from '../shell/leaguePlatforms.js'
 import DraftCountdown from '../shell/DraftCountdown.jsx'
 import { draftPhase } from '../../lib/countdown.js'
@@ -39,9 +42,68 @@ import { signOf } from '../decision/tokens.js'
    the function that owes them an answer rather than the table quietly
    being wrong. Exported so MyLeagueScreen.jsx can derive the same team's
    rank and record for its own LeagueBar without a second sort. */
-export function ordered(teams) {
-  return [...teams].sort((a, b) => (b.wins - a.wins) || (b.pointsFor - a.pointsFor))
+/* One team's roster, opened from its standings row.
+ *
+ * The ids have been on the snapshot since connect; what was missing was
+ * anything to press. They come back in lineup order now -- QB, RB, RB, WR,
+ * WR, TE, FLEX, DST, K -- because espn.js sorts by slot rather than passing
+ * ESPN's own entry order through; see lineup.js's slotRank().
+ *
+ * Names come off the board, so a player the board does not carry draws his
+ * id rather than vanishing: a roster silently one player short reads as a
+ * thin team rather than a gap in the crosswalk. */
+function TeamRoster({ team }) {
+  const engine = useEngine()
+  useJukeTick(engine)
+
+  const ready = engine && engine.dataReady && engine.dataReady()
+  const byId = ready ? new Map(engine.board().map((p) => [String(p.id), p])) : new Map()
+  const starting = new Set((team.starters || []).map(String))
+  // Starters first, in the order the league fields them, then the bench.
+  const ids = [
+    ...(team.starters || []),
+    ...(team.players || []).filter((id) => !starting.has(String(id))),
+  ]
+
+  if (!ids.length) {
+    return (
+      <p className="px-1 pb-3 text-[12px] text-ink-muted">
+        No roster yet — this league has not drafted.
+      </p>
+    )
+  }
+
+  return (
+    <ul className="pb-2.5">
+      {ids.map((id, n) => {
+        const p = byId.get(String(id))
+        const bench = !starting.has(String(id))
+        return (
+          <li
+            key={String(id) + n}
+            className="flex items-baseline gap-2 py-[3px] text-[12px]"
+          >
+            <span className="w-9 shrink-0 font-mono text-ink-label">
+              {bench ? 'BN' : (p && p.pos) || '—'}
+            </span>
+            <span className={bench ? 'text-ink-muted' : 'text-ink'}>
+              {p ? p.name : String(id)}
+            </span>
+            {p && p.team ? (
+              <span className="text-[11px] text-ink-muted">{p.team}</span>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
+
+/* Both live in web/src/lib/standings.js now, so a node suite can drive
+   them without a browser -- the move countdown.js already made. Re-exported
+   here because LeagueBar and MyLeagueScreen import them from this file and
+   there is no reason to churn their imports. */
+export { ordered, hasPlayed } from '../../lib/standings.js'
 
 /* 1st / 2nd / 3rd. LeagueBar carries its own copy for its own line and the
    two are four lines apart in a directory; this one is here because the
@@ -119,6 +181,7 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
   }
 
   const table = ordered(snapshot.teams)
+  const [openTeam, setOpenTeam] = useState(null)
   const mine = league.ownerId || null
 
   /* Read off the SNAPSHOT, not the connected-league cache.
@@ -164,7 +227,11 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
      Absent, not zero, before a league has played: `pointsFor` is 0 for
      everybody until the season starts, and a "+0.0 vs median" on ten rows
      of zeros is a real number answering a question nobody asked. */
-  const played = table.some((t) => t.pointsFor > 0 || t.wins > 0 || t.losses > 0)
+  /* This file already knew — it hid the KPIs on exactly this condition —
+     and simply never applied it to the rank column, which went on numbering
+     ten teams 1..10 off a sort whose every key was 0. Now one answer,
+     shared. */
+  const played = hasPlayed(table)
   const me = mine ? table.find((t) => t.ownerId === mine) : null
   const myRank = me ? table.indexOf(me) + 1 : null
   const medianOf = (nums) => {
@@ -245,10 +312,24 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
         <div className="overflow-hidden rounded-[18px] border border-line-hairline bg-[#151920] px-4 pb-1 pt-1.5">
           {table.map((t, i) => {
             const you = mine && t.ownerId === mine
+            const open = openTeam === t.ownerId
             return (
               <div
                 key={t.rosterId ?? `${t.teamName}-${i}`}
-                className="grid grid-cols-[22px_1fr_auto_auto] items-center gap-2.5 border-b border-line-hairline py-[11px] last:border-b-0"
+                className="border-b border-line-hairline last:border-b-0"
+              >
+              {/* A row is a control now. Reported as "can't click on my
+                  team's name (or any team names)" — and it was not that the
+                  handler was broken, there was never one: the row was a
+                  <div>. The rosters it opens have been on the snapshot all
+                  along, which is what made the absence invisible. A button
+                  rather than a link because it opens something in place
+                  rather than going anywhere. */}
+              <button
+                type="button"
+                onClick={() => setOpenTeam(open ? null : t.ownerId)}
+                aria-expanded={open}
+                className="grid w-full grid-cols-[22px_1fr_auto_auto] items-center gap-2.5 py-[11px] text-left"
                 style={
                   you
                     ? {
@@ -264,9 +345,11 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
                     the top of a table rather than a podium of three. */}
                 <span
                   className="font-mono text-[12px]"
-                  style={{ color: i < 2 ? '#74E5CE' : '#8A9BAA' }}
+                  style={{ color: played && i < 2 ? '#74E5CE' : '#8A9BAA' }}
                 >
-                  {i + 1}
+                  {/* A dash, not a position, until somebody has played.
+                      See hasPlayed(). */}
+                  {played ? i + 1 : '·'}
                 </span>
                 <span className="min-w-0">
                   <span
@@ -292,6 +375,8 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
                 <span className="min-w-[52px] text-right font-mono text-[12px] text-ink-muted">
                   {t.pointsFor.toFixed(1)}
                 </span>
+              </button>
+              {open ? <TeamRoster team={t} /> : null}
               </div>
             )
           })}
