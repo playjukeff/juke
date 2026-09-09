@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, Share2, Check, Plus } from 'lucide-react'
 import { POS_BADGE } from './draftRoomPositions.js'
+import { EVIDENCE, signed } from './decision/tokens.js'
 
 /* One row of the "against the room" panel — where "you" sits on a 0-100
    track against this component's room median and best. All three come off
@@ -43,18 +44,41 @@ function ComponentBand({ item }) {
     <div className="mb-3.5 last:mb-0">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[12.5px] font-medium text-white/80">{item.label}</span>
-        <span className={'font-numeral text-[11px] font-semibold ' + (below ? 'text-rose-400' : 'text-teal-300')}>
-          {item.pct >= item.median ? '+' : ''}
-          {Math.round(item.pct - item.median)} vs room median
+        {/* cost/gain, not rose/teal. This is the panel's only signed
+            number and it was cyan when it was good -- which is the one
+            thing the decision system exists to stop, because the Draft
+            button four inches away is the same cyan and a reader who has
+            learned that cyan means "good" has learned the wrong lesson
+            about a control. */}
+        <span className={'font-numeral text-[11px] font-semibold ' + (below ? 'text-cost' : 'text-gain')}>
+          {signed(Math.round(item.pct - item.median), below ? 'cost' : 'gain')} vs room median
         </span>
       </div>
-      <div className="relative mt-2 h-4">
+      {/* overflow-hidden, and it is not tidiness. The marker is a 10px
+          square positioned at `left: pct%` and pulled back by half its own
+          width, so at 100 -- which starter strength really does reach, it
+          is a min-max scale and somebody is always the room's best -- five
+          pixels hang past the track's right edge, in a box that can
+          neither scroll nor ellipsise. Clipped, a marker at either end
+          shows the half of itself that is inside, which is what "at the
+          edge of the scale" should look like anyway. */}
+      <div className="relative mt-2 h-4 overflow-hidden">
         <div className="absolute inset-x-0 top-[7px] h-1 rounded-full bg-white/[0.07]" />
         <div className="absolute top-0 h-4 w-px bg-white/35" style={{ left: clamp(item.median) + '%' }} />
         <div className="absolute top-0 h-4 w-px bg-white/15" style={{ left: clamp(item.best) + '%' }} />
+        {/* One colour, and it is `evidence` rather than either sign.
+ 
+            It was rose below the median and teal above, which is the same
+            fact the median tick two pixels away already states -- the
+            marker's POSITION relative to that tick is what says above or
+            below, and the delta at the end of the row says it a third
+            time, in the sign colour, with the number attached. A mark that
+            restates its own neighbour's meaning in a second encoding is
+            what let the legend below drift: one square, captioned "you",
+            standing for a thing that was drawn in two colours. */}
         <div
-          className={'absolute top-0 h-4 w-2.5 -translate-x-1/2 rounded-sm ' + (below ? 'bg-rose-400' : 'bg-teal-400')}
-          style={{ left: clamp(item.pct) + '%' }}
+          className="absolute top-0 h-4 w-2.5 -translate-x-1/2 rounded-sm"
+          style={{ left: clamp(item.pct) + '%', background: EVIDENCE }}
         />
       </div>
     </div>
@@ -64,7 +88,23 @@ function ComponentBand({ item }) {
 /* "Fix this first" — the one component costing the most, in weighted
    points, against where the room's middle team sits, plus the single real
    available player who'd move it and what it becomes. Shared between the
-   mobile and desktop layouts below rather than written out twice. */
+   mobile and desktop layouts below rather than written out twice.
+
+   ---- This IS the route's stake card, and it is not <StakeCard> ----
+
+   It is the shape P2 asks for: the costliest thing, what it costs, and the
+   one move that closes it. What stops it being the primitive is that this
+   component mounts TWICE -- the mobile tree is `lg:hidden` and the desktop
+   tree is `hidden lg:block`, and CSS-hidden is still mounted, which this
+   codebase has a standing rule about. Two <StakeCard>s on one route is
+   exactly what that primitive's own mount counter warns about, and it
+   would be right to: there would genuinely be two.
+
+   Collapsing the two layouts into one to get the primitive is a much
+   larger change than the palette pass this is, and it would be made for
+   the primitive's benefit rather than the reader's. So the card keeps its
+   own chrome and the rule it actually answers to is the one about numbers:
+   nothing inside it is cyan. */
 function FixThisFirst({ item, upgrade, before, dense }) {
   return (
     <div
@@ -89,7 +129,12 @@ function FixThisFirst({ item, upgrade, before, dense }) {
           {upgrade.player.team}
           {upgrade.player.bye ? ` · bye ${upgrade.player.bye}` : ''}
         </span>
-        <span className="ml-auto font-numeral text-[13px] font-bold text-teal-300">
+        {/* The one number on this card, and it is a gain: what the
+            component becomes if you take him. `text-gain`, not the card's
+            own teal -- the teal here is the card saying "this is Juke's
+            prescription", which is a brand claim about the CARD and never
+            about the figure inside it. */}
+        <span className="ml-auto font-numeral text-[13px] font-bold text-gain">
           {before} → {upgrade.after}
         </span>
       </div>
@@ -277,7 +322,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
      component costs the most, weighted, against the room, which can
      legitimately land on a different bar than the plain lowest score does. */
   const toneOf = (b) => (b.key === weakest.key ? 'bad' : 'neutral')
-  const barFill = { neutral: 'bg-teal-400', bad: 'bg-rose-400' }
+  /* `evidence` for the three that are fine and `cost` for the weakest one.
+     Not gain for the three: a component scoring 62 out of 100 is a
+     quantity, not a gain of anything, and colouring it as one would claim
+     a direction the number does not have -- which is the same call
+     signOf() makes about zero. */
+  const barFill = { neutral: 'bg-evidence', bad: 'bg-cost-deep' }
+  const barTone = { neutral: 'text-ink', bad: 'text-cost' }
 
   function median(nums) {
     const sorted = nums.slice().sort((a, b) => a - b)
@@ -508,7 +559,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                 <div key={b.key}>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[15px] font-bold text-white">{b.label}</span>
-                    <span className={'shrink-0 font-numeral text-[15px] font-bold ' + (t === 'bad' ? 'text-rose-400' : 'text-teal-300')}>
+                    <span className={'shrink-0 font-numeral text-[15px] font-bold ' + barTone[t]}>
                       {Math.round(b.pct)}
                     </span>
                   </div>
@@ -526,7 +577,12 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
 
           <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-5">
             <span className="text-[15px] font-bold text-white">Composite</span>
-            <span className="font-numeral text-[17px] font-bold text-teal-300">
+            {/* The composite is a score out of a hundred and the grade is
+                a letter. Neither is a gain or a cost, so both take plain
+                ink -- the same reasoning as the component numbers above,
+                and the reason the number that used to be cyan here is the
+                loudest one on the panel. */}
+            <span className="font-numeral text-[17px] font-bold text-ink">
               {me.total.toFixed(1)} <span className="text-ink-muted">&rarr;</span> {me.grade}
             </span>
           </div>
@@ -559,7 +615,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
               <span className="h-2.5 w-px bg-white/15" /> best in room
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-sm bg-teal-400" /> you
+              <span className="h-2 w-2 rounded-sm bg-evidence" /> you
             </span>
           </div>
           <div className="mt-3">
@@ -731,7 +787,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                   <div className="h-1.5 min-w-[100px] max-w-[420px] flex-1 rounded-full bg-slate-rule">
                     <div className={'h-1.5 rounded-full transition-all duration-300 ' + barFill[t]} style={{ width: width + '%' }} />
                   </div>
-                  <span className={'w-7 shrink-0 text-right font-numeral text-sm font-bold ' + (t === 'bad' ? 'text-rose-400' : 'text-teal-300')}>
+                  <span className={'w-7 shrink-0 text-right font-numeral text-sm font-bold ' + barTone[t]}>
                     {Math.round(b.pct)}
                   </span>
                   <span className="w-full shrink-0 text-ink-muted sm:w-auto sm:flex-1">{b.detail}</span>
@@ -741,9 +797,9 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             {/* The components must visibly add up to the composite above —
                 not just agree with it in principle. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-rule/70 pt-2.5 text-xs">
-              <span className="w-32 shrink-0 font-semibold uppercase tracking-wide text-teal-300 sm:w-40">Weighted sum</span>
+              <span className="w-32 shrink-0 font-plex text-label uppercase text-ink-label sm:w-40">Weighted sum</span>
               <span className="flex-1 font-numeral text-ink-muted">{bars.map((b) => (b.pct * b.weight).toFixed(1)).join(' + ')}</span>
-              <span className="font-numeral text-sm font-bold text-teal-300">= {me.total.toFixed(1)}</span>
+              <span className="font-numeral text-sm font-bold text-ink">= {me.total.toFixed(1)}</span>
             </div>
           </div>
 
@@ -764,7 +820,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                   <span className="h-2.5 w-px bg-white/15" /> best in room
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-sm bg-teal-400" /> you
+                  <span className="h-2 w-2 rounded-sm bg-evidence" /> you
                 </span>
               </div>
             </div>
@@ -775,11 +831,17 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             </div>
           </div>
 
+          {/* One pair, one palette. These were emerald and rose -- a third
+              and fourth value colour on a panel that already had teal for
+              good and rose for bad, which is the drift the decision system
+              was written to end: a bargain and a reach are a gain and a
+              cost, and they say so in the two colours everything else in
+              the app now says it in. */}
           {(me.bargain || me.reach) && (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {me.bargain && (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">Best value</div>
+                <div className="rounded-lg border border-gain/30 bg-gain/5 p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-gain">Best value</div>
                   <div className="mt-0.5 truncate text-sm font-medium text-white">{me.bargain.pick.player.name}</div>
                   <div className="mt-0.5 text-[11px] leading-relaxed text-white/50">
                     Taken at {DE ? DE.pickCode(me.bargain.pick.overall, league) : me.bargain.pick.overall}, board had
@@ -792,10 +854,10 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                 <div
                   className={
                     'rounded-lg border p-3 ' +
-                    (me.reach.gap < -8 ? 'border-rose-500/30 bg-rose-500/5' : 'border-slate-rule bg-slate-panel/40')
+                    (me.reach.gap < -8 ? 'border-cost/30 bg-cost/5' : 'border-slate-rule bg-slate-panel/40')
                   }
                 >
-                  <div className={'text-[10px] font-semibold uppercase tracking-wide ' + (me.reach.gap < -8 ? 'text-rose-400' : 'text-white/50')}>
+                  <div className={'text-[10px] font-semibold uppercase tracking-wide ' + (me.reach.gap < -8 ? 'text-cost' : 'text-white/50')}>
                     Biggest reach
                   </div>
                   <div className="mt-0.5 truncate text-sm font-medium text-white">{me.reach.pick.player.name}</div>
@@ -832,13 +894,19 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <table className="mt-1.5 w-full bg-slate-panel text-xs">
             <tbody>
               {standings.map((t) => (
+                /* The rank cell is `ink-muted` on every row but yours, and
+                   on yours it measured 3.83 -- gold at 10% lightens the
+                   ground enough to take a tone that clears 4.87 on
+                   `slate.panel` under the bar. Your own row is the one a
+                   reader looks at, so it takes full ink rather than the
+                   tint being weakened. */
                 <tr key={t.slot} className={t.slot === mySlot ? 'bg-[#FFD166]/10' : ''}>
                   {/* Rank, team, letter — no score column between the last
                       two. See the legacy standings note in app.js: whatever
                       sits there has to be the weighted total, and a weighted
                       total next to a letter grade is the pairing that reads
                       against everything a person was taught about letters. */}
-                  <td className="py-1 pr-2 font-numeral tabular-nums text-ink-muted">{t.rank}</td>
+                  <td className={'py-1 pr-2 font-numeral tabular-nums ' + (t.slot === mySlot ? 'text-ink' : 'text-ink-muted')}>{t.rank}</td>
                   <td className="py-1 pr-2 font-medium text-white/80">{engine.teamLabel(t.slot)}</td>
                   <td className="py-1 text-right font-numeral text-white/60">{t.grade}</td>
                 </tr>

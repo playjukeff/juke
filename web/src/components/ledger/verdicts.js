@@ -79,11 +79,42 @@ export function matchesOutcome(bucket, verdict) {
  * the other side. It matches only "All". */
 export const CONFIDENCE_BUCKETS = ['All', 'High ≥75', 'Mid 60–74', 'Low <60']
 
+/* Which bucket a number falls in, or null for a decision that recorded no
+   confidence at all.
+ *
+ * ---- This exists so a row and the filter above it cannot disagree ----
+ *
+ * The decision system's global rule is that confidence never appears as a
+ * bare percentage, and this screen's rows carried one -- "STRATEGY · WK 4
+ * · 68%". <Confidence> is the usual replacement and it cannot be used
+ * here: it shows signals, error and sample, and a decision record carries
+ * none of the three. Inventing them would be the thing that rule exists to
+ * stop, one layer in.
+ *
+ * What the record does support is the band, because the screen already
+ * sorts every row into one to filter on it. So the row names the band, and
+ * it reads it from the same thresholds `matchesConfidence()` reads -- a
+ * second copy would let a row read "MID" while the Mid filter hid it, and
+ * neither number nor label would look wrong on its own. */
+export function confidenceBucket(confidence) {
+  if (typeof confidence !== 'number' || !isFinite(confidence)) return null
+  if (confidence >= 75) return CONFIDENCE_BUCKETS[1]
+  if (confidence >= 60) return CONFIDENCE_BUCKETS[2]
+  return CONFIDENCE_BUCKETS[3]
+}
+
+/* The band's name on its own -- "High", "Mid", "Low" -- for a row that has
+   no room for the threshold beside it.
+ *
+ * Derived off the bucket rather than written down again. A second literal
+ * here is how a row comes to read "Mid" for a decision the Mid filter
+ * hides, and neither half looks wrong on its own. */
+export function confidenceLabel(confidence) {
+  const bucket = confidenceBucket(confidence)
+  return bucket ? bucket.split(' ')[0] : null
+}
+
 export function matchesConfidence(bucket, confidence) {
   if (bucket === 'All') return true
-  if (typeof confidence !== 'number' || !isFinite(confidence)) return false
-  if (bucket === 'High ≥75') return confidence >= 75
-  if (bucket === 'Mid 60–74') return confidence >= 60 && confidence < 75
-  if (bucket === 'Low <60') return confidence < 60
-  return true
+  return confidenceBucket(confidence) === bucket
 }
