@@ -115,7 +115,17 @@ function useDataFreshness() {
   const [freshness, setFreshness] = useState(null)
 
   useEffect(() => {
-    setFreshness(freshnessLine())
+    /* The same bug BoardPeek had, and it predates it here.
+
+       freshnessLine() reads playersMeta(), which is deferred behind the
+       cold-load reveal — so a single read at mount returns nothing and the
+       footer's closing line has been rendering empty. It needs the event
+       that says the board arrived, the same as every other engine read on
+       this page. */
+    const read = () => setFreshness(freshnessLine())
+    read()
+    window.addEventListener('juke:data-loaded', read)
+    return () => window.removeEventListener('juke:data-loaded', read)
   }, [])
 
   return freshness

@@ -64,6 +64,19 @@ export default function BoardPeek() {
       try {
         const next = readTop(engine)
         if (next) setRows(next)
+        /* Inside run(), not beside it.
+
+           This was `setFresh(freshnessLine())` after the first run() call,
+           which evaluates once at mount — before the deferred board has
+           landed — so playersMeta() was undefined, the line came back
+           empty, and the panel titled "Tonight's board" shipped with
+           nothing on it saying which night. The juke:data-loaded listener
+           only refreshed the rows.
+
+           It failed by disappearing, which is the contract, and that is
+           exactly why it went unnoticed: the one unfalsifiable claim on a
+           page built from falsifiable ones, silently absent. */
+        setFresh(freshnessLine())
       } catch {
         // Fails by disappearing, like the score strip. A hero that throws
         // is worse than a hero with one less panel in it.
@@ -72,7 +85,6 @@ export default function BoardPeek() {
     }
 
     run()
-    setFresh(freshnessLine())
     window.addEventListener('juke:data-loaded', run)
     return () => window.removeEventListener('juke:data-loaded', run)
     /* Deliberately NOT subscribed to `juke:header`.

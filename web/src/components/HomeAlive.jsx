@@ -115,8 +115,24 @@ function Card({ gradient, eyebrow, eyebrowColor, title, sub, glyph, href, dataHe
         {glyph}
       </span>
       <span>
+        {/* 11px, not 9.
+
+            These two eyebrows were the smallest type on the page — 9px at
+            375, measured, on the two cards the whole page exists to get
+            somebody to press. That is under the 10px floor even for
+            smallprint, and these are not smallprint: "PRACTICE" and
+            "BRING YOUR LEAGUE" are what tell a reader which card is which
+            before they read the title.
+
+            The tracking comes down with the size rather than staying at
+            0.12em. Tracked caps buy legibility at small sizes by separating
+            letterforms, but the cost is width, and "BRING YOUR LEAGUE" is
+            17 characters in a 162px card at 375. Holding 0.12em while
+            growing the type is what would push it to two lines; 0.08em
+            spends the gain on the size instead, which is the half that
+            actually helps somebody read it. */}
         <span
-          className="block font-mono text-[9px] tracking-[0.12em] sm:text-[10px]"
+          className="block font-mono text-[11px] tracking-[0.08em] sm:tracking-[0.12em]"
           style={{ color: eyebrowColor }}
         >
           {eyebrow}
