@@ -399,6 +399,17 @@ function readHeadline(engine) {
   const readout = engine.jukeReadout(best)
   if (!readout || readout.score === null || readout.gap === null) return null
 
+  // Every player at his position, by value over replacement, so the card can
+  // say what the next ranks actually cost.
+  const samePos = board
+    .filter((p) => p.pos === best.pos)
+    .map((p) => engine.replacementGap(p))
+    .filter((g) => g !== null && g !== undefined)
+    .sort((a, b) => b - a)
+  const gapRounded = Math.round(readout.gap)
+  const stepTo = (i) =>
+    samePos.length > i ? Math.round(gapRounded - Math.round(samePos[i])) : null
+
   return {
     name: best.name,
     pos: best.pos,
@@ -408,12 +419,28 @@ function readHeadline(engine) {
     score: readout.score,
     gap: readout.gap,
     replacementRank: readout.replacementRank,
-    /* Both ranks, built here rather than lifted out of readout.reason.
-       That string already states the two figures the lines above print,
-       so rendering it whole would say 300 and +145 twice in one card —
-       and its wording is a tooltip's, not a card's. The two ranks are the
-       one fact it carries that nothing else in this cell does. */
-    projRank: best.projPosRank ? `${best.pos}${best.projPosRank}` : null,
+    /* What the next ranks are worth, which is the argument.
+
+       This was `PROJECTION RB1 · MARKET RB1` — both ranks side by side, on
+       the reasoning that the honest answer changes with the board. It does,
+       and tonight the honest answer is that they agree, so the card headed
+       "a rank is not a reason" closed by reporting that the rank was right.
+       The critique caught it as the section arguing against itself.
+
+       Picking a player where they disagree was the obvious repair and the
+       data refuses it: measured, the largest disagreement among players
+       scoring 40 or more is ONE rank (Barkley +1, Chase Brown -1). A
+       one-place difference demonstrates nothing, and manufacturing a bigger
+       one means reaching into the deep bench where every score is 0.
+
+       So the card answers the question the flat cell actually asks instead.
+       That cell says a rank "cannot tell you how far ahead of second he is,
+       or whether the gap down to fifth is worth a round of your draft" —
+       and those are two numbers this board has. Tonight: 7 and 54, from
+       ranks that look evenly spaced and are not (RB2 to RB3 is 36 points,
+       RB3 to RB4 is 2). */
+    stepToSecond: stepTo(1),
+    stepToFifth: stepTo(4),
     boardSize: readout.boardSize,
   }
 }
@@ -466,6 +493,17 @@ function PairRankReason() {
                   {d.score}
                 </span>
               </div>
+              {/* What the number is a share OF.
+
+                  overallScore() divides by the best figure on the board, so
+                  whoever leads always scores exactly 100 — and a bare 100
+                  with no denominator, on the page arguing that no number
+                  should be taken on trust, is the sharpest self-
+                  contradiction the critique found. The three lines below
+                  explain +145; none of them explained 100. */}
+              <p className="mt-2 text-[12px] leading-[1.5] text-voidInk-muted">
+                100 is the most value on tonight&apos;s board. Every other score is a share of his.
+              </p>
               <div className="mt-5">
                 {d.projPts !== null && <Line label="Projected this season" value={`${d.projPts} pts`} />}
                 <Line
@@ -478,14 +516,21 @@ function PairRankReason() {
                 That is the number a rank cannot carry — and it is the one you are actually
                 choosing between when two names sit next to each other on a board.
               </p>
-              {/* Both ranks, side by side, because the honest answer changes
-                  with the board: tonight the projection and the market agree
-                  on him exactly, and on the night they do not this line is
-                  where you see it first. */}
-              {d.projRank && (
-                <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-voidInk-muted">
-                  Projection {d.projRank} · Market {d.pos}
-                  {d.posRank}
+              {(d.stepToSecond !== null || d.stepToFifth !== null) && (
+                <p className="mt-3 text-[13px] leading-[1.5] text-voidInk-body">
+                  {d.stepToSecond !== null && (
+                    <>
+                      Second at his position is{' '}
+                      <span className="font-mono tabular-nums text-white">{d.stepToSecond}</span>{' '}
+                      points back.{' '}
+                    </>
+                  )}
+                  {d.stepToFifth !== null && (
+                    <>
+                      Fifth is{' '}
+                      <span className="font-mono tabular-nums text-white">{d.stepToFifth}</span>.
+                    </>
+                  )}
                 </p>
               )}
               <MethodLink href="/docs/draft-room-how-it-works.html#s07">
