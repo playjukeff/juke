@@ -173,6 +173,83 @@ await withFetch(200, LEAGUE, async () => {
         [["1", "Ada's Analytics", "Ada Lovelace"], ["2", "Turing Machines", "Alan Turing"]]);
 });
 
+
+/* ---- The draft status, which is not the boolean it looks like ----
+
+   `inProgress` goes true when ESPN opens the draft ROOM, which is well
+   before anybody picks -- measured thirty-four minutes early on a real
+   league. Reading it alone printed DRAFTING NOW over a draft that had not
+   started, and suppressed the countdown entirely. So every case below is
+   about what separates "the room is open" from "picks are being made", and
+   what separates them is a pick with a real player behind it. */
+console.log("");
+console.log("--- the draft status ---");
+
+const GRID = (made, extra = {}) =>
+  Array.from({ length: 4 }, (_, n) => ({
+    id: n + 1,
+    overallPickNumber: n + 1,
+    roundId: 1,
+    roundPickNumber: n + 1,
+    teamId: (n % 2) + 1,
+    // -1 is ESPN's unmade pick: the grid is built before anybody drafts.
+    playerId: n < made ? 1000 + n : -1,
+    keeper: false,
+    reservedForKeeper: false,
+    ...(n < made ? extra : {}),
+  }));
+
+async function statusOf(draftDetail) {
+  const league = { ...LEAGUE, draftDetail };
+  return withFetch(200, league, async () => {
+    const { league: out } = await lookupLeague("777", "2026", "https://stub.invalid");
+    return out.draftStatus;
+  });
+}
+
+check("the room being open is not the draft starting",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(0) }), "pre_draft");
+check("one real pick is",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(1) }), "drafting");
+check("a finished draft is complete whatever inProgress says",
+      await statusOf({ inProgress: true, drafted: true, picks: GRID(4) }), "complete");
+check("a league that has not opened its room is pre_draft",
+      await statusOf({ inProgress: false, drafted: false, picks: GRID(0) }), "pre_draft");
+
+/* A keeper is assigned before the draft rather than during it, so it is not
+   evidence that one is under way -- and it is the one thing that would
+   reintroduce this bug from the only direction the fix leaves open. */
+check("a keeper on the grid is not a pick",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(2, { keeper: true }) }),
+      "pre_draft");
+check("nor is a slot merely reserved for one",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(2, { reservedForKeeper: true }) }),
+      "pre_draft");
+
+/* With the view refused there are no picks to reason from. The old reading
+   is wrong early and right mid-draft, which beats printing DRAFT TIME
+   PASSED over a draft that is actually running. */
+check("with no picks in hand it falls back to the boolean",
+      await statusOf({ inProgress: true, drafted: false }), "drafting");
+
+/* The picks only arrive if they are asked for: draftDetail rides on the
+   league root carrying its two booleans and nothing else. */
+console.log("");
+console.log("--- the request asks for the picks ---");
+{
+  const keep = globalThis.fetch;
+  let lookupAsked = "", snapAsked = "";
+  globalThis.fetch = async (url) => { lookupAsked = String(url);
+    return { ok: true, status: 200, json: async () => LEAGUE }; };
+  await lookupLeague("777", "2026", "https://stub.invalid");
+  globalThis.fetch = async (url) => { snapAsked = String(url);
+    return { ok: true, status: 200, json: async () => LEAGUE }; };
+  await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+  globalThis.fetch = keep;
+  check("the lookup asks for mDraftDetail", lookupAsked.includes("view=mDraftDetail"), true);
+  check("and so does the snapshot", snapAsked.includes("view=mDraftDetail"), true);
+}
+
 console.log("\n--- normalise agrees with build_players.py ---");
 [
   ["Marvin Harrison Jr.", "marvinharrison"],

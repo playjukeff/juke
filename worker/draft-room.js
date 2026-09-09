@@ -34,7 +34,13 @@ import {
   listDraftHistory, putHistoryEntry, deleteHistoryEntry,
   listDecisions, putDecision, deleteDecision,
   listLeagues, putLeague, deleteLeague, selectLeague, resolveSleeperIds,
-  refreshLeagueCache, getTier, LEAGUE_CAP
+  refreshLeagueCache, getTier, LEAGUE_CAP,
+  /* staleLeague() below reads the clock, and this is the one copy of "what
+     time is it in the unit this database stores". It was USED there and
+     never imported, which is a ReferenceError rather than a wrong number —
+     see that function's own note for the three days of GET /me/leagues it
+     took down. */
+  nowSeconds
 } from "./store.js";
 
 /* Sleeper, read-only. Kept out of store.js for the same reason auth.js is:
@@ -1317,6 +1323,28 @@ async function espnSnapshotRoute(request, env, ctx) {
    invisible. */
 const LEAGUE_CACHE_TTL = 3600;
 
+/* ---- This threw on every call for three days, and only for real users ----
+
+   `nowSeconds` lives in store.js and was never in this file's import list.
+   So this function did not return a wrong answer — it raised a
+   ReferenceError, which took the whole GET /me/leagues branch with it.
+
+   What made it invisible is WHERE it is called from. meLeaguesRoute()'s GET
+   reaches this only when `leagues[0]` exists, so an account with nothing
+   connected never runs it: every test in the suite, every keyless preview
+   build and every signed-out visit answered 200 and always would. The only
+   callers who could reach it were accounts that had actually connected a
+   league — which is to say the entire real user base and nobody else.
+
+   And it did not report as a crash. An unhandled throw in a Worker is a bare
+   500 with no CORS headers on it, so the browser reported "blocked by CORS
+   policy: No 'Access-Control-Allow-Origin' header" and `net::ERR_FAILED` —
+   which reads as a misconfigured origin allow-list, not as a bug in a line of
+   JavaScript. leagueStore.js then settled "error", and MyLeagueScreen drew
+   the demo. So a one-word import bug surfaced to the owner as "the site has
+   forgotten both my leagues", three layers away from itself. The default
+   export's own catch is the fix for that half; see it for why a thrown route
+   must still answer with CORS. */
 function staleLeague(league) {
   /* A league that has drafted has nothing left to refresh: the roster is
      what changes now and that is the snapshot's job, not this cache's. */
@@ -1513,7 +1541,16 @@ async function meLeaguesRoute(request, env, ctx) {
         ownerId: known ? teamId : null,
         name: found.league.name,
         season: found.league.season,
-        totalTeams: found.league.totalTeams
+        totalTeams: found.league.totalTeams,
+        /* Carried through rather than left for the hourly refresh to fill
+           in. putLeague() has bound these since 0008 and neither connect
+           branch ever passed them, so every league connected since the
+           countdown shipped stored draft_at NULL and stayed that way until
+           refreshActiveLeague() next ran — which, with staleLeague() throwing,
+           was never. Measured on the live database: both connected leagues
+           NULL, while both platforms were serving a real draft time. */
+        draftAt: found.league.draftAt || null,
+        draftStatus: found.league.draftStatus || null
       };
     } else {
       failure = found.reason || "not-found";
@@ -1527,7 +1564,10 @@ async function meLeaguesRoute(request, env, ctx) {
         ownerId: String((body && body.ownerId) || "").slice(0, 40) || null,
         name: snapshot.name,
         season: snapshot.season,
-        totalTeams: snapshot.totalTeams
+        totalTeams: snapshot.totalTeams,
+        // Same as the ESPN branch above, and for the same reason.
+        draftAt: snapshot.draftAt || null,
+        draftStatus: snapshot.draftStatus || null
       };
     }
   }
@@ -1814,7 +1854,9 @@ async function clerkWebhook(request, env) {
   return new Response(JSON.stringify({ ok: true }), { headers: json });
 }
 
-export default {
+/* The router itself. Wrapped rather than exported directly — see the default
+   export at the bottom of this object for what the wrapper is for. */
+const handler = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -2002,6 +2044,53 @@ export default {
                              : "player pool sync: " + n + " rows");
     }));
   }
+};
+
+/* ---- A route that throws must still answer with CORS ----
+
+   Without this, an unhandled exception anywhere in the router is a bare 500
+   carrying no `access-control-allow-origin` — and the browser does not report
+   that as a 500. It reports "blocked by CORS policy: No
+   'Access-Control-Allow-Origin' header is present" plus `net::ERR_FAILED`,
+   because a response the fetch spec will not let the page read is
+   indistinguishable, from the page, from one that never arrived.
+
+   That is not a cosmetic difference. staleLeague()'s missing import (see its
+   own note) presented to the owner as a CORS misconfiguration and to the app
+   as `reason: "offline"`, and it survived three days partly because every
+   piece of evidence pointed at the origin allow-list — which was, and had
+   always been, correct. `curl` said so on the first try, and `curl` sends no
+   token, so it never reached the line that threw.
+
+   With this, the same bug is a 500 the console names, `reasonForStatus(500)`
+   turns into a reason, and `wrangler tail` is confirming a diagnosis rather
+   than supplying one. The status is deliberately generic and the body carries
+   no detail: a message shaped by an exception is a way to read internals back
+   out of a route that refused you. The stack goes to the log, where
+   [observability] keeps it.
+
+   It cannot swallow a real refusal — every guard in the router returns a
+   Response rather than throwing, so nothing reaches here except a defect. */
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      return await handler.fetch(request, env, ctx);
+    } catch (err) {
+      console.error(
+        "unhandled route error:", request.method,
+        new URL(request.url).pathname, (err && err.stack) || err
+      );
+      return new Response(JSON.stringify({ error: "server-error" }), {
+        status: 500,
+        headers: Object.assign({ "content-type": "application/json" }, corsFor(request))
+      });
+    }
+  },
+
+  /* Passed through unwrapped. A scheduled handler has no response and no
+     origin, so there is nothing for the catch above to add — and swallowing
+     its throw would turn a failed cron into a silent success. */
+  scheduled: handler.scheduled
 };
 
 /* Run something after the response has gone.

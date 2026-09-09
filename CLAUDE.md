@@ -129,7 +129,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/src/hooks/useAccountUiReady.js` | "Is it safe to render Clerk's components yet": a key exists *and* we are past the first client pass. Both halves fail silently on their own — see the Accounts section. |
 | `web/.env.example` | The local-dev template. Keeps a `pk_test_` key on purpose: production's `pk_live_` belongs in the Pages dashboard, and a developer running `vite dev` against the production Clerk instance would be polluting the real user list. |
 | `worker/auth.js` | `verifiedUser()` — the one place the worker decides who is asking. Answers null for a missing, malformed, expired or forged token alike, and for no key configured at all. Read its comment before touching it: the public `verifyToken` export does not have the return shape its own internals document. |
-| `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Waits for a message sent to come back as a broadcast — twice, spaced — because `wrangler deploy` returning is not the moment the worker serves. Costs 3.8s healthy; the alternative was a gate that went red three times in ninety minutes on healthy deploys. |
+| `worker/wait-for-worker.mjs` | The settle probe between the deploy and the verify. Two round trips, then **one socket held open for 15s and asked again** — because the thing the verify step trips over is not a worker that has yet to serve, it is a socket closed under it by the rollout. Costs ~18s healthy, against a gate that went red on healthy deploys. |
 | `worker/test-auth.mjs` | Every way of being signed out, against a real `wrangler dev` — the one suite that runs the routes inside a real workerd rather than in process. |
 | `worker/test-verified-user.mjs` | The signed-in half of `auth.js`, offline. Generates a key pair, serves it as JWKS, and lets the real `verifyToken` do the real verification — `apiUrl` is the seam. Nothing is mocked, because the bug it exists for was in a real call's return shape. |
 | `worker/test-me-routes.mjs` | The `/me` routes with somebody signed in: `signedIn: true` at all, `requireUser()` letting somebody through, and `POST /me/history`'s 409. `draft-room.js` imports into Node, so no wrangler and no ports. |
@@ -140,6 +140,7 @@ the Stack section above, not a one-time migration hiccup.
 | `scripts/test_engine.py` | Runs `draft-engine.js` and `room.js` in node/deno/bun and asserts the rules from outside a browser. |
 | `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
+| `scripts/smoke-pages.mjs` | The site's post-deploy check, run by `.github/workflows/verify-pages.yml` once Cloudflare's own check run says the commit is promoted. Every URL it asks for is read off the served HTML rather than listed here, and every request carries a `?cb=`. Dependency-free, like every other Node check in CI. |
 | `tests/insights.spec.mjs` | Your Insights, against fourteen mocks the CPU really drafted rather than a fixture — a synthetic history would test the renderer and nothing about the audit, which is where every defect in this feature has been. Includes the one assertion that is not about rendering: no kicker or defense is ever named as value you left on the board, and your own kicker is still priced. |
 | `tests/` | End-to-end tests: the real pages, in a real browser, two managers in a real room. `playwright.config.mjs` now builds `web/` and serves `web/dist` rather than the repo root, so every spec runs against the same artifact a Cloudflare Pages deploy produces. |
 | `package.json` (repo root) | **Dev only.** Fetches the test runner and nothing else. Unrelated to `web/package.json` — this one still has no build step, no bundler and no runtime dependency. |
@@ -8116,6 +8117,51 @@ honest answer and the only one the reader can act on.
 empty roster; once the draft has run, the roster is its own explanation and
 a permanent "drafted" row is furniture on every screen for a season.
 
+
+### `inProgress` means the room is open, not that anybody is picking
+
+Reported 8 September 2026 from the deployed site, with the owner's own ESPN
+league drafting at 02:00 UTC. At **01:26 UTC — thirty-four minutes early —
+`inProgress` was already true**, `drafted` false, and not one of the 140
+picks made. `draftInfo()` read that boolean alone as `"drafting"`, and
+`draftPhase()` answers on the status before it ever looks at the clock, so
+the league chip said **DRAFTING NOW** and the countdown the reader actually
+wanted was suppressed entirely.
+
+**Nothing failed, and every value was correct.** ESPN opens the draft room
+ahead of the draft and says so honestly; the mapping onto Sleeper's
+vocabulary is what was wrong. That is the same shape as `gp: 1` on a defense
+— a right number answering a question nobody asked — and it is invisible to
+every check this project runs, because a chip reading DRAFTING NOW renders,
+contrasts and throws nothing.
+
+**The evidence that a draft has started is a pick, and the picks are free.**
+`draftDetail` rides on the league root with its two booleans and **nothing
+else** — `picks` needs the `mDraftDetail` view named explicitly, which is one
+more view on the same request rather than a second request. Measured: 37.5 KB
+to 68.2 KB worker-side, no extra round trip, and nothing new reaches the
+browser because `draftInfo()` extracts only the instant and the status.
+
+**An unmade pick is `playerId: -1`.** The array is pre-populated with the
+whole grid before anybody drafts — 140 slots for a ten-team, fourteen-round
+league — carrying the draft order and nothing else. So "has this started" is
+a count of picks with a real player behind them and **never `picks.length`**,
+which is 140 from the moment the grid exists.
+
+**Keepers are excluded from that count**, and that is the one direction the
+fix could have reintroduced the bug from: a keeper is assigned before the
+draft rather than during it, so a keeper league would otherwise report itself
+as drafting from the moment its grid was built.
+
+**`drafted` is read first now.** A finished draft is finished whatever the
+other boolean says, and the previous order let `inProgress` win.
+
+`worker/test-espn.mjs` covers all six cases and was confirmed red against the
+original derivation — **4 failing, the first of them the reported symptom**.
+The fallback when no picks are in hand is deliberately the old reading: it is
+wrong early and right mid-draft, which beats printing DRAFT TIME PASSED over
+a draft that is genuinely running.
+
 ### One vocabulary for two providers, decided in the adapter
 
 `'pre_draft' | 'drafting' | 'complete'` — Sleeper's own strings, passed
@@ -8276,6 +8322,147 @@ What works is stating the property over the family: every `/league/` path
 must CARRY the encoded id. That covers a sixth call the day it is added, and
 it was confirmed red against a raw splice — which the version it replaced
 was not.
+
+## A crash in a Worker arrives at the browser as a CORS error
+
+Reported 8 September 2026, with a screenshot: an account holding a Sleeper
+league and an ESPN league, on `allaccess`, looking at `#/my-league` under a
+"Connect a real league" button and a banner reading *Demo league · sample
+data*. Written down as "the site is not remembering that I've already
+connected both leagues".
+
+Nothing had been forgotten. Both rows were in D1 the whole time, the account
+was on the right tier, the worker was deployed and current, every migration
+was applied, and `listLeagues()`'s newest rung — run by hand against the
+remote database — returned both leagues in the right order.
+
+**`staleLeague()` used `nowSeconds()` and `draft-room.js` never imported
+it.** So `GET /me/leagues` raised a `ReferenceError` and answered nothing.
+
+### It was reachable only by real users, which is why nothing caught it
+
+`meLeaguesRoute()`'s GET reaches `staleLeague()` only when `leagues[0]`
+exists. Every automated caller had an empty list:
+
+- `test-me-routes.mjs`'s `stubDb()` answered `{ results: [] }` to every
+  `.all()`, so the route returned 200 and always would.
+- A keyless build renders the signed-out fallback, so no browser spec has a
+  connected league either.
+- `curl` sends no token and stops at the 401 — **which is exactly why the
+  first four probes all looked healthy.**
+
+The one population that could reach the throw was accounts with a league
+actually connected. That is the whole real user base and nobody else. **A
+branch behind "the list is not empty" is invisible to a suite whose fixtures
+are all empty**, and the emptiness is usually the default nobody chose.
+
+### And it did not report as a crash
+
+An unhandled throw in a Worker is a bare 500 carrying no
+`access-control-allow-origin`, and a response the fetch spec will not let the
+page read is indistinguishable, from the page, from one that never arrived.
+So Chrome said:
+
+```
+Access to fetch at '.../me/leagues' from origin 'https://jukeff.com' has been
+blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present
+Failed to load resource: net::ERR_FAILED
+```
+
+That names the origin allow-list, which was correct and had never been
+wrong — `ALLOWED` has carried both the apex and `www` since it was written,
+and `curl` confirmed the preflight and the 401 both carry the header. Every
+piece of evidence pointed at the one thing that was fine.
+
+**The default export wraps the router in a try/catch now**, returning a
+generic 500 *with* `corsFor(request)` and putting the stack in the log. It
+changes no behaviour on any working path — every guard in the router returns
+a Response rather than throwing — and it means the next defect in here
+arrives as a status the console names instead of a CORS mystery. The body
+stays generic on purpose: a message shaped by an exception is a way to read a
+route's internals back out of it.
+
+### What actually found it
+
+`wrangler tail`, in one line: `ReferenceError: nowSeconds is not defined`,
+`outcome=exception`, six times.
+
+Everything before that was inference, and the inference that mattered was
+**reading two timestamps against each other**. `users.last_seen_at` was
+minutes old, and `touchUser()` runs only after `GET /me` verifies a real
+token — so auth worked. `connected_leagues.refreshed_at` was three days old
+on one row and hours old on the other, and both values were traceable to
+`putLeague()` rather than to `refreshActiveLeague()` — which every
+`GET /me/leagues` runs when the row is over an hour stale. **A write that
+should have happened and did not is evidence about a route nobody can
+otherwise observe.** Ask the database, not the response — this file's own
+rule, used to locate a bug rather than to confirm a deploy.
+
+### Three defects fell out of the same audit
+
+- **`MyLeagueScreen` drew the demo for `status === 'error'`**, identically to
+  "you have no league". So a server-side 500 presented as the product having
+  forgotten somebody's leagues, silently, on the screen where that claim is
+  loudest. `leagueStore.js`'s own header already states the rule — a state
+  meaning "we could not find out" has to be renderable — and `HomeAlive`'s
+  ConnectCard and `YouScreen` already followed it. This screen was the third
+  reader of that hook and the only one still collapsing the fourth state into
+  the second. **When a fix is applied to "every caller", count the callers.**
+
+- **Both connect branches dropped `draftAt`/`draftStatus` on the floor.**
+  `putLeague()` has bound them since 0008 and neither branch ever passed
+  them, so every league connected since the countdown shipped stored
+  `draft_at` NULL and stayed that way until `refreshActiveLeague()` next ran
+  — which, with `staleLeague()` throwing, was never. Measured on the live
+  database: both rows NULL, while both platforms were serving a real draft
+  time. Two independent bugs on one feature, each hiding the other's symptom.
+
+- **The `inFlight` latch in `leagueStore.js` was suspected and was innocent.**
+  The tail showed six `GET /me/leagues` in a single sitting, so it was
+  clearing exactly as written. It was left alone at the time rather than
+  "fixed" on a theory — the same call this file records about
+  `DraftEngine.jitter()` — and then fixed on its own merits once the real
+  cause was closed. See below.
+
+### A latch with no deadline, in three copies
+
+`fetch()` has no timeout in any browser. A connection a proxy accepts and
+never answers hangs for as long as the tab is open, and Clerk's `getToken()`
+is awaited in front of it. So the eight-line latch these stores each carried
+— a module-level `inFlight`, an early `if (inFlight) return`, and a
+`.finally` to let go — was a complete answer for every way a request can END
+and no answer at all for one that does not. One wedged attempt held it for
+the session, and from that moment every retry, every `juke:auth`, every
+`juke:data-loaded` and every tab focus hit the guard and did nothing.
+
+**It was three copies, not one.** `leagueStore`, `tierStore` and
+`decisionStore`, identical. So the deadline is in `web/src/lib/singleFlight.js`
+and the three import it — which is the one thing those files' headers say
+they never do. That rule's stated REASON is testability (CI installs no npm
+dependencies, so anything reachable only through a React hook is untestable),
+and a dependency-free sibling loaded by path in bare Node keeps it exactly.
+What the rule is against is a fact written down twice, and a
+sequence-guarded latch is subtle enough that three copies would drift.
+
+**Releasing early creates a second race, and the fix has to close it in the
+same breath.** Two attempts can now be in flight at once, which was
+impossible before, so a slow answer must not overwrite a fresher one — the
+rule the player sheet already follows for news: which request an answer
+belongs to is checked when it LANDS. `work` is handed `isCurrent()`. A late
+answer that is still the newest IS applied, deliberately: the deadline exists
+to stop the latch wedging, not to discard a slow success, so firing it costs
+a briefly shown error state and never an answer.
+
+**15000ms, derived rather than picked.** Measured against the deployed worker
+on 8 September 2026, `/me/leagues` took 24–733ms of worker time over six real
+requests — so this is about twenty times the slowest healthy one and cannot
+fire on a request that was going to succeed. It is also the last rung of the
+stores' own `RETRY_MS`, the longest wait they already treat as reasonable.
+Move the two together.
+
+`scripts/test_league_state.mjs` covers it with the stubbed timers it already
+had, and both guards were confirmed red independently: dropping the deadline
+fails three assertions, dropping `isCurrent()` fails exactly one and names it.
 
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
@@ -8783,6 +8970,59 @@ finding in the whole pass was the one nothing flagged.
   gate exists for. Waiting for readiness removes the race and hides no
   failure — and the two stay legible apart: the settle step says "it never
   came up", the verify says "it came up and is wrong".
+
+### And the probe was watching the wrong property
+
+**It passed, and the verify step behind it went red anyway** — 8 September
+2026, 83 assertions passing and 39 failing. The paragraphs above diagnose
+that failure as "the worker has not started serving", and everything about
+that reading was wrong except the conclusion that there is a rollout window.
+
+**The report says which, once it is read in source order rather than as a
+count.** The first three failures were `bob joined` wanting seat 1 and
+getting 0, `bob is not host` **passing**, and `bob sees two chairs taken`
+getting 1. There is one arrangement that produces exactly those: the room
+still exists with alice as its host, and alice's CHAIR is free. That is
+`leave()` — a dropped socket frees the chair in the lobby.
+
+So alice's socket had been closed underneath her. **Reproduced value for
+value** against a local `wrangler dev` by closing the host's socket by hand
+between the two joins: seat 0, not host, one chair taken, matching production
+on every field. That is what a Durable Object's WebSockets do when a new
+version takes over — the object is evicted, storage survives, sockets do not.
+
+**Which is why a probe that opens a socket, hears itself, and closes could
+not see it.** "A message I send comes back" was true throughout the failure
+and true when the probe ran. The property the suite depends on is that a
+socket opened now still EXISTS in fifteen seconds, and nothing was asking
+that. `survives()` holds one open across a settle window and round-trips it
+again at the end — the closing trip matters as much as the silence, because a
+socket can stay open against an object that has stopped answering.
+
+Healthy cost went 3.8s to **18.2s**, measured. Verified in both directions:
+killing the worker mid-hold reports `a held socket errored — still rolling
+out, starting over` and retries, and a worker that never comes back still
+exits 1 at the deadline saying it never returned a broadcast — which stays
+distinguishable from the verify step's own failures.
+
+**The suite names the event now instead of restating it thirty-nine times.**
+Every socket `connect()` hands out is watched, closes the suite makes on
+purpose are marked, and `report()` leads with the ones nobody asked for.
+Confirmed in both directions, which is the half that matters for a
+diagnostic: unmarking a deliberate close reports `SOCKETS CLOSED WITHOUT
+BEING ASKED: alice at 2.6s`, and a healthy run prints nothing at all. **It
+printed on a green run first** — the stale-build client is closed by the
+ROOM, by design, and was being marked at the tidy-up rather than at its own
+creation. A diagnostic that fires on a healthy run is the crying-wolf problem
+it exists to fix, wearing the fix's clothes.
+
+**And the opening waits were still `sleep(400)`**, which `until()`'s own
+comment condemns in this same file — "generous against localhost and not
+always enough against a worker at the other end of a real network". The whole
+suite had adopted `until()` except the first two moves and three later ones.
+Not the cause of this failure, and the same class of latent flake: **when a
+fix is applied to every caller, count the callers.** One deliberate `sleep`
+remains, after a close, where there is no client-side condition to poll.
 - Engine: `py scripts/test_engine.py` — runs `draft-engine.js` and `room.js`
   outside a browser and asserts the snake maths, the turn order, the legality
   checks, the determinism of the CPU wobble, and the parts of a room that a
@@ -9146,13 +9386,15 @@ finding in the whole pass was the one nothing flagged.
   committed blob was correct throughout and so was the deployed card;
   `git checkout --` on the path was the whole repair.
 
-- **CI is two workflows, and neither is a gate.** `tests.yml` runs the two
-  Python suites on `pull_request` and on `push` to main — a floor, and it does
-  not cover itself. `browser-tests.yml` runs the Playwright suite daily at
-  12:30 UTC against the deployed site, which is a smoke alarm rather than a
-  gate: it tells you the morning after something rots, and blocks nothing. The
-  browser suite is still deliberately out of `tests.yml`. Three things follow
-  that have each cost something:
+- **CI is three workflows, and only the one that runs after a merge can fail
+  about the deployed site.** `tests.yml` runs the two Python suites on
+  `pull_request` and on `push` to main — a floor, and it does not cover
+  itself. `browser-tests.yml` runs the Playwright suite daily at 12:30 UTC
+  against the deployed site, which is a smoke alarm rather than a gate: it
+  tells you the morning after something rots, and blocks nothing. The browser
+  suite is still deliberately out of `tests.yml`. And `verify-pages.yml` is
+  the site's answer to what `deploy-worker.yml` has had for weeks — see below.
+  Three things follow that have each cost something:
 
   - **A conflicting pull request has no checks at all, and it looks exactly
     like a reviewed one.** This entry used to say the cause was *ordering* —
@@ -9240,6 +9482,84 @@ finding in the whole pass was the one nothing flagged.
   for every major you skip, not just the one you land on: v5 was the node24
   bump, v6 moved the credentials, v7 blocked fork checkouts for
   `pull_request_target` and `workflow_run`, which this repository does not use.
+
+### The site had no post-deploy check, and the worker has had one for weeks
+
+`deploy-worker.yml` ships the worker, settles, and drives 109 assertions over
+real sockets against the thing it just promoted. The site's entire deploy
+verification was `vite build && prerender && copy-legacy-assets` exiting 0 —
+a real guard, and one that says nothing whatsoever about the promoted origin.
+The next thing to look at the live site was `browser-tests.yml` at 12:30 UTC,
+up to a day later.
+
+**The failure that gap allows is the one this file already records**: the
+`web` root-directory move stopped publishing `og-image.png` and the root
+favicons, so `og:image` — the absolute URL baked into every link preview —
+404'd at the origin. Nothing failed, nothing logged, and it was found by
+somebody going and looking.
+
+`verify-pages.yml` closes it in about ninety seconds a merge:
+`scripts/smoke-pages.mjs` fetches the promoted homepage and confirms the
+origin serves every same-origin thing that page names.
+
+**Nothing in the check is written down twice.** Every URL is read off the
+served HTML — the hashed bundle and its CSS, the `?v=`-stamped legacy files,
+`og:image`, every icon `<link>`. A hardcoded list goes stale silently, misses
+the asset added last week and cries wolf about the one deleted yesterday.
+This one covers a new reference the moment it ships and stops covering a
+retired one the moment it goes.
+
+**Four things it took a measurement to get right, and three of them produced a
+red run on a healthy site first.**
+
+- **Comments have to be stripped before the tags are matched.** The first run
+  against production reported a `.woff2` as a 404, because `index.html`'s own
+  comment about font preloads quotes a `<link rel="preload">` tag in prose. A
+  regex cannot tell prose from markup and this repository writes very long
+  comments that quote markup.
+- **Redirects are followed.** Pages serves `/404.html` as a 308 to `/404`;
+  asserting 200 on the first response reports a healthy site as broken.
+- **The body is read, not just the status.** A status line arrives before the
+  bytes, so a truncated transfer reports 200 to anything reading `res.status`
+  — the "read the body, not the status" rule this file already states about
+  `/me/history`. Confirmed by emptying a referenced PNG in a real build: the
+  check names it `answered 200 with an empty body`. Draining is also what
+  keeps the client alive — twenty undrained bodies against a single-threaded
+  static server crashed Node outright, inside undici, with no report at all.
+- **`process.exitCode`, never `process.exit()`.** Exiting while sockets are
+  closing is a libuv assertion on Windows and the process leaves with **127**,
+  so a red run and a crashed run become indistinguishable. A deploy check
+  whose exit code lies is worse than no deploy check.
+
+**A failed Pages build must fail the job rather than reach the smoke step**,
+and that is the branch worth being careful about: when a build fails the
+*previous* deployment stays live and perfectly healthy, so the smoke check
+would pass and report green about a deploy that never landed. A guard that
+covers half a hazard reports green on the other half.
+
+**The trigger is Cloudflare's own check run, and the shape of it was measured
+rather than assumed.** There are no GitHub Deployments to watch — the only
+ones on this repository are `env=github-pages` and they stop on 18 August
+2026, the day the site moved. What Cloudflare posts is a check run named
+exactly `Cloudflare Pages`, and it appears **already complete**: `started_at`
+equals `completed_at` on all five of the most recent merges, because it is
+written retroactively rather than opened and finished. So the poll waits for
+the check to *exist*, absence means the build is still running, and the gap
+from merge to check was 40–48 seconds across those five. Ten minutes is the
+ceiling, about twelve times the worst observed.
+
+**One thing it cannot catch, said out loud rather than left to be
+discovered.** The inverse caching trap — a tab open since before the deploy,
+holding the previous `index.html` and asking for a content-hashed bundle that
+no longer exists — is invisible here by construction, because this checks what
+the *current* HTML names against the *current* origin and both halves moved
+together.
+
+**Confirmed red before being trusted green**, against a real local build of
+`web/dist` served on its own port: a deleted `favicon.ico` reports 404, a
+renamed `assets/index-*.js` reports 404 under `script resolves`, and a
+zero-length PNG reports the empty body. Exit 1, three failures named, and exit
+0 again once all three were put back.
 
 - **End to end: `npm install` once, then `npx playwright test`.** 108 tests
   across twenty-four spec files, and it starts the static server and
