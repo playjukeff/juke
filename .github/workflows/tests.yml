@@ -235,3 +235,22 @@ jobs:
       # reporting a zero stake on a roster with nothing to gain.
       - name: What a room has at stake
         run: node scripts/test_room_stakes.mjs
+
+      # A lineup's week as a mean and a spread — the two numbers the Strategy
+      # Room's win probability takes.
+      #
+      # Every assertion here is a REFUSAL, because every way of producing a
+      # plausible wrong probability is silent. A starter with no projection
+      # reads as a lineup worth less than it is; a position with no measured
+      # spread contributes no variance, which makes the matchup look MORE
+      # certain rather than less; and half a lineup against a whole one
+      # reports a near-certainty that is entirely an artefact of a roster
+      # nobody has finished setting. None of those throws and all of them
+      # render.
+      #
+      # Three mutations were confirmed red: summing the spreads instead of
+      # the variances reports 60.5 where 20.85 is right, treating a missing
+      # CV as zero reports 20.23 — a plausible-looking wrong number — and
+      # dropping the starter floor accepts a four-man lineup.
+      - name: A lineup's week, mean and spread
+        run: node scripts/test_matchup.mjs
