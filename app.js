@@ -107,9 +107,9 @@ function fillsSlot(player, slot) {
 // positions rather than inside league.starters, because they are not
 // positions and counting them as one breaks every per-position sum.
 function slotCount(slot) {
-  if (slot === "FLEX")  return league.flex;
-  if (slot === "SFLEX") return league.superflex;
-  return league.starters[slot] || 0;
+  if (slot === "FLEX")  return gradedLeague().flex;
+  if (slot === "SFLEX") return gradedLeague().superflex;
+  return gradedLeague().starters[slot] || 0;
 }
 
 // Guarded because players.js/stats.js/draft-engine.js now load off the
@@ -1466,7 +1466,7 @@ function picksUntilMyTurn() {
 /* ---- 6. Roster helpers --------------------------------- */
 
 function rosterOf(slot) {
-  return state.picks.filter((p) => p.slot === slot).map((p) => p.player);
+  return gradedPicks().filter((p) => p.slot === slot).map((p) => p.player);
 }
 
 function countAt(slot, pos) {
@@ -4545,18 +4545,80 @@ function seatPar(slot, picksMade, which, lg) {
   return row[Math.min(picksMade, row.length) - 1];
 }
 
+/* Grading a draft that is not the one in progress.
+
+   The graders read the live draft through two globals — `state.picks` and
+   `league` — which is right and cheap for the thing they were written for
+   and leaves no way to ask "how would this OTHER draft grade", which is
+   what a connected league's own draft needs.
+
+   ---- Why not save and restore ----
+
+   `gradeAndRosterAt()` does exactly that, and CLAUDE.md records the shape as
+   dangerous for a reason worth keeping: it MUTATES shared state — every
+   touched player's `drafted` flag and `state.picks` itself — and a restore
+   is only right if nothing else looked in between. seatParTable() already
+   declined the same trick, taking `jitterOf` rather than writing
+   `board[].jitter` and putting it back.
+
+   ---- What this does instead ----
+
+   Nothing is mutated. Two module-level POINTERS are swapped for the length
+   of one synchronous call, and only the graders ever read them: the live
+   draft, every renderer and the engine go on reading `state.picks` and
+   `league` directly, so there is no window in which another reader sees
+   something it did not ask for.
+
+   `board` is deliberately shared rather than swapped. It is the projection
+   source — what a player is worth — and that is the same question for every
+   draft. What is NOT shared is `board[].drafted`: no grading path reads it
+   (seatParTable simulates its own `taken` set, and analyseTeam works off
+   the pick list), which is what makes grading a foreign draft while a real
+   one is live safe rather than merely unobserved.
+
+   ---- Re-entrancy is refused, not nested ----
+
+   A nested call would restore the OUTER context on the way out of the inner
+   one, which is the save-and-restore bug arriving through the door built to
+   avoid it. There is no legitimate caller for it, so it throws. */
+let GRADE_CTX = null;
+
+function gradedPicks()  { return GRADE_CTX ? GRADE_CTX.picks  : state.picks; }
+function gradedLeague() { return GRADE_CTX ? GRADE_CTX.league : league; }
+
+function withGrading(ctx, fn) {
+  if (GRADE_CTX) throw new Error("withGrading is not re-entrant");
+  GRADE_CTX = ctx;
+  // finally, so a throw inside the graders cannot leave every later call
+  // reading a draft nobody is looking at.
+  try { return fn(); } finally { GRADE_CTX = null; }
+}
+
+/* Grade an arbitrary draft. `picks` is state.picks' own shape —
+   { slot, round, overall, player } — and `shape` is a league object.
+
+   Answers analyseDraft()'s array untouched, so every consumer that already
+   reads a graded room reads this one, and there is exactly one grader. */
+function gradeDraft(picks, shape) {
+  if (!Array.isArray(picks) || !shape) return null;
+  return withGrading({ picks: picks, league: shape }, function () {
+    return analyseDraft();
+  });
+}
+
+
 function analyseTeam(slot, extra) {
   // extra: an optional hypothetical additional player, for simulating "what
   // would this component become if I drafted him" (see bestUpgrade() below)
   // without a second copy of this function's own logic. Every real caller
   // passes nothing, so roster is exactly rosterOf(slot), unchanged.
   const roster = extra ? rosterOf(slot).concat([extra]) : rosterOf(slot);
-  const picks  = state.picks.filter((p) => p.slot === slot);
+  const picks  = gradedPicks().filter((p) => p.slot === slot);
   /* Both filters, and they feed the value sum and both callouts alike — a
      pick that cannot meaningfully be reached for cannot be the biggest reach
      either, which is the same lottery the kicker exclusion was written to
      stop. */
-  const lastPick = league.teams * league.rounds;
+  const lastPick = gradedLeague().teams * gradedLeague().rounds;
   const judged = picks.filter((p) => freelyChosen(p) && reachableRank(p, lastPick));
   const lineup = bestLineup(roster);
 
@@ -4638,7 +4700,7 @@ function analyseTeam(slot, extra) {
     return !lineup.some(function (s) { return s.player === p; });
   });
   ["RB", "WR"].forEach(function (pos) {
-    if (!league.starters[pos]) return;      // a league that starts none needs none
+    if (!gradedLeague().starters[pos]) return;      // a league that starts none needs none
     /* Ranked by projection, not by ADP, for the same reason aboveReplacement()
        is: `posRank` is where the market takes him and `projPosRank` is what we
        think he is worth, and this asks the second question. A bench receiver
@@ -4835,7 +4897,7 @@ function scaleAcross(all, key) {
 
 function analyseDraft() {
   const all = [];
-  for (let i = 0; i < league.teams; i++) all.push(analyseTeam(i));
+  for (let i = 0; i < gradedLeague().teams; i++) all.push(analyseTeam(i));
 
   /* startersVsPar, not starters — the seat is priced out before the room is
      ranked. `startersScaled` is then aliased to it rather than computed
@@ -12349,6 +12411,9 @@ window.JukeEngine = {
      by. perGame() above returns an em dash because it renders; this
      returns a number or nothing, because its caller does arithmetic on
      it and a 0 would be a real and very different projection. */
+  /* Grade a draft that is not the one in progress — a connected league's
+     own, replayed against today's board. Mutates nothing: see withGrading. */
+  gradeDraft:   gradeDraft,
   projPerGameUnder: projPerGameUnder,
   projPerGame: function (player) {
     if (!player) return null;
