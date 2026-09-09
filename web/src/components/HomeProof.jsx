@@ -214,13 +214,27 @@ function useEngineData(read, enabled) {
 
    Flat is not "disabled" and must not read as broken: it is a complete,
    confident answer that simply has nothing behind it, which is exactly the
-   thing being argued about. Dashed hairline (the idiom the hero's own
-   draft-with-friends row already uses), body face, muted ink, and
-   deliberately no tabular figures — the mono numerals are the tell that a
-   number was measured, and they belong on the other side of the seam. */
+   thing being argued about. Body face, muted ink, and deliberately no
+   tabular figures — the mono numerals are the tell that a number was
+   measured, and they belong on the other side of the seam.
+
+   ---- It was a dashed hairline, and that was the wrong borrowing ----
+
+   The first version took "the idiom the hero's own draft-with-friends row
+   already uses", and that row is a live Juke feature. Measured, the two
+   computed to an identical `1px dashed rgb(42,49,56)` 900px apart — so the
+   page's own device for "the inferior thing somebody else hands you" was
+   also its device for "a secondary Juke action". A shipped feature wearing
+   the loser's costume weakens both readings, and the section's whole
+   rhetoric is that costume.
+
+   It is a recessed well now: no border, a ground darker than the page,
+   against a lit card raised above it. That reads as depth rather than as a
+   second kind of card, it needs no new token, and it leaves the dashed
+   hairline free to mean one thing everywhere. */
 function Flat({ label, children }) {
   return (
-    <div className="rounded-[18px] border border-dashed border-line-hairline px-5 py-6 sm:px-6 sm:py-7">
+    <div className="rounded-[18px] bg-black/30 px-5 py-6 sm:px-6 sm:py-7">
       <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-muted lg:hidden">
         {label}
       </span>

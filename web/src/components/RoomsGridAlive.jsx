@@ -55,7 +55,17 @@ function LeadCard({ room, lgSpan }) {
         <span className="block font-mono text-[10px] tracking-[0.1em]" style={{ color: room.accent }}>
           FREE · {room.season.toUpperCase()}
         </span>
-        <span className="mt-[3px] block font-display text-[22px] font-bold leading-[1.05] text-white">
+        {/* Same size and same reserve as LockedCard's title, because the
+            five cards sit in ONE row and their text blocks are all
+            bottom-anchored. At 22px against the locked cards' 20px the two
+            reserves resolve to different heights (46.2 vs 42), so the row
+            still stepped even with both reserving two lines. The lead
+            card's prominence comes from its accent eyebrow and accent-tinted
+            tile, which is a stronger signal than two pixels of type.
+
+            This grid is shared with the Rooms lobby, so the alignment fix
+            lands on both screens. */}
+        <span className="mt-[3px] block min-h-[2.1em] font-display text-[20px] font-bold leading-[1.05] text-white">
           {room.name}
         </span>
         {/* The same two-line box the locked cards give their hook, and
@@ -133,7 +143,14 @@ function LockedCard({ room, wide = false, lgSpan }) {
             "The Strategy Room" needs the extra line at 246px and the
             card already reserves a two-line box below the title, so the
             bottom-anchored baseline is unaffected. */}
-        <span className="mt-[3px] block font-display text-[20px] font-bold leading-[1.05] text-white">
+        {/* Two lines reserved, for the reason the hero cards now do it.
+
+            "The Prospect Room" wraps in a 246px card and the other four do
+            not — measured, a 46px title against 21-23px, which put card
+            one's eyebrow 23-25px above the rest of its own row. These
+            blocks are bottom-anchored under a fixed min-height, so a title
+            that takes a second line lifts everything above it. */}
+        <span className="mt-[3px] block min-h-[2.1em] font-display text-[20px] font-bold leading-[1.05] text-white">
           {room.name}
         </span>
         {/* No `block` here: `line-clamp-*` works by setting

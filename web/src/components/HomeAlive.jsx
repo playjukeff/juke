@@ -153,8 +153,22 @@ function Card({ gradient, eyebrow, eyebrowColor, title, sub, glyph, href, dataHe
         >
           {title}
         </span>
+        {/* Two lines reserved, because these cards bottom-anchor.
+
+            Measured at 1440: both cards top at y=482 and are both 178px
+            tall with identical padding — and their titles sat 20px apart,
+            at 586 against 566. `justify-between` pins the text block to the
+            floor, so the Connect card's caption wrapping to two lines
+            (39px against 20px) floated everything above it upward. Nothing
+            was wrong with either card alone; they only disagree side by
+            side, which is the one way anybody actually sees them.
+
+            Reserved in `em` rather than px so it follows the 12px -> 13px
+            step, and 4.5em below `sm` because a 163px card at 375 takes
+            three lines for the platform line. Same fix RoomsGridAlive
+            already uses on its hook, for the same reason. */}
         <span
-          className="mt-1 block text-[12px] sm:text-[13px]"
+          className="mt-1 block min-h-[4.5em] text-[12px] leading-[1.5] sm:min-h-[3em] sm:text-[13px]"
           style={{ color: gradient ? '#14343d' : '#8A9BAA' }}
         >
           {sub}
