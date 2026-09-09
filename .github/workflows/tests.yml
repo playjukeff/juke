@@ -177,3 +177,17 @@ jobs:
       # port, like every other step in this job.
       - name: Pages settle probe
         run: node scripts/test_wait_for_pages.mjs
+
+      # Where a connected league is in its season. Here for the reason the
+      # two state machines above are: every surface that draws it sits inside
+      # Clerk's <SignedIn>, which a keyless build never renders.
+      #
+      # It earns a suite because the file just gained two phases it spent its
+      # whole life refusing, and the moment a third value became possible
+      # every caller written as `phase === 'in-season'` became a latent bug --
+      # MyLeagueScreen gated its entire week strip on exactly that. So the
+      # assertions are as much about underWay() as about the phase, and the
+      # refusal is asserted in both directions: a Sleeper league still has no
+      # schedule and must not be guessed into a playoff by week number.
+      - name: Season phase
+        run: node scripts/test_season_phase.mjs

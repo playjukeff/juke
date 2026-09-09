@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import AppShell from './shell/AppShell.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
-import { seasonPhase } from '../lib/seasonPhase.js'
+import { seasonPhase, underWay } from '../lib/seasonPhase.js'
 import LeagueBar from './myleague/LeagueBar.jsx'
 import WeekStrip from './myleague/WeekStrip.jsx'
 import StandingsPanel from './myleague/StandingsPanel.jsx'
@@ -175,7 +175,12 @@ export default function MyLeagueScreen() {
 
   const ready = snapStatus === 'ready' && !!snapshot
   const phase = ready ? seasonPhase(snapshot) : 'unknown'
-  const inSeason = ready && phase === 'in-season'
+  /* `underWay(phase)` rather than `phase === 'in-season'`. The strip and the
+     past-week panel belong to the whole post-draft season, and seasonPhase()
+     now splits that into in-season / playoffs / complete — so the equality
+     this used to make would have taken the strip away in week 15, silently,
+     in the weeks a manager looks at it most. */
+  const inSeason = ready && underWay(phase)
 
   /* The strip is selectable now, which it was not: it had no onSelect at
      all, on the rule that a control which cannot act must not be offered.

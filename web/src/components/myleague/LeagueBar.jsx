@@ -3,7 +3,17 @@ import { platformFor } from '../shell/leaguePlatforms.js'
 import { seasonPhase } from '../../lib/seasonPhase.js'
 import { ordered, hasPlayed } from './StandingsPanel.jsx'
 
-const PHASE_LABEL = { draft: 'DRAFT', 'in-season': 'IN SEASON' }
+/* Absent rather than wrong for a phase this bar has no word for: an
+   unmapped phase reads as undefined and prints nothing, which is what
+   `phase !== 'unknown'` below already guards. A Sleeper league never reaches
+   the last two, because it publishes no schedule to tell them apart —
+   see seasonPhase.js. */
+const PHASE_LABEL = {
+  draft: 'DRAFT',
+  'in-season': 'IN SEASON',
+  playoffs: 'PLAYOFFS',
+  complete: 'SEASON OVER',
+}
 
 function ordinal(n) {
   const rem100 = n % 100
