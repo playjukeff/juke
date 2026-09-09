@@ -63,6 +63,33 @@ const PROBE_MS = 8000;      // one round trip, matching until()'s own patience
 const GAP_MS = 3000;        // between the two successes the deadline needs
 const RETRY_MS = 2000;      // after a failed probe
 
+/* How long a socket has to STAY open before the suite is allowed to start.
+
+   ---- The property this file was probing was not the one that failed ----
+
+   Everything above proves "a message I send comes back to me". That was
+   true throughout the failure it was written for, and it stayed true on 8
+   September 2026 when this step passed and the verify step behind it went
+   red anyway — 83 assertions passing, 39 failing.
+
+   The signature named the real thing once it was read properly. `bob
+   joined` wanted seat 1 and got 0; `bob is not host` PASSED. So the room
+   still existed with alice as its host, and alice's CHAIR was free — which
+   is `leave()`, because a dropped socket frees the chair in the lobby. It
+   was not a room that had not started serving. It was a room whose host
+   socket had been closed underneath her.
+
+   That is what a Durable Object's WebSockets do when a new version of the
+   worker takes over: the object is evicted, storage survives, sockets do
+   not. Reproduced exactly, against a local wrangler dev, by closing the
+   host's socket by hand between the two joins — bob came back seat 0, not
+   host, one chair taken, matching production value for value.
+
+   So a probe that opens a socket, hears itself, and closes cannot see this
+   at all. It has to HOLD one open across the window and require that
+   nothing closes it. */
+const SURVIVE_MS = Number(process.env.SETTLE_SURVIVE_MS || 15000);
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* One round trip: connect, say something, hear it back.
@@ -121,6 +148,74 @@ function probe() {
   });
 }
 
+/* Phase two: one socket, held open, still working at the end.
+
+   Deliberately not a longer PROBE_MS — a slow round trip and a socket that
+   is torn out from under you are different facts, and only the second one
+   is what the verify step trips over. So this waits in the middle, on
+   purpose, doing nothing: the whole question is whether anything closes it.
+
+   The closing round trip matters as much as the silence. A socket can stay
+   open against an object that has stopped answering, which would be the
+   same false pass this file already exists to prevent, one layer along.
+
+   Resolves a reason rather than a boolean so the log can tell "it closed on
+   me" (still rolling out) from "it went quiet" (worse) — the same line the
+   deadline message at the bottom draws. */
+function survives(holdMs) {
+  return new Promise((resolve) => {
+    const room = "survive" + Math.floor(Math.random() * 1000000);
+    const q = new URLSearchParams({
+      member: "settle-probe",
+      name: "Settle",
+      league: JSON.stringify({ teams: 4, rounds: 3 }),
+      clock: "60",
+      data: "v1"
+    });
+
+    let ws;
+    let done = false;
+    let waiting = null;          // the text of the round trip in flight
+    const finish = (reason) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { ws.close(); } catch {}
+      resolve(reason);
+    };
+    const timer = setTimeout(() => finish("went quiet"), holdMs + PROBE_MS * 2);
+
+    const say = () => {
+      waiting = "settle-" + Math.random().toString(36).slice(2);
+      ws.send(JSON.stringify({ type: "chat", text: waiting }));
+    };
+
+    try {
+      ws = new WebSocket(`${BASE}/room/${room}?${q}`);
+    } catch {
+      finish("could not open");
+      return;
+    }
+
+    let heard = 0;
+    ws.addEventListener("open", () => say());
+    ws.addEventListener("message", (e) => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+      if (msg.type !== "state" || !waiting) return;
+      const chat = (msg.room && msg.room.chat) || [];
+      if (!chat.some((m) => m.text === waiting)) return;
+      waiting = null;
+      heard += 1;
+      if (heard === 1) setTimeout(() => { if (!done) say(); }, holdMs);
+      else finish(null);         // survived the hold and still answering
+    });
+    ws.addEventListener("error", () => finish("errored"));
+    // The one this whole function exists for.
+    ws.addEventListener("close", () => finish("closed under us"));
+  });
+}
+
 const started = Date.now();
 let streak = 0;
 let attempts = 0;
@@ -140,7 +235,26 @@ while (Date.now() - started < DEADLINE_MS) {
   streak += 1;
   console.log(`${at}  probe ${attempts}: round trip ok (${streak} of 2)`);
   if (streak >= 2) {
-    console.log(`the worker is serving broadcasts after ${attempts} probes`);
+    /* Serving. Now the harder question, and the one the verify step
+       actually depends on: does a socket opened now still exist in fifteen
+       seconds? A rollout that is still landing closes it, and the whole
+       failure this file is for is that closure happening a moment later,
+       inside the suite, where it reads as forty broken assertions. */
+    const why = await survives(SURVIVE_MS);
+    const then = ((Date.now() - started) / 1000).toFixed(1) + "s";
+    if (why) {
+      // Back to the start rather than straight to another hold: whatever
+      // took that socket may still be taking them, and the cheap round trip
+      // is how this file already asks "is it serving at all".
+      console.log(`${then}  a held socket ${why} — still rolling out, starting over`);
+      streak = 0;
+      await sleep(RETRY_MS);
+      continue;
+    }
+    console.log(
+      `${then}  a socket held ${SURVIVE_MS}ms and still answered ` +
+      `— serving, and settled, after ${attempts} probes`
+    );
     process.exit(0);
   }
   await sleep(GAP_MS);
