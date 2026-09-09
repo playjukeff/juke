@@ -81,7 +81,16 @@ const LEAGUE = {
   /* waiver_type 2 is Sleeper's FAAB. Without it a budget means nothing --
      Sleeper carries a default 100 on leagues that run an order, the same
      trap ESPN's acquisitionBudget sets. */
-  settings: { waiver_budget: 100, waiver_type: 2, waiver_clear_days: 2, playoff_teams: 6 },
+  /* `trade_deadline` is a WEEK number rather than an instant, which is the
+     whole reason the snapshot carries both fields — ESPN publishes the other
+     one. `disable_trades` is named explicitly for the same reason
+     `waiver_type` is: a league that forbids trading still carries a
+     deadline week, so reading the week alone counts a league down to a
+     deadline it can never reach. */
+  settings: {
+    waiver_budget: 100, waiver_type: 2, waiver_clear_days: 2, playoff_teams: 6,
+    trade_deadline: 11, disable_trades: 0,
+  },
 };
 
 const USERS = [
@@ -128,6 +137,12 @@ ROUTES = healthy();
   eq("and it is a FAAB league", s.waiver.type, "faab");
   eq("with its waiver period in hours", s.waiver.hours, 48);
   eq("playoff teams", s.playoffTeams, 6);
+  eq("the trade deadline is a week here", s.tradeDeadline.week, 11);
+  /* Sleeper publishes no instant, and it is absent rather than derived: a
+     week becomes a date only with the table saying when each week starts,
+     which neither adapter has. */
+  eq("and no instant, which Sleeper does not publish", s.tradeDeadline.at, null);
+  eq("and trading is on", s.tradeDeadline.disabled, false);
   eq("every roster becomes a team", s.teams.length, 3);
 
   const [t1, t2, t3] = s.teams;
