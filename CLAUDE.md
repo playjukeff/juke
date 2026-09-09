@@ -8431,6 +8431,36 @@ node suite can drive them without a browser — the move `countdown.js` already
 made, and the reason its own tests exist. `StandingsPanel` re-exports both,
 so no consumer changed.
 
+
+### A roster and a board are read in different orders
+
+Reported with the standings and lineup-order fixes above, from the same
+screen: the Trade Room's "You send" list read **+85, +68, +36** where a
+reader was looking for QB, RB, RB, WR, WR.
+
+**`tradeBoard.js` answers both questions and had been answering them the
+same way.** `rosterValues()` is one team's roster; `valueBoard()` is every
+tradeable player in the league. Best-first is exactly right for the second
+and wrong for the first, and both sorted best-first.
+
+**The file's own comment already contained the argument.** It explains that
+an unpriceable player is kept here and dropped on the waiver board, because
+"the list is a ROSTER — leaving somebody off it would be telling a reader
+they do not own a player they do own". The same reasoning one step further
+says show it the way the manager holds it.
+
+So `rosterValues()` sorts nothing at all now: it preserves the roster's own
+order, which since `espn.js` started sorting by slot IS the lineup order —
+starters as the league fields them, then the bench. **The unpriceable dash
+falls where the player sits** rather than being swept to the bottom, which
+is the same answer as keeping him at all.
+
+**`valueBoard()` is untouched and must stay untouched.** That is the
+invariant this change could have broken silently, and it is what
+`worker/test-trade-board.mjs` exists to pin — the roster assertions were
+confirmed red against the old sort, and the board assertions pass either
+way, which is the point of having both in one suite.
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a

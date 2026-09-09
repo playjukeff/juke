@@ -38,15 +38,33 @@ export function valueOf(player, gapOf) {
   return typeof gap === 'number' ? gap : null
 }
 
-/* Every player one team holds, best first, with the unpriceable ones kept
- * and marked rather than dropped.
+/* Every player one team holds, in the order the league fields them, with
+ * the unpriceable ones kept and marked rather than dropped.
  *
  * This differs from the waiver board on purpose. There, an unranked player
  * is DROPPED, because a targets list is a recommendation and an unranked
  * player at the bottom of it still reads as "worse than the one above".
  * Here the list is a ROSTER — leaving somebody off it would be telling a
  * reader they do not own a player they do own, which is a worse error
- * than showing a dash. */
+ * than showing a dash.
+ *
+ * ---- And a roster is read in lineup order, not value order ----
+ *
+ * It sorted best-first, which is the right order for the Value Board below
+ * and the wrong one here for the reason the paragraph above already gives:
+ * this is a roster, and the argument that says keep an unpriceable player
+ * in it says show it the way the manager holds it. Reported as the ordering
+ * being "complete wrong" on a real team — QB, RB, RB, WR, WR, FLEX, K, DEF
+ * is what a reader is looking for and +85, +68, +36 is what they got.
+ *
+ * So the roster's own order is preserved, which since espn.js started
+ * sorting by slot IS the lineup order: starters as the league fields them,
+ * then the bench. Nothing sorts here at all now — the null-value dash falls
+ * where the player sits rather than at the bottom, which is the same answer
+ * as keeping him at all.
+ *
+ * valueBoard() below is untouched and must stay untouched: it is a board of
+ * everything tradeable in the league, where best-first is the whole point. */
 export function rosterValues(team, byId, gapOf) {
   if (!team || !byId) return []
   const rows = (team.players || [])
@@ -56,14 +74,6 @@ export function rosterValues(team, byId, gapOf) {
       return player ? { player, value: valueOf(player, gapOf) } : null
     })
     .filter(Boolean)
-  rows.sort((a, b) => {
-    // Priceable players first, then by value. A dash sorts to the bottom
-    // rather than to the top, which is where a null would land untreated.
-    if (a.value === null && b.value === null) return 0
-    if (a.value === null) return 1
-    if (b.value === null) return -1
-    return b.value - a.value
-  })
   return rows
 }
 
