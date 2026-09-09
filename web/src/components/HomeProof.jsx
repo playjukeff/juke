@@ -9,9 +9,22 @@ import { motion, useReducedMotion } from 'framer-motion'
    tabular figures. Right of the seam is the same number with its working,
    drawn on a real surface out of live board data.
 
-   The seam is the whole idea, so it is one continuous rule rather than a
-   border per row: a line that restarts at every heading reads as four
-   unrelated comparisons, which is the arrangement this replaces.
+   The seam runs beside the CELLS and stops at every heading, and that is
+   a correction rather than a compromise. It shipped as one absolutely
+   positioned rule spanning the whole section, on the reasoning that a line
+   restarting at each heading would read as four unrelated comparisons —
+   and that reasoning ignored what the headings are. Each `<h2>` spans both
+   columns, because the claim belongs to the pair rather than to either
+   side of it, so a full-height rule at the centre runs straight through
+   all four of them: measured at 1440, a 2,260px line at x=713 crossing
+   four heading boxes running 113 to 1313. Reported as text bleeding
+   through the line, which is exactly what it was.
+
+   A seam separates two things. At a heading there is one thing, so there
+   is nothing to separate and no line — and the four segments still read as
+   one system because they sit at the same x with the same weight. What
+   would have been wrong is a border per CARD, which is a different thing
+   entirely: that draws a box, this draws a division.
 
    ---- Everything here is computed, and that is the point ----
 
@@ -378,7 +391,7 @@ function PairRankReason() {
         </Flat>
       </div>
 
-      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
         <Joint />
         <Lit label="What Juke shows">
           {d ? (
@@ -493,7 +506,7 @@ function PairYourRules() {
         </Flat>
       </div>
 
-      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
         <Joint />
         <Lit label="What Juke shows">
           {/* The page's one authored interaction. Everything else on this
@@ -659,7 +672,7 @@ function PairGraded() {
         </Flat>
       </div>
 
-      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
         <Joint />
         <Lit label="What Juke shows">
           {d ? (
@@ -851,7 +864,7 @@ function PairRecord() {
         </Flat>
       </div>
 
-      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
         <Joint />
         <Lit label="What Juke shows">
           {d ? (
@@ -941,17 +954,6 @@ function PairRecord() {
 export default function HomeProof() {
   return (
     <section aria-label="What Juke shows that a ranking cannot" className="relative mt-16 pb-8 sm:mt-20 sm:pb-14">
-      {/* The seam. One absolutely-positioned rule down the middle rather
-          than a border on each right-hand cell, so it does not break at
-          every heading — a line that restarts four times is four
-          comparisons, not one argument. Desktop only: below `lg` the cells
-          stack, the seam has no middle to sit on, and each cell carries
-          its own side label instead. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px bg-line-hairline lg:block"
-      />
-
       <div className="hidden lg:grid lg:grid-cols-2">
         <span className="pr-12 font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-muted">
           What you're handed
