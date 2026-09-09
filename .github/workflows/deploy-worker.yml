@@ -160,6 +160,14 @@ jobs:
       - name: Verify the signed-in routes
         run: node worker/test-me-routes.mjs
 
+      # A connected league's own scoring. The stat ids in scoring.js were
+      # derived from real player lines rather than looked up, and a wrong
+      # one does not throw -- it scores the wrong category and reports
+      # nothing, which is the failure this gate exists for. Offline: no
+      # wrangler, no ports, no network.
+      - name: Verify the league scoring translation
+        run: node worker/test-scoring.mjs
+
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a

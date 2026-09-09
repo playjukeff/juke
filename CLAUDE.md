@@ -8519,6 +8519,92 @@ Move the two together.
 had, and both guards were confirmed red independently: dropping the deadline
 fails three assertions, dropping `isCurrent()` fails exactly one and names it.
 
+
+## A connected league's scoring, which Juke fetched and threw away
+
+Reported 8 September 2026: a Strategy Room week reading **131.8** for a
+full-PPR league. It should have read about **145.1**.
+
+**The rooms scored a real league with `league.rules` — the DRAFT ROOM's
+table**, whatever the reader last set for a mock. `projPerGame()` reads
+`player.projPts`, and `buildProjections()` scores that with the mock table,
+so a full-PPR league seen through a half-PPR default lost half a point a
+catch on every starter. Two rules differed, not one: **`rec` 0.5 against 1.0
+(+11.3/wk) and `pass_yd` 0.04 against 0.05 (+2.0/wk)**.
+
+**The total was the smaller half.** `bestSwaps()` ranks a lineup with those
+same rules, so reception-heavy players were priced below touchdown-heavy
+ones and the *advice* was skewed. A number being wrong is visible; advice
+being wrong is not.
+
+**And none of it was missing data.** ESPN's 53 scoring rules ride on
+`mSettings`, which `leagueSnapshot()` already requested on every call.
+`worker/espn.js` extracted nothing from them.
+
+### The stat ids were derived, not looked up
+
+A wrong statId does not throw — it scores the wrong category and reports
+nothing, which is this project's most expensive class of bug. So every id in
+`ESPN_STAT_IDS` was cross-referenced against **319 players** on 8 September
+2026: offence matched by name and defences by club, every player's real 2025
+line taken from ESPN and from `stats.js`, keeping only ids that agreed on
+**every** player with at least four non-zero samples. All 24 are 100%.
+
+**Value equality alone is not enough, and receptions prove it.** ESPN carries
+receptions under **both statId 41 and 53**, identical on every player. The
+derivation matched both; only 53 appears in `scoringItems`. Mapping 41 would
+have read **every league in the world as zero-PPR**, silently. So a candidate
+is kept only when it is the id the scoring table actually references, and an
+ambiguous key is left out rather than guessed.
+
+### A defence's real number is in the override, in both directions
+
+An item carries flat `points` and a `pointsOverrides` map keyed by position
+id, and **16 is D/ST**. A league paying a defence differently puts the real
+number there with `points: 0` beside it, so reading `points` alone reports
+every defensive rule as zero — an unscored defence rather than an error.
+
+**The reporting path had the identical bug and the test caught it.**
+`unmapped` — the list of what a league scores that Juke cannot name —
+filtered on the flat value, so a rule paying only a defence looked like it
+scored nothing and was dropped from the very list whose job is to admit the
+gap. Measured on a real league: **15 reported before the fix, 29 after.**
+Fourteen silent omissions in the honesty mechanism itself.
+
+### What is a rule at all stays in app.js
+
+The worker translates **vocabulary** and decides nothing: `scoring.js`
+answers rule names to numbers, and `rulesFromLeague()` in `app.js` merges
+what it recognises onto `DEFAULT_RULES`. The worker holding its own copy of
+the 49 keys is the written-down-twice failure with a scoring table in it,
+and it would drift the first time either side gained a rule.
+
+**An unrecognised key is dropped rather than added.** `pointsUnder()` walks
+the rules object, so an unknown key naming a stat the pipeline never stored
+would contribute a silent zero and read as though it had counted.
+
+**Sleeper needs no id table, and that is not luck** — `STAT_FIELDS` took its
+key names, so `scoring_settings` is already this vocabulary.
+
+**An absent ESPN category is a real zero; an absent Sleeper key is not.**
+ESPN enumerates what it scores, so a category it omits is one the league does
+not pay for. Sleeper omits what it does not score, so its absence means "left
+at the default". The two adapters differ here on purpose.
+
+### Still open
+
+**Fifteen of the league's rules map and 29 do not** — return and defensive
+touchdowns, the shorter field-goal bands, the deeper points-allowed tiers.
+Each needs the same evidence the first 24 got; 2025 gave too few non-zero
+samples to separate them from their aliases. They are reported, never
+guessed.
+
+**The on-screen change is unverified by anything automated.** Every room is
+behind Clerk's `<SignedIn>` and a keyless build renders none of them — the
+same gap `league-connect.spec.mjs` and `rail-nav.spec.mjs` already record.
+What is verified is the translation (offline suite), the live read of a real
+league, and the build.
+
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
 A content audit on 2 September 2026 found the same defect in eight places,

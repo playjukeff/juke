@@ -50,6 +50,8 @@
    entitled to reuse across them.
 
    Leave it unset in production. */
+import { rulesFromSleeper } from "./scoring.js";
+
 export const SLEEPER_API = "https://api.sleeper.app/v1";
 
 // Long enough that a page navigation is free, short enough that a waiver
@@ -227,6 +229,7 @@ export async function leagueSnapshot(leagueId, base) {
   });
 
   const draft = pickDraft(drafts, league.season);
+  const scoring = rulesFromSleeper(league.scoring_settings);
 
   return {
     leagueId: String(league.league_id),
@@ -245,6 +248,12 @@ export async function leagueSnapshot(leagueId, base) {
     // The two settings a room actually branches on. Everything else in
     // league.settings stays at Sleeper until something needs it.
     waiverBudget: Number((league.settings || {}).waiver_budget) || null,
+    /* The league's own scoring, in Juke's vocabulary -- which for Sleeper
+       IS its own, because STAT_FIELDS took these key names from it. See
+       scoring.js for why a room may not go on scoring a real league with
+       the Draft Room's mock table. */
+    rules: scoring.rules,
+    scoringUnmapped: scoring.unmapped,
     playoffTeams: Number((league.settings || {}).playoff_teams) || null,
     teams,
   };
