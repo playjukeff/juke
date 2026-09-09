@@ -23,12 +23,32 @@ name: Verify the Pages deploy
 # browser-tests.yml already runs it daily against the same site.
 #
 # One thing it cannot catch, said out loud rather than left to be discovered:
-# the inverse caching trap. A tab that has been open since before the deploy
-# holds the previous index.html and asks for a content-hashed bundle that no
-# longer exists. This checks what the CURRENT HTML names against the CURRENT
-# origin, and both halves moved together -- so that failure is invisible here
-# by construction. CLAUDE.md's section on it is the record; nothing automated
-# covers it.
+# the inverse caching trap as a READER meets it. A tab that has been open since
+# before the deploy holds the previous index.html and asks for a content-hashed
+# bundle that no longer exists. Nothing automated covers that; CLAUDE.md's
+# section on it is the record.
+#
+# ---- Corrected in place, 9 September 2026 ----
+#
+# This paragraph used to end "and both halves moved together -- so that failure
+# is invisible here by construction", and 900d2d7 falsified it on this gate's
+# first real merge. The homepage fetch and the asset fetches are two requests
+# seconds apart, and they can straddle a promotion: the run reported
+#
+#     x script resolves: /assets/index-BYHfsb0c.js   answered 404
+#     x link resolves:   /assets/index-ByTzdcTq.css  answered 404
+#
+# against a deploy that was entirely healthy -- both names are the PREVIOUS
+# build's, and smoke-pages.mjs cache-busts every request, so neither half was a
+# stale edge entry. The origin genuinely served old HTML and a new asset
+# namespace. "Both halves moved together" was an assumption about atomicity,
+# not an observation, and a gate that cries wolf on its first merge is one
+# nobody reads by the end of the week.
+#
+# scripts/wait-for-pages.mjs is the settle step that closes it, and its own
+# header carries the full argument -- including why it is a settle rather than
+# a retry, which is the distinction CLAUDE.md already draws for
+# wait-for-worker.mjs.
 
 on:
   push:
@@ -57,9 +77,10 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    # Ten minutes of polling plus a minute of checks. A backstop against a
-    # hang, not a target: a healthy run is about ninety seconds end to end.
-    timeout-minutes: 15
+    # Ten minutes waiting for the Pages check, five for the origin to settle,
+    # and a minute of checks. A backstop against a hang, not a target: a
+    # healthy run is about a hundred seconds end to end.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v7
@@ -128,6 +149,20 @@ jobs:
             fi
             sleep 10
           done
+
+      # The Cloudflare check says the BUILD finished. It does not say the apex
+      # is serving it -- see the correction at the head of this file, and
+      # scripts/wait-for-pages.mjs for the whole argument. Measured on a
+      # healthy origin this costs one round trip plus a five-second gap.
+      #
+      # A settle, deliberately not a retry of the step below: a retry makes a
+      # site that is broken half the time look green. The two also stay
+      # legible apart -- this step says "it never came up", the smoke check
+      # says "it came up and is wrong".
+      - name: Wait for the promotion to settle
+        env:
+          SITE: https://jukeff.com
+        run: node scripts/wait-for-pages.mjs "$SITE"
 
       - name: Smoke the promoted site
         env:

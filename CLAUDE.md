@@ -141,6 +141,7 @@ the Stack section above, not a one-time migration hiccup.
 | `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
 | `scripts/smoke-pages.mjs` | The site's post-deploy check, run by `.github/workflows/verify-pages.yml` once Cloudflare's own check run says the commit is promoted. Every URL it asks for is read off the served HTML rather than listed here, and every request carries a `?cb=`. Dependency-free, like every other Node check in CI. |
+| `scripts/wait-for-pages.mjs` | The settle step between that check and that smoke. Cloudflare's check means the BUILD finished, not that the apex serves it — so this waits for the origin's HTML to name assets the origin also serves, twice, spaced, on the same build. A settle and never a retry, for `wait-for-worker.mjs`'s reason. |
 | `tests/insights.spec.mjs` | Your Insights, against fourteen mocks the CPU really drafted rather than a fixture — a synthetic history would test the renderer and nothing about the audit, which is where every defect in this feature has been. Includes the one assertion that is not about rendering: no kicker or defense is ever named as value you left on the board, and your own kicker is still priced. |
 | `tests/` | End-to-end tests: the real pages, in a real browser, two managers in a real room. `playwright.config.mjs` now builds `web/` and serves `web/dist` rather than the repo root, so every spec runs against the same artifact a Cloudflare Pages deploy produces. |
 | `package.json` (repo root) | **Dev only.** Fetches the test runner and nothing else. Unrelated to `web/package.json` — this one still has no build step, no bundler and no runtime dependency. |
@@ -3345,8 +3346,31 @@ against the fresh address for the full ten minutes. New HTML, old JavaScript,
 at a URL designed to prevent exactly that. It happened once, on the profile
 deploy. **A Cloudflare Pages deployment is an atomic snapshot**, so the HTML
 and the assets it names go live together and there is no window to race. That
-is the platform's contract rather than something measured here, and it is the
-single biggest operational improvement from the move.
+is the platform's contract, and it is the single biggest operational
+improvement from the move.
+
+**That sentence used to end "rather than something measured here", and it has
+now been measured — from outside, it is not quite true.** Corrected in place 9
+September 2026. `verify-pages.yml` fetched the homepage and then the assets it
+names, seconds apart, on the merge of `900d2d7`, and reported:
+
+```
+x script resolves: /assets/index-BYHfsb0c.js   answered 404
+x link resolves:   /assets/index-ByTzdcTq.css  answered 404
+```
+
+Both of those are the PREVIOUS build's content-hashed names, and
+`smoke-pages.mjs` puts a unique `?cb=` on every request — so neither half was
+a stale edge entry and both reached the origin. The origin served **old HTML
+and a new asset namespace**. The deploy itself was entirely healthy: measured a
+few minutes later the page named `index-ak1xcigR.js` and it answered 200.
+
+So the contract holds for one request and does not hold across two. **Anything
+that reads the HTML and then asks for what it names has to allow for a
+promotion landing between the two**, which is what `scripts/wait-for-pages.mjs`
+exists for. It is the same shape as the worker's deploy gate racing its own
+rollout, and it took the same answer — wait for the property you actually
+depend on rather than for a signal that the build finished.
 
 **The inverse trap arrived with `web/`, and atomicity is what creates it.**
 Vite's bundle is content-hashed into its filename, so a deploy does not

@@ -128,6 +128,7 @@ jobs:
       - name: Waiver board
         run: node scripts/test_waiver_board.mjs
 
+
       # The tier ladder, which decides what content a reader can see now
       # that UpgradeGate asks it. Three lines that fail OPEN if they fail,
       # and a gate that fails open is indistinguishable from no gate — the
@@ -150,3 +151,20 @@ jobs:
 
       - name: Prospect board
         run: node scripts/test_prospect_board.mjs
+      # The post-deploy gate's own settle probe, against three local origins.
+      # It is here because the thing it guards cannot be rehearsed: verify-pages
+      # only ever runs against the real apex, immediately after a promotion, so
+      # the first time anybody sees its behaviour is on a merge -- which is
+      # exactly how it came to report FAIL 2 on a healthy site on the merge of
+      # 900d2d7.
+      #
+      # Two of the three fixtures fail on purpose and must fail for DIFFERENT
+      # stated reasons: a promoted build that references something the origin
+      # lacks, and an origin still promoting. A log line that cannot separate
+      # two causes is not evidence for either, which this repository learned
+      # from `verifyToken refused: []`.
+      #
+      # No network and no install: it serves its own origins on a loopback
+      # port, like every other step in this job.
+      - name: Pages settle probe
+        run: node scripts/test_wait_for_pages.mjs
