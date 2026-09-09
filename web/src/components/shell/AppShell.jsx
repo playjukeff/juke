@@ -56,6 +56,13 @@ function useDecisionFace() {
    off the Lobby entirely. Two mount points that both work beat one that is
    right for the screens it can reach and wrong for the one it cannot.
 
+   The RAIL is mounted there for the same reason and was the half that
+   originally missed: this comment described the pill only, DraftRoom
+   rendered the pill only, and #/rooms/draft therefore shipped as the one
+   app screen with a phone nav and no desktop rail. It renders <RailNav />
+   beside its own ShellHeader now. If a third shell piece is ever added
+   here, it needs the same second mount point or that route loses it.
+
    ---- The rail is a flex sibling, not a fixed overlay ----
 
    RailNav is `lg:sticky` inside this row rather than `fixed`, so the

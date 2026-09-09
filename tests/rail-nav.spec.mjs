@@ -64,6 +64,51 @@ test.describe("the phone bottom nav and its More sheet", () => {
     await context.close();
   });
 
+  /* The Draft Room's entry is the one app screen that is NOT inside
+     AppShell: applyRoute() hides #view-home for #/rooms/draft, so
+     DraftRoom.jsx renders its own shell into #draftroom-root instead. The
+     header was already mounted there for exactly that reason -- reported
+     once as "header completely missing from the Draft Room page" -- and
+     the rail was the half that never followed, so a desktop reader who
+     clicked Draft IN the rail lost the rail on landing.
+
+     The test above cannot see it: #/rooms/waiver goes through AppShell,
+     which is the code path that was never broken.
+
+     Scoped to #draftroom-root because on this route AppShell's own rail is
+     still mounted inside a hidden #view-home, and an unscoped `aside`
+     matches both -- CSS-hidden is still mounted, the rule this file's
+     header already states. */
+  test("the Draft Room's entry keeps the rail, being outside AppShell", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await openApp(context, "#/rooms/draft");
+
+    const rail = page.locator("#draftroom-root aside");
+    await expect(rail).toBeVisible();
+    /* RailNav reads the hash itself rather than being told which item is
+       on, so this also pins that it cannot disagree with the rail on the
+       screen the reader arrived from. */
+    await expect(rail.locator("[aria-current='page']")).toContainText("Draft");
+
+    await context.close();
+  });
+
+  test("and stands down for the pill on a phone there too", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await openApp(context, "#/rooms/draft");
+
+    /* toHaveCount before toBeHidden, and that ordering is the test: a
+       locator matching NOTHING satisfies toBeHidden, so the hidden
+       assertion alone passes just as happily against a rail that was never
+       mounted here at all -- which is the very bug this file is about. */
+    await expect(page.locator("#draftroom-root aside")).toHaveCount(1);
+    await expect(page.locator("#draftroom-root aside")).toBeHidden();
+    await expect(page.locator("#draftroom-root nav")).toBeVisible();
+
+    await context.close();
+  });
+
+
   test("My League is not duplicated inside the sheet", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await openApp(context, "#/rooms/waiver");
