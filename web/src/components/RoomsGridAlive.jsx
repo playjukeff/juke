@@ -1,6 +1,7 @@
 import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
 import { roomIsOpen } from './RoomPage.jsx'
+import RoomIcon from './roomIcons.jsx'
 
 /* The room cards, written once for the two screens that draw them: the
    Rooms lobby (#/rooms) and the homepage's own THE ROOMS section. The
@@ -48,7 +49,7 @@ function LeadCard({ room, lgSpan }) {
         style={{ background: '#0f2e34', color: room.accent }}
         aria-hidden="true"
       >
-        {room.glyph}
+        <RoomIcon room={room} />
       </span>
       <span className="min-w-0 flex-1 lg:flex-none">
         <span className="block font-mono text-[10px] tracking-[0.1em]" style={{ color: room.accent }}>
@@ -84,7 +85,7 @@ function LockedCard({ room, wide = false, lgSpan }) {
         className="grid h-10 w-10 place-items-center rounded-xl bg-flow-tile text-[18px] text-ink-muted"
         aria-hidden="true"
       >
-        {room.glyph}
+        <RoomIcon room={room} />
       </span>
       {/* Eyebrow, then title, then the hook -- the same three in the same
           order as LeadCard, because the two sit in one row and every card
