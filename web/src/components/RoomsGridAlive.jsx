@@ -1,6 +1,6 @@
 import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
-import { roomIsOpen } from './RoomPage.jsx'
+import { roomIsOpen, lockReason } from './RoomPage.jsx'
 import RoomIcon from './roomIcons.jsx'
 
 /* The room cards, written once for the two screens that draw them: the
@@ -86,6 +86,15 @@ function LeadCard({ room, lgSpan }) {
       <span className="shrink-0 text-ink-muted lg:hidden" aria-hidden="true">›</span>
     </a>
   )
+}
+
+/* "The Waiver Room, The Trade Room and The Strategy Room" — and the same
+   sentence with one or two of them, because which rooms are locked changes
+   as rooms ship and the copy has to survive that without being rewritten. */
+function nameList(rooms) {
+  const names = rooms.map((r) => r.name)
+  if (names.length <= 1) return names[0] || ''
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
 }
 
 function LockedCard({ room, wide = false, lgSpan }) {
@@ -227,10 +236,14 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
      exists for the gap between them: League Room used to render real
      standings for a connected reader (RoomPage's LIVE_ROOMS) while this
      grid drew a padlock on it regardless, so the lobby said locked about a
-     room that opened. League graduated into My League and left LIVE_ROOMS
-     empty, but the gap it exposed can reopen the moment any of Waiver,
-     Trade or Strategy gets a real connected body — so this stays rather
-     than being simplified back to `r.live` alone. Prospect then made it a
+     room that opened. League graduated into My League — and the rest of
+     this sentence used to say that left LIVE_ROOMS empty, which stopped
+     being true the moment Waiver, Trade and Strategy got real connected
+     bodies. It holds all three today, so `opensForMe` is load-bearing
+     rather than defensive: without it this grid would padlock three rooms
+     a connected reader can walk into. (That stale clause was read as fact
+     in a review and reported as "connecting unlocks none of them", which
+     is exactly what a confident comment costs.) Prospect then made it a
      three-way question (open to everybody, open with a league, locked), so
      the answer is roomIsOpen() rather than a slug list every caller has to
      keep in step. */
@@ -238,6 +251,20 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
   const opensForMe = (r) => roomIsOpen(r, status)
   const lead = rooms.filter(opensForMe)
   const locked = rooms.filter((r) => !opensForMe(r))
+
+  /* What opens the padlocks, in the reader's own words, derived.
+
+     The homepage strip drew three locked cards and said nothing about what
+     opens them — an unexplained gate on a pre-launch page reads as a
+     paywall nobody can price. The lobby one click away does say it; this
+     surface never did.
+
+     Built from lockReason() rather than written as a sentence, because a
+     sentence is what goes stale: this file's own comment above claimed
+     LIVE_ROOMS was empty long after it held three rooms. Derived, the line
+     cannot say "connect a league" about a room no league opens. */
+  const needLeague = locked.filter((r) => lockReason(r, status) === 'league')
+  const beingBuilt = locked.filter((r) => lockReason(r, status) === 'building')
   const grid = GRID[columns] || GRID.lobby
 
   /* How many cards land in the desktop grid's final row, and what those
@@ -268,18 +295,40 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
   const oddOut = locked.length % 2 === 1
 
   return (
-    <div className={'grid grid-cols-2 gap-2.5 lg:gap-3 ' + grid.cls}>
-      {lead.map((r, i) => (
-        <LeadCard key={r.name} room={r} lgSpan={spanFor(i)} />
-      ))}
-      {locked.map((r, i) => (
-        <LockedCard
-          key={r.name}
-          room={r}
-          wide={oddOut && i === locked.length - 1}
-          lgSpan={spanFor(lead.length + i)}
-        />
-      ))}
-    </div>
+    <>
+      <div className={'grid grid-cols-2 gap-2.5 lg:gap-3 ' + grid.cls}>
+        {lead.map((r, i) => (
+          <LeadCard key={r.name} room={r} lgSpan={spanFor(i)} />
+        ))}
+        {locked.map((r, i) => (
+          <LockedCard
+            key={r.name}
+            room={r}
+            wide={oddOut && i === locked.length - 1}
+            lgSpan={spanFor(lead.length + i)}
+          />
+        ))}
+      </div>
+
+      {/* The homepage only. The lobby states this in its own SubCopy, and
+          two components saying it is the failure this file keeps naming. */}
+      {columns === 'home' && (needLeague.length > 0 || beingBuilt.length > 0) && (
+        <p className="mt-3.5 text-[13px] leading-[1.5] text-voidInk-muted">
+          {needLeague.length > 0 && (
+            <>
+              {nameList(needLeague)} open{needLeague.length === 1 ? 's' : ''} when you connect a
+              league — read-only, and it stays that way.
+            </>
+          )}
+          {needLeague.length > 0 && beingBuilt.length > 0 ? ' ' : null}
+          {beingBuilt.length > 0 && (
+            <>
+              {nameList(beingBuilt)} open{beingBuilt.length === 1 ? 's' : ''} as{' '}
+              {beingBuilt.length === 1 ? 'it is' : 'they are'} built.
+            </>
+          )}
+        </p>
+      )}
+    </>
   )
 }

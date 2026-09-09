@@ -148,6 +148,27 @@ export function roomIsOpen(room, leagueStatus) {
   return leagueStatus === 'connected' && !!LIVE_ROOMS[room.slug]
 }
 
+/* WHY a room is shut, for the surfaces that have to tell somebody.
+
+   `roomIsOpen()` answers whether, and a padlock with no stated condition
+   is the question a reader is left holding — the homepage strip drew three
+   of them and said nothing anywhere about what opens them.
+
+   Two answers, and they are genuinely different promises: 'league' is a
+   door the reader can open right now, 'building' is one nobody can. A
+   surface that collapses them into "locked" either overpromises or
+   undersells, and which one it does changes per room as rooms ship.
+
+   A function beside roomIsOpen() rather than an exported list, for that
+   function's own recorded reason: three call sites ask about this padlock,
+   and a list means every one of them learns about a new category
+   separately. Answers null when the room is open, so a caller can branch on
+   truthiness without knowing the vocabulary. */
+export function lockReason(room, leagueStatus) {
+  if (!room || roomIsOpen(room, leagueStatus)) return null
+  return LIVE_ROOMS[room.slug] ? 'league' : 'building'
+}
+
 export default function RoomPage({ slug }) {
   const rooms = useRooms()
   const { status, league } = useLeague()
