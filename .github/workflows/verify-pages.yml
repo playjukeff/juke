@@ -1,0 +1,139 @@
+name: Verify the Pages deploy
+
+# The site had no post-deploy check and the worker has had one for weeks.
+#
+# deploy-worker.yml ships the worker, settles, and then drives 109 assertions
+# over real sockets against the thing that was just promoted. The site's entire
+# deploy verification was `vite build && prerender && copy-legacy-assets`
+# exiting 0 -- a real guard, and one that says nothing whatsoever about the
+# promoted origin. The next thing to look at the live site was
+# browser-tests.yml at 12:30 UTC, up to a day later.
+#
+# The failure that gap allows is in CLAUDE.md and has happened. When the Pages
+# root directory moved to `web`, og-image.png and the root favicons stopped
+# being published, and og:image -- the absolute URL baked into every link
+# preview -- was a 404 at the origin. Nothing failed, nothing logged, and it
+# was found by somebody going and looking, weeks later.
+#
+# ---- What this is and what it deliberately is not ----
+#
+# It is a smoke check, about a minute: fetch the promoted homepage and confirm
+# the origin serves every same-origin thing that page names. It is NOT the
+# browser suite -- seventeen minutes is too heavy for every merge, and
+# browser-tests.yml already runs it daily against the same site.
+#
+# One thing it cannot catch, said out loud rather than left to be discovered:
+# the inverse caching trap. A tab that has been open since before the deploy
+# holds the previous index.html and asks for a content-hashed bundle that no
+# longer exists. This checks what the CURRENT HTML names against the CURRENT
+# origin, and both halves moved together -- so that failure is invisible here
+# by construction. CLAUDE.md's section on it is the record; nothing automated
+# covers it.
+
+on:
+  push:
+    branches: [main]
+
+# Cloudflare builds from git on every push to main -- confirmed on the last
+# five commits, each carrying its own "Cloudflare Pages" check run -- so there
+# are no paths to filter on. A push that changes only worker/ still promotes a
+# deployment, and a deployment is what this verifies.
+
+# One at a time, and the newest wins. The script reads the LIVE site and then
+# checks what that page names, so any run is a statement about the origin right
+# now rather than about the commit that triggered it -- which makes an
+# older, superseded run redundant rather than informative. Two merges forty
+# seconds apart would otherwise smoke the same deployment twice.
+concurrency:
+  group: verify-pages
+  cancel-in-progress: true
+
+permissions:
+  # The Cloudflare Pages check run on this commit is the whole trigger.
+  checks: read
+  # The checkout.
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    # Ten minutes of polling plus a minute of checks. A backstop against a
+    # hang, not a target: a healthy run is about ninety seconds end to end.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Nothing here pushes, so the checkout does not need to leave a
+          # credential behind in .git/config for the rest of the job.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      # No `npm ci`. scripts/smoke-pages.mjs has no dependencies, for the same
+      # reason scripts/test_league_state.mjs has none: a gate that needs an
+      # install to run is a gate with one more way to fail than the thing it
+      # is checking.
+
+      - name: Wait for Cloudflare Pages to promote this commit
+        env:
+          # Through env:, never interpolated into the script body. GitHub
+          # expands ${{ }} before the shell sees the line, so an interpolated
+          # value is text pasted into a program rather than a variable -- the
+          # rule archive-weekly-actuals.yml had to learn twice.
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        # Measured on the five most recent merges to main: the "Cloudflare
+        # Pages" check appears 40 to 48 seconds after the merge commit, and it
+        # appears ALREADY COMPLETE -- started_at equals completed_at on every
+        # one of them, because Cloudflare posts the check retroactively rather
+        # than opening one and finishing it later. So the poll is waiting for
+        # the check to exist at all, and absence means the build is still
+        # running. Ten minutes is roughly twelve times the worst observed.
+        #
+        # A FAILED Pages build must fail this job rather than fall through to
+        # the smoke check, and that is the one branch worth being careful
+        # about: when a build fails, the previous deployment stays live and
+        # perfectly healthy, so the smoke check would pass and report green
+        # about a deploy that never landed. A guard that covers half a hazard
+        # reports green on the other half.
+        run: |
+          set -euo pipefail
+          deadline=$(( SECONDS + 600 ))
+          while :; do
+            state=$(gh api "repos/$REPO/commits/$SHA/check-runs" --jq '
+              [.check_runs[] | select(.name == "Cloudflare Pages")]
+              | sort_by(.started_at) | last
+              | if . == null then "absent"
+                elif .status != "completed" then "running"
+                else (.conclusion // "unknown") end')
+            case "$state" in
+              success)
+                echo "Cloudflare Pages promoted $SHA."
+                exit 0
+                ;;
+              absent|running)
+                ;;
+              *)
+                echo "::error::The Cloudflare Pages build for $SHA concluded '$state'. The previous deployment is still live, so the site is not what this commit says it is -- and smoking it now would pass and mean nothing."
+                exit 1
+                ;;
+            esac
+            if (( SECONDS > deadline )); then
+              echo "::error::No completed 'Cloudflare Pages' check on $SHA after 10 minutes. Either the build is unusually slow or Cloudflare did not build this commit at all -- check the Pages dashboard before believing anything about what is deployed."
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Smoke the promoted site
+        env:
+          SITE: https://jukeff.com
+        # Not piped into anything. A pipeline's exit status is the last
+        # command's, so `node script | tee log` reports 0 on a red run -- which
+        # has already happened once in this repository, and an exit code that
+        # lies is worse in verification tooling than anywhere else.
+        run: node scripts/smoke-pages.mjs "$SITE"
