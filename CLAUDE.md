@@ -8543,6 +8543,61 @@ candidates, none checked: ESPN applying stat corrections the pipeline does
 not carry, a rule in the 28 still unmapped that skill players trip, or the
 comparison pairing a week's roster with another week's points.
 
+
+### A value that is present and does not apply
+
+Reported with a screenshot of the league's own settings page: the Waiver
+Room showed **FAAB POOL $100** for a league that does not bid. Its settings
+read *Player Acquisition System: Waivers · Waiver Period: 1 Day · Waiver
+Order: Move to Last After Claim, Never Reset Order.*
+
+**ESPN populates `acquisitionBudget` with 100 whether or not the league uses
+it**, and `isUsingAcquisitionBudget` sits beside it saying which. The
+adapter read the number and never the flag:
+
+```
+acquisitionBudget          100
+isUsingAcquisitionBudget   false      <- the answer, unread
+acquisitionType            "WAIVERS_TRADITIONAL"
+waiverOrderReset           false      <- "Never Reset Order"
+waiverHours                24         <- "1 Day"
+```
+
+**This is "treat 0 from an API as missing" inverted.** That rule is about a
+value that is absent wearing a number's clothes; this is a value that is
+genuinely there and means nothing. Both are the same instruction — *ask the
+feed what the number is FOR* — and only one of them had been written down.
+
+**And a waiver order is not a smaller version of FAAB.** It is a different
+system: there is no pool, and the thing a manager tracks is their position
+in a queue that a claim sends them to the back of. So the fix is not a
+zeroed budget but a different card — the room says `Waivers · Order · A
+claim moves you to the back, and the order never resets`, built from
+`waiverOrderReset` rather than from prose.
+
+**The snapshot carries `waiver` now** — `{ type, budget, minimumBid,
+resetsOrder, hours }` — and `waiverBudget` is null unless the league bids,
+so every existing consumer degrades to silence rather than to a wrong
+number. `RoomPage`'s bar KPI disappears on an order league for that reason,
+which is the no-duplicate rule rather than an omission: the room's own strip
+says which system it runs.
+
+**ESPN's half is derived and Sleeper's is documented**, and the difference
+is stated in both files. ESPN's flags were read off a real league whose
+settings screen says what it does; Sleeper's `waiver_type === 2` comes from
+Sleeper's published values and has been checked against no real league.
+Sleeper sets the same trap — a default `waiver_budget` on a league that runs
+an order — so its fixture now names `waiver_type` explicitly, and the test
+that asserted a budget of 100 asserts the league is FAAB alongside it.
+
+**The caption named the wrong platform again.** "The season's budget.
+Sleeper does not report what you have spent" was on an ESPN league. That is
+the same hardcoded-provider-name bug the countdown section already records
+fixing once, in a file that was not touched then. It reads
+`platformFor(provider).name` now. **When a second provider ships, grep for
+the first one's name — and then grep again the next time a room is
+written.**
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a

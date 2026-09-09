@@ -174,6 +174,33 @@ function pickDraft(drafts, season) {
    then draws nothing rather than the page failing — but a league that does
    not answer at all is a league that is not there, and saying so is more
    useful than an empty table under its name. */
+/* How a Sleeper league moves unowned players.
+ *
+ * `waiver_type` is Sleeper's own: 2 is FAAB, anything else is an order --
+ * rolling, or reverse standings. Taken from Sleeper's documented values and
+ * NOT derived from a real league, unlike ESPN's, which was read off a
+ * settings page that says what it does. Stated here so the next person
+ * knows which of the two adapters has evidence behind it.
+ *
+ * The budget is only reported for a FAAB league, for the reason espn.js
+ * gives at length: a pool on a league that does not bid is not a smaller
+ * truth, it is a different waiver system. */
+function waiverFromSleeper(settings) {
+  const s = settings || {};
+  const faab = Number(s.waiver_type) === 2;
+  const budget = Number(s.waiver_budget);
+  const days = Number(s.waiver_clear_days);
+  return {
+    type: faab ? "faab" : "order",
+    budget: faab && Number.isFinite(budget) && budget > 0 ? budget : null,
+    minimumBid: null,
+    // Sleeper does not publish an equivalent of "never reset", so this is
+    // absent rather than guessed at.
+    resetsOrder: null,
+    hours: Number.isFinite(days) && days > 0 ? days * 24 : null,
+  };
+}
+
 export async function leagueSnapshot(leagueId, base) {
   const id = encodeURIComponent(leagueId);
   const [league, rosters, users, state, drafts] = await Promise.all([
@@ -232,6 +259,7 @@ export async function leagueSnapshot(leagueId, base) {
   const draft = pickDraft(drafts, league.season);
   const scoring = rulesFromSleeper(league.scoring_settings);
   const lineup = lineupFromSleeper(league.roster_positions);
+  const waiver = waiverFromSleeper(league.settings);
 
   return {
     leagueId: String(league.league_id),
@@ -249,7 +277,8 @@ export async function leagueSnapshot(leagueId, base) {
     seasonType: (state && state.season_type) || null,
     // The two settings a room actually branches on. Everything else in
     // league.settings stays at Sleeper until something needs it.
-    waiverBudget: Number((league.settings || {}).waiver_budget) || null,
+    waiverBudget: waiver.type === "faab" ? waiver.budget : null,
+    waiver,
     /* The league's own scoring, in Juke's vocabulary -- which for Sleeper
        IS its own, because STAT_FIELDS took these key names from it. See
        scoring.js for why a room may not go on scoring a real league with

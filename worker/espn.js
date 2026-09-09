@@ -432,6 +432,37 @@ export async function crosswalk(entries, lookup) {
  * and every pick carries its own teamId. A caller then never has to
  * re-derive the mirror, which is the rule pickInRound() already exists to
  * enforce on the board. */
+/* How a league moves unowned players.
+ *
+ * Two systems, and they are not variations of each other: a FAAB league
+ * bids money, and a traditional waiver league has an ORDER that a claim
+ * moves you down. Juke showed the first to everybody because
+ * `acquisitionBudget` is populated either way.
+ *
+ * Everything here is stated by ESPN rather than inferred:
+ * `isUsingAcquisitionBudget` decides the system, `waiverOrderReset` is the
+ * "Never Reset Order" line in the league's own settings page, and
+ * `waiverHours` is its waiver period. Verified against a real league whose
+ * settings screen reads "Waivers / 1 Day / Move to Last After Claim, Never
+ * Reset Order": false, 24, false. */
+function waiverFromEspn(acquisitionSettings) {
+  const a = acquisitionSettings || {};
+  const faab = a.isUsingAcquisitionBudget === true;
+  const budget = Number(a.acquisitionBudget);
+  const hours = Number(a.waiverHours);
+  return {
+    type: faab ? "faab" : "order",
+    // Null rather than 0 off a FAAB league: there is no budget, not a
+    // budget of nothing.
+    budget: faab && Number.isFinite(budget) ? budget : null,
+    minimumBid: faab && Number.isFinite(Number(a.minimumBid)) ? Number(a.minimumBid) : null,
+    // Whether a claim sends you to the back for good. Only means anything
+    // in an order league, so it is null in the other.
+    resetsOrder: faab ? null : a.waiverOrderReset === true,
+    hours: Number.isFinite(hours) && hours > 0 ? hours : null,
+  };
+}
+
 function draftBoard(league, rawTeams, resolveId) {
   const detail = league.draftDetail || {};
   const picks = Array.isArray(detail.picks) ? detail.picks : [];
@@ -601,6 +632,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const snapDraft = draftInfo(league, Date.now());
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
   const lineup = lineupFromEspn(settings.rosterSettings);
+  const waiver = waiverFromEspn(settings.acquisitionSettings);
   const schedule = scheduleFromEspn(league.schedule);
   const draft = snapDraft.status === "complete"
     ? draftBoard(league, rawTeams, sleeperId)
@@ -621,7 +653,21 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       /* ESPN's acquisition budget is FAAB where the league uses it, and 0
          (not null) where it does not — so the same falsy check the rest of
          this project applies to a feed's zero. */
-      waiverBudget: Number((settings.acquisitionSettings || {}).acquisitionBudget) || null,
+      /* FAAB only where the league actually bids.
+         
+         `acquisitionBudget` is 100 on a league that has never bid a dollar
+         -- ESPN carries a default whether or not it applies -- and
+         `isUsingAcquisitionBudget` is the flag beside it that says whether
+         it means anything. Reading the number alone put "FAAB POOL $100" on
+         a league running rolling waiver order, which is not a smaller
+         version of the truth but a different waiver system.
+         
+         This is the "treat 0 from an API as missing" rule inverted: a value
+         that is PRESENT and does not apply. The flag was always there. */
+      waiverBudget: waiver.type === "faab" ? waiver.budget : null,
+      /* How the league actually moves players, so a room can say the right
+         thing rather than the only thing it knew how to say. */
+      waiver,
       /* The league's own scoring, in Juke's vocabulary -- see scoring.js.
          Without it every room scored a real league with whatever the Draft
          Room's mock table happened to say, which understated a measured
