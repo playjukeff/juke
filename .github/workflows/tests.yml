@@ -219,3 +219,19 @@ jobs:
       # season of zeroes averages into a points-per-week a reader believes.
       - name: The schedule and the season
         run: node scripts/test_schedule.mjs
+
+      # What each room has at stake, for the rail and the rooms grid.
+      #
+      # The assertion this suite exists for is the UNIT. Waiver's stake is
+      # projected points over replacement for the SEASON and Strategy's is
+      # points THIS WEEK, and a caller printing both as "pts" would be the
+      # right-value-wrong-column failure with a decision attached. So `unit`
+      # is asserted on both and `stakeLabel()` is asserted to say something
+      # different for each — a suite checking only the numbers would pass
+      # against a module that had forgotten which quantity it carried.
+      #
+      # Both mutations were confirmed red: swapping the two units fails the
+      # season assertion and the wire label, and removing the floor starts
+      # reporting a zero stake on a roster with nothing to gain.
+      - name: What a room has at stake
+        run: node scripts/test_room_stakes.mjs
