@@ -59,8 +59,18 @@ list — dealt lead by seed key `af2ad9a0`, indices 7, 1, 5.
 finish review, the verdict, DESIGN.md, and every shipping raster carrying its
 provenance
 
+## Resolved during the build
+
+- **The seam's phone form.** Below `lg` the cells stack and the centre line
+  has no middle to sit on. The first build dropped it, which closed this risk
+  by deleting the device; `<Joint />` is the answer instead — the same 1px
+  hairline turned through ninety degrees, running out of the flat cell into
+  the lit one, so a pair still reads as one argument with two sides.
+
 ## Unresolved
 
 - The signed-in fork above the fold, deferred above.
-- Whether the seam survives a phone as a sequence or needs a different device
-  (it must not simply stack into two unrelated blocks).
+- Three of the grade's four components are min-max scaled against their own
+  room and one is absolute. The section states this rather than hiding it,
+  but a bar chart mixing the two scales is a real readability question that
+  the in-app dashboard has not solved either.

@@ -113,8 +113,30 @@ function useNearViewport() {
    (a scoring edit made in the Draft Room, then a walk back to the
    homepage). Listening to only the first leaves this section describing a
    league the reader has since changed. */
+/* What would make any figure on this section different.
+
+   Cheap on purpose: it is compared on every `juke:header`, which is once
+   per pick AND once per clock tick, so it has to cost far less than the
+   reads it guards. Board length and the league's shape are three property
+   reads; the rules digest is a sum over 49 numbers, which is what catches
+   a scoring edit — the one change that moves every projection without
+   moving anything else here. */
+function changeKey(engine) {
+  const board = engine.board()
+  const league = engine.league()
+  if (!board || !league) return null
+  let rules = 0
+  const table = league.rules || {}
+  for (const k in table) {
+    const v = table[k]
+    if (typeof v === 'number') rules += v
+  }
+  return `${board.length}|${league.teams}|${league.rounds}|${league.scoring}|${rules}`
+}
+
 function useEngineData(read, enabled) {
   const [data, setData] = useState(null)
+  const lastKey = useRef(null)
 
   useEffect(() => {
     if (!enabled) return
@@ -123,9 +145,31 @@ function useEngineData(read, enabled) {
 
     const run = () => {
       if (!engine.dataReady || !engine.dataReady()) return
+
+      /* The guard that keeps a marketing section off the pick clock.
+
+         `juke:header` fires from headerInfo() on every render(), and
+         render() runs on every tick of a live draft. applyRoute() hides
+         #view-home during a draft but React never unmounts it, so without
+         this the three uncached reads below — 480 overallScore() calls,
+         three full vorpUnder() board walks, and a projectionRecord() walk —
+         ran once a second, off-screen, for the whole draft. That is the
+         exact bill the deferral at the top of this file exists to avoid,
+         arriving through a door the deferral does not cover: it gates the
+         FIRST read and says nothing about the hundredth.
+
+         It also stopped every pair re-rendering per tick, which had
+         framer-motion re-measuring six layout items a second for a list
+         nobody was looking at. */
+      const key = changeKey(engine)
+      if (key !== null && key === lastKey.current) return
+
       try {
         const next = read(engine)
-        if (next) setData(next)
+        if (next) {
+          lastKey.current = key
+          setData(next)
+        }
       } catch {
         // A throw here costs the pair and must never cost the page. Same
         // contract as the score strip: it fails by disappearing.
@@ -187,12 +231,35 @@ function Lit({ label, children }) {
 
    The heading spans rather than sitting in the left column, because it is
    not one side's claim — it is the question both cells answer. */
+/* The seam's phone form.
+
+   Below `lg` the two cells stack and the centre line has no middle to sit
+   on, so the first build simply dropped it — which closed the brief's own
+   unresolved risk ("it must not simply stack into two unrelated blocks")
+   by deleting the device rather than by finding its phone form. The
+   dashed-versus-solid border carries some of the distinction, but the
+   FORM's one own-world element was then absent on the viewport most
+   visitors use.
+
+   Same 1px hairline, same token, turned through ninety degrees: it runs
+   out of the flat cell and into the lit one, so a pair still reads as one
+   argument with two sides rather than two boxes that happen to be
+   adjacent. */
+function Joint() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -top-5 left-1/2 h-5 w-px -translate-x-1/2 bg-line-hairline lg:hidden"
+    />
+  )
+}
+
 function Pair({ claim, children }) {
   return (
     <>
-      <h3 className="mt-14 font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:mt-16 sm:text-[32px] lg:col-span-2 lg:text-[38px]">
+      <h2 className="mt-14 font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:mt-16 sm:text-[32px] lg:col-span-2 lg:text-[38px]">
         {claim}
-      </h3>
+      </h2>
       {children}
     </>
   )
@@ -215,7 +282,7 @@ function Line({ label, value, accent }) {
     <div className="flex items-baseline justify-between gap-4 border-b border-line-divider py-2.5 last:border-b-0">
       <span className="text-[13px] leading-tight text-voidInk-body">{label}</span>
       <span
-        className={`shrink-0 font-mono text-[15px] tabular-nums ${accent ? 'text-teal' : 'text-white'}`}
+        className={`shrink-0 font-mono text-[15px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
       >
         {value}
       </span>
@@ -311,7 +378,8 @@ function PairRankReason() {
         </Flat>
       </div>
 
-      <div className="mt-3 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+        <Joint />
         <Lit label="What Juke shows">
           {d ? (
             <>
@@ -319,7 +387,7 @@ function PairRankReason() {
                 <span className="font-display text-[22px] font-extrabold uppercase italic leading-none text-white sm:text-[26px]">
                   {d.name}
                 </span>
-                <span className="shrink-0 font-mono text-[30px] tabular-nums leading-none text-teal sm:text-[36px]">
+                <span className="shrink-0 font-mono text-[30px] tabular-nums leading-none text-evidence sm:text-[36px]">
                   {d.score}
                 </span>
               </div>
@@ -425,7 +493,8 @@ function PairYourRules() {
         </Flat>
       </div>
 
-      <div className="mt-3 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+        <Joint />
         <Lit label="What Juke shows">
           {/* The page's one authored interaction. Everything else on this
               screen is still; this moves because the movement IS the
@@ -479,12 +548,12 @@ function PairYourRules() {
                       separate the two hues. */}
                   <span
                     className={`w-11 shrink-0 text-right font-mono text-[11px] tabular-nums ${
-                      r.moved > 0 ? 'text-mint' : r.moved < 0 ? 'text-flow-rose' : 'text-voidInk-muted'
+                      r.moved > 0 ? 'text-gain' : r.moved < 0 ? 'text-cost' : 'text-voidInk-muted'
                     }`}
                   >
                     {r.moved ? `${r.moved > 0 ? '▲' : '▼'}${Math.abs(r.moved)}` : '—'}
                   </span>
-                  <span className="w-14 shrink-0 text-right font-mono text-[14px] tabular-nums text-teal">
+                  <span className="w-14 shrink-0 text-right font-mono text-[14px] tabular-nums text-gain">
                     +{r.vorp}
                   </span>
                 </motion.li>
@@ -590,7 +659,8 @@ function PairGraded() {
         </Flat>
       </div>
 
-      <div className="mt-3 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+        <Joint />
         <Lit label="What Juke shows">
           {d ? (
             <>
@@ -598,7 +668,7 @@ function PairGraded() {
                   hundred: the rank is what makes the letter mean
                   something, and the two together need no explaining. */}
               <div className="mb-6 flex items-baseline gap-3">
-                <span className="font-display text-[44px] font-extrabold uppercase italic leading-none text-teal sm:text-[52px]">
+                <span className="font-display text-[44px] font-extrabold uppercase italic leading-none text-white sm:text-[52px]">
                   {d.grade}
                 </span>
                 <span className="font-mono text-[13px] tabular-nums text-voidInk-body">
@@ -624,7 +694,7 @@ function PairGraded() {
                         than an illustration of it. */}
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                       <div
-                        className="h-full rounded-full bg-teal"
+                        className="h-full rounded-full bg-evidence"
                         style={{ width: `${Math.max(0, Math.min(100, c.value))}%` }}
                       />
                     </div>
@@ -633,15 +703,32 @@ function PairGraded() {
               </div>
               <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-line-hairline pt-4">
                 <span className="text-[13px] text-voidInk-body">Weighted sum</span>
-                <span className="shrink-0 font-mono text-[20px] tabular-nums text-teal">
+                <span className="shrink-0 font-mono text-[20px] tabular-nums text-evidence">
                   {d.composite}
                 </span>
               </div>
-              <p className="mt-5 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
-                A middle-of-the-table team from a real {d.teams}-team, {d.rounds}-round mock, graded
-                the moment it ended. Four components, weighted, scored against the rest of that
-                room — and they add up to the number above, so you can check it rather than believe
-                it.
+              {/* The property that makes these numbers readable, and the one
+                  a bare "x50%" caption invites a reader to get wrong.
+                  scaleAcross() is min-max, so starter strength, draft value
+                  and bye safety are POSITIONS inside this room — somebody
+                  scores 0 and somebody scores 100 whatever actually
+                  happened — while roster construction is an absolute score
+                  and is not scaled at all. CLAUDE.md spends a section on
+                  each; the in-app dashboard carries the same note beside the
+                  same bars. Omitting it on the one section arguing that
+                  every number arrives with its working would be the page
+                  contradicting its own thesis, two inches under a pair whose
+                  whole point is that an ordinal cannot express distance. */}
+              <p className="mt-4 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+                0 and 100 are this room&apos;s floor and ceiling on the first three, not a verdict —
+                roster construction is the one absolute score. A weight is how much a component
+                counts, not how much it separates the room.
+              </p>
+              <p className="mt-3 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+                A middle-of-the-table team from a simulated {d.teams}-team, {d.rounds}-round room,
+                every seat drafting to the same rule, graded the moment it ended — which is what
+                makes the middle team the honest one to show. The four add up to the number above,
+                so you can check it rather than believe it.
               </p>
             </>
           ) : (
@@ -764,7 +851,8 @@ function PairRecord() {
         </Flat>
       </div>
 
-      <div className="mt-3 lg:mt-0 lg:pl-12">
+      <div className="relative mt-5 lg:mt-0 lg:pl-12">
+        <Joint />
         <Lit label="What Juke shows">
           {d ? (
             <>
@@ -817,7 +905,7 @@ function PairRecord() {
                       </td>
                       <td
                         className={`py-2.5 text-right font-mono text-[13px] tabular-nums ${
-                          r.diff >= 0 ? 'text-mint' : 'text-flow-rose'
+                          r.diff >= 0 ? 'text-gain' : 'text-cost'
                         }`}
                       >
                         {r.diff >= 0 ? `+${r.diff}` : r.diff}
@@ -852,7 +940,7 @@ function PairRecord() {
    the rooms read as a fifth pair. */
 export default function HomeProof() {
   return (
-    <section className="relative mt-16 pb-8 sm:mt-20 sm:pb-14">
+    <section aria-label="What Juke shows that a ranking cannot" className="relative mt-16 pb-8 sm:mt-20 sm:pb-14">
       {/* The seam. One absolutely-positioned rule down the middle rather
           than a border on each right-hand cell, so it does not break at
           every heading — a line that restarts four times is four
