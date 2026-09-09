@@ -6277,8 +6277,26 @@ available place in the product to put a guess.
   `web/src/lib/tradeDeadline.js` answers "has the window shut" off whichever
   field a league has, so no screen asks which platform it is on — see "One
   vocabulary, two units" below for why neither converts to the other.
-- **05's win-% and bye odds.** Still absent: a win probability needs the
-  opponent's lineup projected rather than merely named.
+- **~~08's win probability~~ — the fifth of these falsified by looking, and
+  the second where nothing had landed in parallel.** The entry above records
+  the schedule unblocking it and then this section went on listing 08's half
+  as open, while `StrategyRoomLive` was already computing `oppTotal` and
+  `margin` off that schedule. **Two of the room's own comments still read
+  "nothing fetches an opponent's projection"** — one of them beside the
+  variable reading one. A blocker in a comment goes stale exactly as
+  silently as one in this file, and that room carried both.
+
+  What a margin was missing is not the opponent, it is the SPREAD. See "The
+  week's win probability" below.
+- **05's win-% and bye odds. Still absent, and it is a different
+  quantity from the one above.** 08 asks who wins THIS week, which is one
+  normal difference between two lineups that both exist. 05 asks where a
+  team finishes, which is a joint distribution over every remaining week and
+  every other team's schedule — a season simulator, which this project does
+  not have and which `insightsReport()` already refuses to pretend to
+  ("there is no simulator"). Summing the per-week probabilities would give
+  expected remaining wins exactly and would say nothing about a seed or a
+  bye, which is what the screen asks for.
 - **14's "one bar per missed offer", which is the half that IS blocked.**
   Nothing records a trade offer. Neither adapter reports a pending one — both
   would need write-scoped auth this project deliberately does not hold — and
@@ -6621,6 +6639,163 @@ reports zero after the change it is checking is the vacuity trap, not a
 pass: it was re-aimed at the bar's own `h-bar-track` class, which is a fact
 about what a row IS rather than about how it happens to be laid out.
 
+### The week's win probability, and the model that already existed
+
+Screen 08 asks for a win-probability bar with a field marker. The Strategy
+Room has been able to answer it since the schedule landed and did not:
+`oppTotal` and `margin` were already being computed from `gameInWeek()`, and
+**two comments in that same file still said "nothing fetches an opponent's
+projection"** -- one of them nine lines under the variable that was fetching
+one. That is the fifth documented blocker in this file falsified by
+re-reading rather than by anything landing.
+
+**A margin is a point estimate and a probability is a distribution, so what
+was actually missing is the SPREAD.** Three pieces, and the split between
+them is the whole design:
+
+- **`positionWeeklyCVUnder(leagueRules)` in `app.js`** -- the measured weekly
+  coefficient of variation per position, off every stored weekly log on the
+  board, scored under the connected league's own rules rather than the Draft
+  Room's table. `positionWeeklyCV()` is now a one-line call into it, which is
+  the same shape `fantasyPoints()` already has with `pointsUnder()`.
+- **`web/src/lib/matchup.js`** -- `teamWeek(rows, cv)`, which turns a
+  lineup's rows into a mean and a standard deviation, and `matchupRead(p)`,
+  which turns a probability into one of three words. It imports nothing, for
+  `leagueStore.js`'s reason: CI installs no npm dependencies anywhere, and
+  the arithmetic deciding whether somebody is told they are likely to lose
+  should not be checkable only by looking at a screen.
+- **`JukeEngine.winProbability(mine, theirs)`** -- `winRateAgainst()` with a
+  list of one. **The model is deliberately NOT in `web/src`.**
+  `winRateAgainst()` was split out of `projectedWinPctForRoom()` precisely so
+  two normal-difference approximations could not drift, and a second one in a
+  React component would disagree with the Draft Room's own projected win % by
+  a fraction of a point with nothing to say so. The model is on the bridge;
+  the summing is in the room.
+
+**Variances add and standard deviations do not**, which is the one piece of
+arithmetic here somebody could plausibly get wrong. On the nine-seat fixture
+the suite uses, summing the spreads gives **60.5 against the 20.85 that is
+right** -- a lineup swinging three times as much as it does, on a mean of
+104, and a matchup that then reads close to even whatever the two lineups are
+worth.
+
+### What the league's own scoring is worth to a CV, measured
+
+The correction to the MEAN was worth **13.3 points a week** (see "A connected
+league's scoring"). The same correction to the SPREAD is worth almost
+nothing, and that is written down so nobody spends effort here twice.
+
+Measured 9 September 2026 against the live board. The CV genuinely does move
+between the three published tables -- WR **0.600** under full PPR against
+**0.726** under standard, about a fifth of itself -- and the win probability
+that comes out of it moves **1.3 points** across that whole range:
+
+```
+                       half     ppr    standard
+one plausible matchup  60.6%   60.1%     59.3%
+```
+
+So it is a rounding correction rather than a defect. It is made anyway
+because it is the same one-line substitution `projPerGameUnder()` already
+is, and the alternative is a number quietly measured under a league nobody
+is in.
+
+**The memo is not optional.** `positionWeeklyCVUnder()` walks `s.w` on every
+row of a 480-player board and costs **19.34ms** a call, measured -- once is
+nothing and once per render of a connected room is the sort of cost nothing
+reports and everything feels. `CV_CACHE` is one entry keyed on
+`board.length` plus every scoreable rule in a fixed order, read off
+`DEFAULT_RULES` rather than listed a second time. **Deliberately not keyed on
+`BEST_VOR`**, which is `PAR_CACHE`'s tell for a rescoring: this function
+reads `s.w` and `player.pos` and never a projection, so a scoring edit that
+rewrites every `projPts` does not move it.
+
+**And the bridge entry is guarded, like every other one that touches board
+data.** An empty board would otherwise hand back `DEFAULT_WEEKLY_CV` for all
+six positions -- a plausible-looking table nobody measured -- which is the
+"a `window.JukeEngine` entry is only as safe as its own guard" rule arriving
+at a function whose wrong answer is a number rather than a throw.
+
+### Every refusal, because every wrong probability here is silent
+
+`scripts/test_matchup.mjs` is 22 checks and it is almost entirely about what
+`teamWeek()` declines to answer. Each of these renders perfectly and none of
+them throws:
+
+- **a starter with no projection** -- `projectedTotal()`'s own rule one file
+  over: a total that quietly omits a player reads as a lineup worth less than
+  it is, and this one is about to be compared against another;
+- **a position with no measured spread**, which contributes no variance and
+  therefore makes the matchup look MORE certain. Refused rather than treated
+  as zero, because the error is in the direction nobody checks;
+- **fewer than five projected starters.** A "team" of two has a third of a
+  real one's mean, so a half-set lineup against a whole one reports a
+  near-certainty that is entirely an artefact of a roster nobody has finished
+  setting.
+
+Three mutations confirmed red: summing the spreads (60.46 against 20.85),
+treating a missing CV as zero (**20.23 -- a plausible-looking wrong number**,
+which is the one that would have shipped), and dropping the starter floor.
+
+**One expected value in that suite was hand-computed wrong and the module was
+right** -- 12.63 against the real 20.85. The comment beside it now says so: a
+number in an assertion is a claim like any other.
+
+### The band is three words, and `close` takes neither colour
+
+`matchupRead()` answers `favoured` / `close` / `behind` at ten points either
+side of even, and the bar and the KPI card both take their colour from it.
+**`close` is `evidence` rather than `gain`** -- a coin toss is not a gain, and
+colouring it as one would be the room holding an opinion it does not have.
+
+Ten points is derived rather than chosen: the CV's own sensitivity to the
+scoring table is worth 1.3 points of probability, so five either side would
+be a band inside the model's own error. The percentage is printed beside the
+bar because a bar cannot say 58, and the sentence under it -- *"a
+scoring-strength estimate from two projected lineups, not a simulated
+week"* -- is the framing this number may not be shown without.
+`projectedWinPctForRoom()`'s method note in `app.js` makes the same demand of
+the same model.
+
+**The marker is EVEN, and it is the one reference value in this app that is
+not measured from anything.** It is 50% by construction, and without it drawn
+the bar is a length a reader has to compare against a number they are holding
+in their head. Which side of the line the fill ends is the whole reading.
+
+**The fourth KPI displaces "Best on the bench" rather than joining it** -- and
+only when there IS a matchup. Before week one, on a bye, and on every Sleeper
+league (which publishes no season schedule at all) the bench number comes
+back, because a strip that drops to three cards on the leagues that cannot
+answer says less than one showing what it has.
+
+### What was measured on the real screen
+
+The room was driven with `window.Live.listLeagues` and `leagueSnapshot`
+stubbed the way "a connected room CAN be driven" below describes, at both
+widths, against a fixture built from the live board:
+
+```
+             track   fill   marker    percent            sideways scroll
+1440          1158    845      579    75%                       no
+375            301    224      151    75%                       no
+even matchup  1158    568      579    50%, in plain ink         no
+no schedule     -       -        -    BEST ON THE BENCH
+```
+
+The marker lands at exactly half the track at both widths, the even case
+draws `evidence` with both percentages in plain ink -- neither `gain` nor
+`cost` -- and removing the schedule brings the bench card back with no bar at
+all. **That last row is the non-vacuity control**: it is the same page
+rendered without the thing every other assertion is about.
+
+**The bundle-hash check earned its keep for the third time**, before the
+first measurement rather than after the eighth. And the first three runs
+reported the room as never rendering, on a page that was fine: `innerText`
+returns the CSS-uppercased label, so a case-sensitive
+`includes("Win probability")` matched nothing against a card reading
+**WIN PROBABILITY**. That is the fourth appearance of this trap in this
+file, after `/nan/i` and Monangai, the hero eyebrow, and `/Randomize/`.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
@@ -6651,16 +6826,23 @@ viewport — which fixed a label that had been truncated at 1440 as well as
 at 375, on a screen that shipped months ago. See "A row wraps on its
 container's width".
 
-Open: **16**, plus the halves of **05** and **08** named above. **16 is no
-longer blocked on data** — it shares 20's source and is blocked on where
-the snapshot is fetched, which is an architecture question rather than a
-gap.
+**08** is finished with this pass. Its win-probability bar was the last
+half of that screen still listed as open, and it needed no fetch at all —
+see "The week's win probability" below.
 
-**Re-measure before re-asserting.** Four of the blockers in this section
-have now been falsified — two by work landing in parallel, two by nothing
-at all except somebody looking — and not one of the sentences announced
-that it had gone stale. Anything here that begins "nothing fetches" or "no
-room writes one" is a claim with a date on it.
+Open: **16**, plus the half of **05** named above. **16 is no longer
+blocked on data** — it shares 20's source and is blocked on where the
+snapshot is fetched, which is an architecture question rather than a gap.
+**05's own half is genuinely blocked** and is the only entry left in this
+section that is: a season win-% needs a simulator.
+
+**Re-measure before re-asserting.** Five of the blockers in this section
+have now been falsified — two by work landing in parallel, **three by
+nothing at all except somebody looking** — and not one of the sentences
+announced that it had gone stale. Anything here that begins "nothing
+fetches" or "no room writes one" is a claim with a date on it, and the
+three that fell to a re-read are the argument for spending the two minutes
+before quoting one.
 
 **And a connected room CAN be driven, which this section said it could
 not.** The sentence was that every connected surface sits inside Clerk's

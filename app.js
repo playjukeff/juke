@@ -8051,7 +8051,51 @@ const MIN_WEEKS_FOR_CV = 4;
 const MIN_SEASONS_FOR_CV = 5;
 const DEFAULT_WEEKLY_CV = 0.5;
 
-function positionWeeklyCV() {
+/* What the cache key hashes. Every scoreable rule, in a fixed order, so two
+   tables that differ anywhere produce different keys — and read off
+   DEFAULT_RULES rather than listed here, because a list of rule names
+   written down a second time is the drift this file has a standing rule
+   about, and a rule missing from it would silently share a cache entry with
+   a league that scores differently. */
+const SCOREABLE_KEYS_FOR_CV = Object.keys(DEFAULT_RULES).sort();
+
+/* One entry, and it earns its place: measured 9 September 2026 against the
+   480-player board, positionWeeklyCVUnder() costs **19.3ms** a call,
+   because it walks every stored weekly log on the board. A room asks for it
+   once, but a connected room asks on every render, and 19ms per render is
+   the sort of cost nothing reports and everything feels.
+
+   Keyed on what the answer actually depends on: the pool it was measured
+   over, and the table those weeks were scored under. Deliberately NOT
+   BEST_VOR, which is parKey()'s tell for a rescoring — this reads `s.w`
+   and `player.pos` and never a projection, so a scoring edit that moves
+   every projPts does not move it. */
+let CV_CACHE = null;
+
+function cvKey(rules) {
+  return board.length + '|' + (rules ? SCOREABLE_KEYS_FOR_CV.map((k) => rules[k]).join(',') : 'default');
+}
+
+/* The weekly coefficient of variation per position, under a connected
+   league's own scoring rather than this session's Draft Room table.
+
+   Same correction projPerGameUnder() makes to the MEAN, applied to the
+   spread — and it is worth far less, which is worth writing down so nobody
+   spends effort here twice. Measured across the three published tables the
+   CV really does move (WR 0.600 under full PPR against 0.726 under
+   standard, a fifth of itself), and the win probability that comes out of
+   it moves **1.3 points** across that whole range: 60.6% / 60.1% / 59.3%
+   on one plausible matchup. Against the 13.3 points a week the mean was
+   out by, this is a rounding correction rather than a defect.
+
+   It is made anyway because it is the same one-line substitution and the
+   alternative is a number quietly measured under a league nobody is in. */
+function positionWeeklyCVUnder(leagueRules) {
+  const rules = rulesFromLeague(leagueRules);
+  const key = cvKey(rules);
+  if (CV_CACHE && CV_CACHE.key === key) return CV_CACHE.value;
+
+  const score = rules ? (week) => pointsUnder(week, rules) : fantasyPoints;
   const sums = {}; // pos -> { sum, n }
   board.forEach(function (player) {
     const s = statOf(player);
@@ -8059,7 +8103,7 @@ function positionWeeklyCV() {
     logYears(s).forEach(function (year) {
       const weeks = (s.w[year] || []).filter(didPlay);
       if (weeks.length < MIN_WEEKS_FOR_CV) return;
-      const pts = weeks.map(fantasyPoints);
+      const pts = weeks.map(score);
       const mean = pts.reduce((a, b) => a + b, 0) / pts.length;
       if (mean <= 0) return; // a coefficient of variation is meaningless around zero
       const variance = pts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pts.length;
@@ -8074,7 +8118,13 @@ function positionWeeklyCV() {
     const row = sums[pos];
     cv[pos] = row && row.n >= MIN_SEASONS_FOR_CV ? row.sum / row.n : DEFAULT_WEEKLY_CV;
   });
+  CV_CACHE = { key: key, value: cv };
   return cv;
+}
+
+// The Draft Room's own table, which is the right one for a mock draft.
+function positionWeeklyCV() {
+  return positionWeeklyCVUnder(null);
 }
 
 // Standard normal CDF (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7) — no
@@ -12818,6 +12868,32 @@ window.JukeEngine = {
   // of either.
   posStrengthOf: posStrengthOf,
   winPctForRoom: (all) => projectedWinPctForRoom(all),
+  /* The two halves of a matchup's win probability, for the Strategy Room.
+
+     `weeklyCV` is the measured spread per position, under a connected
+     league's own rules; `winProbability` is winRateAgainst() with a list of
+     one. Both are handed out rather than reimplemented in web/src for the
+     reason winRateAgainst()'s own comment already gives about being split
+     out of projectedWinPctForRoom(): **two normal-difference
+     approximations that drifted would disagree by a fraction of a point
+     and nothing would say so.**
+
+     What the caller assembles is the arithmetic that is genuinely its own —
+     a lineup's mean and variance out of rows it already holds — and
+     web/src/lib/matchup.js does that with no imports, so it is testable
+     with no npm install. The model is here; the summing is there.
+
+     Guarded the way every bridge entry that touches board data has to be:
+     weeklyCV walks `s.w` on every board row, and this is reachable from
+     React on mount while stats.js is still deferred. An empty board would
+     otherwise hand back DEFAULT_WEEKLY_CV for all six positions, which is
+     a plausible-looking table nobody measured. */
+  weeklyCV: (leagueRules) => (dataReady() ? positionWeeklyCVUnder(leagueRules) : null),
+  winProbability: (mine, theirs) => {
+    if (!mine || !theirs) return null;
+    if (!Number.isFinite(mine.mean) || !Number.isFinite(theirs.mean)) return null;
+    return winRateAgainst(mine, [theirs]);
+  },
   // Everything the Start button does, minus the DOM read readSetup() used to
   // do — React already wrote the league directly via setLeague(). mySlot is
   // 0-indexed, matching slotSelect's own values (label is 1st, value is 0).
