@@ -6,6 +6,7 @@ import WeekStrip from './WeekStrip.jsx'
 import MoveCard from './MoveCard.jsx'
 import SecondaryMoves from './SecondaryMoves.jsx'
 import KpiStrip from '../decision/KpiStrip.jsx'
+import { verdictFor } from '../ledger/verdicts.js'
 import StakeCard from '../decision/StakeCard.jsx'
 import RunNextCard from '../decision/RunNextCard.jsx'
 import { buildDemoData } from './demoData.js'
@@ -135,8 +136,12 @@ export default function MyLeagueDemo() {
                   <span className="text-voidInk-primary">
                     {d.said} → {d.did}
                   </span>
-                  <span className={d.verdict === 'bad' ? 'text-flow-rose' : 'text-mint'}>
-                    {d.verdict === 'bad' ? '✗ Bad call' : '✓ Good call'}
+                  {/* Glyph, label and tone all off VERDICTS -- three
+                      copies of the ledger's own vocabulary written out by
+                      hand is how a good call comes to be mint here and
+                      gain one screen along. */}
+                  <span className={verdictFor(d.verdict).tone}>
+                    {verdictFor(d.verdict).glyph} {verdictFor(d.verdict).label}
                   </span>
                 </div>
               ))}

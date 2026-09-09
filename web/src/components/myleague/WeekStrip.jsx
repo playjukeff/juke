@@ -1,3 +1,5 @@
+import { verdictFor } from '../ledger/verdicts.js'
+
 /* The week-by-week strip under My League's bar — DRAFT, then a run of
    weeks, the current one marked. Genuinely new: nothing in this codebase
    drew a season-long week navigator before this (`draftPhase()` is the
@@ -33,8 +35,13 @@ export default function WeekStrip({ weeks, selected, onSelect }) {
           <>
             {w.label}
             {w.mark ? (
+              /* The tone comes off VERDICTS rather than being typed here.
+                 This tick was `text-mint` and the ledger's own good-call
+                 badge is `text-gain`, which is one fact in two colours on
+                 two screens a click apart -- the drift that map exists to
+                 prevent, in the file that was not reading it. */
               <span
-                className={'ml-1 ' + (w.mark === 'bad' ? 'text-flow-rose' : 'text-mint')}
+                className={'ml-1 ' + verdictFor(w.mark).tone}
                 aria-label={w.mark === 'bad' ? 'had a bad call' : 'all good calls'}
               >
                 {w.mark === 'bad' ? '✗' : '✓'}

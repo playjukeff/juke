@@ -19,14 +19,21 @@
  *
  * ---- The colours are tokens, not the handoff's hexes ----
  *
- * `--pos`/`--neg` map onto `mint`/`flow.rose`, which are already this
- * codebase's positive and negative pair. `--warn` had no equivalent and is
- * `flow.amber` now; see tailwind.config.js for why it is not `flow.gold`.
+ * `--pos`/`--neg` are `gain`/`cost`. They were `mint`/`flow.rose`, which
+ * was this codebase's positive and negative pair when this file was
+ * written and stopped being it when the decision system landed: mint is
+ * the rail's "you are here" and the room-card accent, and a verdict is a
+ * value. `--warn` had no equivalent and is `flow.amber`; see
+ * tailwind.config.js for why it is not `flow.gold`.
+ *
+ * Three surfaces read these and only this file writes them, which is the
+ * point -- the hand-rolled copies in WeekStrip.jsx and MyLeagueDemo.jsx
+ * had drifted to `text-mint` on their own and now read `VERDICTS` instead.
  */
 
 export const VERDICTS = {
-  good: { glyph: '✓', label: 'Good call', tone: 'text-mint' },
-  bad: { glyph: '✕', label: 'Bad call', tone: 'text-flow-rose' },
+  good: { glyph: '✓', label: 'Good call', tone: 'text-gain' },
+  bad: { glyph: '✕', label: 'Bad call', tone: 'text-cost' },
   ignored: { glyph: '—', label: 'Ignored', tone: 'text-ink-muted' },
   incon: { glyph: '?', label: 'Inconclusive', tone: 'text-flow-amber' },
   insuf: { glyph: '·', label: 'Insufficient evidence', tone: 'text-ink-muted' },

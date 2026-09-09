@@ -264,8 +264,11 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
     : Math.abs(swing.you) < 5
       ? { text: 'Close to even', tone: 'text-voidInk-body' }
       : swing.you > 0
-        ? { text: 'This favours you', tone: 'text-mint' }
-        : { text: 'This favours them', tone: 'text-flow-rose' }
+        // The swing number a line above is already `gain`/`cost`; this
+        // sentence is the same fact in words and was mint/rose, so one
+        // trade said one thing in two palettes an inch apart.
+        ? { text: 'This favours you', tone: 'text-gain' }
+        : { text: 'This favours them', tone: 'text-cost' }
 
   const builder = (
     <div className="grid gap-4 lg:grid-cols-[1fr_260px_1fr]">

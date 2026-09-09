@@ -7,6 +7,7 @@ import UpgradeGate from '../shell/UpgradeGate.jsx'
 import KpiStrip from '../decision/KpiStrip.jsx'
 import BarRow, { Bar } from '../decision/Bar.jsx'
 import StakeCard from '../decision/StakeCard.jsx'
+import RunNextCard from '../decision/RunNextCard.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
 /* The Waiver Room, with a real league behind it.
@@ -647,6 +648,20 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               room is the working. Absent when there is no team to price a
               claim against, rather than drawn empty -- a stake card with no
               stake in it is the loudest thing on the page saying nothing. */}
+          {/* P7. A room with nothing on its wire is a room with nothing to
+              do IN it, and that is the state this screen spends most of the
+              year in -- the panel below already says so in its own words.
+              The guide files this under "Waiver, offseason", and there is
+              no offseason FLAG to hang it on: neither adapter reports when
+              a season ends, which is the same missing field seasonPhase.js
+              already refuses to guess a playoff week from. An empty wire is
+              the reachable version of the same condition, and it is the one
+              a reader is actually looking at when the advice is "go and
+              look at next year's rookies instead".
+ 
+              Below the stake card, not instead of it: when both are there,
+              the stake is this week and this is what to do when there is
+              nothing left of this week to do. */}
           {bestClaim ? (
             <StakeCard
               eyebrow="Costing you most"
@@ -698,6 +713,17 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               </div>
             )}
           </Panel>
+
+          {targets.length ? null : (
+            <RunNextCard
+              eyebrow="Nothing here this week"
+              title="The Prospect Room"
+              action={{ label: 'Open the Prospect Room', href: '#/rooms/prospect' }}
+            >
+              Your wire has nobody worth a starting slot. Next year&rsquo;s class is where the
+              next real add comes from.
+            </RunNextCard>
+          )}
         </div>
       </div>
     </div>

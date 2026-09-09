@@ -1,5 +1,6 @@
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 import { POS_CHALK, CELL_INK } from '../draftRoomPositions.js'
+import { Bar } from '../decision/Bar.jsx'
 
 /* The blurred sample content behind the Waiver Room's unlock card
    (design_handoff_v3_alive 2dg/3dg).
@@ -51,6 +52,7 @@ export default function WaiverPreview() {
   const skill = board.filter((p) => SKILL.indexOf(p.pos) >= 0)
   const rows = skill.slice(96, 100)
   const drops = skill.slice(130, 134)
+  const deltaMax = Math.max(...DELTA.map((d) => Math.abs(parseFloat(d))))
 
   return (
     <div>
@@ -79,10 +81,30 @@ export default function WaiverPreview() {
                 Drop {drop ? drop.name : 'a bench spot'} · FAAB ${FAAB[i]}
               </span>
             </span>
-            <span className="text-right">
-              <span className="block font-display text-[22px] font-extrabold text-mint">
+            {/* `gain`, and a bar under it.
+ 
+                Two things at once, and the second is the reason for the
+                first. A preview's job is to show what the room looks
+                like, and the room draws its wire as bars now -- a preview
+                still drawing four bare figures is advertising a screen
+                that no longer exists. The colour follows: mint is the
+                rail's "you are here", and +6.2 points a week is a value.
+ 
+                The bar is scaled across the four sample rows, which is the
+                whole of P3 -- and it is the one number here that is
+                honest about being made up, since it says only "this one
+                is bigger than that one". */}
+            <span className="w-[86px] shrink-0 text-right">
+              <span className="block font-display text-[22px] font-extrabold text-gain">
                 {DELTA[i]}
               </span>
+              <Bar
+                className="mt-1.5"
+                value={Math.abs(parseFloat(DELTA[i]))}
+                max={deltaMax}
+                sign="gain"
+                index={i}
+              />
             </span>
           </div>
         )

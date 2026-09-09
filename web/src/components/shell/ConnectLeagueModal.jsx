@@ -453,8 +453,23 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   : 'No leagues on that account this season.'}
               </p>
             ) : (
+              /* P8. The rows arrive staggered rather than all at once --
+                  `.jd-rise` with a per-row `--i`, the same 40ms step every
+                  other list in the decision system uses. It is a list that
+                  appears after a network round trip, which is exactly the
+                  case the motion is for: something arrived, and it arrived
+                  in this order.
+ 
+                  The guide also asks for a `gain`-tinted "derived" pill on
+                  derived rows, and there are none here to tint. Its step 3
+                  is a settings table where some values are read and some
+                  are worked out; this one is a league PICKER, and every
+                  field on a row -- the name, the season, the team count,
+                  the manager -- comes straight off the platform's own
+                  response. A pill saying "derived" over a value that was
+                  read is worse than no pill. */
               <ul className="mt-4 flex max-h-[46vh] flex-col gap-2 overflow-y-auto">
-                {rows.map((lg) => {
+                {rows.map((lg, i) => {
                   const on = chosen && rowKey(chosen) === rowKey(lg)
                   return (
                     <li key={rowKey(lg)}>
@@ -463,8 +478,9 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                         role="radio"
                         aria-checked={on}
                         onClick={() => setChosen(lg)}
+                        style={{ '--i': i }}
                         className={
-                          'flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-150 ' +
+                          'jd-rise flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-150 ' +
                           (on
                             ? 'border-teal bg-flow-mintDark/40'
                             : 'border-line-hairline hover:border-white/25')

@@ -53,7 +53,8 @@ export default function StrategyPreview() {
           {other} · {reason}
         </span>
       </span>
-      <span className="shrink-0 font-mono text-[10px] text-mint">{delta}</span>
+      {/* A weekly points delta is a gain, not the rail's state colour. */}
+      <span className="shrink-0 font-mono text-[10px] text-gain">{delta}</span>
     </SampleCard>
   )
 
@@ -68,7 +69,11 @@ export default function StrategyPreview() {
       <SampleCard>
         <div className="flex items-center justify-between">
           <span className="text-[14px] font-semibold text-white">Week 3 · vs. Sarah</span>
-          <span className="font-mono text-[10px] tracking-[0.1em] text-mint">WIN PROB 58%</span>
+          {/* `evidence`, deliberately not `gain`. A win probability has no
+              direction -- 58% is not a gain of anything, it is a quantity,
+              and colouring it as good would make the same number read as
+              bad at 42 when it is the identical kind of fact. */}
+          <span className="font-mono text-[10px] tracking-[0.1em] text-evidence">WIN PROB 58%</span>
         </div>
         {/* No centre tick: 50% on a win-probability bar is a real
             midpoint, but the bar is already labelled with both
