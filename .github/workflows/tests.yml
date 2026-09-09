@@ -191,3 +191,31 @@ jobs:
       # schedule and must not be guessed into a playoff by week number.
       - name: Season phase
         run: node scripts/test_season_phase.mjs
+
+      # Whether a connected league is still trading.
+      #
+      # CLAUDE.md listed screen 14's deadline under "the data cannot answer"
+      # until 9 September 2026, and it was wrong: both platforms publish one.
+      # They publish it in different UNITS -- ESPN an instant, Sleeper a week
+      # number -- so half of what this asserts is the same case run twice, once
+      # per unit, which is what stops the two branches drifting apart.
+      #
+      # The other half is the refusals. No deadline, trading switched off, and
+      # a week with no current week to compare it against are all NOT "open",
+      # and a Trade Room that says the window is open when nobody knows is
+      # worse than one that says nothing.
+      - name: Trade deadline
+        run: node scripts/test_trade_deadline.mjs
+
+      # The connected league's schedule, and the season it adds up to.
+      #
+      # This file shipped with NO offline suite at all and My League's
+      # past-week panel has drawn on it since — so the gap is older than the
+      # season summary that walked into it, and both halves are covered here.
+      #
+      # Every case that matters is a week that is not a played game: a bye,
+      # an unplayed week, a preseason schedule ESPN publishes all fourteen
+      # weeks of. Each reads as a plausible zero if it is not refused, and a
+      # season of zeroes averages into a points-per-week a reader believes.
+      - name: The schedule and the season
+        run: node scripts/test_schedule.mjs

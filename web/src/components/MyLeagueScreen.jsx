@@ -9,6 +9,7 @@ import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
 import PastWeekPanel from './myleague/PastWeekPanel.jsx'
 import { gameInWeek } from '../lib/schedule.js'
 import DraftReportPanel from './myleague/DraftReportPanel.jsx'
+import SeasonEndPanel from './myleague/SeasonEndPanel.jsx'
 import { useDecisions, decisionsForWeek, weekMark } from '../hooks/useDecisions.js'
 
 /* #/my-league — the connected-league home. Absorbs the old League Room
@@ -232,6 +233,14 @@ export default function MyLeagueScreen() {
         />
       ) : (
         <>
+          {/* Screen 12. Above the standings once the season is over,
+              because at that point the table is the record and this is the
+              reading of it — and it is the one thing on the screen with an
+              action left in it. Draws nothing at every other phase, and
+              nothing at all on a league with no schedule. */}
+          {phase === 'complete' ? (
+            <SeasonEndPanel league={league} snapshot={snapshot} />
+          ) : null}
           <StandingsPanel league={league} snapshot={snapshot} status={snapStatus} reason={snapReason} />
           {/* Below the standings on purpose: the draft is how the season
               started and the table is how it is going, so the live fact

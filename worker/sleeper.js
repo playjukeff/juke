@@ -201,6 +201,34 @@ function waiverFromSleeper(settings) {
   };
 }
 
+/* Sleeper's half of the trade deadline. See tradeDeadlineFromEspn() in
+   espn.js for why both a week and an instant ride on the snapshot and why
+   neither adapter fills the other's field.
+
+   `trade_deadline` is a WEEK number (measured: 11 on a real league), and
+   `disable_trades` is the flag beside it -- the same "a value that is
+   present and does not apply" trap `acquisitionBudget` set for the waiver
+   reading, so it is read rather than left to a screen to discover by
+   counting down to a deadline in a league that never allows a trade.
+
+   WHICH SIDE OF THE WEEK IS UNMEASURED, and the uncertainty is resolved in
+   the direction that errs open: no Sleeper league past its own deadline was
+   available to check, so the deadline week itself is treated as still open
+   and only a LATER week reads as passed. Being wrong that way tells a reader
+   the window is open for one week longer than it is; the other way tells
+   them it is shut while they can still trade, which is worse. */
+function tradeDeadlineFromSleeper(settings) {
+  const s = settings || {};
+  const week = Number(s.trade_deadline);
+  return {
+    at: null,
+    // Sleeper sends 0 for a league with no deadline, which is the falsy-feed
+    // rule this project already applies everywhere else.
+    week: Number.isFinite(week) && week > 0 ? week : null,
+    disabled: Number(s.disable_trades) === 1,
+  };
+}
+
 export async function leagueSnapshot(leagueId, base) {
   const id = encodeURIComponent(leagueId);
   const [league, rosters, users, state, drafts] = await Promise.all([
@@ -260,6 +288,7 @@ export async function leagueSnapshot(leagueId, base) {
   const scoring = rulesFromSleeper(league.scoring_settings);
   const lineup = lineupFromSleeper(league.roster_positions);
   const waiver = waiverFromSleeper(league.settings);
+  const tradeDeadline = tradeDeadlineFromSleeper(league.settings);
 
   return {
     leagueId: String(league.league_id),
@@ -279,6 +308,9 @@ export async function leagueSnapshot(leagueId, base) {
     // league.settings stays at Sleeper until something needs it.
     waiverBudget: waiver.type === "faab" ? waiver.budget : null,
     waiver,
+    /* When trading closes -- a week here, an instant on ESPN, and the
+       snapshot carries both so a screen asks one question. */
+    tradeDeadline,
     /* The league's own scoring, in Juke's vocabulary -- which for Sleeper
        IS its own, because STAT_FIELDS took these key names from it. See
        scoring.js for why a room may not go on scoring a real league with
