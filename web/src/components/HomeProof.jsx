@@ -270,7 +270,23 @@ function Joint() {
 function Pair({ claim, children }) {
   return (
     <>
-      <h2 className="mt-14 font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:mt-16 sm:text-[32px] lg:col-span-2 lg:text-[38px]">
+      {/* The heading spans both columns in the GRID, because the claim
+          belongs to the pair rather than to either side of it — but its
+          text is capped at the left column's own content width so no glyph
+          ever crosses the seam's axis.
+
+          Breaking the rule at the heading rows was not enough, and that is
+          the part worth writing down: a seam establishes a vertical axis,
+          and the eye continues that axis through the gap. Measured at
+          1440 with the line already broken, two headings still ran past it
+          — "Your rules, or somebody else's." to 738 against a seam at 713,
+          and "Where every other mock stops." to 740. Reported both times,
+          because both times it was true.
+
+          `calc(50% - 3rem)` is the grid's half minus the left cell's own
+          `pr-12`, so a heading wraps exactly where the flat cell beneath it
+          ends and the two share an edge. */}
+      <h2 className="mt-14 font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:mt-16 sm:text-[32px] lg:col-span-2 lg:max-w-[calc(50%-3rem)] lg:text-[38px]">
         {claim}
       </h2>
       {children}
