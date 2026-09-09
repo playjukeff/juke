@@ -51,6 +51,35 @@ export const ESPN_STAT_IDS = {
   pts_allow_0: 89, pts_allow_1_6: 90, pts_allow_7_13: 91,
 };
 
+/* One ESPN rule that pays several of Juke's.
+ *
+ * ESPN does not band a short field goal the way the pipeline does: statId
+ * 80 is worth 3 and covers every make under forty, where STAT_FIELDS keeps
+ * fgm_0_19, fgm_20_29 and fgm_30_39 apart. So one id feeds three rules at
+ * the same rate.
+ *
+ * ---- Derived from the boxscores, which is the only place it shows ----
+ *
+ * The stat-id derivation could not reach this: it matched a statId to a
+ * Juke key by comparing season TOTALS, and ESPN has no total that
+ * corresponds to "makes under forty". What exposed it was ESPN's own
+ * applied points. Measured 9 September 2026 against the league's real 2025
+ * boxscores, weeks 1 to 6: every kicker came out exactly 6 short, and each
+ * had two field goals inside forty.
+ *
+ * Stated as a prediction and then tested: ESPN's points should equal Juke's
+ * plus three per make under forty. **37 of 38 kicker-weeks fit.** The one
+ * that does not is left alone rather than fitted around — a rule that
+ * explains 97% of the evidence and admits the rest is worth more than one
+ * tuned until nothing disagrees.
+ *
+ * Before this, a kicker's score under a connected league was short by three
+ * points for every chip shot he made, silently, in the half of the app that
+ * decides a lineup. */
+export const ESPN_SHARED_IDS = {
+  80: ["fgm_0_19", "fgm_20_29", "fgm_30_39"],
+};
+
 /* ESPN's per-position overrides, and why a defence needs one.
  *
  * An item carries flat `points` and a `pointsOverrides` map keyed by
@@ -96,6 +125,15 @@ export function rulesFromEspn(scoringItems) {
     const item = byId.get(id);
     claimed.add(id);
     rules[key] = item ? pointsFor(item, DST_RULES.has(key)) : 0;
+  }
+  /* One id, several rules, at the same rate -- see ESPN_SHARED_IDS. Written
+     after the one-to-one pass so a key can never be filled twice. */
+  for (const [rawId, keys] of Object.entries(ESPN_SHARED_IDS)) {
+    const id = Number(rawId);
+    const item = byId.get(id);
+    claimed.add(id);
+    const pts = item ? pointsFor(item, false) : 0;
+    keys.forEach((key) => { rules[key] = pts; });
   }
 
   /* `scores` and not `pointsFor(i, false)`, which was the first version and
