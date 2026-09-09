@@ -154,8 +154,11 @@ function ownerNames(league) {
 
 /* When the draft is, and whether it has happened.
 
-   Free: `draftSettings.date` rides on the `mSettings` view both callers
-   already ask for, and `draftDetail` on the league root. No extra request.
+   `draftSettings.date` rides on the `mSettings` view both callers already
+   ask for. `draftDetail` rides on the league root too — but only its two
+   booleans do, so `mDraftDetail` is now asked for by name to get `picks`.
+   That is one more view on the same request rather than a second request,
+   and the section below is what buys it.
 
    ---- The status is derived, and it has to be ----
 
@@ -164,20 +167,52 @@ function ownerNames(league) {
    mapping is written down here once rather than being re-derived by each
    screen that wants to know whether to draw a countdown.
 
+   ---- `inProgress` does not mean picks are being made ----
+
+   It means the draft ROOM is open, which ESPN opens well before the draft.
+   Measured 8 September 2026 against a real public league drafting at 02:00
+   UTC: at 01:26 UTC -- thirty-four minutes early -- `inProgress` was already
+   true, `drafted` false, and not one of the 140 picks made. Reading it alone
+   as "drafting" put DRAFTING NOW on that league and suppressed the countdown
+   entirely, because draftPhase() answers on the status before it ever looks
+   at the clock. The boolean is necessary and it is not sufficient; what
+   makes it sufficient is a pick.
+
+   ---- An unmade pick is `playerId: -1` ----
+
+   The picks array is pre-populated with the whole grid -- 140 slots for a
+   ten-team, fourteen-round league -- before anybody drafts, carrying the
+   draft order and nothing else. So "has this started" is a count of picks
+   with a real player behind them, and never `picks.length`.
+
+   Keepers are excluded from that count: they are assigned before the draft
+   rather than during it, so a keeper league would otherwise report itself
+   as drafting from the moment its grid was built -- the same bug this
+   fixes, arriving from the one direction the fix could reintroduce it.
+
    ---- A date with `drafted: true` behind it still points at the past ----
 
    ESPN keeps the scheduled date after the draft has run, so a countdown
    built on the date alone counts to a draft that already happened. That is
    the same trap Sleeper's `start_time` has on a completed draft, which is
    why both providers report a status beside the instant and nothing draws
-   one without the other. */
+   one without the other. `drafted` is therefore read FIRST: a finished
+   draft is finished whatever the other boolean says. */
 function draftInfo(league) {
   const settings = (league.settings || {}).draftSettings || {};
   const detail = league.draftDetail || {};
   const at = Number(settings.date) || null;
 
-  const status = detail.inProgress ? "drafting"
-               : detail.drafted ? "complete"
+  const picks = Array.isArray(detail.picks) ? detail.picks : null;
+  const started = picks
+    ? picks.some((p) => p && p.playerId > 0 && !p.keeper && !p.reservedForKeeper)
+    /* No picks in hand, so the view was refused or the shape moved. The old
+       reading is wrong early and right once a draft is genuinely under way,
+       and being early beats printing DRAFT TIME PASSED over a live draft. */
+    : !!detail.inProgress;
+
+  const status = detail.drafted ? "complete"
+               : detail.inProgress && started ? "drafting"
                : "pre_draft";
 
   return { at, status };
@@ -195,7 +230,7 @@ function draftInfo(league) {
    question Sleeper's does not — which of these is yours — and asking it
    from an answer already in hand beats a second round trip. */
 export async function lookupLeague(leagueId, season, base) {
-  const res = await getJson(leaguePath(leagueId, season, ["mTeam", "mSettings"]), base);
+  const res = await getJson(leaguePath(leagueId, season, ["mTeam", "mSettings", "mDraftDetail"]), base);
 
   if (!res.ok) {
     // 401 is ESPN's answer for a league that exists and is not public. It
@@ -323,7 +358,7 @@ export async function crosswalk(entries, lookup) {
    requests. */
 export async function leagueSnapshot(leagueId, season, base, resolve) {
   const res = await getJson(
-    leaguePath(leagueId, season, ["mTeam", "mRoster", "mSettings"]),
+    leaguePath(leagueId, season, ["mTeam", "mRoster", "mSettings", "mDraftDetail"]),
     base
   );
   if (!res.ok || !res.body || !res.body.id) {
