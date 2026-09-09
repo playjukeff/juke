@@ -51,6 +51,7 @@
 
    Leave it unset in production. */
 import { rulesFromSleeper } from "./scoring.js";
+import { lineupFromSleeper } from "./lineup.js";
 
 export const SLEEPER_API = "https://api.sleeper.app/v1";
 
@@ -230,6 +231,7 @@ export async function leagueSnapshot(leagueId, base) {
 
   const draft = pickDraft(drafts, league.season);
   const scoring = rulesFromSleeper(league.scoring_settings);
+  const lineup = lineupFromSleeper(league.roster_positions);
 
   return {
     leagueId: String(league.league_id),
@@ -252,6 +254,7 @@ export async function leagueSnapshot(leagueId, base) {
        IS its own, because STAT_FIELDS took these key names from it. See
        scoring.js for why a room may not go on scoring a real league with
        the Draft Room's mock table. */
+    lineup,
     rules: scoring.rules,
     scoringUnmapped: scoring.unmapped,
     playoffTeams: Number((league.settings || {}).playoff_teams) || null,
