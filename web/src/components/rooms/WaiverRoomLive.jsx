@@ -93,19 +93,33 @@ function Gap({ value }) {
   )
 }
 
-/* P3. The row keeps its numeral and gains a 100px bar scaled to the best
-   gap on the list it is part of.
+/* P3. The row keeps its numeral and gains a bar scaled to the best gap on
+   the list it is part of.
 
    A ranked list of "over replacement" figures is exactly the shared-unit
    column the guide says becomes bars: 34, 31, 28, 12, 9 down a page is five
    numbers a reader subtracts by eye, and the same five as lengths is one
    glance. The numeral stays because the bar cannot say 34, which is the
-   thing a manager types into a bid. */
+   thing a manager types into a bid.
+
+   ---- Screen 19: the bar was `hidden` on the one screen that is a list ----
+
+   It carried `hidden ... sm:block`, so a phone got the numerals and none of
+   the comparison — the exact table this component exists to replace. And
+   there was a real measurement behind that: at 375 the row is 301px wide,
+   and a 100px bar inline leaves 41px for a name, which is "Bijan Rob…".
+
+   So the bar WRAPS below `sm` rather than being dropped: the row is
+   `flex-wrap`, the bar takes the whole second line, and the name column
+   keeps the 153px it measures today. It costs one 7px line per row and the
+   bar comes out three times longer than the desktop's 100px, which is a
+   better comparison rather than a compromise. `BarRow` stacks the same way
+   and for the same reason. */
 function TargetRow({ rank, row, max, index = 0 }) {
   const p = row.player
   return (
     <div
-      className="jd-rise flex items-center gap-3 border-b border-line-hairline py-2.5 last:border-b-0"
+      className="jd-rise flex flex-wrap items-center gap-x-3 gap-y-0 border-b border-line-hairline py-2.5 last:border-b-0"
       style={{ '--i': index }}
     >
       <span className="w-6 shrink-0 font-plex text-[11px] text-ink-muted">
@@ -120,7 +134,10 @@ function TargetRow({ rank, row, max, index = 0 }) {
         </span>
       </span>
       {max > 0 ? (
-        <span className="hidden w-[100px] shrink-0 sm:block">
+        /* `order-last` and `w-full` are what wrap it: a full-width flex item
+           cannot share a line, so it takes its own below `sm` and slots back
+           between the name and the numeral at `sm` and up. */
+        <span className="order-last mt-1.5 w-full shrink-0 sm:order-none sm:mt-0 sm:w-[100px]">
           <Bar value={Math.max(0, row.gap)} max={max} sign="gain" index={index} />
         </span>
       ) : null}

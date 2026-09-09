@@ -6285,8 +6285,21 @@ available place in the product to put a guess.
   the transaction feed carries trades that were EXECUTED. A missed offer is
   by construction the one thing no feed here can see, which is the same shape
   as a drop being the player a roster cannot name.
-- **16 and 20's per-room "points at stake this week."** No room writes one;
-  `railItems.js` already deleted a "needs action" dot for the same reason.
+- **~~16 and 20's per-room "points at stake this week"~~ — the fourth of
+  these falsified by looking, and half right rather than wrong.** The entry
+  read *"No room writes one; `railItems.js` already deleted a 'needs
+  action' dot for the same reason."* Two of the six rooms DO write one, and
+  have since their own boards were written: `rosterGaps()` is what the
+  Waiver Room's own KPI sums into PTS OPEN, and `bestSwaps()` is what the
+  Strategy Room ranks its lineup on. **Nothing had ever asked either from
+  outside a room.**
+
+  The other four genuinely cannot, and that half of the sentence stands:
+  Trade needs a partner and a package chosen before `tradeSwing()` means
+  anything, League is standings, and Prospect and Draft are not weekly.
+
+  **20 ships. 16 does not, and the reason is not data** — see "What a room
+  has at stake" below.
 - **07's FAAB LEFT, which now LOOKS buildable and is not.** The transaction
   feed (#216) carries a `bid` on every move, so summing the reader's own
   looks like season spend and is not: `pickWindow()` sorts newest-first and
@@ -6414,6 +6427,200 @@ only evidence if a dirty one would have been reported, which is this file's
 own rule about non-vacuous checks, applied to the tool rather than to a
 test.
 
+### What a room has at stake, in two units that do not convert
+
+Screens 16 and 20 both ask a room's own tile to carry its stake, and this
+file listed both under the screens the data cannot answer. Re-measured 9
+September 2026: **two of the six rooms have computed a real stake since
+their boards were written, and nothing had ever asked them from outside a
+room.** `rosterGaps()` is what the Waiver Room's own header sums into PTS
+OPEN; `bestSwaps()` is what the Strategy Room ranks its lineup on.
+
+That is the fourth blocker in that list falsified by looking rather than by
+anything landing in parallel, and it is the one where the sentence was half
+right — the other four rooms genuinely have nothing to ask, so what shipped
+answers for two and is silent for four. **A grid carrying a confident
+number for four rooms and an invented one for two would be worse than one
+where two tiles say something.**
+
+`web/src/components/shell/roomStakes.js` is the shared source and imports
+only the two room boards, which import nothing — so it runs in CI with no
+npm install, like every other node step in `tests.yml`.
+
+**The two stakes are in DIFFERENT UNITS and every caller is obliged to
+print it.** Strategy's swap gain comes off `weekPts`, which is
+`projPerGame` under the league's own rules: **points this week**. Waiver's
+improvement comes off `gapOf`, which is `replacementGap()`: **projected
+points over replacement for the season**. The guide's own phrasing — "pts
+at stake this week" — is true of one of them and false of the other, and a
+row printing both as "pts" is the right-value-wrong-column failure this
+project has already shipped once in a standings table.
+
+So `unit` rides on every stake and `stakeLabel()` is the one phrasing:
+`+8.4 this week` against `+306 on the wire`. Neither converts to the other
+for free, exactly as the trade deadline's instant and week do not, and the
+answer is the same — one vocabulary, two units, and the words carry it.
+
+**Strategy takes the BEST swap and not the sum.** Swaps are alternatives to
+each other rather than additions: summing them counts one starter's seat
+twice and prints a number no lineup can reach, which is the error
+`insightsReport()` already records about summing an unmatched per-pick
+maximum. Waiver DOES sum, because those are separate positions and the
+room's own KPI sums them.
+
+**Both are `cost`, following `WaiverRoomLive`'s own stake card rather than
+a second convention** — the magnitude is what a claim or a swap would gain
+and the cost is that it has not been made. Three copies of one vocabulary
+is how a colour comes to mean two things.
+
+**`FLOOR = 1`, and it is derived rather than chosen.** `replacementGap()`
+carries the projection's own error, which this file measures at MAE 6.8
+points a player, so a sub-point "stake" is a number a reader would act on
+that the model cannot support — and a grid where every room always shows
+something is a grid nobody reads. Rounded display would print anything
+under 0.5 as `0` anyway; this only widens that to a figure worth a colour.
+
+### The hook is mounted by a gesture, and that is what 16 is still waiting on
+
+`useRoomStakes()` is the React half. **`MoreSheet` calls it and
+`useRailItems()` deliberately does not**, and the constraint is written in
+`useLeagueSnapshot()`'s own comment: a league's IDENTITY is wanted by the
+header on every screen and its ROSTERS by one screen, and folding them
+together "would put four upstream calls behind every page load to draw a
+chip that needs a name". A stake is a fact about rosters.
+
+The More sheet is `{moreOpen && <MoreSheet/>}` — mounted by a tap and
+unmounted on close — so the fetch is paid for by the reader who asked to
+see the list. The desktop rail is on screen at every width above `lg`, on
+every route, always; putting the stake in `useRailItems()` would make every
+page load fetch a snapshot.
+
+**So screen 16 is not wired, and it is not blocked on data.** The rooms
+grid would be a snapshot on the lobby's own page load rather than behind a
+gesture. That is an architecture question — one shared snapshot for the
+shell, or a room lobby that fetches — and it wants deciding rather than
+falling out of a component that happened to need a number.
+
+### What was verified, and it needed the real DOM
+
+`scripts/test_room_stakes.mjs` — 27 checks, in `tests.yml` — covers the
+units, the signs, the absence on the four rooms that cannot answer, four
+refusal cases, the floor, and that `stakeLabel()` says something different
+per unit. **Both mutations were confirmed red**: setting both units to
+`week` fails the season assertion and the wire label, and `FLOOR = 0`
+starts reporting a zero stake on a roster with nothing to gain.
+
+**Its first fixture was wrong and the module was right**, which is the
+useful half. It benched an RB behind a starting WR and produced no swap at
+all — `swaps()` only ever offers a SAME-POSITION swap, because the snapshot
+carries no slot eligibility and that is the only swap it can prove legal.
+The fixture now benches a better WR behind a weak starting one.
+
+The sheet itself was driven in a real browser at 390 and 320 with
+`window.Live` stubbed the way `league-connect.spec.mjs` already stubs it —
+Playwright rather than `preview_start`, for the reason this file records
+about a worktree being served another checkout's build. Both rows draw,
+the other four draw nothing, neither row overflows, and `cost` measures
+**7.51:1** on `surface-card`. A temporary spec, deleted before the commit.
+
+### A row wraps on its container's width, and `sm:` was asking the wrong thing
+
+Screen 19 is the Waiver Room on a phone -- *"Gap = one bar; target rows keep
+a 100px delta bar"* -- and measuring it found two defects, only one of which
+is about phones.
+
+**The target row's bar was `hidden ... sm:block`.** So the one screen in
+this room that IS a ranked list gave a phone the numerals and none of the
+comparison -- the exact table `<Bar>` exists to replace. And there was a real
+measurement behind that class: at 375 the row is 301px, and a 100px bar
+inline leaves **41px for a player's name**, which is "Bijan Rob...".
+
+So the bar wraps rather than being dropped. The row is `flex-wrap`, the bar
+takes `w-full order-last` below `sm` and slots back to `w-[100px]` inline at
+`sm` and up. The name keeps the 153px it measures today, the bar comes out
+**301px, three times the desktop's**, and it costs one 7px line per row.
+
+**`<BarRow>` had the same defect and it was never about the phone at all.**
+It was `grid-cols-[minmax(0,1fr)_1fr_56px]`, and three columns do not fit a
+narrow box. Measured across four routes at 375, 1000 and 1440:
+
+```
+                                     label   verdict
+Waiver "where a claim would help"     111    truncated   (375)
+   the same panel, 360px rail         119    truncated   (1440)
+Trade "You / Gridiron Gang"            69    truncated   (1440)
+```
+
+**Clipped at 1440 as well as at 375**, because that panel sits in a 360px
+rail at `lg` -- so an `sm:` breakpoint would have fixed one of the two widths
+and left the other exactly as it was. The label carries the player AND the
+position he beats, which is what `WaiverRoomLive`'s own comment says it is
+for ("a bar with only a position on it says where the gap is and not what
+closes it"), and at 119px it carried neither.
+
+**Flex with a real basis on each part asks the question that matters.** The
+label wants `12rem`, the bar `8rem`, the numeral is 56px: when the box
+cannot seat all three the bar wraps, and alone on its line it GROWS to the
+full width. Measured after, on the same four routes:
+
+```
+container   layout                       label   bar
+   878      one line                      431    367
+   318      label / bar + numeral         318    250
+   301      label / bar + numeral         301    233
+   218      label / bar + numeral         218    150
+```
+
+Nothing is clipped at any of them, the one-line case survives wherever the
+box can carry it, and the bar is longer in every narrow column than the
+119px it used to get. **`min-w-0` is what still lets the label ellipsise**
+in a box too small for even one of them.
+
+**There are no `order` utilities and source order is the reading order.**
+An earlier cut swapped the numeral above `sm`, so the wrapped line differed
+by breakpoint -- two arrangements of three elements, decided by a viewport
+that has nothing to do with the box they are in.
+
+**A container query would be the textbook answer and it is a plugin.**
+`@tailwindcss/container-queries` is a dependency, and flex bases already
+answer the same question with the CSS that is here. Reach for it only when
+something genuinely needs to change more than a wrap.
+
+`tests/bar-rows.spec.mjs` holds it open, at 375 and 1440, across the two
+rooms that draw one. **Confirmed red at BOTH widths** with the grid put
+back, naming the label it lost — which is the whole point of running it at
+1440 as well: a guard written only at phone width would have gone green on
+the defect that had actually shipped. It asserts the property (no label
+truncated, every row still draws a bar) rather than the layout, so the
+one-line and the wrapped arrangement both satisfy it, and it asserts the
+ROW COUNT first, because every other assertion in it is about something not
+being wrong and a selector matching nothing would satisfy all of them.
+
+It skips against production for `league-connect.spec.mjs`'s reason and
+carries the same instruction: **verify a skip in both directions or it is a
+deletion.** Locally both run and pass; against production both skip.
+
+### The bundle-hash check caught a third bad measurement, first try
+
+A sweep of every BarRow reported **3 clipped at 375** on a build where they
+measured 233px and clean. `curl`ing the served HTML named
+`index-BHWjiA-c.js` against a worktree that had just built
+`index-zRjQu05L.js`: a `python -m http.server 8765 --directory web/dist`
+belonging to another checkout, adopted by `reuseExistingServer`.
+
+**Nothing was killed.** The port is shared with whatever else is running the
+suite, and a static server is trivially replaceable but somebody else's run
+is not. A second server on 8841 with an **absolute** `--directory` and
+`JUKE_SITE=http://127.0.0.1:8841` is a two-line detour -- `webServer` still
+adopts the stale 8765 and nothing navigates to it -- and it needs no
+judgement about whose process that is.
+
+**And the corrected sweep then found nothing at all**, because its selector
+asked for `display === "grid"` and the rows had become flex. A check that
+reports zero after the change it is checking is the vacuity trap, not a
+pass: it was re-aimed at the bar's own `h-bar-track` class, which is a fact
+about what a row IS rather than about how it happens to be laid out.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
@@ -6434,19 +6641,43 @@ the window is open, which it had no idea of. Both name what they do not draw
 rather than filling it — 12 has no costliest HABIT because nothing grades a
 decision, and 14 has no missed-offer bar because nothing records an offer.
 
-Open: **16, 19, 20**, plus the halves of **05** and **08** named above.
-16 and 20 share one blocker (no room writes a per-room stake) and 19 is the
-Waiver Room at phone width.
+**20** ships with this pass — the phone's More sheet carries a real stake
+on the two rooms that can compute one, in each room's own unit, and draws
+nothing at all on the four that cannot. See "What a room has at stake".
 
-**Re-measure before re-asserting.** Two of the blockers in this section were
-falsified within a day of being written, both by work landing in parallel,
-and neither sentence announced that it had gone stale. Anything here that
-begins "nothing fetches" is a claim with a date on it. See the section on
-what the data cannot answer; **19** is the Waiver Room at phone width,
-which is the same responsive component part 2 already changed and cannot be
-driven live for the reason `league-connect.spec.mjs` records — every
-connected surface sits inside Clerk's `<SignedIn>` and a keyless build
-renders the signed-out fallback.
+**19** ships with it: the target row's delta bar was `hidden` below `sm`
+and now wraps, and `<BarRow>` wraps on its CONTAINER rather than on the
+viewport — which fixed a label that had been truncated at 1440 as well as
+at 375, on a screen that shipped months ago. See "A row wraps on its
+container's width".
+
+Open: **16**, plus the halves of **05** and **08** named above. **16 is no
+longer blocked on data** — it shares 20's source and is blocked on where
+the snapshot is fetched, which is an architecture question rather than a
+gap.
+
+**Re-measure before re-asserting.** Four of the blockers in this section
+have now been falsified — two by work landing in parallel, two by nothing
+at all except somebody looking — and not one of the sentences announced
+that it had gone stale. Anything here that begins "nothing fetches" or "no
+room writes one" is a claim with a date on it.
+
+**And a connected room CAN be driven, which this section said it could
+not.** The sentence was that every connected surface sits inside Clerk's
+`<SignedIn>` and a keyless build renders the fallback. `RoomPage` contains
+no `<SignedIn>`: what gates a room is `leagueStore` answering `connected`,
+so stubbing `window.Live.listLeagues` and `leagueSnapshot` the way
+`league-connect.spec.mjs` already stubs the first of them puts a real
+Waiver Room on screen with real players on the wire. That is how screen 19
+was measured, and it is a wider seam than this file had recorded.
+
+**The snapshot stub has to wait for the board.** `RoomPage` fetches on the
+render its league id arrives on, which is routinely BEFORE `players.js`
+lands — so a stub that builds its rosters out of `JukeEngine.board()`
+returns `ok: false` and the room draws "we could not read your league",
+with nothing retrying. Resolve on `juke:data-loaded` when `dataReady()` is
+still false. Same shape as `WaiverRoomLive`'s own memo on `board.length`,
+one layer out in the fixture.
 
 ## Your Insights, and the difference between a share and a decision
 
@@ -10033,6 +10264,27 @@ remains, after a close, where there is no client-side condition to poll.
   And a temporary spec that measures anything should assert what it is looking
   at before it looks: fetch the served HTML, pull the bundle name out of it, and
   print whether that bundle contains a symbol the change introduces.
+
+- **Most of `web/src` is CRLF, so a scripted edit matching on `
+` replaces
+  nothing and says it worked.** A python pass over `MoreSheet.jsx` reported
+  success, changed the file not at all, and the build then passed — because
+  a no-op compiles. Two measurement rounds went into asking why a hook was
+  never called before anybody checked the file itself, and the answer was
+  that it had never been edited.
+
+  Same shape as adding `app.js` to the nightly's `?v=` sed: **a pattern that
+  matches nothing is a silent no-op wearing a fix's clothes**, and the tell
+  is identical — the thing downstream behaves exactly as it did before.
+
+  So a scripted edit **asserts its own match**. Read with
+  `newline=''`, normalise to `
+`, `assert old in s` on every replacement,
+  and write back with the ending the file arrived with — never a bare
+  `.replace()` whose failure is indistinguishable from its success. And
+  `grep -c` the symbol you added before rebuilding: one line, and it is the
+  difference between debugging a hook and debugging a file that does not
+  contain it.
 
 - **Playwright's `page.route()` is worth −116ms of first paint all by itself,
   and that is the tooling wearing a FIX's clothes.** Every other harness
