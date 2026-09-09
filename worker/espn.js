@@ -221,6 +221,18 @@ function ownerNames(league) {
    why both providers report a status beside the instant and nothing draws
    one without the other. `drafted` is therefore read FIRST: a finished
    draft is finished whatever the other boolean says. */
+/* An unmade pick, and why this is not simply `playerId > 0`.
+
+   ESPN gives a TEAM DEFENCE a NEGATIVE player id -- measured -16034 for
+   Houston, -16007 for Denver, -16023 for Pittsburgh, which is
+   -(16000 + proTeamId). So `> 0` reads every drafted defence as an unmade
+   pick. It dropped exactly ten of a ten-team draft's 140 picks, one per
+   roster, and reported them as neither picks nor unnamed -- found by
+   counting the result, because nothing failed.
+
+   -1 is the only value meaning nobody has picked here yet. */
+const UNMADE = -1;
+
 function draftInfo(league, now) {
   const settings = (league.settings || {}).draftSettings || {};
   const detail = league.draftDetail || {};
@@ -228,7 +240,7 @@ function draftInfo(league, now) {
 
   const picks = Array.isArray(detail.picks) ? detail.picks : null;
   const picked = picks
-    ? picks.some((p) => p && p.playerId > 0 && !p.keeper && !p.reservedForKeeper)
+    ? picks.some((p) => p && p.playerId !== null && p.playerId !== undefined && p.playerId !== UNMADE && !p.keeper && !p.reservedForKeeper)
     : false;
   // The hour having come, which is the only evidence a live ESPN draft
   // gives: see the measurement above.
@@ -378,6 +390,102 @@ export async function crosswalk(entries, lookup) {
   return lookup([...wanted.values()]);
 }
 
+/* The completed draft, as picks anybody can name.
+ *
+ * Free: `mDraftDetail` has been on this request since the draft countdown
+ * needed it, and the rosters are already here for the crosswalk. So this
+ * costs one more pass over data the snapshot had in hand and not a single
+ * extra fetch -- which matters, because the obvious alternative is
+ * `kona_player_info` and that is 3.9 MB.
+ *
+ * ---- Names come from the rosters, and that is why this is captured ----
+ *
+ * A pick carries a bare ESPN playerId and nothing else. The only free way
+ * to turn that into a person is the roster the player is now on, which
+ * works perfectly the day a draft ends -- measured 140 of 140 -- and decays
+ * from the first drop of the season. There is no asking ESPN later what a
+ * pick was without paying 3.9 MB for the whole player universe.
+ *
+ * So this is a capture, not a query, and it belongs to the same family as
+ * data/season's append-only archives: the moment to record what happened is
+ * while it can still be recorded. A caller that wants it durable stores
+ * what comes back rather than re-reading it in November.
+ *
+ * ---- An unnamed pick is reported, never dropped ----
+ *
+ * A pick whose player has already been dropped resolves to no name, and it
+ * stays in the list with `name: null` rather than vanishing. A draft
+ * silently 138 picks long is a board with holes nobody can see -- the same
+ * reason the roster crosswalk reports `unmatched` instead of quietly
+ * shortening a roster.
+ *
+ * ---- The seat order is stated, not inferred ----
+ *
+ * Juke derives a seat from the overall pick number and the snake. That is
+ * right for a snake and wrong for anything else, and ESPN runs linear and
+ * auction drafts too -- so the round-one team order rides along explicitly,
+ * and every pick carries its own teamId. A caller then never has to
+ * re-derive the mirror, which is the rule pickInRound() already exists to
+ * enforce on the board. */
+function draftBoard(league, rawTeams, resolveId) {
+  const detail = league.draftDetail || {};
+  const picks = Array.isArray(detail.picks) ? detail.picks : [];
+  if (!picks.length) return null;
+
+  const byEspnId = new Map();
+  rawTeams.forEach((t) => {
+    const entries = (t.roster && Array.isArray(t.roster.entries)) ? t.roster.entries : [];
+    entries.forEach((e) => {
+      const p = e && e.playerPoolEntry && e.playerPoolEntry.player;
+      // Either shape: a roster entry carries `playerId` beside the nested
+      // player, and a caller holding only the pool entry still resolves.
+      const id = e.playerId !== undefined && e.playerId !== null ? e.playerId : p && p.id;
+      if (p && id !== undefined && id !== null) byEspnId.set(Number(id), p);
+    });
+  });
+
+  const made = picks
+    .filter((p) => p && p.playerId !== null && p.playerId !== undefined && p.playerId !== UNMADE)
+    .sort((a, b) => (a.overallPickNumber || 0) - (b.overallPickNumber || 0));
+  if (!made.length) return null;
+
+  let unnamed = 0;
+  const out = made.map((p) => {
+    const player = byEspnId.get(Number(p.playerId)) || null;
+    const key = player ? espnKey(player) : null;
+    if (!key || !key.name) unnamed++;
+    return {
+      overall: Number(p.overallPickNumber) || null,
+      round: Number(p.roundId) || null,
+      roundPick: Number(p.roundPickNumber) || null,
+      teamId: String(p.teamId),
+      // Juke's own id where the crosswalk could place him, so a caller can
+      // reach the board without matching on a name a second time.
+      id: player ? resolveId(player) : null,
+      name: key && key.name ? key.name : null,
+      pos: key ? key.pos || null : null,
+      team: key ? key.team || null : null,
+      // ESPN's own flag for a pick the clock made rather than a person.
+      auto: !!p.autoDraftTypeId,
+    };
+  });
+
+  const first = made.filter((p) => Number(p.roundId) === 1)
+    .sort((a, b) => (a.roundPickNumber || 0) - (b.roundPickNumber || 0))
+    .map((p) => String(p.teamId));
+
+  const settings = (league.settings || {}).draftSettings || {};
+  return {
+    // "SNAKE", "LINEAR", "AUCTION" -- stated so a caller can refuse a shape
+    // whose seat maths it does not model rather than grading it wrongly.
+    type: String(settings.type || "").toUpperCase() || null,
+    rounds: made.reduce((n, p) => Math.max(n, Number(p.roundId) || 0), 0),
+    order: first,
+    picks: out,
+    unnamed,
+  };
+}
+
 /* Everything a connected ESPN league's screens need, in the shape
    sleeper.js already answers.
 
@@ -476,6 +584,9 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const week = Number(league.scoringPeriodId) || null;
   const snapDraft = draftInfo(league, Date.now());
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
+  const draft = snapDraft.status === "complete"
+    ? draftBoard(league, rawTeams, sleeperId)
+    : null;
 
   return {
     reason: null,
@@ -497,6 +608,10 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          Without it every room scored a real league with whatever the Draft
          Room's mock table happened to say, which understated a measured
          full-PPR week by 13.3 points and skewed the advice with it. */
+      /* The completed draft, when there is one. Gated on `complete` rather
+         than sent always: it is ~8KB of picks that mean nothing until the
+         draft has run, on a payload every room fetches. */
+      draft,
       rules: scoring.rules,
       /* What this league scores that Juke cannot name. Reported rather than
          dropped, the same discipline unmatched.txt applies to a stat the

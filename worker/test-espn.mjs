@@ -183,6 +183,87 @@ await withFetch(200, LEAGUE, async () => {
    about what separates "the room is open" from "picks are being made", and
    what separates them is a pick with a real player behind it. */
 console.log("");
+
+/* ---- The completed draft ----
+
+   Captured from the same response the rosters come from, because a pick
+   carries a bare ESPN playerId and the roster is the only free way to turn
+   that into a person. Every case below is one that silently shortens or
+   mis-names a board. */
+console.log("");
+console.log("--- the draft ---");
+
+/* A negative playerId is a TEAM DEFENCE, not an unmade pick. Measured on a
+   real league: -16034 Houston, -16007 Denver, -(16000 + proTeamId). A
+   `> 0` test drops exactly one pick per roster and reports them as neither
+   picks nor unnamed -- ten of 140, found by counting rather than by
+   anything failing. */
+const DRAFTED = {
+  ...LEAGUE,
+  settings: { ...LEAGUE.settings, draftSettings: { type: "SNAKE", date: 1 } },
+  draftDetail: {
+    drafted: true,
+    inProgress: false,
+    picks: [
+      { overallPickNumber: 1, roundId: 1, roundPickNumber: 1, teamId: 1, playerId: 1, autoDraftTypeId: 0 },
+      { overallPickNumber: 2, roundId: 1, roundPickNumber: 2, teamId: 2, playerId: 5, autoDraftTypeId: 3 },
+      { overallPickNumber: 3, roundId: 2, roundPickNumber: 1, teamId: 2, playerId: -16034, autoDraftTypeId: 0 },
+      { overallPickNumber: 4, roundId: 2, roundPickNumber: 2, teamId: 1, playerId: -1, autoDraftTypeId: 0 },
+    ],
+  },
+};
+// The defence has to be findable by the id the PICK names.
+DRAFTED.teams = LEAGUE.teams.map((t) => ({
+  ...t,
+  roster: { entries: t.roster.entries.map((e) => (
+    e.playerPoolEntry.player.id === 2
+      ? { ...e, playerId: -16034, playerPoolEntry: e.playerPoolEntry }
+      : { ...e, playerId: e.playerPoolEntry.player.id }
+  )) },
+}));
+
+await withFetch(200, DRAFTED, async () => {
+  const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+  const d = snapshot.draft;
+
+  check("a completed draft comes through", !!d, true);
+  check("the type is stated, never inferred", d.type, "SNAKE");
+  check("an unmade pick is not a pick", d.picks.length, 3);
+  check("and a DEFENCE's negative id still is",
+        d.picks.map((p) => p.pos), ["WR", "QB", "DST"]);
+  check("the defence is named from the roster the pick points at",
+        d.picks[2].name, "Texans D/ST");
+  check("and crosswalks by club, which needs no pool", d.picks[2].id, "HOU");
+  check("a resolvable player carries Juke's own id", d.picks[0].id, "11628");
+  check("nothing here went unnamed", d.unnamed, 0);
+  check("the seat order is round one's, in order", d.order, ["1", "2"]);
+  check("an auto pick says so", d.picks.map((p) => p.auto), [false, true, false]);
+  check("rounds is the deepest round reached", d.rounds, 2);
+});
+
+/* A pick whose player has been dropped since is still a pick. Dropping it
+   would leave a board silently short, which is the one failure a reader
+   cannot see. */
+await withFetch(200, {
+  ...DRAFTED,
+  draftDetail: { drafted: true, inProgress: false, picks: [
+    { overallPickNumber: 1, roundId: 1, roundPickNumber: 1, teamId: 1, playerId: 9999 },
+  ] },
+}, async () => {
+  const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+  check("a pick nobody rosters any more is kept", snapshot.draft.picks.length, 1);
+  check("with no name rather than no row", snapshot.draft.picks[0].name, null);
+  check("and it is counted", snapshot.draft.unnamed, 1);
+});
+
+/* Before the draft there is nothing to send, and ~8KB of picks rides on a
+   payload every room fetches. */
+await withFetch(200, LEAGUE, async () => {
+  const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+  check("an undrafted league sends no draft at all", snapshot.draft, null);
+});
+
+
 console.log("--- the draft status ---");
 
 const GRID = (made, extra = {}) =>
