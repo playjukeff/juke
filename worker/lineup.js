@@ -132,3 +132,38 @@ export function lineupFromSleeper(rosterPositions) {
 
   return { starters, flex, superflex, bench, rounds: starting + bench, looseFlex: [], unmapped };
 }
+
+
+/* Where a slot sits in a lineup, so a roster comes back in the order a
+   manager reads it in.
+ *
+ * ESPN returns roster entries in no useful order at all -- measured on a
+ * real team: WR, WR, QB, FLEX, RB, RB, bench, bench, bench, TE, ... -- and
+ * espn.js was pushing `starters` in exactly that order. strategyBoard.js
+ * documents the opposite contract in its own comment ("`starters` is
+ * Sleeper's own array and its ORDER is the league's roster"), which Sleeper
+ * honours and ESPN was quietly breaking, so "Your lineup, as set" listed a
+ * lineup nobody sets.
+ *
+ * The order is app.js's SLOT_ORDER -- QB, RB, WR, TE, FLEX, SFLEX, DST, K --
+ * because that is the order lineupSlots() already fields a lineup in, and a
+ * second opinion about it here would be the league shape written down twice.
+ * Bench and IR sort after everything, keeping their own relative order.
+ *
+ * Exported from here rather than espn.js because this file is already the
+ * one place that knows what an ESPN slot id means. */
+const SLOT_RANK = {
+  [QB]: 0, [RB]: 1, [WR]: 2, [TE]: 3,
+  [FLEX]: 4, [RB_WR]: 4, [WR_TE]: 4,
+  [OP]: 5,
+  [DST]: 6, [K]: 7,
+  [BENCH]: 90, [IR]: 91,
+};
+
+export function slotRank(lineupSlotId) {
+  const r = SLOT_RANK[Number(lineupSlotId)];
+  // A slot nobody has named sorts with the bench rather than jumping the
+  // lineup: an unknown seat is far likelier to be a bench variant than a
+  // starter, and guessing it into the lineup would reorder a real one.
+  return r === undefined ? 92 : r;
+}

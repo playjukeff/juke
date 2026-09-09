@@ -8383,6 +8383,54 @@ blind is how the "right value, wrong column" failures in this file happened.
 The feed, its route and its cache are live; the Waiver Room surface arrives
 with the first real waiver, when there is something to check it against.
 
+
+### Three things a connected league got wrong, all reported by looking
+
+Reported 9 September 2026, the morning after a draft. None of them threw,
+none was caught by a test, and all three were found by a person opening the
+screen — which is what this file keeps saying is the only thing that finds
+them.
+
+**A roster came back in ESPN's entry order, not the league's lineup order.**
+`strategyBoard.js` states the contract in its own comment — *"`starters` is
+Sleeper's own array and its ORDER is the league's roster"* — and Sleeper
+honours it. ESPN does not: measured on a real team, its entries arrive **WR,
+WR, QB, FLEX, RB, RB, bench, bench, bench, TE, bench, bench, DST, K**, and
+`espn.js` pushed `starters` in exactly that order. So "Your lineup, as set"
+listed a lineup nobody sets.
+
+It sorts by `slotRank()` now, which lives in `lineup.js` because that file is
+already the one place that knows what an ESPN slot id means, and follows
+`app.js`'s own `SLOT_ORDER` because that is the order `lineupSlots()` already
+fields a lineup in. **An unknown slot sorts with the bench rather than into
+the lineup** — a seat nobody has named is far likelier to be a bench variant
+than a starter, and guessing it upward would reorder a real lineup.
+
+**A league that had played no games was ranked 1..10 anyway.** Before week
+one every team is 0-0 with 0 points for, so *both* of `ordered()`'s keys are
+0 for everybody: the sort is a no-op, and what got numbered was the order
+ESPN returned its teams in. The reader was shown **9th because their ESPN
+team id is 9**.
+
+That is this project's own "a component that is the same for every team is
+not in the grade" failure, one floor up — a constant presented as a ranking.
+And `StandingsPanel` **already knew**: it hid its KPI strip on exactly this
+condition and simply never applied it to the rank column beside it. One
+answer now, shared, and the rank is a dash until somebody plays.
+
+**Team names were not clickable, and the reason was that there was nothing
+to click.** The row was a `<div>` — no handler was broken, none had ever
+existed. The rosters it now opens have been on the snapshot since connect,
+which is exactly what made the absence invisible: every check passes on a
+control that was never built. The same shape as the rail's "My Team" row and
+"Draft with friends" missing from the phone launcher, both already in this
+file.
+
+**`ordered()` and `hasPlayed()` moved to `web/src/lib/standings.js`** so a
+node suite can drive them without a browser — the move `countdown.js` already
+made, and the reason its own tests exist. `StandingsPanel` re-exports both,
+so no consumer changed.
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a

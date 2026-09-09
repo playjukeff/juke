@@ -1,7 +1,7 @@
 import LeagueSwitcher from '../shell/LeagueSwitcher.jsx'
 import { platformFor } from '../shell/leaguePlatforms.js'
 import { seasonPhase } from '../../lib/seasonPhase.js'
-import { ordered } from './StandingsPanel.jsx'
+import { ordered, hasPlayed } from './StandingsPanel.jsx'
 
 const PHASE_LABEL = { draft: 'DRAFT', 'in-season': 'IN SEASON' }
 
@@ -27,7 +27,12 @@ export default function LeagueBar({ league, snapshot, snapStatus }) {
   const ready = snapStatus === 'ready' && !!snapshot
   const table = ready ? ordered(snapshot.teams) : []
   const mine = ready && league.ownerId ? table.find((t) => t.ownerId === league.ownerId) : null
-  const rank = mine ? table.indexOf(mine) + 1 : null
+  /* No rank before anybody has played. Every team is 0-0 with 0 points
+     for, so ordered()'s keys are all 0, the sort is a no-op, and this was
+     printing the reader's position in ESPN's own array — "9th of 10" the
+     morning after a draft, which is the number that got reported. See
+     hasPlayed(). */
+  const rank = mine && hasPlayed(table) ? table.indexOf(mine) + 1 : null
   const phase = ready ? seasonPhase(snapshot) : 'unknown'
   const platform = platformFor(league.provider)
 
@@ -57,11 +62,15 @@ export default function LeagueBar({ league, snapshot, snapStatus }) {
                   {mine.wins}-{mine.losses}
                   {mine.ties ? `-${mine.ties}` : ''}
                 </span>
-                <span aria-hidden="true">·</span>
-                <span>
-                  {rank}
-                  {ordinal(rank)} of {table.length}
-                </span>
+                {rank ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {rank}
+                      {ordinal(rank)} of {table.length}
+                    </span>
+                  </>
+                ) : null}
               </>
             ) : null}
           </div>

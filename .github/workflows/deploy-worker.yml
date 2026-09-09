@@ -185,6 +185,11 @@ jobs:
       - name: Verify the league transactions feed
         run: node worker/test-transactions.mjs
 
+      # The league table, and knowing when there is not one. A plain
+      # module for the same reason countdown.js is one.
+      - name: Verify the league standings
+        run: node worker/test-standings.mjs
+
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a

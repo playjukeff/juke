@@ -51,7 +51,7 @@
 
 import { normalise } from "./names.js";
 import { rulesFromEspn } from "./scoring.js";
-import { lineupFromEspn } from "./lineup.js";
+import { lineupFromEspn, slotRank } from "./lineup.js";
 import { scheduleFromEspn } from "./matchups.js";
 import { feedFromEspn, playersInFeed, FEED_LIMIT } from "./transactions.js";
 
@@ -554,7 +554,13 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
     const entries = (t.roster && Array.isArray(t.roster.entries)) ? t.roster.entries : [];
     const players = [];
     const starters = [];
-    entries.forEach((e) => {
+    /* In the order a manager reads a lineup in, not the order ESPN happens
+       to return entries -- measured as WR, WR, QB, FLEX, RB, RB on a real
+       team. strategyBoard.js's own comment states the contract this was
+       breaking; see slotRank(). Sorted on a copy, because `entries` is the
+       response object and everything below reads it too. */
+    entries.slice().sort((a, b) => slotRank(a.lineupSlotId) - slotRank(b.lineupSlotId))
+      .forEach((e) => {
       const p = e && e.playerPoolEntry && e.playerPoolEntry.player;
       if (!p) return;
       const id = sleeperId(p);
