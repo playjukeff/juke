@@ -584,7 +584,14 @@ function readFormats(engine) {
       .filter(Boolean)
       .sort((a, b) => b.vorp - a.vorp)
   }
-  const baseline = new Map(order('half').map((r, i) => [r.id, i]))
+  /* Measured against STANDARD, not half.
+
+     The arrow used to be "the move against half PPR", which made half the
+     one format that could never show one — and half is this app's default
+     and most leagues'. Against standard, the leanest ruleset, both PPR
+     formats show real movement and only standard itself is flat, which is
+     self-explaining because it is the thing being compared to. */
+  const baseline = new Map(order('standard').map((r, i) => [r.id, i]))
 
   const out = {}
   for (const f of FORMATS) {
@@ -603,12 +610,19 @@ function PairYourRules() {
 
      `moved` is measured against half PPR, so defaulting to half rendered
      six em-dashes — the page's one interactive proof opening on its own
-     null result, under a heading promising the order changes. A column of
-     dashes reads as missing data rather than as zero change, and the
-     evidence was only reachable by pressing a button the reader had no
-     reason to press. Standard opens on real movement and half is one click
-     away. */
-  const [format, setFormat] = useState('standard')
+     null result, under a heading promising the order changes.
+
+     Standard fixed that and bought a worse problem: BoardPeek in the hero
+     reads the LIVE league, which is half PPR, so the same player carried
+     two different numbers under the same words 1,000px apart — Gibbs at
+     +145 up there and +128 down here, with nothing on the page reconciling
+     them. That is this product's binding principle failing on the two
+     panels that exist to demonstrate it.
+
+     So the default is half, matching the hero and the app, and the arrow
+     moved to a standard baseline instead — which is what lets half open on
+     movement rather than on dashes. Both problems, one change. */
+  const [format, setFormat] = useState('half')
   const reduce = useReducedMotion()
 
   const rows = d ? d.ranked[format] : null
@@ -703,7 +717,7 @@ function PairYourRules() {
 
           <p className="mt-5 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
             Points over replacement, recomputed from raw stats under each rule set. The arrow is the
-            move against half PPR. Juke has 49 of these rules and every one of them is yours to
+            move against standard scoring. Juke has 49 of these rules and every one of them is yours to
             change.
           </p>
           <MethodLink href="/docs/draft-room-how-it-works.html#s03">

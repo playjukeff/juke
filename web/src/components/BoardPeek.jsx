@@ -98,11 +98,26 @@ function readTop(engine) {
   // Ranked again, so the panel still reads top-down by value rather than by
   // the order the positions happen to be listed in above.
   picked.sort((a, b) => b.score - a.score)
-  return picked.slice(0, SHOWN)
+
+  /* The ruleset these numbers are under, named.
+   *
+   * This panel reads the LIVE league, and it stated no format at all — so
+   * when the proof section below defaulted to a different one, the same
+   * player carried +145 here and +128 there under the same words, with
+   * nothing on the page reconciling them. A number whose ruleset is not
+   * named is exactly the thing this product exists to refuse.
+   *
+   * Read rather than assumed: a visitor who changed scoring in the Draft
+   * Room gets that format here, and the label follows them. */
+  const league = engine.league()
+  const names = engine.scoringNames ? engine.scoringNames() : null
+  const format = league && names ? names[league.scoring] || null : null
+
+  return { rows: picked.slice(0, SHOWN), format }
 }
 
 export default function BoardPeek() {
-  const [rows, setRows] = useState(null)
+  const [data, setData] = useState(null)
   const [fresh, setFresh] = useState(null)
 
   useEffect(() => {
@@ -113,7 +128,7 @@ export default function BoardPeek() {
       if (!engine.dataReady || !engine.dataReady()) return
       try {
         const next = readTop(engine)
-        if (next) setRows(next)
+        if (next) setData(next)
         /* Inside run(), not beside it.
 
            This was `setFresh(freshnessLine())` after the first run() call,
@@ -130,7 +145,7 @@ export default function BoardPeek() {
       } catch {
         // Fails by disappearing, like the score strip. A hero that throws
         // is worse than a hero with one less panel in it.
-        setRows(null)
+        setData(null)
       }
     }
 
@@ -151,7 +166,8 @@ export default function BoardPeek() {
   // flicker on every cold load rather than a courtesy — and unlike the
   // proof pairs there is no scroll position that guarantees the reader is
   // looking at it when the data arrives.
-  if (!rows) return null
+  if (!data) return null
+  const { rows, format } = data
 
   return (
     <section
@@ -160,7 +176,7 @@ export default function BoardPeek() {
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-body">
-          Tonight&apos;s board
+          Tonight&apos;s board{format ? <span className="text-voidInk-muted"> &middot; {format}</span> : null}
         </span>
         {/* The unit is named here because nothing else names it for 845px.
             "+145" sits at y=145 and the first thing that says what it
