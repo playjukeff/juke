@@ -32,6 +32,34 @@ import { freshnessLine } from './dataFreshness.js'
 
 const SHOWN = 5
 
+/* One per position, then the best of the rest — not the top five overall.
+
+   The top five overall is five running backs, and it will be on almost any
+   board: value over replacement concentrates at RB because the position's
+   replacement level sits far below its best players. Measured on the 9
+   September board it came out Gibbs, Robinson, McCaffrey, Taylor, Cook —
+   five identical mint chips.
+
+   That cost three things at once. The position palette is this panel's
+   stated reason for existing, and it is invisible when every chip is the
+   same colour, so it reads as decoration. A five-RB list looks like a tool
+   that only knows about running backs, or one with an RB-biased model. And
+   it put Jahmyr Gibbs in front of the reader three times before they
+   scrolled once — here, as pair 1's subject, and as pair 2's first row.
+
+   The deeper point is that a cross-position measure demonstrated on one
+   position demonstrates nothing. `overallScore()` exists to say an elite
+   tight end beats the twenty-fifth receiver; a list that cannot show two
+   positions cannot show that. So: the best QB, RB, WR and TE, then the
+   best player left whatever they play — which keeps the fifth row honest
+   about depth rather than reserving it for a position that has none.
+
+   K and DST cannot appear here and that is not an omission. overallScore()
+   returns null for UNRANKED_POSITIONS, because three seasons of backtesting
+   found the projected order for those two no better than chance, so they
+   are filtered out before this ever sees them. */
+const LEAD_POSITIONS = ['QB', 'RB', 'WR', 'TE']
+
 function readTop(engine) {
   const board = engine.board()
   if (!board || !board.length) return null
@@ -43,12 +71,34 @@ function readTop(engine) {
     const gap = engine.replacementGap(p)
     if (gap === null || gap === undefined) continue
     rows.push({ id: p.id, name: p.name, pos: p.pos, score: Math.round(score), gap: Math.round(gap) })
-    // The board is ADP-ordered, so the highest scores are near the front —
-    // but not strictly, so this cannot break early. It sorts what it has.
   }
   if (!rows.length) return null
   rows.sort((a, b) => b.score - a.score)
-  return rows.slice(0, SHOWN)
+
+  const picked = []
+  const taken = new Set()
+  for (const pos of LEAD_POSITIONS) {
+    const best = rows.find((r) => r.pos === pos && !taken.has(r.id))
+    if (best) {
+      picked.push(best)
+      taken.add(best.id)
+    }
+  }
+  // The fifth is the best player not already shown, whatever he plays. On a
+  // board missing one of the four positions entirely this also backfills,
+  // so the panel is five rows or as many as the board can honestly give.
+  for (const r of rows) {
+    if (picked.length >= SHOWN) break
+    if (!taken.has(r.id)) {
+      picked.push(r)
+      taken.add(r.id)
+    }
+  }
+
+  // Ranked again, so the panel still reads top-down by value rather than by
+  // the order the positions happen to be listed in above.
+  picked.sort((a, b) => b.score - a.score)
+  return picked.slice(0, SHOWN)
 }
 
 export default function BoardPeek() {
@@ -112,8 +162,13 @@ export default function BoardPeek() {
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-body">
           Tonight&apos;s board
         </span>
+        {/* The unit is named here because nothing else names it for 845px.
+            "+145" sits at y=145 and the first thing that says what it
+            counts is pair 1's own strip at y=990 — five bare integers a
+            reader is asked to take on trust, on the page arguing that no
+            number should be taken on trust. */}
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted">
-          Over replacement
+          Over replacement <span className="text-voidInk-body">(pts)</span>
         </span>
       </div>
 
