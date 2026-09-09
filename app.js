@@ -4004,7 +4004,12 @@ function overallReason(player) {
                  (vor >= 0 ? "+" : "") + vor + " against a replacement " + player.pos];
 
   if (player.projPosRank) {
-    parts.push("projects " + posLabel(player.pos) + player.projPosRank +
+    /* Capital P, because these parts are joined with ". " and this one is
+       therefore the start of its own sentence. Lowercase it read as a
+       fragment wherever the reason is shown in full — "…against a
+       replacement RB. projects RB1, drafted as RB1." — on the player
+       sheet's own note and anywhere else that prints it verbatim. */
+    parts.push("Projects " + posLabel(player.pos) + player.projPosRank +
                ", drafted as " + posLabel(player.pos) + player.posRank);
   }
   return parts.join(". ") + ".";
@@ -5470,6 +5475,101 @@ function thirdRoundScenarios() {
   return [2, 5, 8]
     .map(function (slot) { return generateThirdRoundScenario(slot); })
     .filter(Boolean);
+}
+
+
+/* One complete draft, graded — the artifact the homepage's own claim needs.
+
+   generateThirdRoundScenario() stops two picks past the target seat's third
+   pick, which is right for what it draws and wrong for a grade: three rounds
+   in, six starting slots are still empty, so roster construction is pinned at
+   0, bye safety has nothing to spread across and starter strength is whoever
+   the scaling handed 100. Measured on the 9 September board: build 0, byes 50,
+   starters 100 for both the before and after cut, with only draft value moving
+   at all. Four bars, three of them frozen, is not a demonstration that a grade
+   breaks into four components — it is a demonstration that it does not.
+
+   This is the same simulation loop run to the last pick instead, then handed
+   to gradeDraft(), which is pure: withGrading() swaps two module-level
+   pointers for one synchronous call and restores them in a finally, so a real
+   draft in another tab of the same page is untouched. Nothing here writes
+   board[].drafted, and nothing in the grading path reads it.
+
+   It returns the whole room, ranked, because the letter is a finishing
+   position and CLAUDE.md's rule is that it may never stand next to a score
+   out of a hundred. A caller with the rank and the team count can print
+   "A · 2nd of 10", which is internally consistent and needs no explaining;
+   a caller with only a letter cannot.
+
+   Cached, and the key is the tell for a rescoring. A full draft plus a grade
+   is far too expensive to run per render, and BEST_VOR moves the moment the
+   scoring table does — which is exactly when every number in here changes.
+   Same reasoning and same shape as PAR_CACHE. */
+let SAMPLE_DRAFT_CACHE = null;
+
+function sampleGradedDraft() {
+  if (typeof DraftEngine === "undefined" || !board.length) return null;
+
+  const key = board.length + ":" + league.teams + ":" + league.rounds +
+              ":" + league.scoring + ":" + BEST_VOR;
+  if (SAMPLE_DRAFT_CACHE && SAMPLE_DRAFT_CACHE.key === key) return SAMPLE_DRAFT_CACHE.value;
+
+  const teams = league.teams;
+  const total = teams * league.rounds;
+  const taken = {};
+  const have  = [];
+  for (let s = 0; s < teams; s++) have.push({});
+  const picks = [];
+
+  for (let n = 1; n <= total; n++) {
+    // `league`, not `league.teams`: the draft order is a property of the
+    // league's own type, and a linear or third-round-reversal room hands out
+    // a different set of picks entirely.
+    const c = DraftEngine.pickInfo(n, league);
+    const pool = board.filter(function (p) { return !taken[p.name] && !isRuledOut(p); });
+    if (!pool.length) break;
+    const best = bestAvailable(pool, have, c.slot, c.round);
+    if (!best) break;
+    taken[best.name] = true;
+    have[c.slot][best.pos] = (have[c.slot][best.pos] || 0) + 1;
+    picks.push({ overall: n, round: c.round, slot: c.slot, player: best });
+  }
+
+  /* A short draft is a board that ran out, which absorbableSize() already
+     refuses at the setup screen — so it means the board moved under a league
+     shape that was legal when it was set. Answer null rather than grade a
+     room where some seats never filled a lineup: a partial draft is the exact
+     thing this function exists to stop being drawn. */
+  if (picks.length < total) return null;
+
+  const room = gradeDraft(picks, league);
+  if (!room || !room.length) return null;
+
+  const value = {
+    teams: teams,
+    rounds: league.rounds,
+    // Every seat here drafts to one rule, so no seat is a better or worse
+    // drafter than another and picking the winner would be picking the
+    // scaling's own top end. The median finishing team is the one honest
+    // "typical" answer, and it is chosen by rank rather than by which
+    // component happens to look best.
+    teamsRanked: room.slice().sort(function (a, b) { return a.rank - b.rank; }).map(function (t) {
+      return {
+        rank: t.rank,
+        grade: t.grade,
+        composite: Math.round(t.total),
+        components: {
+          starters: Math.round(t.startersScaled),
+          value:    Math.round(t.valueScaled),
+          build:    Math.round(t.buildScaled),
+          byes:     Math.round(t.byePenaltyScaled)
+        }
+      };
+    })
+  };
+
+  SAMPLE_DRAFT_CACHE = { key: key, value: value };
+  return value;
 }
 
 
@@ -12579,6 +12679,17 @@ window.JukeEngine = {
   rulesForFormat: rulesForFormat,
   statKeys:     () => (typeof STAT_KEYS === "undefined" ? null : STAT_KEYS),
   forcedLate:   () => FORCED_LATE,
+  /* The grade's own four weights, for anything that draws the components
+     and has to say what each one is worth.
+
+     Bridged rather than retyped in React, and the reason is the one this
+     file states about the league shape: 50/25/15/10 written down a second
+     time drifts the first time either copy moves, and the drift is silent
+     — a bar captioned "wt 15%" beside a component that no longer carries
+     15% is a right value in the wrong column, which is the failure the
+     standings table already shipped once. The homepage's proof section
+     reads this so the caption and the arithmetic cannot disagree. */
+  gradeWeights: () => WEIGHTS,
   playersMeta:  () => (typeof PLAYERS_META === "undefined" ? null : PLAYERS_META),
   // Added for the React settings screen (the lobby and DraftSettingsModal).
   // setLeague patches the one real league object rather than a second copy of
@@ -13119,6 +13230,11 @@ window.JukeEngine = {
   replacementGap:  replacementGap,
   vorpUnder:       vorpTableUnder,
   thirdRoundScenarios: thirdRoundScenarios,
+  /* A complete simulated draft, graded and ranked — see sampleGradedDraft().
+     Expensive by construction (a full room, then analyseDraft) and cached on
+     the board/league/BEST_VOR key, so a caller may ask per render; it should
+     still only ask when it is about to draw the answer. */
+  sampleGradedDraft: sampleGradedDraft,
   tierRemaining:   tierRemaining,
   // Added for the Draft Room Cockpit's Decide screen — see each
   // function's own comment for why these are closed-form measurements

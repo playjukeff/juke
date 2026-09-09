@@ -2,6 +2,7 @@ import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/clerk-re
 import ConnectLeagueCta from './shell/ConnectLeagueCta.jsx'
 import KickoffPill from './shell/KickoffPill.jsx'
 import RoomsGridAlive from './RoomsGridAlive.jsx'
+import HomeProof from './HomeProof.jsx'
 import { useAccountUiReady } from '../hooks/useAccountUiReady.js'
 import { useLeague } from '../hooks/useLeague.js'
 import { LINE as PLATFORM_LINE, LIVE_NAMES as PLATFORM_NAMES } from './shell/leaguePlatforms.js'
@@ -488,6 +489,14 @@ export default function HomeAlive() {
             )}
           </div>
         </div>
+
+        {/* The page's argument, between the offer and the rooms.
+
+            It sits here rather than under RoomsGridAlive because the rooms
+            are the answer to "what else is there", which is a question
+            somebody only has after they believe the first screen. Proof
+            before catalogue. */}
+        <HomeProof />
 
         <div className="mt-[26px] sm:mt-12">
           {/* The device line sits on this row, right-aligned against the
