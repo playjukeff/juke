@@ -440,7 +440,13 @@ function PairYourRules() {
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFormat(f)}
-                  className={`rounded-full px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 ${
+                  /* An explicit focus ring, themed. These are the only
+                     controls this section adds, and the page ships no
+                     global focus-visible style — so a keyboard reader
+                     would otherwise get the browser's default outline,
+                     which belongs to no design system and is close to
+                     invisible on this ground. */
+                  className={`rounded-full px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card ${
                     on
                       ? 'bg-teal text-[#0B0E14]'
                       : 'border border-line-hairline text-voidInk-body hover:border-teal/40 hover:text-white'
