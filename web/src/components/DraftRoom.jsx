@@ -20,6 +20,7 @@ import DraftEntryScreen from './DraftEntryScreen.jsx'
 import DraftLobby from './DraftLobby.jsx'
 import DraftRoomLoader from './DraftRoomLoader.jsx'
 import ShellHeader from './shell/ShellHeader.jsx'
+import RailNav from './shell/RailNav.jsx'
 import MobileAppTabBar from './MobileAppTabBar.jsx'
 import MobileDraftTabBar from './MobileDraftTabBar.jsx'
 import PickClockBand from './PickClockBand.jsx'
@@ -920,7 +921,24 @@ export default function DraftRoom() {
        root behind this one, per main.jsx — and its own fixed header is z-50.
        z-40 would trap this whole overlay beneath it. */
     return (
-      <div className="fixed inset-0 z-[60] flex flex-col bg-slate text-white">
+      <div className="fixed inset-0 z-[60] flex bg-slate text-white">
+        {/* The rail, for the same reason ShellHeader is here: this route
+            hides #view-home, which is where AppShell -- and so every other
+            screen's rail -- lives. AppShell's own comment already records
+            that the phone nav is mounted per-screen for exactly this route;
+            the desktop rail was the half that never got the same treatment,
+            so #/rooms/draft was the one app screen with no way off itself on
+            a desktop. Reported as "the left rail disappears completely".
+
+            RailNav takes no props -- it reads the hash itself, so it
+            highlights Draft here without being told, and cannot disagree
+            with the rail on the screen you arrived from.
+
+            The outer div is a flex ROW now rather than a column, mirroring
+            AppShell. Below lg RailNav is `hidden`, so the row has exactly
+            one child and the layout is what it always was. */}
+        <RailNav />
+        <div className="flex min-w-0 flex-1 flex-col">
         {/* Both screens under this route get the site header, and the
             version that gated it on `lockerView` was wrong.
 
@@ -1057,6 +1075,7 @@ export default function DraftRoom() {
               }}
             />
           )}
+        </div>
         </div>
         <MobileAppTabBar />
         <EarlyAccessModal ref={sportsModalRef} />

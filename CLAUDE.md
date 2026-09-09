@@ -6956,6 +6956,53 @@ height. Header-left minus H1-left is 0 on all five routes and the title
 spread within a row is 0 on both grids, at 375 and 1440; a number here
 would be wrong the next time the max-width moves.
 
+
+### The one app screen outside AppShell lost its rail
+
+Reported 8 September 2026 with a screenshot: clicking **Draft** in the left
+rail lands on Mock Drafts, and the rail disappears.
+
+**`#/rooms/draft` is the one app route not drawn by `AppShell`.**
+`applyRoute()` hides `#view-home` for it — which is where AppShell, and so
+every other screen's rail, lives — and `DraftRoom.jsx` renders the entry
+screen into `#draftroom-root` instead. So that screen has to mount the shell
+itself, and it mounted two thirds of it: `ShellHeader`, added earlier for
+this exact reason after "header completely missing from the Draft Room page",
+and `MobileAppTabBar`. Never `RailNav`.
+
+**The half that was missing is the half nobody develops in.** The phone kept
+its floating pill, so the screen had a working way off itself at 390px and
+none at 1280 — and `AppShell`'s own comment recorded the decision for the
+pill without noticing it applied equally to the rail. A comment that is true
+about one of two things reads as true about both.
+
+**Nothing failed and the screen renders perfectly.** This is the
+dead-control failure with the control absent rather than inert — the same
+shape as the rail's own "My Team" row, and as "Draft with friends" missing
+from the phone launcher. Absence renders, contrasts and throws nothing, and
+it is found by somebody trying to go somewhere.
+
+**`RailNav` takes no props**, deriving its active key from the hash, so it
+cannot disagree with the rail on the screen the reader arrived from. The
+outer container became a flex ROW mirroring AppShell; below `lg` the rail is
+`hidden`, so the row has exactly one child and the layout is what it was.
+
+**`tests/rail-nav.spec.mjs` already had "the rail covers desktop width" and
+could not see this**, because it drives `#/rooms/waiver` — an AppShell route,
+which is the code path that was never broken. **A shell assertion has to name
+the screen that mounts its own shell.** Two tests cover it now, both confirmed
+red against the bug, and the phone one asserts `toHaveCount(1)` **before**
+`toBeHidden()`: a locator matching nothing satisfies `toBeHidden` on its own,
+so without the count it passes just as happily against a rail that was never
+mounted at all.
+
+**One thing left, and it is not this bug.** With the rail in place the two
+screens are finally comparable, and their H1s sit **7px apart** — 155 on
+`#/rooms`, 162 on `#/rooms/draft` — because `DraftRoomEntry` carries its own
+container padding rather than AppShell's. Each screen's own header and H1
+still share a left edge, which is the invariant "One left margin" states, so
+nothing regressed; the two containers simply disagree by a step.
+
 ### The locker grew forever, on both screens the route split created
 
 Reported off the deployed site: the mock-drafts list "can't continue to grow
