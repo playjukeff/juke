@@ -137,7 +137,10 @@ await withFetch(200, LEAGUE, async () => {
   check("scoringPeriodId 0 is not week 0", snapshot.week, null);
   check("the league's own settings come through",
         [snapshot.name, snapshot.totalTeams, snapshot.waiverBudget, snapshot.playoffTeams],
-        ["Fixture League", 2, 100, 4]);
+        /* null, not 100: the fixture carries acquisitionBudget without
+           isUsingAcquisitionBudget, which is exactly the shape of a real
+           league that has never bid a dollar. See the waiver section. */
+        ["Fixture League", 2, null, 4]);
   check("a manager's name is read from members, not left as a GUID",
         snapshot.teams.map((t) => t.manager), ["Ada Lovelace", "Alan Turing"]);
   check("the record comes through", [ada.wins, ada.losses, ada.pointsFor], [3, 1, 412.5]);
@@ -361,6 +364,51 @@ console.log("--- the request asks for the picks ---");
    ... and espn.js was passing that straight through, against the contract
    strategyBoard.js states in its own comment. */
 console.log("");
+/* ---- Which waiver system the league actually runs ----
+
+   `acquisitionBudget` is 100 on a league that has never bid a dollar --
+   ESPN carries a default whether or not it applies -- and
+   `isUsingAcquisitionBudget` beside it says whether the number means
+   anything. Reading the budget alone put "FAAB POOL $100" on a league
+   running rolling waiver order, which is not a smaller version of the
+   truth but a different system.
+
+   The "treat 0 from an API as missing" rule inverted: a value that is
+   PRESENT and does not apply. */
+console.log("");
+console.log("--- the waiver system ---");
+{
+  // The reported league, field for field: Waivers, 1 Day, never resets.
+  const ORDER = { ...LEAGUE, settings: { ...LEAGUE.settings, acquisitionSettings: {
+    acquisitionBudget: 100, isUsingAcquisitionBudget: false,
+    acquisitionType: "WAIVERS_TRADITIONAL", waiverOrderReset: false, waiverHours: 24,
+  } } };
+  await withFetch(200, ORDER, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("a budget without the flag is not a FAAB league", snapshot.waiver.type, "order");
+    check("so there is no pool to show", snapshot.waiverBudget, null);
+    check("and none on the waiver block either", snapshot.waiver.budget, null);
+    check("the order's own rule comes through", snapshot.waiver.resetsOrder, false);
+    check("and the waiver period", snapshot.waiver.hours, 24);
+  });
+}
+{
+  const FAAB = { ...LEAGUE, settings: { ...LEAGUE.settings, acquisitionSettings: {
+    acquisitionBudget: 200, isUsingAcquisitionBudget: true, minimumBid: 1,
+  } } };
+  await withFetch(200, FAAB, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("a league that bids is a FAAB league", snapshot.waiver.type, "faab");
+    check("with its pool", snapshot.waiverBudget, 200);
+    check("and its floor", snapshot.waiver.minimumBid, 1);
+    /* Order rules mean nothing here, so they are absent rather than false --
+       a `resetsOrder: false` on a FAAB league is an answer to a question
+       nobody asked. */
+    check("and no order rule to misread", snapshot.waiver.resetsOrder, null);
+  });
+}
+
+
 console.log("--- the roster's order ---");
 {
   const OUT_OF_ORDER = {

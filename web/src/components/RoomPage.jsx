@@ -75,6 +75,11 @@ const LIVE_ROOMS = {
        is about, and a room that shows another room's is quietly wrong
        rather than visibly broken. */
     stats: (snapshot) =>
+      /* Absent for a league that runs waiver ORDER rather than a budget:
+         `waiverBudget` is null there now, because ESPN populates a $100
+         default whether or not the league bids. The room's own KPI strip
+         says which system it runs; the bar staying quiet is the
+         no-duplicate rule, not an omission. */
       snapshot && snapshot.waiverBudget
         ? [{ label: 'FAAB pool', value: `$${snapshot.waiverBudget}`, tone: 'text-flow-gold' }]
         : [],

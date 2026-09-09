@@ -78,7 +78,10 @@ const LEAGUE = {
   name: "Juke Fantasy Football",
   season: "2026",
   total_rosters: 3,
-  settings: { waiver_budget: 100, playoff_teams: 6 },
+  /* waiver_type 2 is Sleeper's FAAB. Without it a budget means nothing --
+     Sleeper carries a default 100 on leagues that run an order, the same
+     trap ESPN's acquisitionBudget sets. */
+  settings: { waiver_budget: 100, waiver_type: 2, waiver_clear_days: 2, playoff_teams: 6 },
 };
 
 const USERS = [
@@ -122,6 +125,8 @@ ROUTES = healthy();
   eq("team count comes from the league, not the roster array", s.totalTeams, 3);
   eq("week is read off state", s.week, 3);
   eq("waiver budget", s.waiverBudget, 100);
+  eq("and it is a FAAB league", s.waiver.type, "faab");
+  eq("with its waiver period in hours", s.waiver.hours, 48);
   eq("playoff teams", s.playoffTeams, 6);
   eq("every roster becomes a team", s.teams.length, 3);
 

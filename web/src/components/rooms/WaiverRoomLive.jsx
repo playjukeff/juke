@@ -9,6 +9,7 @@ import BarRow, { Bar } from '../decision/Bar.jsx'
 import StakeCard from '../decision/StakeCard.jsx'
 import RunNextCard from '../decision/RunNextCard.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import { platformFor } from '../shell/leaguePlatforms.js'
 
 /* The Waiver Room, with a real league behind it.
  *
@@ -367,16 +368,42 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
   const ptsOpen = allGaps.reduce((sum, g) => sum + g.improvement, 0)
   const bestClaim = allGaps[0] || null
 
+  /* The first card is whichever waiver system the league actually runs.
+   *
+   * It was always "FAAB pool", off `waiverBudget`, and ESPN populates
+   * `acquisitionBudget` with 100 whether or not a league bids -- so a
+   * league running rolling waiver order was shown a $100 pool it does not
+   * have. That is not a smaller version of the truth, it is a different
+   * system, and it was reported as exactly that.
+   *
+   * The provider is named through platformFor() rather than written in.
+   * The old note said "Sleeper does not report what you have spent" on an
+   * ESPN league -- a hardcoded platform name being wrong again, which this
+   * file's own siblings were already fixed for once. */
+  const waiver = (snapshot && snapshot.waiver) || null
+  const platformName = platformFor(league && league.provider).name
+  const isFaab = waiver ? waiver.type === 'faab' : !!(snapshot && snapshot.waiverBudget)
+
+  const waiverKpi = isFaab
+    ? {
+        label: 'FAAB pool',
+        value: snapshot && snapshot.waiverBudget ? '$' + snapshot.waiverBudget : '—',
+        note: 'The season’s budget. ' + platformName + ' does not report what you have spent.',
+        accent: 'evidence',
+      }
+    : {
+        label: 'Waivers',
+        /* Not a number, and deliberately not dressed as one: this league
+           has an order, and an order has no pool to put in a KPI. */
+        value: 'Order',
+        note: waiver && waiver.resetsOrder === false
+          ? 'A claim moves you to the back, and the order never resets.'
+          : 'Claims run on waiver order, not on a budget.',
+        accent: 'evidence',
+      }
+
   const kpis = [
-    {
-      label: 'FAAB pool',
-      value: snapshot && snapshot.waiverBudget ? '$' + snapshot.waiverBudget : '\u2014',
-      note:
-        snapshot && snapshot.waiverBudget
-          ? 'The season\u2019s budget. Sleeper does not report what you have spent.'
-          : 'This league does not run FAAB.',
-      accent: 'evidence',
-    },
+    waiverKpi,
     {
       label: 'Worth claiming',
       value: String(targets.length),
