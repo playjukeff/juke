@@ -6258,9 +6258,33 @@ available place in the product to put a guess.
   `seasonPhase()` answers `playoffs` and `complete` now, and refuses both
   for a Sleeper league exactly as before, because that adapter still
   publishes no schedule. **The refusal was per product and is per league.**
-- **14's trade deadline, and 05's win-% and bye odds.** Still absent. No
-  adapter reports a deadline date, and a win probability needs the
+- **~~14's trade deadline~~ — the third of these falsified by looking, and
+  this time nothing had landed in parallel.** The entry read *"No adapter
+  reports a deadline date"*, and both platforms publish one on requests
+  already being made:
+
+  ```
+  ESPN     settings.tradeSettings.deadlineDate  1796230800000
+           -> 2026-12-02T17:00:00Z, an INSTANT
+  Sleeper  settings.trade_deadline              11
+           -> a WEEK number
+  ```
+
+  Neither adapter read its own field. So this was never a data gap; it was a
+  sentence nobody had re-measured, and it survived two rewrites of the
+  section around it. **The instruction below is not a suggestion.**
+
+  `web/src/lib/tradeDeadline.js` answers "has the window shut" off whichever
+  field a league has, so no screen asks which platform it is on — see "One
+  vocabulary, two units" below for why neither converts to the other.
+- **05's win-% and bye odds.** Still absent: a win probability needs the
   opponent's lineup projected rather than merely named.
+- **14's "one bar per missed offer", which is the half that IS blocked.**
+  Nothing records a trade offer. Neither adapter reports a pending one — both
+  would need write-scoped auth this project deliberately does not hold — and
+  the transaction feed carries trades that were EXECUTED. A missed offer is
+  by construction the one thing no feed here can see, which is the same shape
+  as a drop being the player a roster cannot name.
 - **16 and 20's per-room "points at stake this week."** No room writes one;
   `railItems.js` already deleted a "needs action" dot for the same reason.
 - **07's FAAB LEFT, which now LOOKS buildable and is not.** The transaction
@@ -6403,11 +6427,16 @@ guest previews' value colours and the wire as bars), **15** (the empty
 wire's `<RunNextCard>`) and **04** (the past week's own result, two bars on
 one max, once the schedule existed to draw it from).
 
-Open: **12, 14, 16, 19, 20**, plus the halves of **05** and **08** named
-above. **05's phase is no longer one of them**: `seasonPhase()` names
-playoffs and a finished season off the schedule, and My League's bar says
-so. What 12 still wants is a season-end stake card and a `<RunNextCard>`,
-which is content on top of a phase that now exists rather than a blocker.
+**12** and **14** ship with this pass, each as the half its data supports:
+12 is My League's season-end stake card and `<RunNextCard>`, drawn on
+`seasonPhase() === 'complete'`; 14 is the Trade Room finally knowing whether
+the window is open, which it had no idea of. Both name what they do not draw
+rather than filling it — 12 has no costliest HABIT because nothing grades a
+decision, and 14 has no missed-offer bar because nothing records an offer.
+
+Open: **16, 19, 20**, plus the halves of **05** and **08** named above.
+16 and 20 share one blocker (no room writes a per-room stake) and 19 is the
+Waiver Room at phone width.
 
 **Re-measure before re-asserting.** Two of the blockers in this section were
 falsified within a day of being written, both by work landing in parallel,
@@ -8354,6 +8383,35 @@ partially-projected opponent reads as a lead that is really a gap in the
 data.
 
 
+### The season it adds up to, and the suite this file never had
+
+`seasonSummary()` folds a schedule into the record a finished season has,
+for screen 12. One number on it is worth the arithmetic: **how many losses
+came in a week the reader still outscored the league's own median.** That is
+the fact a record cannot show and the one a manager most wants at season end
+— a 6-8 team that beat the field in four of its eight losses had a schedule
+rather than a problem.
+
+**It needs no threshold, which is why it is that split and not "close
+losses".** A margin band wants a number somebody chose by eye, and this
+file's own rule is that such a number is one nobody can check. A median is
+read off the week that was played, so it is exact and moves with the league.
+A tie is in neither half: it is not a loss, so it cannot be an unlucky one.
+
+**And this file had no offline suite at all.** `myGames()` and `gameInWeek()`
+have drawn My League's past-week result since the schedule landed, covered by
+nothing — a gap older than the function that walked into it.
+`scripts/test_schedule.mjs` covers all three, 43 checks, in `tests.yml`.
+
+**Its first version was vacuous on the boundary and did not know.** Mutating
+the median comparison from `>` to `>=` failed **nothing**: no fixture had a
+loss landing exactly ON the median, so either answer would have shipped and
+nobody had decided which. It is `outplayed` — matching the field is not
+beating it — and an even-sized league reaches it trivially, the median being
+the average of the two middle scores. **A mutation that passes is not a
+test**, which this file already says about the hero shot, arriving at a
+boundary instead of a function.
+
 ### Transactions, and the one thing a roster cannot name
 
 The Waiver Room prices every player nobody owns; what it cannot see is the
@@ -8629,6 +8687,85 @@ fixing once, in a file that was not touched then. It reads
 `platformFor(provider).name` now. **When a second provider ships, grep for
 the first one's name — and then grep again the next time a room is
 written.**
+
+### The trade deadline, in two units, and a blocker that was never one
+
+Both platforms publish when trading closes, on requests both adapters were
+already making, and neither read its own field. CLAUDE.md listed screen 14
+under the screens the data cannot answer — *"No adapter reports a deadline
+date"* — and that sentence had survived two rewrites of the section around
+it.
+
+**This is the third blocker in that list falsified by looking, and the first
+where nothing had landed in parallel to falsify it.** The matchups fetch and
+the season phase both became answerable because somebody else shipped the
+thing they needed; this one was answerable the whole time. So the file's own
+"re-measure before re-asserting" instruction is now about a claim that was
+wrong when written rather than one that aged.
+
+Measured 9 September 2026 against a real league of each platform:
+
+```
+ESPN     settings.tradeSettings.deadlineDate  1796230800000
+         -> 2026-12-02T17:00:00Z
+Sleeper  settings.trade_deadline              11
+```
+
+### One vocabulary, two units, and neither converts
+
+`tradeDeadline` is `{ at, week, disabled }` with each field null where its
+platform does not publish it — the shape `waiver` already uses. That is not
+a fork dressed as a schema: **neither unit becomes the other for free.**
+ESPN's instant needs the date each week begins, which no view either adapter
+requests carries, and Sleeper's week needs the same missing table read from
+the other end.
+
+What makes it one vocabulary anyway is that the QUESTION is the same:
+`tradeWindow()` in `web/src/lib/tradeDeadline.js` answers "has the window
+shut" off whichever field is present, so no screen asks which platform it is
+looking at. Four states, and **every one renders** — `unknown` draws nothing,
+which is the score strip's contract and the rule `leagueStore.js` paid for.
+
+**`disabled` is read for the reason the waiver reading had just paid for.**
+Sleeper carries a `trade_deadline` week on a league that forbids trading
+outright, exactly as ESPN carries a FAAB budget on a league that never bids:
+a value that is present and does not apply. Reading the week alone counts a
+league down to a deadline it can never reach.
+
+### One boundary is unmeasured, and it errs open
+
+No Sleeper league past its own deadline was available, so which side of week
+11 a "week 11" deadline falls on is not established. `passed` is strictly
+LATER than the stated week, and the module and its suite both say so.
+
+The direction is the decision rather than the value. Wrong that way, a reader
+is told they may trade for one week longer than they may — and the room
+prints the week beside it, so the fact is on screen. Wrong the other way, the
+room tells somebody the window is shut while their league is still processing
+trades, which is a room refusing to do its job. **Re-measure against a real
+Sleeper league in week 12 and tighten it.**
+
+### What is deliberately not built
+
+Screen 14 asks for "one bar per missed offer". Nothing records a trade offer:
+neither adapter reports a pending one — both need write-scoped auth this
+project deliberately does not hold — and the transaction feed carries trades
+that were EXECUTED. A missed offer is by construction the thing no feed here
+can see, the same shape as a drop being the player a roster cannot name.
+
+So `TradeWindow.jsx` says so in its own header, at the point somebody would
+otherwise reach for it, and what ships is the half that was actually blocked.
+
+### A stale server was serving somebody else's build, on the first try
+
+Verifying the banner needed the temporary-exposure technique — the rooms are
+behind Clerk — and the bundle check this file prescribes caught a bad
+measurement before it was taken: the served hash did not match the one just
+built, because a server from another session already held the port. Re-served
+on a fresh port with an absolute path, hashes equal, then measured.
+
+**That check has now paid for itself twice**, and both times on the first
+attempt of a session. It costs one line.
 
 ### Rejected: reading a private league
 
