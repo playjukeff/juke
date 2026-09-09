@@ -216,6 +216,7 @@ says nothing about the interface somebody has to keep compatible.
 | `/sleeper/snapshot` | `GET` | `originAllowed()` | one league's rosters, Sleeper-id keyed |
 | `/espn/league` | `GET` | `originAllowed()` | a public league's teams and managers |
 | `/espn/snapshot` | `GET` | `originAllowed()` | the same, crosswalked to Sleeper ids |
+| `/espn/transactions` | `GET` | `originAllowed()` | recent adds, drops and trades, players named |
 | `/news` | `GET` | `originAllowed()` | headlines by provider id, D1-cached |
 | `/giphy` | `GET` | `originAllowed()` | a proxied GIF search |
 | `/media` | `POST` | `originAllowed()` | an R2 upload; returns the key's URL |
@@ -8319,6 +8320,68 @@ through the same `projectedTotal()` under the same `weekPts` as the reader's,
 and it is null unless BOTH sides project — a margin against a
 partially-projected opponent reads as a lead that is really a gap in the
 data.
+
+
+### Transactions, and the one thing a roster cannot name
+
+The Waiver Room prices every player nobody owns; what it cannot see is the
+league moving around him — that a rival just spent FAAB on the handcuff, or
+released the player you were about to claim.
+
+**A drop is by construction the player a roster cannot name.** The trick that
+named the draft — look a bare `playerId` up on the roster he is now on —
+fails here on exactly the moves that matter.
+
+**`kona_player_info` takes a filter, and that is what makes this cheap.**
+Measured 9 September 2026: `filterIds` returns 1 player in 6 KB, 5 in 35, 20
+in 138 — about 7 KB each, linear, unauthenticated, in one call. So the cost
+is set by how much the league has actually done rather than by the size of
+the player universe, and the 3.9 MB unfiltered fetch is never made.
+
+Cheap for a handful and not for a season, which decides two things: **DRAFT
+is excluded** (already captured whole by `draftBoard()`, for free, and 140
+picks would be a megabyte to name) and the window is bounded at
+`FEED_LIMIT = 50`.
+
+**Its own route, unlike the schedule, and the contrast is the rule.** The
+schedule rides on the shared snapshot because every room wants it and it
+distils to 8 KB. This is the opposite: one room wants it, it grows all
+season, and naming a drop needs a second upstream call the snapshot would
+otherwise make on every Trade and Strategy load for nothing.
+
+### The classification is structural, because the strings could not be derived
+
+This is the first of the league-shape readings that **could not be derived
+from real data**. The stat ids came from 319 players' real lines and the
+lineup slots from what actually sits in each slot — but the league they came
+from has run no waivers, no free agent adds and no trades. Every transaction
+on it is a `DRAFT`, so ESPN's type strings for the rest are unobserved.
+
+**So nothing classifies by type string.** Every item carries `fromTeamId` and
+`toTeamId`, and that grammar IS observed: a real DRAFT item reads
+`fromTeamId: 0, toTeamId: 5` — an acquisition out of nowhere. A move to a
+team from nobody is an ADD, to nobody from a team is a DROP, between two
+teams is a TRADE. The raw `type` and `status` ride along untouched for a
+screen to print, never for the code to branch on.
+
+**A lineup change is a move between two slots on one team**, so the from/to
+grammar alone reads it as a trade — which is why the slot ids are checked
+too. Starting somebody is not a transaction anybody else needs to see.
+
+**`bid` of 0 is a real bid**, in a league that bids, and also what a free
+agent add carries. The two are told apart by `kind`, never by the number.
+
+**Re-check this against a real add the first week one happens.** The tests
+say so in their own header, and it is the one place in this feature where a
+measurement is owed rather than taken.
+
+### What is deliberately not built yet
+
+**No screen draws it.** The league has made zero non-draft moves, so a panel
+would render empty and could not be verified against anything — building a UI
+blind is how the "right value, wrong column" failures in this file happened.
+The feed, its route and its cache are live; the Waiver Room surface arrives
+with the first real waiver, when there is something to check it against.
 
 ### Rejected: reading a private league
 
