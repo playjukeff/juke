@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import AppShell from './shell/AppShell.jsx'
 import { useLeague, useLeagueSnapshot } from '../hooks/useLeague.js'
-import { seasonPhase } from '../lib/seasonPhase.js'
+import { seasonPhase, underWay } from '../lib/seasonPhase.js'
 import LeagueBar from './myleague/LeagueBar.jsx'
 import WeekStrip from './myleague/WeekStrip.jsx'
 import StandingsPanel from './myleague/StandingsPanel.jsx'
 import MyLeagueDemo from './myleague/MyLeagueDemo.jsx'
 import PastWeekPanel from './myleague/PastWeekPanel.jsx'
+import { gameInWeek } from '../lib/schedule.js'
 import DraftReportPanel from './myleague/DraftReportPanel.jsx'
 import { useDecisions, decisionsForWeek, weekMark } from '../hooks/useDecisions.js'
 
@@ -174,7 +175,12 @@ export default function MyLeagueScreen() {
 
   const ready = snapStatus === 'ready' && !!snapshot
   const phase = ready ? seasonPhase(snapshot) : 'unknown'
-  const inSeason = ready && phase === 'in-season'
+  /* `underWay(phase)` rather than `phase === 'in-season'`. The strip and the
+     past-week panel belong to the whole post-draft season, and seasonPhase()
+     now splits that into in-season / playoffs / complete — so the equality
+     this used to make would have taken the strip away in week 15, silently,
+     in the weeks a manager looks at it most. */
+  const inSeason = ready && underWay(phase)
 
   /* The strip is selectable now, which it was not: it had no onSelect at
      all, on the rule that a control which cannot act must not be offered.
@@ -186,6 +192,24 @@ export default function MyLeagueScreen() {
   const pastRows = showingPast
     ? decisionsForWeek(league.leagueId, openWeek === 'draft' ? 0 : Number(openWeek), decisions)
     : []
+
+  /* The week's own result, for the panel that until now could only show the
+     calls made in it. Both of these answer null all the way down — no
+     schedule at all (Sleeper), no ownerId, a bye, the draft cell — and
+     PastWeekPanel draws the block only when both scores are real numbers.
+
+     Resolved here rather than inside the panel because the opponent is a row
+     of `snapshot.teams` and the panel is handed rows rather than the
+     snapshot; that is the same split StrategyRoomLive already makes, and it
+     keeps the panel a thing that draws what it is given. */
+  const pastGame =
+    showingPast && openWeek !== 'draft'
+      ? gameInWeek(snapshot && snapshot.schedule, league.ownerId, Number(openWeek))
+      : null
+  const pastOpponent =
+    pastGame && pastGame.opponentId && snapshot
+      ? (snapshot.teams || []).find((t) => t.ownerId === pastGame.opponentId) || null
+      : null
 
   return (
     <AppShell active="my-league">
@@ -202,6 +226,8 @@ export default function MyLeagueScreen() {
         <PastWeekPanel
           weekKey={openWeek}
           rows={pastRows}
+          game={pastGame}
+          opponent={pastOpponent}
           onBack={() => setOpenWeek(null)}
         />
       ) : (
