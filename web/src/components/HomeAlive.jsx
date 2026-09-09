@@ -479,7 +479,30 @@ export default function HomeAlive() {
               <KickoffPill className="sm:hidden" />
             </div>
 
-            <h1 className="mt-3.5 font-display text-[54px] font-extrabold uppercase italic leading-[0.9] text-white sm:mt-4 sm:text-[72px] lg:text-[88px]">
+            {/* Fluid, not four hard steps, because the failure was a rag rather
+                than a size.
+
+                At 88px the H1 measured 634x317 in a 634px column — four
+                rendered lines reading KNOW THE / MOVE / BEFORE YOUR /
+                LEAGUE., with MOVE orphaned mid-phrase. "KNOW THE MOVE"
+                simply does not fit the column at 88 or at 80; measured, 76
+                is the largest size that holds it on one line, and the whole
+                headline then falls to three lines.
+
+                But 76 only has 23px of slack at 1440, and the `lg` column
+                narrows to about 493px at 1024 — so a single `lg:` step
+                would wrap again at the bottom of its own breakpoint. The
+                clamp scales with the viewport instead: measured 3 lines
+                everywhere from 1024 up, where the step version was 4.
+
+                50px on a phone, and that is a floor rather than a
+                preference. The column is 335px there and "KNOW THE MOVE"
+                needs roughly 40px type to fit it on one line, which is too
+                small for the first thing anybody reads. So the phone keeps
+                four lines and gets 180px of height instead of 243 — a
+                quarter of the viewport back, on the screen where that
+                matters most. */}
+              <h1 className="mt-3.5 font-display text-[clamp(3.125rem,5.4vw,4.75rem)] font-extrabold uppercase italic leading-[0.9] text-white sm:mt-4">
               {/* The space is real, not decorative. `<br />` yields no
                   character, so the accessible name came out
                   "Know the movebefore your league." and some assistive
@@ -643,7 +666,8 @@ export default function HomeAlive() {
         <div className="mt-12 border-t border-line-hairline pt-8 text-center sm:mt-16 sm:pt-10">
           <a
             href="#/rooms/draft"
-            className="inline-flex min-h-[44px] items-center rounded-full bg-teal px-7 text-[15px] font-semibold text-[#0B0E14] transition-transform duration-150 hover:scale-[1.02]"
+            className="inline-flex min-h-[44px] items-center rounded-full px-7 text-[15px] font-semibold text-[#0D0F15] transition-transform duration-150 hover:scale-[1.02]"
+            style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
           >
             Start a mock draft
           </a>
