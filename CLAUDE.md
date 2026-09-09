@@ -8138,6 +8138,76 @@ overstates the misses, because four of the five players the join could not
 place are simply not on this year's board. Re-measure after the draft; that
 is the honest number and this one is the pessimistic stand-in.
 
+
+### The league's own draft, captured because it decays
+
+Added 9 September 2026, the morning after a real ESPN draft. It is the one
+of this project's four "more data" asks that needs no pipeline change and no
+new feed: `mDraftDetail` has ridden on the snapshot request since the draft
+countdown needed it, and the rosters are already there for the crosswalk. So
+the whole capture costs **one more pass over data the snapshot had in hand**
+and not a single extra fetch.
+
+**Names come from the rosters, and that is the whole reason this is a
+capture rather than a query.** A pick carries a bare ESPN playerId and
+nothing else. The only free way to turn that into a person is the roster the
+player is on now — measured **140 of 140** the morning after the draft, and
+decaying from the first drop of the season. The alternative is
+`kona_player_info`, which is **3.9 MB**, so there is no cheap way to ask
+later what a pick was.
+
+That puts it in the same family as `data/season`'s append-only archives: the
+moment to record what happened is while it can still be recorded. A caller
+that wants this durable stores what comes back rather than re-reading it in
+November.
+
+**An unnamed pick is reported, never dropped.** A pick whose player has been
+released stays in the list with `name: null` and is counted in `unnamed`. A
+draft silently 138 picks long is a board with holes nobody can see — the
+same rule the roster crosswalk already follows.
+
+### A team defence has a NEGATIVE player id
+
+Measured: **-16034 Houston, -16007 Denver, -16023 Pittsburgh** — that is
+`-(16000 + proTeamId)`. Only `-1` means nobody has picked here yet.
+
+**So `playerId > 0` is not "this pick was made", and it shipped in #209
+reading exactly that.** In the capture it dropped **ten of a ten-team
+draft's 140 picks, one per roster**, and reported them as neither picks nor
+unnamed. In `draftInfo()` it is far narrower — a defence is not taken in the
+opening rounds, so some earlier pick always tripped `started` first — but it
+was wrong in the same way and is fixed with it.
+
+**Nothing failed, and no test could have caught it.** The board came back
+well-formed, every pick in it was correct, and the count was 130 where it
+should have been 140. It was found by *counting the result*, which is this
+file's own standing instruction about a component that renders plausibly.
+
+### The seat order is stated, not inferred
+
+Juke derives a seat from the overall pick number and the snake, which is
+right for a snake and wrong for the linear and auction drafts ESPN also
+runs. So the round-one team order rides along explicitly, every pick carries
+its own `teamId`, and `type` is reported — a caller refuses a shape whose
+seat maths it does not model rather than grading it wrongly. Verified
+against the real draft: a pure snake off round one, all 140 picks.
+
+### Why the analysis is not in this change
+
+Grading an arbitrary draft has no pure path today. `openHistoryDraft()`
+mutates the live `league` and `state` and replays through `makePick()`, and
+`gradeAndRosterAt()` is a nested closure doing the save-and-restore of
+`state.picks` and every player's `drafted` flag that this file already
+records as dangerous — with a live draft potentially reading those fields.
+
+Reusing either to grade a connected league would mean clobbering a mock in
+progress, so the analysis wants a genuinely pure grading path, which is an
+engine change with its own measurements and its own branch.
+
+**The capture is time-sensitive and the analysis is not**, so shipping them
+in this order is the right way round regardless: every day this waits is a
+day of dropped players that can no longer be named.
+
 ### Rejected: reading a private league
 
 There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a
