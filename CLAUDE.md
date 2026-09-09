@@ -6523,6 +6523,104 @@ about a worktree being served another checkout's build. Both rows draw,
 the other four draw nothing, neither row overflows, and `cost` measures
 **7.51:1** on `surface-card`. A temporary spec, deleted before the commit.
 
+### A row wraps on its container's width, and `sm:` was asking the wrong thing
+
+Screen 19 is the Waiver Room on a phone -- *"Gap = one bar; target rows keep
+a 100px delta bar"* -- and measuring it found two defects, only one of which
+is about phones.
+
+**The target row's bar was `hidden ... sm:block`.** So the one screen in
+this room that IS a ranked list gave a phone the numerals and none of the
+comparison -- the exact table `<Bar>` exists to replace. And there was a real
+measurement behind that class: at 375 the row is 301px, and a 100px bar
+inline leaves **41px for a player's name**, which is "Bijan Rob...".
+
+So the bar wraps rather than being dropped. The row is `flex-wrap`, the bar
+takes `w-full order-last` below `sm` and slots back to `w-[100px]` inline at
+`sm` and up. The name keeps the 153px it measures today, the bar comes out
+**301px, three times the desktop's**, and it costs one 7px line per row.
+
+**`<BarRow>` had the same defect and it was never about the phone at all.**
+It was `grid-cols-[minmax(0,1fr)_1fr_56px]`, and three columns do not fit a
+narrow box. Measured across four routes at 375, 1000 and 1440:
+
+```
+                                     label   verdict
+Waiver "where a claim would help"     111    truncated   (375)
+   the same panel, 360px rail         119    truncated   (1440)
+Trade "You / Gridiron Gang"            69    truncated   (1440)
+```
+
+**Clipped at 1440 as well as at 375**, because that panel sits in a 360px
+rail at `lg` -- so an `sm:` breakpoint would have fixed one of the two widths
+and left the other exactly as it was. The label carries the player AND the
+position he beats, which is what `WaiverRoomLive`'s own comment says it is
+for ("a bar with only a position on it says where the gap is and not what
+closes it"), and at 119px it carried neither.
+
+**Flex with a real basis on each part asks the question that matters.** The
+label wants `12rem`, the bar `8rem`, the numeral is 56px: when the box
+cannot seat all three the bar wraps, and alone on its line it GROWS to the
+full width. Measured after, on the same four routes:
+
+```
+container   layout                       label   bar
+   878      one line                      431    367
+   318      label / bar + numeral         318    250
+   301      label / bar + numeral         301    233
+   218      label / bar + numeral         218    150
+```
+
+Nothing is clipped at any of them, the one-line case survives wherever the
+box can carry it, and the bar is longer in every narrow column than the
+119px it used to get. **`min-w-0` is what still lets the label ellipsise**
+in a box too small for even one of them.
+
+**There are no `order` utilities and source order is the reading order.**
+An earlier cut swapped the numeral above `sm`, so the wrapped line differed
+by breakpoint -- two arrangements of three elements, decided by a viewport
+that has nothing to do with the box they are in.
+
+**A container query would be the textbook answer and it is a plugin.**
+`@tailwindcss/container-queries` is a dependency, and flex bases already
+answer the same question with the CSS that is here. Reach for it only when
+something genuinely needs to change more than a wrap.
+
+`tests/bar-rows.spec.mjs` holds it open, at 375 and 1440, across the two
+rooms that draw one. **Confirmed red at BOTH widths** with the grid put
+back, naming the label it lost — which is the whole point of running it at
+1440 as well: a guard written only at phone width would have gone green on
+the defect that had actually shipped. It asserts the property (no label
+truncated, every row still draws a bar) rather than the layout, so the
+one-line and the wrapped arrangement both satisfy it, and it asserts the
+ROW COUNT first, because every other assertion in it is about something not
+being wrong and a selector matching nothing would satisfy all of them.
+
+It skips against production for `league-connect.spec.mjs`'s reason and
+carries the same instruction: **verify a skip in both directions or it is a
+deletion.** Locally both run and pass; against production both skip.
+
+### The bundle-hash check caught a third bad measurement, first try
+
+A sweep of every BarRow reported **3 clipped at 375** on a build where they
+measured 233px and clean. `curl`ing the served HTML named
+`index-BHWjiA-c.js` against a worktree that had just built
+`index-zRjQu05L.js`: a `python -m http.server 8765 --directory web/dist`
+belonging to another checkout, adopted by `reuseExistingServer`.
+
+**Nothing was killed.** The port is shared with whatever else is running the
+suite, and a static server is trivially replaceable but somebody else's run
+is not. A second server on 8841 with an **absolute** `--directory` and
+`JUKE_SITE=http://127.0.0.1:8841` is a two-line detour -- `webServer` still
+adopts the stale 8765 and nothing navigates to it -- and it needs no
+judgement about whose process that is.
+
+**And the corrected sweep then found nothing at all**, because its selector
+asked for `display === "grid"` and the rows had become flex. A check that
+reports zero after the change it is checking is the vacuity trap, not a
+pass: it was re-aimed at the bar's own `h-bar-track` class, which is a fact
+about what a row IS rather than about how it happens to be laid out.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
@@ -6547,20 +6645,39 @@ decision, and 14 has no missed-offer bar because nothing records an offer.
 on the two rooms that can compute one, in each room's own unit, and draws
 nothing at all on the four that cannot. See "What a room has at stake".
 
-Open: **16** and **19**, plus the halves of **05** and **08** named above.
-**16 is no longer blocked on data** — it shares 20's source and is blocked
-on where the snapshot is fetched, which is an architecture question rather
-than a gap. 19 is the Waiver Room at phone width.
+**19** ships with it: the target row's delta bar was `hidden` below `sm`
+and now wraps, and `<BarRow>` wraps on its CONTAINER rather than on the
+viewport — which fixed a label that had been truncated at 1440 as well as
+at 375, on a screen that shipped months ago. See "A row wraps on its
+container's width".
 
-**Re-measure before re-asserting.** Two of the blockers in this section were
-falsified within a day of being written, both by work landing in parallel,
-and neither sentence announced that it had gone stale. Anything here that
-begins "nothing fetches" is a claim with a date on it. See the section on
-what the data cannot answer; **19** is the Waiver Room at phone width,
-which is the same responsive component part 2 already changed and cannot be
-driven live for the reason `league-connect.spec.mjs` records — every
-connected surface sits inside Clerk's `<SignedIn>` and a keyless build
-renders the signed-out fallback.
+Open: **16**, plus the halves of **05** and **08** named above. **16 is no
+longer blocked on data** — it shares 20's source and is blocked on where
+the snapshot is fetched, which is an architecture question rather than a
+gap.
+
+**Re-measure before re-asserting.** Four of the blockers in this section
+have now been falsified — two by work landing in parallel, two by nothing
+at all except somebody looking — and not one of the sentences announced
+that it had gone stale. Anything here that begins "nothing fetches" or "no
+room writes one" is a claim with a date on it.
+
+**And a connected room CAN be driven, which this section said it could
+not.** The sentence was that every connected surface sits inside Clerk's
+`<SignedIn>` and a keyless build renders the fallback. `RoomPage` contains
+no `<SignedIn>`: what gates a room is `leagueStore` answering `connected`,
+so stubbing `window.Live.listLeagues` and `leagueSnapshot` the way
+`league-connect.spec.mjs` already stubs the first of them puts a real
+Waiver Room on screen with real players on the wire. That is how screen 19
+was measured, and it is a wider seam than this file had recorded.
+
+**The snapshot stub has to wait for the board.** `RoomPage` fetches on the
+render its league id arrives on, which is routinely BEFORE `players.js`
+lands — so a stub that builds its rosters out of `JukeEngine.board()`
+returns `ok: false` and the room draws "we could not read your league",
+with nothing retrying. Resolve on `juke:data-loaded` when `dataReady()` is
+still false. Same shape as `WaiverRoomLive`'s own memo on `board.length`,
+one layer out in the fixture.
 
 ## Your Insights, and the difference between a share and a decision
 

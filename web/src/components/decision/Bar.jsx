@@ -120,15 +120,50 @@ export default function BarRow({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       title={title}
+      /* The row wraps on its CONTAINER's width, not the viewport's, and
+         that distinction is the whole of this change.
+
+         It was a three-column grid, and three columns do not fit a narrow
+         box. Measured: the Waiver Room's own "where a claim would help"
+         panel sits in a 360px rail at `lg`, so the label column came out
+         **119px at 1440** and every label in it was truncated -- "Bijan
+         Robinson · over your best RB" reading as "Bijan Robinson · o…",
+         which carries neither the player nor the position he beats. The
+         same panel at 375 measured 111px. So it was never a phone problem
+         and an `sm:` breakpoint would have fixed one of the two widths.
+
+         Flex with a real basis on each part asks the right question. The
+         label wants 12rem and the bar 8rem; when the box cannot seat both
+         beside a 56px numeral the bar wraps, and alone on its own line it
+         GROWS to the full width -- so the comparison this component exists
+         for gets longer in a narrow column rather than being dropped.
+         `min-w-0` is what still lets the label ellipsise in a box too
+         small for even one of them.
+
+         Source order is the reading order at every width and there are no
+         `order` utilities: wide, it is label, bar, numeral on one line;
+         narrow, the label takes a line of its own and the bar drops under
+         it with its own numeral beside it. One shape rather than a
+         different arrangement per breakpoint. */
       className={
-        'jd-rise grid w-full grid-cols-[minmax(0,1fr)_1fr_56px] items-center gap-3 border-b border-divider py-2 text-left ' +
+        'jd-rise flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-divider py-2 text-left ' +
         (onClick ? 'transition-colors duration-hover hover:bg-white/[0.03]' : '')
       }
       style={{ '--i': index }}
     >
-      <span className="truncate text-[13px] text-ink">{label}</span>
-      <Bar value={value} max={max} sign={sign} marker={marker} index={index} zeroAxis={zeroAxis} />
-      <span className={'text-right font-plex text-[12.5px] tabular-nums ' + tone}>
+      <span className="min-w-0 flex-[1_1_12rem] truncate text-[13px] text-ink">{label}</span>
+      <Bar
+        value={value}
+        max={max}
+        sign={sign}
+        marker={marker}
+        index={index}
+        zeroAxis={zeroAxis}
+        className="flex-[1_1_8rem]"
+      />
+      <span
+        className={'w-14 shrink-0 text-right font-plex text-[12.5px] tabular-nums ' + tone}
+      >
         {display !== undefined ? display : signed(value, sign)}
       </span>
     </Row>
