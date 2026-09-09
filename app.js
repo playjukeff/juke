@@ -12227,6 +12227,64 @@ applyRoute();
    file already uses, handed out rather than duplicated. board() and
    rooms() return live references on purpose: call them fresh on each use
    rather than caching across a route change, the same way this file does. */
+/* A connected league's own rules, merged onto Juke's defaults.
+
+   The worker answers a plain object of rule names to numbers -- ESPN's stat
+   ids translated in worker/scoring.js, Sleeper's own key names passed
+   through -- and this is where that becomes a scoring table. DEFAULT_RULES
+   stays the single answer to "what is a rule at all", which is why the
+   worker does not carry its own copy of the 49 keys.
+
+   An unrecognised key is dropped rather than added. A rule this app cannot
+   score is not made scoreable by a league asking for it: pointsUnder()
+   walks the rules object, so an unknown key with a stat that was never
+   stored would contribute a silent zero and read as though it had counted.
+   The worker reports those separately for the same reason unmatched.txt
+   does. */
+function rulesFromLeague(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const rules = Object.assign({}, DEFAULT_RULES);
+  let seen = 0;
+  Object.keys(raw).forEach(function (k) {
+    if (!(k in DEFAULT_RULES)) return;
+    const n = Number(raw[k]);
+    if (!Number.isFinite(n)) return;
+    rules[k] = n;
+    seen++;
+  });
+  return seen ? rules : null;
+}
+
+/* Per-game projection under a connected league's rules rather than this
+   session's Draft Room table.
+
+   projPerGame() reads player.projPts, which buildProjections() scored with
+   league.rules -- the mock-draft table. For a real connected league that is
+   the wrong table, and it was wrong quietly: measured 8 September 2026, a
+   full-PPR league read through a half-PPR default understated a week by
+   13.3 points, and bestSwaps() ranked the lineup with the same rules, so
+   reception-heavy players were priced below touchdown-heavy ones.
+
+   Falls back to projPerGame() rather than refusing when the league sends no
+   rules -- an older worker, or a provider that has none -- because a room
+   drawing nothing is worse than one drawing the same number it drew before.
+   Same side-effect-free contract as vorpUnder(): touches no player's real
+   projPts and no REPLACEMENT_PTS, both of which the scoring editor owns. */
+function projPerGameUnder(player, leagueRules) {
+  if (!player) return null;
+  const rules = rulesFromLeague(leagueRules);
+  const s = statOf(player);
+  const block = s && s.p;
+  const games = projGames(player.pos, block);
+  if (!games || !block) return null;
+  if (!rules) {
+    if (player.projPts === null || player.projPts === undefined) return null;
+    return player.projPts / games;
+  }
+  return pointsUnder(block, rules) / games;
+}
+
+
 window.JukeEngine = {
   /* The next NFL kickoff, for the shell header's countdown pill. Answers
      null whenever there is no honest answer — see nextKickoff() — and the
@@ -12291,6 +12349,7 @@ window.JukeEngine = {
      by. perGame() above returns an em dash because it renders; this
      returns a number or nothing, because its caller does arithmetic on
      it and a 0 would be a real and very different projection. */
+  projPerGameUnder: projPerGameUnder,
   projPerGame: function (player) {
     if (!player) return null;
     const s = statOf(player);

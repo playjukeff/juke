@@ -50,6 +50,7 @@
    Same contract as sleeper.js and store.js. */
 
 import { normalise } from "./names.js";
+import { rulesFromEspn } from "./scoring.js";
 
 export const ESPN_API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl";
 
@@ -474,6 +475,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
      API meaning missing. */
   const week = Number(league.scoringPeriodId) || null;
   const snapDraft = draftInfo(league, Date.now());
+  const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
 
   return {
     reason: null,
@@ -491,6 +493,15 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          (not null) where it does not — so the same falsy check the rest of
          this project applies to a feed's zero. */
       waiverBudget: Number((settings.acquisitionSettings || {}).acquisitionBudget) || null,
+      /* The league's own scoring, in Juke's vocabulary -- see scoring.js.
+         Without it every room scored a real league with whatever the Draft
+         Room's mock table happened to say, which understated a measured
+         full-PPR week by 13.3 points and skewed the advice with it. */
+      rules: scoring.rules,
+      /* What this league scores that Juke cannot name. Reported rather than
+         dropped, the same discipline unmatched.txt applies to a stat the
+         pipeline cannot store. */
+      scoringUnmapped: scoring.unmapped,
       playoffTeams: Number((settings.scheduleSettings || {}).playoffTeamCount) || null,
       teams,
       /* Whether there was a crosswalk to consult at all. False means the

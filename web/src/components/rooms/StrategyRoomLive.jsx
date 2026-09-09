@@ -130,7 +130,26 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
      one-week call. projPerGame() does the division in app.js, where
      projGames() knows that a team defense is one aggregate row stamped
      gp:1 and must not be divided by seventeen. */
-  const weekPts = engine ? engine.projPerGame : null
+  /* And under THIS LEAGUE's rules, not the Draft Room's.
+
+     projPerGame() reads a projPts scored with league.rules -- the table the
+     reader last set for a MOCK draft -- so a real full-PPR league read
+     through a half-PPR default understated this total by a measured 13.3
+     points a week, and bestSwaps() ranked the lineup with the same rules,
+     pricing reception-heavy players below touchdown-heavy ones. The number
+     was the smaller half of that.
+
+     useMemo because every figure on this screen is memoised on weekPts: a
+     fresh closure per render would rebuild all four on every tick. Falls
+     back to projPerGame when the league sends no rules -- an older worker,
+     a provider without them -- since drawing the previous number beats
+     drawing none. */
+  const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
+  const weekPts = useMemo(() => {
+    if (!engine) return null
+    if (!leagueRules) return engine.projPerGame
+    return (player) => engine.projPerGameUnder(player, leagueRules)
+  }, [engine, leagueRules])
 
   const lineup = useMemo(() => lineupRows(mine, byId, weekPts), [mine, byId, weekPts])
   const bench = useMemo(() => benchRows(mine, byId, weekPts), [mine, byId, weekPts])
