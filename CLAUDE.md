@@ -6144,23 +6144,169 @@ element is then true about the thing it carries.
 bar (a 26px middot at `opacity-40`), which is `opacity` lying about a colour
 for the third time in this codebase.
 
+### The screens the guide names that the data cannot answer
+
+Six of the twenty ask for a number nothing in this project computes, and
+they are grouped here because the reason is the same one three times over
+and the temptation is identical each time: a KPI strip is the most
+confident furniture on a page, so an invented figure on one is the worst
+available place in the product to put a guess.
+
+- **11's "net pts", and the plus-or-minus points bar on every verdict
+  row.** A decision would have to carry what its call was worth. Nothing
+  writes one: `decisions` stores the record whole in `data`, no room writes
+  a decision at all yet, and there is no grader — `verdict` is the only
+  field grading will ever set. It arrives with the grader.
+- **08's win probability and 04's "lost by 9".** Both need
+  `/league/<id>/matchups/<week>`, which nothing fetches — the single
+  missing call `StrategyRoomLive.jsx`'s own header already records as
+  costing that room three of its seven tabs. It is the highest-value thing
+  anybody could add to the connected half of this product.
+- **05's win-% and bye odds, 12's season-end state, 14's trade deadline,
+  15's offseason.** Every one of them needs the app to know where in a
+  season it is, and `seasonPhase.js` already refuses to name a playoff week
+  for exactly this reason: neither adapter says how many weeks a regular
+  season runs or when a deadline falls, and guessing week 15 is right for
+  some leagues and confidently wrong for the rest.
+- **16 and 20's per-room "points at stake this week."** No room writes one;
+  `railItems.js` already deleted a "needs action" dot for the same reason.
+
+**Two of the six were shipped against a reachable condition instead of the
+absent flag, and that distinction is worth keeping.** Screen 15 asks for a
+`<RunNextCard>` in the Waiver Room's offseason; there is no offseason flag,
+and an *empty wire* is the reachable version of the same condition — it is
+what a reader is actually looking at when the advice is "go and look at
+next year's rookies instead". Screen 05's strip ships with the four things
+a league really does report (standing, record, points for, points against)
+and without the two it does not. Neither is the guide's screen; both are
+the part of it this data supports.
+
+**And two more were declined for a reason that is not missing data.**
+Screen 13 asks for the guest room's demo banner to become the page's stake
+card — `bg-stake`, and drop the cyan border. This app's unlock card has no
+cyan border to drop, which is the tell: the guide is describing a card this
+repo does not have. Ours reads "locked, sign up" rather than naming a
+stake, and a guest route has no connected league to name one from — P2's
+light surface without P2's substance is a loud card saying nothing. Screen
+17 asks the mock setup to pre-fill from the thinnest coverage cell, and
+`practiceScenarios.js` already offers exactly that as a pressable card
+built from real history ("a seat never drafted from", "a scoring format
+the history has never run"). A silent pre-fill beside it would be a second
+answer to one question.
+
+### Cyan on a numeral was the biggest single defect, and Analysis held nine
+
+The guide's first global rule — grep `text-teal` on any numeral — is worth
+more than it sounds, and the Draft Room's Analysis panel is where it paid.
+Every component score, the composite, the weighted sum and the "you" marker
+on each band were cyan, on a screen whose primary action is a cyan button.
+A page that prints a good outcome in the same colour as its controls has
+taught the reader that cyan means good and then asked them to press one.
+
+They are **`cost` when a component is the weakest and plain ink
+otherwise** — deliberately not `gain`, because a score of 62 out of 100 is
+a quantity and not a gain of anything, which is the same call `signOf()`
+makes about zero. "Best value" and "Biggest reach" beside them were
+emerald and rose, a third and fourth value colour on one panel; they are
+gain and cost.
+
+**A marker whose colour restates its own neighbour is what let a legend
+drift.** The band's "you" square was rose below the room median and teal
+above — a fact the median tick two pixels away already states by position,
+and the delta at the end of the row states a third time with the number
+attached. One square captioned "you", drawn in two colours. It is
+`evidence`, once, and the legend can be honest about it.
+
+### One colour for a good call, and the two files that had written it out
+
+`VERDICTS` in `ledger/verdicts.js` was `mint`/`flow.rose`, which was this
+codebase's positive and negative pair when the ledger was written and
+stopped being it the day the decision palette landed: **mint is the rail's
+"you are here" and the room-card accent.** It is `gain`/`cost` now.
+
+The more useful half is what that exposed. `WeekStrip.jsx` and
+`MyLeagueDemo.jsx` had each written the pair out by hand — glyph, label and
+tone — so a good call was mint on My League and gain one click away in the
+ledger, with nothing to notice it. Both read `verdictFor()` now. **Three
+copies of one vocabulary is how a colour comes to mean two things**, and it
+is the same failure `draftRoomPositions.js` was rewritten to end.
+
+### A delta's sign is direction; its colour is meaning
+
+Found on the connected My League strip, which prints points against beside
+a league median. `signed()` prepends a minus for `sign: 'cost'`, and that
+is right everywhere the magnitude IS the cost — a habit costing 4.1 points
+a week. Points against is where the two part company: conceding 10.8 more
+than the league is bad **and the number went up**, so the plain call
+rendered **−10.8 for a value 10.8 above the median.**
+
+A sign that says a number fell when it rose is a wrong fact rather than a
+styling choice. `signed()` passes a string that already carries a real sign
+straight through — its own comment says so — so that card writes the
+direction itself and leaves `deltaSign` to do the only other thing it does,
+which is choose the colour. **Anywhere "up" and "good" point opposite ways,
+the sign has to be written at the call site.**
+
+### Two defects a sweep found that were nobody's screen
+
+Neither came from the pass that found them, and both are the shape this
+file keeps recording: correct-looking markup that fails only on a value
+nobody had rendered yet.
+
+**A component band's marker hangs 5px past its own box at 100.** It is a
+10px square positioned at `left: pct%` and pulled back half its width, so
+at the top of a min-max scale — which starter strength really does reach,
+somebody is always the room's best — half of it sits outside a container
+that can neither scroll nor ellipsise. It only fires on a draft where a
+component maxes out, which is why two earlier sweeps of the same panel came
+back clean. `overflow: hidden`, and a marker at either end then shows the
+half of itself that is inside.
+
+**The rank cell on your own standings row measured 3.83.** `ink-muted` is
+4.87 on `slate.panel` and the gold "this row is yours" tint at 10% lightens
+the ground just enough to take it under the bar. Your own row is the one a
+reader looks at, so it takes full ink rather than the tint being weakened.
+
+### The sweep itself was wrong first, and it reported four phantom failures
+
+Worth its own note because a contrast sweep that is subtly wrong is more
+dangerous than no sweep: it produces a clean-looking report with real
+findings buried in noise, and this one produced the noise.
+
+`groundOf()` walked up compositing backgrounds and its `over()` forced the
+result's alpha to 1. So the moment it met **one** translucent layer it
+treated the accumulation as opaque and stopped — and a `bg-white/[0.05]`
+nested inside a `bg-teal-400/[0.05]` came out near-white, reporting white
+text at **1.45** on a card that is perfectly legible. Four of them, all in
+the Fix-this-first card, all invented by the walker.
+
+Real source-over keeps the alpha (`a = fa + ba(1−fa)`, colours weighted by
+it) and only stops when the accumulation is genuinely opaque. **And the
+sweep plants a known-bad pair on the real page, measures it with the real
+walker, and reports the ratio** — 1.31 against a 4.5 bar. A clean result is
+only evidence if a dirty one would have been reported, which is this file's
+own rule about non-vacuous checks, applied to the tool rather than to a
+test.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
 `BarRow`, `StakeCard`, `RunNextCard`, `Confidence`), `RoomPage`'s keyed body,
 `AppShell`'s face preload, and screens **01 / 03 / 18** (My League and the
-Move card), **07** (Waiver), **09** (Trade's swing), **10** (Prospect's
-thin-evidence notice).
+Move card), **02** (the connect list's stagger), **05** (the connected
+standings strip), **06** (the Analysis panel's numerals and the queue's
+value bars), **07** (Waiver), **08** (Strategy), **09** (Trade's swing),
+**10** (Prospect's thin-evidence notice), **11** (History), **13** (the
+guest previews' value colours and the wire as bars) and **15** (the empty
+wire's `<RunNextCard>`).
 
-Open, in the guide's own PR order: **06** (the Draft Room's `AnalysisTab`
-impact table and the tier cliff on a pick axis), **11** (History), **02, 04,
-05, 08, 12–17, 19, 20**.
-
-**Two of those cannot be done as written and should not be faked.** Screen
-16's per-room "points at stake this week" and screen 20's identical rail
-label need a per-room stake figure, and no room writes one — the rail's own
-`railItems.js` already deleted a "needs action" dot for exactly that reason
-and says so. They arrive with the first room that computes one.
+Open, and each blocked on data rather than on effort: **04, 12, 14, 16, 19,
+20**, plus the halves of **05** and **08** named above. See the section on
+what the data cannot answer; **19** is the Waiver Room at phone width,
+which is the same responsive component part 2 already changed and cannot be
+driven live for the reason `league-connect.spec.mjs` records — every
+connected surface sits inside Clerk's `<SignedIn>` and a keyless build
+renders the signed-out fallback.
 
 ## Your Insights, and the difference between a share and a decision
 
