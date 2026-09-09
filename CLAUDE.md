@@ -1891,6 +1891,59 @@ section refused the draft on the first press, because `setLeague()` moved
 "The Draft Settings screen" — a refusal is only as good as the way out it
 names, so the two changes ship together and one test covers the path.
 
+
+## Grading a draft that is not the one in progress
+
+The graders read the live draft through two globals — `state.picks` and
+`league` — which is right for what they were written for and leaves no way
+to ask *how would this other draft grade*. A connected league's own draft is
+exactly that question.
+
+**Save-and-restore is the obvious answer and this file already calls it
+dangerous.** `gradeAndRosterAt()` writes every touched player's `drafted`
+flag and swaps `state.picks`, then puts it all back — and a restore is only
+right if nothing looked in between. `seatParTable()` already declined the
+same trick, taking `jitterOf` rather than writing `board[].jitter` and
+restoring it.
+
+**So nothing is mutated.** `withGrading()` swaps two module-level POINTERS
+for the length of one synchronous call, and only the graders read them: the
+live draft, every renderer and the engine go on reading `state.picks` and
+`league` directly, so there is no window in which another reader sees
+something it did not ask for.
+
+The reads that had to move were far fewer than they look. Most of the
+`board` mentions inside `analyseTeam()` are in its comments; the real
+surface is `state.picks` in `rosterOf()` and `analyseTeam()`, and `league`
+in `slotCount()`, `analyseTeam()` and `analyseDraft()`. Everything else
+funnels through those — `bestLineup()` asks `lineupSlots()`, which asks
+`slotCount()`.
+
+**`board` is deliberately shared rather than swapped.** It is the projection
+source — what a player is worth — and that is the same question for every
+draft. What is *not* shared is `board[].drafted`: no grading path reads it,
+which is what makes grading a foreign draft while a real one is live safe
+rather than merely unobserved.
+
+**Re-entrancy is refused, not nested.** A nested call would restore the
+OUTER context on the way out of the inner one — the save-and-restore bug
+arriving through the door built to avoid it. There is no legitimate caller,
+so it throws.
+
+**The restore is in a `finally`, and that is the assertion that earns its
+keep.** A throw inside the graders would otherwise leave every later call
+reading a draft nobody is looking at. `tests/pure-grading.spec.mjs`
+confirmed red against exactly that: remove the `finally` and the
+throw-safety test fails while the other two pass.
+
+**What the tests assert is not that the number is plausible.** It is that
+the live draft did not move — pick count, the picks themselves, the league
+shape, every player's `drafted` flag, and the live room's own grades, each
+compared before and after grading a different room of a different size.
+
+`tests/grade.spec.mjs` and `tests/solo.spec.mjs` — 23 tests, the guards on
+every number this change could have moved — pass unchanged.
+
 ## The Juke score
 
 Projected points above a replacement starter at that position, as a share of
