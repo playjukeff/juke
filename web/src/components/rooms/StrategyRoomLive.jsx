@@ -5,6 +5,7 @@ import {
   bestSwaps, benchRows, injuryWatch, lineupRows, projectedTotal,
 } from './strategyBoard.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import { gameInWeek } from '../../lib/schedule.js'
 import KpiStrip from '../decision/KpiStrip.jsx'
 import BarRow from '../decision/Bar.jsx'
 import StakeCard from '../decision/StakeCard.jsx'
@@ -158,6 +159,38 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
     [mine, byId, weekPts, week]
   )
   const total = useMemo(() => projectedTotal(mine, byId, weekPts), [mine, byId, weekPts])
+
+  /* Who you actually play, and by how much.
+     
+     RoomPage.jsx recorded this room's KPI bar as wanting "the week's
+     matchup margin, which needs the matchups fetch three of its tabs are
+     also waiting on" -- this is that fetch arriving.
+
+     The opponent's total goes through the SAME projectedTotal() under the
+     same weekPts, so the margin is two readings of one method rather than
+     Juke's number against ESPN's. ESPN publishes its own projection and win
+     probability and both are deliberately dropped on the way through the
+     worker; see matchups.js.
+
+     `week` is null before the season starts and gameInWeek() answers the
+     opening fixture then, because "who do I open against" is the question a
+     preseason reader has. */
+  const game = useMemo(
+    () => gameInWeek(snapshot && snapshot.schedule, league && league.ownerId, week),
+    [snapshot, league, week]
+  )
+  const opponent = useMemo(() => {
+    if (!game || !game.opponentId || !snapshot) return null
+    return (snapshot.teams || []).find((t) => t.ownerId === game.opponentId) || null
+  }, [game, snapshot])
+  const oppTotal = useMemo(
+    () => (opponent ? projectedTotal(opponent, byId, weekPts) : null),
+    [opponent, byId, weekPts]
+  )
+  /* Null unless BOTH sides project, which is projectedTotal()'s own rule
+     one level up: a margin against a partially-projected opponent reads as
+     a lead that is really a gap in the data. */
+  const margin = total === null || oppTotal === null ? null : total - oppTotal
   const hurt = useMemo(() => injuryWatch(mine, byId, week), [mine, byId, week])
   const swapMax = swaps.length ? Math.max(...swaps.map((s) => s.gain)) : 0
   const starting = lineup.filter((r) => r.player).length
@@ -243,6 +276,17 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
       action={
         <span className="font-mono text-[11px] text-ink-muted">
           {total === null ? 'not all projected' : `${total.toFixed(1)} proj / wk`}
+          {opponent ? (
+            <>
+              {' · '}
+              {game.home ? 'vs' : 'at'} {opponent.teamName}
+              {margin === null ? null : (
+                <span className={margin >= 0 ? ' text-gain' : ' text-cost'}>
+                  {' '}{margin >= 0 ? '+' : ''}{margin.toFixed(1)}
+                </span>
+              )}
+            </>
+          ) : null}
         </span>
       }
     >
