@@ -69,29 +69,56 @@ check("a roster KEEPS its unpriceable players, unlike a targets board", () => {
   assert.equal(ids.includes("n"), true);
 });
 
-check("and sorts them below every priced player, including the bad ones", () => {
+check("it is in the roster's own order, which is the lineup's", () => {
   const rows = rosterValues(MINE, byId, gapOf);
-  assert.equal(rows[0].player.id, "a", "best first");
+  assert.deepEqual(
+    rows.map((r) => r.player.id), MINE.players.map(String),
+    "a roster is read the way the manager holds it — starters as the league fields them, then the bench"
+  );
+});
 
-  /* This assertion was weak at first and passed against the naive sort.
-     `b.value - a.value` coerces null to 0, so an unpriceable player lands
-     last anyway WHEN EVERY REAL VALUE IS POSITIVE — which the fixture's
-     did. The bug only shows against a player BELOW replacement: a -70
-     receiver would sort under the two nobody can price, so the roster
-     would rank a kicker Juke refuses to rate above a real player it rates
-     badly. */
+/* This replaced an assertion that a dash sorts BELOW every priced player,
+   "including the bad ones" — which was true of a ranked list and is not of
+   this one. It is kept in spirit rather than deleted, because the danger it
+   was written against is real and specific: an unpriceable player must
+   never read as the best thing on the roster.
+ *
+ * A ranked list answered that by pushing him to the bottom. An unranked one
+ * answers it better, by not being a ranking at all — so what has to be true
+ * now is that the order does NOT track value, or a reader would take it for
+ * a ranking with a dash sitting in it.
+ *
+ * The old check had been hardened once already: `b.value - a.value` coerces
+ * null to 0, so an unpriceable player lands last anyway when every real
+ * value is positive, and only a BELOW-replacement player exposes it. That
+ * fixture requirement is kept below for the same reason — without a
+ * negative value the two orders can coincide and this proves nothing. */
+check("and the order deliberately does not track value", () => {
+  const rows = rosterValues(MINE, byId, gapOf);
   const priced = rows.filter((r) => r.value !== null);
-  const unpriced = rows.filter((r) => r.value === null);
-  assert.equal(unpriced.length, 2);
   assert.ok(
     priced.some((r) => r.value < 0),
     "the fixture must contain a below-replacement player or this proves nothing"
   );
-  const lastPriced = rows.findIndex((r) => r.player.id === "w");
-  const firstUnpriced = rows.findIndex((r) => r.value === null);
-  assert.ok(
-    lastPriced < firstUnpriced,
-    "a player Juke rates badly still outranks one it will not rate at all"
+
+  const byValue = [...rows].sort((a, b) => {
+    if (a.value === null && b.value === null) return 0;
+    if (a.value === null) return 1;
+    if (b.value === null) return -1;
+    return b.value - a.value;
+  });
+  assert.notDeepEqual(
+    rows.map((r) => r.player.id), byValue.map((r) => r.player.id),
+    "if these agree the fixture cannot tell a roster order from a ranking"
+  );
+
+  /* The Value Board is where best-first belongs, and it sits in the same
+     file eighty lines away. It must not have followed. */
+  const board = valueBoard({ teams: [MINE] }, byId, gapOf);
+  const values = board.map((r) => r.value);
+  assert.deepEqual(
+    values, [...values].sort((a, b) => b - a),
+    "a board of everything tradeable is still read best first"
   );
 });
 

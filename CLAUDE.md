@@ -8456,10 +8456,29 @@ falls where the player sits** rather than being swept to the bottom, which
 is the same answer as keeping him at all.
 
 **`valueBoard()` is untouched and must stay untouched.** That is the
-invariant this change could have broken silently, and it is what
-`worker/test-trade-board.mjs` exists to pin — the roster assertions were
-confirmed red against the old sort, and the board assertions pass either
-way, which is the point of having both in one suite.
+invariant this change could have broken silently, and `scripts/
+test_trade_board.mjs` pins it in the same test that asserts the roster's
+order — both confirmed red against the old sort.
+
+**The assertion it replaced is kept in spirit rather than deleted.** That
+one said a dash sorts *below* every priced player "including the bad ones",
+and it had itself been hardened once, because `b.value - a.value` coerces
+null to 0 and so hides the bug unless the fixture contains a
+below-replacement player. The danger it was written against is real and
+specific — an unpriceable player must never read as the best thing on the
+roster — and an unranked list answers it better than a ranked one did, by
+not being a ranking at all. So what is asserted now is that the order does
+NOT track value, with the same negative-value requirement on the fixture:
+without one, the two orders can coincide and the test proves nothing.
+
+**And there was already a suite for this file.** A first pass added a
+second one under `worker/`, on a search that only looked in `tests/` and
+`worker/test-*.mjs` and so missed the whole `scripts/test_*_board.mjs`
+family — waiver, strategy, trade and prospect, all wired into
+`tests.yml`. Two suites for one module is the written-down-twice rule with
+assertions in it, and the duplicate was deleted rather than kept. **Before
+adding a suite, grep for the module name, not for the directory you expect
+its tests to live in.**
 
 ### Rejected: reading a private league
 

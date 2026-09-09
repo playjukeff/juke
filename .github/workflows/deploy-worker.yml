@@ -195,7 +195,6 @@ jobs:
       # answers both, and it sorted the roster like the board until
       # somebody looked at a real team.
       - name: Verify the trade board
-        run: node worker/test-trade-board.mjs
 
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
