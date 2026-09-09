@@ -52,6 +52,15 @@ jobs:
         with:
           node-version: "22"
 
+      # A workflow step with a name and nothing to do is invalid, and GitHub
+      # refuses the whole run with "This run likely failed because of a workflow
+      # file issue" -- naming no line and no step. It happened here: removing a
+      # test deleted its `run:` and left the `- name:` above it, and the worker
+      # stopped deploying for two merges before anybody noticed, because a deploy
+      # that never starts looks like one nobody was waiting for.
+      - name: The workflows themselves
+        run: python scripts/test_workflows.py
+
       - name: Engine and room rules
         run: python scripts/test_engine.py
 
