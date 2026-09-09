@@ -77,12 +77,45 @@ test.describe("the prospect room", () => {
 
     const text = await page.locator(ROW).first().innerText();
 
-    /* The three that are missing for EVERY player in this repository. A
-       profile that quietly showed five fields would read as complete, and
-       the ranking above it would carry weight it has not earned. */
-    for (const gap of ["College production", "Combine testing", "NFL draft position"]) {
+    /* A profile that quietly showed five fields would read as complete, and
+       the ranking above it would carry weight it has not earned. So what is
+       asserted is that nothing is silently DROPPED — not that any particular
+       fact is still missing.
+
+       ---- This list used to be three literals and went red on its own ----
+
+       It read "the three that are missing for EVERY player in this
+       repository", and the nightly falsified it: 2026-09-09's board gave
+       Jeremiyah Love "NFL draft — Round 1, pick 3 · 3 overall", so the panel
+       correctly stopped naming it as a gap and this expectation failed
+       against an app that had got BETTER. That is the same stale-claim
+       failure ProspectRoomLive's own Banner was rewritten to avoid — its
+       comment says the hardcoded version "was true the day it was written
+       and false the moment the CFBD pipeline ran" — and the spec had not
+       learned it.
+
+       Two of the three were never at risk, and the difference is worth
+       knowing before adding a fourth. `prospectBoard.js` pushes the SAME
+       label for College production whether it is known or missing, so that
+       string is on screen either way. The NFL draft fact is the one that
+       changes name between its two states — 'NFL draft' with a value,
+       'NFL draft position' as a gap — so a `toContain` on one spelling is a
+       bet on the data. */
+    for (const gap of ["College production", "Combine testing"]) {
       expect(text, `${gap} must be named`).toContain(gap);
     }
+
+    /* Known or named, never absent. Whether this particular prospect was
+       drafted is a fact about tonight's board and not about the screen; what
+       the screen owes the reader is that the question is answered one way or
+       the other.
+
+       One substring covers both states because both labels start with it —
+       'NFL draft' carrying a round and pick, 'NFL draft position' sitting in
+       the NOT KNOWN list. Written as an either/or it would read as two cases
+       and be one, since the shorter string matches the longer label too. */
+    expect(text, "the NFL draft fact is either given or named as a gap, never dropped")
+      .toContain("NFL draft");
     // And what it does have, so the panel is not merely a list of holes.
     expect(text).toContain("ON FILE");
   });
