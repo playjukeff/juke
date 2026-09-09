@@ -138,6 +138,7 @@ the Stack section above, not a one-time migration hiccup.
 | `scripts/test_engine.py` | Runs `draft-engine.js` and `room.js` in node/deno/bun and asserts the rules from outside a browser. |
 | `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
+| `scripts/smoke-pages.mjs` | The site's post-deploy check, run by `.github/workflows/verify-pages.yml` once Cloudflare's own check run says the commit is promoted. Every URL it asks for is read off the served HTML rather than listed here, and every request carries a `?cb=`. Dependency-free, like every other Node check in CI. |
 | `tests/` | End-to-end tests: the real pages, in a real browser, two managers in a real room. `playwright.config.mjs` now builds `web/` and serves `web/dist` rather than the repo root, so every spec runs against the same artifact a Cloudflare Pages deploy produces. |
 | `package.json` (repo root) | **Dev only.** Fetches the test runner and nothing else. Unrelated to `web/package.json` — this one still has no build step, no bundler and no runtime dependency. |
 | `players.js` | **GENERATED.** 260 players by ADP. Never edit by hand. |
@@ -8724,13 +8725,15 @@ remains, after a close, where there is no client-side condition to poll.
   committed blob was correct throughout and so was the deployed card;
   `git checkout --` on the path was the whole repair.
 
-- **CI is two workflows, and neither is a gate.** `tests.yml` runs the two
-  Python suites on `pull_request` and on `push` to main — a floor, and it does
-  not cover itself. `browser-tests.yml` runs the Playwright suite daily at
-  12:30 UTC against the deployed site, which is a smoke alarm rather than a
-  gate: it tells you the morning after something rots, and blocks nothing. The
-  browser suite is still deliberately out of `tests.yml`. Three things follow
-  that have each cost something:
+- **CI is three workflows, and only the one that runs after a merge can fail
+  about the deployed site.** `tests.yml` runs the two Python suites on
+  `pull_request` and on `push` to main — a floor, and it does not cover
+  itself. `browser-tests.yml` runs the Playwright suite daily at 12:30 UTC
+  against the deployed site, which is a smoke alarm rather than a gate: it
+  tells you the morning after something rots, and blocks nothing. The browser
+  suite is still deliberately out of `tests.yml`. And `verify-pages.yml` is
+  the site's answer to what `deploy-worker.yml` has had for weeks — see below.
+  Three things follow that have each cost something:
 
   - **A conflicting pull request has no checks at all, and it looks exactly
     like a reviewed one.** This entry used to say the cause was *ordering* —
@@ -8818,6 +8821,84 @@ remains, after a close, where there is no client-side condition to poll.
   for every major you skip, not just the one you land on: v5 was the node24
   bump, v6 moved the credentials, v7 blocked fork checkouts for
   `pull_request_target` and `workflow_run`, which this repository does not use.
+
+### The site had no post-deploy check, and the worker has had one for weeks
+
+`deploy-worker.yml` ships the worker, settles, and drives 109 assertions over
+real sockets against the thing it just promoted. The site's entire deploy
+verification was `vite build && prerender && copy-legacy-assets` exiting 0 —
+a real guard, and one that says nothing whatsoever about the promoted origin.
+The next thing to look at the live site was `browser-tests.yml` at 12:30 UTC,
+up to a day later.
+
+**The failure that gap allows is the one this file already records**: the
+`web` root-directory move stopped publishing `og-image.png` and the root
+favicons, so `og:image` — the absolute URL baked into every link preview —
+404'd at the origin. Nothing failed, nothing logged, and it was found by
+somebody going and looking.
+
+`verify-pages.yml` closes it in about ninety seconds a merge:
+`scripts/smoke-pages.mjs` fetches the promoted homepage and confirms the
+origin serves every same-origin thing that page names.
+
+**Nothing in the check is written down twice.** Every URL is read off the
+served HTML — the hashed bundle and its CSS, the `?v=`-stamped legacy files,
+`og:image`, every icon `<link>`. A hardcoded list goes stale silently, misses
+the asset added last week and cries wolf about the one deleted yesterday.
+This one covers a new reference the moment it ships and stops covering a
+retired one the moment it goes.
+
+**Four things it took a measurement to get right, and three of them produced a
+red run on a healthy site first.**
+
+- **Comments have to be stripped before the tags are matched.** The first run
+  against production reported a `.woff2` as a 404, because `index.html`'s own
+  comment about font preloads quotes a `<link rel="preload">` tag in prose. A
+  regex cannot tell prose from markup and this repository writes very long
+  comments that quote markup.
+- **Redirects are followed.** Pages serves `/404.html` as a 308 to `/404`;
+  asserting 200 on the first response reports a healthy site as broken.
+- **The body is read, not just the status.** A status line arrives before the
+  bytes, so a truncated transfer reports 200 to anything reading `res.status`
+  — the "read the body, not the status" rule this file already states about
+  `/me/history`. Confirmed by emptying a referenced PNG in a real build: the
+  check names it `answered 200 with an empty body`. Draining is also what
+  keeps the client alive — twenty undrained bodies against a single-threaded
+  static server crashed Node outright, inside undici, with no report at all.
+- **`process.exitCode`, never `process.exit()`.** Exiting while sockets are
+  closing is a libuv assertion on Windows and the process leaves with **127**,
+  so a red run and a crashed run become indistinguishable. A deploy check
+  whose exit code lies is worse than no deploy check.
+
+**A failed Pages build must fail the job rather than reach the smoke step**,
+and that is the branch worth being careful about: when a build fails the
+*previous* deployment stays live and perfectly healthy, so the smoke check
+would pass and report green about a deploy that never landed. A guard that
+covers half a hazard reports green on the other half.
+
+**The trigger is Cloudflare's own check run, and the shape of it was measured
+rather than assumed.** There are no GitHub Deployments to watch — the only
+ones on this repository are `env=github-pages` and they stop on 18 August
+2026, the day the site moved. What Cloudflare posts is a check run named
+exactly `Cloudflare Pages`, and it appears **already complete**: `started_at`
+equals `completed_at` on all five of the most recent merges, because it is
+written retroactively rather than opened and finished. So the poll waits for
+the check to *exist*, absence means the build is still running, and the gap
+from merge to check was 40–48 seconds across those five. Ten minutes is the
+ceiling, about twelve times the worst observed.
+
+**One thing it cannot catch, said out loud rather than left to be
+discovered.** The inverse caching trap — a tab open since before the deploy,
+holding the previous `index.html` and asking for a content-hashed bundle that
+no longer exists — is invisible here by construction, because this checks what
+the *current* HTML names against the *current* origin and both halves moved
+together.
+
+**Confirmed red before being trusted green**, against a real local build of
+`web/dist` served on its own port: a deleted `favicon.ico` reports 404, a
+renamed `assets/index-*.js` reports 404 under `script resolves`, and a
+zero-length PNG reports the empty body. Exit 1, three failures named, and exit
+0 again once all three were put back.
 
 - **End to end: `npm install` once, then `npx playwright test`.** 108 tests
   across twenty-four spec files, and it starts the static server and
