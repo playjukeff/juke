@@ -199,8 +199,19 @@ const GRID = (made, extra = {}) =>
     ...(n < made ? extra : {}),
   }));
 
-async function statusOf(draftDetail) {
-  const league = { ...LEAGUE, draftDetail };
+/* Far-past and far-future fixtures rather than an injected clock: `due` is
+   the one thing in draftInfo() that reads a real one, and a league dated
+   2020 or 2100 is deterministic against any Date.now() this will ever run
+   under -- with no signature threaded through two public functions to get
+   there. */
+const LONG_AGO = 1600000000000;   // September 2020
+const FAR_OFF = 4102444800000;    // January 2100
+
+async function statusOf(draftDetail, date = null) {
+  const settings = date === null
+    ? LEAGUE.settings
+    : { ...LEAGUE.settings, draftSettings: { date } };
+  const league = { ...LEAGUE, draftDetail, settings };
   return withFetch(200, league, async () => {
     const { league: out } = await lookupLeague("777", "2026", "https://stub.invalid");
     return out.draftStatus;
@@ -229,6 +240,21 @@ check("nor is a slot merely reserved for one",
 /* With the view refused there are no picks to reason from. The old reading
    is wrong early and right mid-draft, which beats printing DRAFT TIME
    PASSED over a draft that is actually running. */
+/* ESPN reports no picks at all WHILE a draft is running -- measured across
+   a whole real one -- so the scheduled hour is the other half of the test.
+   These four are what separate "running" from the bug above without
+   reintroducing it. */
+check("the hour having come, with the room open, is drafting",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(0) }, LONG_AGO), "drafting");
+check("and it does not fire before that hour arrives",
+      await statusOf({ inProgress: true, drafted: false, picks: GRID(0) }, FAR_OFF), "pre_draft");
+/* A draft nobody held keeps `late`, which is what that phase is for: the
+   room is shut, so no amount of elapsed time makes it drafting. */
+check("a passed hour with the room shut is not drafting",
+      await statusOf({ inProgress: false, drafted: false, picks: GRID(0) }, LONG_AGO), "pre_draft");
+check("and a finished draft stays complete past its own hour",
+      await statusOf({ inProgress: false, drafted: true, picks: GRID(4) }, LONG_AGO), "complete");
+
 check("with no picks in hand it falls back to the boolean",
       await statusOf({ inProgress: true, drafted: false }), "drafting");
 
