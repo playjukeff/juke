@@ -115,13 +115,28 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
   expect(phone.text.length, "the phone rendered something").toBeGreaterThan(10);
   expect(desktop.text.length, "the desktop rendered something").toBeGreaterThan(20);
 
-  /* The two pages are genuinely different, and this asserts it rather than
-     leaving it implied. Without this line every check below would still
-     pass if the split silently stopped working and both widths rendered the
-     desktop page — which is the exact regression the hydration note in
-     Homepage.jsx is about, and it would look like a passing suite. */
-  expect(phone.text.length,
-    "the phone gets the launcher, not the marketing page").toBeLessThan(desktop.text.length);
+  /* This asserted `phone.text.length < desktop.text.length`, under the
+     heading "the phone gets the launcher, not the marketing page". That
+     premise is retired: design_handoff_v3_alive collapsed HomePhone and the
+     desktop marketing page into one responsive HomeAlive, and Homepage.jsx's
+     own comment records it — "One tree at every width now". The two widths
+     therefore carry the SAME content and differ only in which responsive
+     labels each layout needs: TrustStrip is `hidden sm:grid` and so
+     desktop-only, the proof section's per-cell side labels are `lg:hidden`
+     and so phone-only.
+
+     Which side has more of those is an accident, and it was a thin one —
+     the margin was two text nodes. It flipped the first time a section
+     below `lg` added labels of its own (phone 177, desktop 175), reporting
+     a copy regression on a page whose copy was identical at both widths.
+
+     What the line was protecting is still worth protecting: one width
+     rendering almost nothing while the other renders the page. That is a
+     ratio, not an ordering, and it does not care which way round the
+     responsive labels happen to fall. */
+  const ratio = Math.min(phone.text.length, desktop.text.length) /
+                Math.max(phone.text.length, desktop.text.length);
+  expect(ratio, "neither width renders a fraction of the other").toBeGreaterThan(0.6);
 
   for (const [name, page] of [["phone", phone], ["desktop", desktop]]) {
     /* The slogan. Title case in the DOM and uppercased in CSS at both
