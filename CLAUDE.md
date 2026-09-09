@@ -7500,6 +7500,51 @@ honest answer and the only one the reader can act on.
 empty roster; once the draft has run, the roster is its own explanation and
 a permanent "drafted" row is furniture on every screen for a season.
 
+
+### `inProgress` means the room is open, not that anybody is picking
+
+Reported 8 September 2026 from the deployed site, with the owner's own ESPN
+league drafting at 02:00 UTC. At **01:26 UTC — thirty-four minutes early —
+`inProgress` was already true**, `drafted` false, and not one of the 140
+picks made. `draftInfo()` read that boolean alone as `"drafting"`, and
+`draftPhase()` answers on the status before it ever looks at the clock, so
+the league chip said **DRAFTING NOW** and the countdown the reader actually
+wanted was suppressed entirely.
+
+**Nothing failed, and every value was correct.** ESPN opens the draft room
+ahead of the draft and says so honestly; the mapping onto Sleeper's
+vocabulary is what was wrong. That is the same shape as `gp: 1` on a defense
+— a right number answering a question nobody asked — and it is invisible to
+every check this project runs, because a chip reading DRAFTING NOW renders,
+contrasts and throws nothing.
+
+**The evidence that a draft has started is a pick, and the picks are free.**
+`draftDetail` rides on the league root with its two booleans and **nothing
+else** — `picks` needs the `mDraftDetail` view named explicitly, which is one
+more view on the same request rather than a second request. Measured: 37.5 KB
+to 68.2 KB worker-side, no extra round trip, and nothing new reaches the
+browser because `draftInfo()` extracts only the instant and the status.
+
+**An unmade pick is `playerId: -1`.** The array is pre-populated with the
+whole grid before anybody drafts — 140 slots for a ten-team, fourteen-round
+league — carrying the draft order and nothing else. So "has this started" is
+a count of picks with a real player behind them and **never `picks.length`**,
+which is 140 from the moment the grid exists.
+
+**Keepers are excluded from that count**, and that is the one direction the
+fix could have reintroduced the bug from: a keeper is assigned before the
+draft rather than during it, so a keeper league would otherwise report itself
+as drafting from the moment its grid was built.
+
+**`drafted` is read first now.** A finished draft is finished whatever the
+other boolean says, and the previous order let `inProgress` win.
+
+`worker/test-espn.mjs` covers all six cases and was confirmed red against the
+original derivation — **4 failing, the first of them the reported symptom**.
+The fallback when no picks are in hand is deliberately the old reading: it is
+wrong early and right mid-draft, which beats printing DRAFT TIME PASSED over
+a draft that is genuinely running.
+
 ### One vocabulary for two providers, decided in the adapter
 
 `'pre_draft' | 'drafting' | 'complete'` — Sleeper's own strings, passed
