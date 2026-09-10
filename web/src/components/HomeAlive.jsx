@@ -253,7 +253,7 @@ function ConnectCard() {
         <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
           Couldn&rsquo;t check your league
         </div>
-        <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
+        <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
           Your account is fine and nothing has been disconnected — we just could not reach it to
           find out which league is yours. Mock drafts are unaffected and need no account.
         </p>
@@ -267,7 +267,7 @@ function ConnectCard() {
           </button>
           <a
             href="#/rooms/draft"
-            className="text-[12px] text-ink-muted underline-offset-2 hover:underline"
+            className="text-[13px] text-ink-muted underline-offset-2 hover:underline"
           >
             Start a mock draft
           </a>
@@ -284,7 +284,7 @@ function ConnectCard() {
         <div className="mt-2 truncate font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
           {league.name}
         </div>
-        <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
+        <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
           {league.season ? `${league.season} · ` : ''}
           {league.totalTeams ? `${league.totalTeams} teams · ` : ''}
           read-only. My League reads it today; Waiver, Trade and Strategy open as they are
@@ -298,7 +298,7 @@ function ConnectCard() {
           >
             Open My League
           </a>
-          <a href="#/you" className="text-[12px] text-ink-muted underline-offset-2 hover:underline">
+          <a href="#/you" className="text-[13px] text-ink-muted underline-offset-2 hover:underline">
             Manage
           </a>
         </div>
@@ -313,13 +313,13 @@ function ConnectCard() {
       <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
         Connect your league
       </div>
-      <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
+      <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
         One connect opens My League — your real standings, read the moment it lands. Waiver,
         Trade and Strategy open as they are built.
       </p>
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <ConnectLeagueCta variant="gradient" />
-        <span className="text-[12px] text-ink-muted">{PLATFORM_LINE}</span>
+        <span className="text-[13px] text-ink-muted">{PLATFORM_LINE}</span>
       </div>
       <TrustStrip />
     </div>
@@ -358,7 +358,7 @@ function AccountCard() {
       <div className="font-display text-[22px] font-bold text-white sm:text-[28px]">
         Keep your drafts on every device
       </div>
-      <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2 sm:text-[15px]">
+      <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
         An account saves your mocks and unlocks league connect — {PLATFORM_NAMES} today, more
         to come. Mocks still run fine without one.
       </p>
@@ -537,7 +537,13 @@ export default function HomeAlive() {
               <span className="text-mint">before your league.</span>
             </h1>
 
-            <p className="mt-3.5 max-w-[44ch] text-[15px] leading-[1.45] text-voidInk-body sm:mt-[22px] sm:text-[18px] sm:leading-[1.5]">
+            {/* 16px on a phone, which is the ordinary web body floor rather than
+                a preference. This is the page's primary prose, and the pass that
+                collapsed a 15px step into 14 pushed it the wrong way -- fewer
+                sizes is not the goal, roles that carry different jobs is. Card
+                copy stays at 14: a two-up grid is the denser role the floor
+                allows an exception for, and the hero subhead is not. */}
+            <p className="mt-3.5 max-w-[44ch] text-[16px] leading-[1.45] text-voidInk-body sm:mt-[22px] sm:text-[18px] sm:leading-[1.5]">
               {/* PLATFORM_NAMES, never "any major platform".
 
                   Two of four platforms are built, and the Connect card 200px
@@ -735,7 +741,7 @@ export default function HomeAlive() {
         <div className="mt-12 border-t border-line-hairline pt-8 text-center sm:mt-16 sm:pt-10">
           <a
             href="#/rooms/draft"
-            className="inline-flex min-h-[44px] items-center rounded-full px-7 text-[15px] font-semibold text-[#0D0F15] transition-transform duration-150 hover:scale-[1.02]"
+            className="inline-flex min-h-[44px] items-center rounded-full px-7 text-[14px] font-semibold text-[#0D0F15] transition-transform duration-150 hover:scale-[1.02]"
             style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
           >
             Start a mock draft

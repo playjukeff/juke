@@ -364,7 +364,7 @@ function MethodLink({ href, children }) {
          measured 18px high. The link sits under a proof pair with room
          beneath it, so a 44px target costs nothing here and is the one
          route from a claim to the working behind it. */
-      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[12px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
+      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[13px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
     >
       {children}
       <span aria-hidden="true">&rarr;</span>
@@ -389,7 +389,7 @@ function Line({ label, value, accent }) {
     <div className="flex items-baseline justify-between gap-4 border-b border-line-divider py-2.5 last:border-b-0">
       <span className="text-[13px] leading-tight text-voidInk-body">{label}</span>
       <span
-        className={`shrink-0 font-mono text-[15px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
+        className={`shrink-0 font-mono text-[14px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
       >
         {value}
       </span>
@@ -491,7 +491,7 @@ function PairRankReason() {
                 {d.pos}
                 {d.posRank}
               </span>
-              <span className="mt-3 block text-[15px] text-voidInk-body">{d.name}</span>
+              <span className="mt-3 block text-[14px] text-voidInk-body">{d.name}</span>
               {/* Deliberately not "the market has him wrong". Measured on
                   the 9 September board, the market's own order and the
                   projection's agree exactly for every player at the top —
@@ -533,7 +533,7 @@ function PairRankReason() {
                   should be taken on trust, is the sharpest self-
                   contradiction the critique found. The three lines below
                   explain +145; none of them explained 100. */}
-              <p className="mt-2 text-[12px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-2 text-[13px] leading-[1.5] text-voidInk-muted">
                 100 is the most value on tonight&apos;s board. Every other score is a share of his.
               </p>
               <div className="mt-5">
@@ -763,7 +763,7 @@ function PairYourRules() {
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   className="flex items-baseline gap-3 border-b border-line-divider py-2.5 last:border-b-0"
                 >
-                  <span className="w-5 shrink-0 font-mono text-[12px] tabular-nums text-voidInk-muted">
+                  <span className="w-5 shrink-0 font-mono text-[13px] tabular-nums text-voidInk-muted">
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>
@@ -877,7 +877,7 @@ function PairGraded() {
     <Pair claim="Where every other mock stops.">
       <div ref={ref} className="lg:pr-12">
         <Flat label="What you're handed">
-          <ul className="space-y-2.5 text-[15px] text-voidInk-muted">
+          <ul className="space-y-2.5 text-[14px] text-voidInk-muted">
             <li>A finished board.</li>
             <li>Your roster, listed.</li>
             <li>A button.</li>
