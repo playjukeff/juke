@@ -389,7 +389,7 @@ function Line({ label, value, accent }) {
     <div className="flex items-baseline justify-between gap-4 border-b border-line-divider py-2.5 last:border-b-0">
       <span className="text-[13px] leading-tight text-voidInk-body">{label}</span>
       <span
-        className={`shrink-0 font-mono text-[15px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
+        className={`shrink-0 font-mono text-[14px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
       >
         {value}
       </span>
@@ -491,7 +491,7 @@ function PairRankReason() {
                 {d.pos}
                 {d.posRank}
               </span>
-              <span className="mt-3 block text-[15px] text-voidInk-body">{d.name}</span>
+              <span className="mt-3 block text-[14px] text-voidInk-body">{d.name}</span>
               {/* Deliberately not "the market has him wrong". Measured on
                   the 9 September board, the market's own order and the
                   projection's agree exactly for every player at the top —
@@ -877,7 +877,7 @@ function PairGraded() {
     <Pair claim="Where every other mock stops.">
       <div ref={ref} className="lg:pr-12">
         <Flat label="What you're handed">
-          <ul className="space-y-2.5 text-[15px] text-voidInk-muted">
+          <ul className="space-y-2.5 text-[14px] text-voidInk-muted">
             <li>A finished board.</li>
             <li>Your roster, listed.</li>
             <li>A button.</li>
