@@ -296,3 +296,18 @@ jobs:
       # seed, and the bracket reconciliation removed.
       - name: Where a season ends up
         run: node scripts/test_season_sim.mjs
+
+      # What the app cannot reach, computed rather than remembered.
+      #
+      # CLAUDE.md kept three hand-written lists of components that are
+      # "complete and unrendered rather than deleted", and between them they
+      # named 16 of the 28 files that are actually unreachable. The shape they
+      # missed is that a component dies when the last thing importing it dies:
+      # LobbyBar.jsx went from "shows on exactly one screen" to reachable by
+      # nothing and took SiteNav, MobileNavSheet and RoomsNavMenu with it,
+      # silently. Confirmed by putting one import back, which revives all four.
+      #
+      # It says what is dead and never what to delete - unreachable is not
+      # unwanted, and the Insights cards are kept on purpose.
+      - name: What the app cannot reach
+        run: node scripts/check_dead_components.mjs .
