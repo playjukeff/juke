@@ -7899,6 +7899,12 @@ They stay until this is confirmed live, which is the same rule the root
 `index.html` migration followed: prove the replacement works before deleting
 what it replaces, and check the running site rather than the build log.
 
+**It is twenty-eight now, and this sentence is why the count is computed.**
+`scripts/check_dead_components.mjs` walks the import graph from the entry
+points; these four are one root of four. The list above is kept because it
+records the DECISION, which the graph cannot — but the count is not a thing
+to maintain by hand, and this paragraph proved it by being wrong for weeks.
+
 ### What the suite got wrong, and what it got right
 
 **Three specs went red on the new homepage and none of them found a layout
@@ -8161,9 +8167,15 @@ before believing what it says.
 
 ### Still open
 
-- **`LobbyBar` is the last of the old marketing header**, and it now shows on
-  exactly one screen — the insights dashboard, one press behind "Your
-  insights". `NavLinks`/`RoomsNavMenu` survive only through it.
+- ~~**`LobbyBar` is the last of the old marketing header**, and it now shows
+  on exactly one screen~~ — **closed by attrition, and nobody noticed.**
+  Measured 10 September 2026: nothing imports `LobbyBar.jsx` at all. Every
+  mention of it left in `web/src` is a comment in the past tense —
+  `DraftRoom.jsx`'s own says "it is ShellHeader rather than the LobbyBar that
+  used to sit" here. It shows on no screens, and it took `SiteNav`,
+  `MobileNavSheet` and `RoomsNavMenu` down with it, which is exactly what the
+  second sentence of this entry predicted would happen and then failed to
+  notice happening. See "A component dies when its last caller does".
 - **Waiver's desktop preview is a list where 3dg draws a table with a FAAB
   budget rail beside it.** The other three rooms' desktop layouts are the
   handoff's two columns; this one is the phone's, widened. It is the GUEST
@@ -11310,6 +11322,61 @@ remains, after a close, where there is no client-side condition to poll.
   for every major you skip, not just the one you land on: v5 was the node24
   bump, v6 moved the credentials, v7 blocked fork checkouts for
   `pull_request_target` and `workflow_run`, which this repository does not use.
+
+### A component dies when its last caller does
+
+Measured 10 September 2026, by walking the import graph from `main.jsx` and
+`entry-server.jsx` rather than by reading anything: **28 of the 190 files
+under `web/src` are unreachable, and they are 4,863 lines.**
+
+This file kept three hand-written lists of them — the analytics grid Your
+Insights replaced, the marketing homepage Flow v3 replaced, the three
+sections the owner took off the homepage — and between them they named
+**16 of the 28**. Every one of those lists was true when it was written.
+
+**What they could not track is that a component does not die on its own.**
+It dies when the last thing importing it dies, and then so does everything
+only it imported. The twelve nobody had recorded fall out in exactly that
+shape:
+
+```
+the analytics grid   AnalyticsCard, TrendChart, recommendation.js
+the marketing header LobbyBar, SiteNav, MobileNavSheet, RoomsNavMenu
+the old homepage     PhaseRail, ScoringDemoCard
+on their own         NewMockPanel, TeamTab, shell/RoomHero
+```
+
+**`LobbyBar` is the one that names the cost.** This file's Flow v3 "Still
+open" list said it "now shows on exactly one screen — the insights
+dashboard" and that "`NavLinks`/`RoomsNavMenu` survive only through it".
+The second half was a correct prediction of what would happen when it went,
+and it went, and nothing said so. Confirmed from the other direction:
+adding **one** import of `LobbyBar` to a live file revives **four** files at
+once. One import removed, four died.
+
+**And the prose that cites them is stale in a way that reads as current.**
+`shell/RoomHero.jsx` is unreachable while `DraftRoomEntry.jsx` still says
+"same shape RoomHero gives the other four rooms" and this file's own "One
+left margin" section makes it the reference every screen was moved to.
+`helpers.mjs` names `NewMockPanel` as one of the two real Start buttons.
+None of that throws; all of it describes a file the app cannot reach.
+
+**So the list is computed and the reasons stay written down.** The script
+holds the expected set grouped by which root took each file, and fails on
+any difference — a file newly unreachable, a file revived, or a file
+finally deleted. It is in `tests.yml` with the other dependency-free node
+steps.
+
+**It says what is dead and never what to delete**, which is the distinction
+that makes it safe to run. Unreachable is not unwanted: this project's rule
+is to prove the replacement works before removing what it replaces, and the
+Insights cards are kept deliberately. A check that recommended deletions
+would be arguing with that rule; this one just refuses to let the answer go
+stale.
+
+**Confirmed non-vacuous in both directions** rather than trusted: planting
+one import reports four revivals and names them, and dropping one entry
+from the expected set reports it as newly unreachable with its line count.
 
 ### Nothing in the suite was listening
 

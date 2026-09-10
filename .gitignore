@@ -58,7 +58,18 @@ web/dist-ssr/
 # `wrangler dev`, its bundle cache and its temp files. 18MB of machine-local
 # scratch that is rebuilt on demand, and a checked-in copy would be someone
 # else's half-finished draft.
+#
+# Both paths, because there are two ways to start it and they do not agree.
+# wrangler writes this beside the CURRENT DIRECTORY rather than beside the
+# config it was handed, so CLAUDE.md's `cd worker && wrangler dev` puts it in
+# worker/ while playwright.config.mjs's `wrangler dev -c worker/wrangler.toml`
+# runs from the repo root and puts it here. Only the first was ignored, so a
+# root .wrangler/ has been sitting untracked in `git status` after every suite
+# run — and this repository has already had one session sweep another's
+# untracked files into a commit with `git add -A`. Noise in `git status` is
+# what makes that easy to do.
 worker/.wrangler/
+.wrangler/
 
 # Local secrets for `wrangler dev`. The two proxied routes need a key and the
 # keys live in the worker, never in the page — so testing them locally means
