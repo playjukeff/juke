@@ -3743,9 +3743,42 @@ function findProjectionWeeks() {
   PROJ_WEEKS = common ? Number(common) : 0;
 }
 
+/* Games, which is one fewer than the weeks the projection covers.
+ *
+ * Reported 10 September 2026: a connected league's Week 1 read 119.6 in the
+ * Strategy Room against 131.8 on ESPN. Part of that is two forecasters
+ * disagreeing and always will be. This part was ours.
+ *
+ * `gp` on a projection is a HORIZON and not a per-player estimate, which is
+ * measurable rather than arguable: across the 480-player board every one of
+ * the 448 non-DST rows carries gp 18, with no variation at all, while actual
+ * games in a completed season top out at 17 (133 players there, exactly one
+ * at 18). A team plays 17 games in an 18-week season, so a season total
+ * divided by 18 is points per WEEK OF THE SEASON with the bye averaged in —
+ * and every caller here divides by it to ask what a player scores in a week
+ * he plays. That understates all five of them by 1/18, a flat 5.6%.
+ *
+ * CLAUDE.md already said so in words — "every other position carries the
+ * real projected WEEK count" — beside a function named for games. The name
+ * was right about the intent and the arithmetic was not.
+ *
+ * Subtracting one is subtracting the bye, and every NFL team has had exactly
+ * one since 1990. It is taken off the horizon rather than off a hardcoded
+ * 18, because findProjectionWeeks() already reads that back off the rows for
+ * its own reason: Sleeper has used both 17 and 18 across seasons.
+ *
+ * `weeks > 1` keeps the case the comment above this one describes — a skill
+ * player genuinely projected for a single game, whose 1 must not become 0.
+ *
+ * Nothing about the draft moves. `p.projPts` is the raw season total and
+ * never goes through here, so replacement level, the Juke score and all four
+ * grade components are untouched. teamWeeklyStats() scales its mean and its
+ * stdev by the same factor, so every win probability is identical to the
+ * point. What changes is the five places that print or model a single week. */
 function projGames(pos, block) {
   if (!block || !block.gp) return 0;
-  return pos === "DST" ? PROJ_WEEKS : block.gp;
+  const weeks = pos === "DST" ? PROJ_WEEKS : block.gp;
+  return weeks > 1 ? weeks - 1 : weeks;
 }
 
 // Projected points under this app's scoring, and each player's rank at

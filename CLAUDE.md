@@ -3186,6 +3186,17 @@ games)`, which takes the denominator explicitly and prints a dash rather
 than dividing by a fallback, and DST rows get theirs from `projGames()`.
 Kickers were never affected: they carry the same `gp` as skill players.
 
+**And it is not a games count for ANY position, which took a user report to
+notice.** The sentence above says "the real projected week count" and the
+function reading it is called `projGames()`; both halves were written down,
+and the arithmetic followed the name rather than the noun. Measured 10
+September 2026 across the 480-player board: **every one of the 448 non-DST
+rows carries `gp` 18, with no variation at all**, while actual games in a
+completed season top out at 17 — 133 players there, and exactly one at 18.
+A team plays 17 games in an 18-week season, so `gp` is a HORIZON that is the
+same for everybody rather than a per-player estimate. `projGames()` takes the
+bye off it now. See "Two numbers for one week".
+
 **Sleeper's projections are coarser than its actuals, and the pipeline has to
 reconcile that.** Season and weekly lines carry `fgm_50_59` and `fgm_60p`;
 projections carry only the combined `fgm_50p`, and express misses solely as
@@ -10197,6 +10208,84 @@ Move the two together.
 had, and both guards were confirmed red independently: dropping the deadline
 fails three assertions, dropping `isCurrent()` fails exactly one and names it.
 
+
+## Two numbers for one week, and only part of it was ours
+
+Reported 10 September 2026 with both screens side by side: a connected
+league's Week 1 read **119.6** in the Strategy Room against **131.8** on
+ESPN. Two things were wrong, a third is not wrong at all, and separating
+them is the whole of this entry.
+
+### The divisor was weeks, and the number is per game
+
+`projPerGameUnder()` is `pointsUnder(seasonBlock, rules) / projGames()`, and
+`projGames()` returned Sleeper's `gp` — **18 for every non-DST player on the
+board, with no variation whatsoever.** Actual games in a played season top
+out at 17. So a season total was being divided by the number of WEEKS, bye
+included, under a caption reading "Points this week".
+
+Every playing week was understated by exactly **1/18, a flat 5.6%**, on all
+five callers: the Players table's AVG column, the player sheet's Per game
+box, `teamWeeklyStats()`, and both bridge entries the rooms read. Measured
+after: every player moves by exactly **1.0588**, and the reported 119.6
+becomes **126.6**.
+
+**Nothing about the draft moves, and that was checked rather than reasoned.**
+`p.projPts` is the raw season total and never goes through `projGames()`, so
+replacement level, the Juke score and all four grade components are
+untouched. `teamWeeklyStats()` scales its mean AND its stdev by the same
+factor — the stdev is `cv x mean` — so `z` is unchanged and every win
+probability is identical to the point. 38 tests across grade, solo,
+juke-score, unrated and deep-board pass unchanged.
+
+### A starter on bye was worth his average
+
+Everything in that room asks `weekPts(player)` and **none of it passes a
+week**, so a player on bye contributed his ordinary average to a total that
+says "this week". The room already knew: `injuryWatch()` lists a bye beside
+an injury because "they are the same problem on the day: the slot is empty",
+so the headline was disagreeing with the panel underneath it.
+
+`weekScorer(base, week)` wraps the scorer rather than threading `week`
+through four signatures, and it lives in `strategyBoard.js` instead of the
+component so `test_strategy_board.mjs` can reach it — that suite supplies its
+own `weekPts` and would never see a closure built inside the room.
+
+**Zero rather than null**, and the distinction is load-bearing:
+`projectedTotal()` answers null if any row is null, so null would blank a
+figure over a fact the room can state exactly. It also makes `bestSwaps()`
+right for free — a bench player worth anything now outranks a starter worth
+nothing, which is the advice a reader most needs in weeks 5 to 14.
+
+Seven checks, three confirmed red by removing the rule while the four
+asserting the non-bye behaviour stay green.
+
+### The rest is two forecasters, and it is not a defect
+
+That leaves about **5 points of 131.8**, and chasing it would be the mistake.
+Juke does not read ESPN's projection **on purpose** — the schedule section
+already records dropping `totalProjectedPoints` because both it and their win
+probability are "somebody else's answer to a question Juke answers itself,
+from rosters it already holds, under the league's own scoring". Carrying it
+would put two numbers side by side for one question and leave the reader to
+choose.
+
+What remains after the two fixes is a modelling difference, and it is per
+player rather than systematic: measured under full PPR, Josh Allen lands
+within 0.6 of ESPN while Dallas Goedert is 3.1 light and Puka Nacua 3.5.
+**A season projection spread evenly is not a projection of a particular
+week**, and ESPN's is week-specific.
+
+**Closing that needs weekly projections, which this pipeline does not
+store.** `stats.js` carries `p`, the season forecast, and `w`, which is
+weekly ACTUALS; Sleeper publishes weekly projections at their own endpoint
+and `build_players.py` has never fetched them. That is a feed and a payload
+decision of the same shape as `WEEKLY_SEASONS` — about 184 KB a season on a
+file that blocks the first paint — rather than a bug to fix inside a room.
+
+**So the honest statement is that this screen shows Juke's own forecast under
+the league's own rules, and it will not equal ESPN's.** What it may not be is
+wrong on its own terms, which is what the two fixes above were.
 
 ## A connected league's scoring, which Juke fetched and threw away
 

@@ -21,6 +21,37 @@
  * than estimated.
  */
 
+/* A week's scorer: the season-average one, with the bye taken out.
+ *
+ * Everything on this screen asks weekPts(player) and none of it passes a
+ * week, so a starter on bye was contributing his ordinary average to a
+ * number captioned "Points this week, as your lineup is set." He scores
+ * zero that week, and the room already knows it -- injuryWatch() lists a
+ * bye beside an injury on the ground that they are "the same problem on
+ * the day: the slot is empty" -- so the total was disagreeing with the
+ * panel underneath it.
+ *
+ * Zero rather than null, and the distinction is load-bearing:
+ * projectedTotal() answers null if ANY row is null, so null would blank the
+ * whole figure over a fact the room can state exactly. An empty slot scores
+ * nothing, which is a number.
+ *
+ * It also makes bestSwaps() correct for free rather than by coincidence: a
+ * bench player worth anything now outranks a starter worth zero, so "one
+ * swap" finally says the thing a reader most needs in weeks 5 to 14.
+ *
+ * `week` may be null -- a snapshot taken before the season starts has no
+ * week -- and then nobody is on bye rather than everybody being compared
+ * against a week that does not exist. Same rule injuryWatch() follows. */
+export function weekScorer(base, week) {
+  if (typeof base !== 'function') return base
+  return (player) => {
+    if (!player) return null
+    if (week && player.bye && player.bye === week) return 0
+    return base(player)
+  }
+}
+
 /* Every starter, with what the projection says.
  *
  * `starters` is Sleeper's own array and its ORDER is the league's roster
