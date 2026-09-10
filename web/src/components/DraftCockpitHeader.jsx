@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { formatClock } from './PickTicker.jsx'
 import { motion } from 'framer-motion'
 import { ChevronLeft, Clock, MoreHorizontal, Settings, Volume2, VolumeX } from 'lucide-react'
 import JukeLogo from './juke-logo/JukeLogo.jsx'
@@ -87,6 +88,7 @@ export default function DraftCockpitHeader({
   hidePill,
 }) {
   const pct = clockLength ? Math.max(0, Math.min(100, (timeLeft / clockLength) * 100)) : 0
+  const clock = clockLength && timeLeft != null ? formatClock(timeLeft) : null
 
   return (
     <Fragment>
@@ -290,6 +292,22 @@ export default function DraftCockpitHeader({
                     appears nowhere else on the bar, so it is the half that
                     stays. */}
                 <span className="hidden sm:inline">Round {round} · </span>Pick {overall}
+                {/* The countdown, in digits, on the two tabs that had none.
+
+                    hidePill is set by Board and Players because PickTicker
+                    mounts under them and repeats this — so Decide and
+                    Analysis fell through to the bar below, whose own
+                    comment calls itself "the whole clock". A proportion
+                    answers "roughly how much is left" and cannot answer
+                    "forty seconds or four", which is the only reading that
+                    changes what you do. The Decide tab exists to choose
+                    under time pressure and was the tab that removed the
+                    pressure from view.
+
+                    Shown whenever a clock is running, not only on myTurn:
+                    the bar renders only on your own turn, so on somebody
+                    else's there was no time signal here at all. */}
+                {clock != null && <span className="tabular-nums"> · {clock}</span>}
                 {myTurn && <span className="hidden xl:inline"> · your turn</span>}
               </span>
               {/* This bar is the whole clock - the big number beside it is the

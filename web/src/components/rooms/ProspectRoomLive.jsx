@@ -174,12 +174,45 @@ function Row({ rank, row, open, onToggle, note }) {
             {[row.stat.col, p.team].filter(Boolean).join(' · ')}
           </span>
         </span>
+        {/* The number the list is ORDERED by, in the column the eye reads.
+
+            This panel is titled "Rookies, by value over replacement" and
+            ordered by exactly that -- row.value, the sort key -- and the
+            quantity appeared in no row. What sat here instead was "7 of 8
+            known", which reads identically on almost every row, so the one
+            number on screen was constant and the one that varied was
+            absent. On the product whose binding principle is that every
+            number is explainable on the page where it appears, the list
+            asked to be taken on faith.
+
+            Same treatment as the homepage board peek 300px into the page,
+            deliberately: mono, tabular, signed, gain-toned. A reader who
+            has seen one recognises the other.
+
+            Toned by sign, and here that IS the meaning rather than merely
+            the direction: value over replacement above zero is a rookie
+            who would start, below it one who would not. That is the
+            opposite of the homepage's "Miss" column, where the same
+            gain/cost pair had to be removed because the quantity there is
+            an error magnitude and colouring it by direction praised the
+            worst forecast on the table. Same two tokens, and the test for
+            which applies is whether the sign carries a verdict.
+
+            null stays a dash rather than a zero. A kicker or a defense is
+            REFUSED a rating (UNRANKED_POSITIONS), and the note under this
+            panel already says so -- printing 0 would turn a refusal into a
+            verdict, which is the one thing withholding exists to avoid. */}
         <span className="shrink-0 text-right">
-          <span className="block font-mono text-[13px] text-voidInk-primary">
-            {e.known} of {e.total}
+          <span
+            className={
+              'block font-mono text-[13px] tabular-nums ' +
+              (row.value == null ? 'text-ink-muted' : row.value >= 0 ? 'text-gain' : 'text-cost')
+            }
+          >
+            {row.value == null ? '—' : `${row.value >= 0 ? '+' : ''}${Math.round(row.value)}`}
           </span>
           <span className="block font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
-            {open ? 'hide' : 'known'}
+            {open ? 'hide' : `${e.known}/${e.total} known`}
           </span>
         </span>
       </button>
