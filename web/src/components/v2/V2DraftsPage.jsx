@@ -49,7 +49,7 @@ export default function V2DraftsPage() {
               : 'Saved in this browser. Create a free account and they follow you to every device.'}
           </p>
         </div>
-        <VoltButton href="#/rooms/draft">Start a mock draft <Arrow /></VoltButton>
+        <VoltButton href="#/v2/draft">Start a mock draft <Arrow /></VoltButton>
       </div>
 
       {locker && (
@@ -78,7 +78,7 @@ export default function V2DraftsPage() {
               Run one against tonight&apos;s board and it is graded the moment it ends — letter, finishing
               position, and the four parts that add up to it.
             </p>
-            <VoltButton href="#/rooms/draft" size="md">Start a mock draft <Arrow /></VoltButton>
+            <VoltButton href="#/v2/draft" size="md">Start a mock draft <Arrow /></VoltButton>
           </div>
         ) : (
           <>
@@ -114,7 +114,7 @@ export default function V2DraftsPage() {
                         {e.rosterVorp === null ? '—' : `${e.rosterVorp > 0 ? '+' : ''}${Math.round(e.rosterVorp)}`}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <a href={`#/rooms/draft?report=${encodeURIComponent(e.id)}`} className="inline-flex items-center gap-1 text-[12px] font-medium text-v2-ink2 hover:text-v2-ink">
+                        <a href={`#/v2/draft/report?id=${encodeURIComponent(e.id)}`} className="inline-flex items-center gap-1 text-[12px] font-medium text-v2-ink2 hover:text-v2-ink">
                           Report <Arrow className="h-3.5 w-3.5" />
                         </a>
                       </td>

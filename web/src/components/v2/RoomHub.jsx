@@ -58,7 +58,7 @@ function freeFacts(slug, pv) {
 }
 
 function FreeCard({ room, expanded, preview }) {
-  const href = room.href || `#/rooms/${room.slug}`
+  const href = room.slug === 'draft' ? '#/v2/draft' : `#/v2/rooms/${room.slug}`
   const facts = freeFacts(room.slug, preview)
   return (
     <a
@@ -361,10 +361,10 @@ function RoomDrawer({ room, preview, onClose }) {
             </div>
 
             <div className="space-y-2.5 border-t border-white/[0.07] p-5">
-              <VoltButton href={`#/rooms/${room.slug}`} className="w-full">
+              <VoltButton href={`#/v2/rooms/${room.slug}`} className="w-full">
                 Sync your league · Season Pass <Arrow />
               </VoltButton>
-              <GhostButton href="#/rooms/draft" className="w-full">Start a free mock instead</GhostButton>
+              <GhostButton href="#/v2/draft" className="w-full">Start a free mock instead</GhostButton>
               <p className="text-center font-mono text-[10px] uppercase tracking-[0.12em] text-v2-ink3">
                 Read-only · Juke never edits your league
               </p>

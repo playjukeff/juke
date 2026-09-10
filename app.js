@@ -854,6 +854,24 @@ function onDraftRoomRoute() {
   return path === "draft-room";
 }
 
+/* #/v2/draft/live — the v2 comparison build's live draft cockpit
+   (web/src/components/v2/cockpit/). Asked ONLY by applyRoute()'s teardown
+   branch below, deliberately not folded into onDraftRoomRoute(): that one
+   also decides hideHome in syncHomeVisibility(), and the v2 build renders
+   INSIDE #view-home, so hiding it for this route would hide the cockpit.
+
+   Why the teardown needs to know about it at all: a solo draft's CPU picks
+   (runCPUs() -> cpuStep()) and its pick clock (resetClock() -> startTicking())
+   both live in this file, and every route that is not #/draft-room stops
+   them (stopSim()/stopClock()) on the way in. DraftRoom.jsx is not mounted
+   as the live screen on this route (its effects all gate on #/draft-room),
+   so nothing would restart them — the draft would freeze on the first CPU
+   turn. */
+function onV2LiveRoute() {
+  const path = location.hash.replace(/^#\/?/, "").split("?")[0];
+  return path === "v2/draft/live";
+}
+
 /* Split out of applyRoute() so the hashchange listener's bare-anchor guard
    (below) can restore view-home/shellbar without running the rest of
    applyRoute() — its scrollTo(0, 0) and its closeRooms()/stopSim()/
@@ -982,6 +1000,19 @@ function applyRoute() {
   if (onDraftRoomRoute()) {
     // #draftroom-root owns its own visibility and lifecycle entirely — see
     // the comment at web/index.html beside that id. Nothing to do here.
+  } else if (onV2LiveRoute()) {
+    // The v2 cockpit: skip the teardown, and carry a solo draft on from
+    // wherever it was left — the CPU picks if a CPU is up, a fresh clock if
+    // it is you. Both calls are idempotent (scheduleCpuStep() and
+    // resetClock() clear before they set), and the guards keep a draft that
+    // is already moving from being touched: an arrival straight after
+    // startDraft() finds state.simulating already true. A room is never
+    // driven from here — the room broadcasts, and the host's browser drives
+    // its empty chairs off those, whatever route it is on.
+    if (state.started && !hasRoom() && !draftOver() && !state.simulating) {
+      if (!isMyTurn()) runCPUs();
+      else if (!state.timerId) resetClock();
+    }
   } else if (!onDraftRoomRoute()) {
     // Leaving is not discarding. The draft stays in memory and in the save;
     // only the clock and the CPU timer stop, so nothing advances off-screen

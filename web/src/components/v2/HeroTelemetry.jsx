@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { SignInButton, SignUpButton } from '@clerk/clerk-react'
-import { useLeague } from '../../hooks/useLeague.js'
+import { useLeagueFresh as useLeague } from './stores.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { platformFor } from '../shell/leaguePlatforms.js'
@@ -65,7 +65,7 @@ function LeagueAction() {
       </SignUpButton>
     )
   }
-  return <GhostButton href="#/you" className="w-full">{label}</GhostButton>
+  return <GhostButton href="#/v2/you" className="w-full">{label}</GhostButton>
 }
 
 function InProgress() {
@@ -83,7 +83,7 @@ function InProgress() {
   if (!summary) return null
   return (
     <a
-      href="#/rooms/draft"
+      href="#/v2/draft"
       className="group flex items-center justify-between gap-3 rounded-[12px] bg-v2-inset px-3 py-2.5 ring-1 ring-inset ring-white/[0.07] transition-colors hover:ring-white/[0.18]"
     >
       <span className="min-w-0">
@@ -135,7 +135,7 @@ function Utility() {
 
       <div className="my-1 h-px bg-white/[0.07]" />
 
-      <VoltButton href="#/rooms/draft" className="w-full">
+      <VoltButton href="#/v2/draft" className="w-full">
         Start free mock draft
         <Arrow className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
       </VoltButton>
@@ -145,7 +145,7 @@ function Utility() {
       <InProgress />
       <MockShape />
       <a
-        href="#/rooms/draft?friends=1"
+        href="#/v2/draft?friends=1"
         className="flex min-h-[40px] items-center justify-between rounded-[10px] px-1 text-[13px] text-v2-ink2 transition-colors hover:text-v2-ink"
       >
         Draft with friends — one board, real managers
@@ -260,7 +260,7 @@ function Leaderboard() {
         <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-v2-ink3">
           {names[active] || ''} · pts over a replaceable starter{fresh ? ` · ${fresh}` : ''}
         </span>
-        <a href="#/rooms/draft" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-v2-ink2 transition-colors hover:text-v2-ink">
+        <a href="#/v2/draft" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-v2-ink2 transition-colors hover:text-v2-ink">
           Draft against this board <Arrow className="h-3.5 w-3.5" />
         </a>
       </div>
@@ -353,7 +353,7 @@ function AccountCenter() {
               {locker.list.slice(0, 3).map((e) => (
                 <li key={e.id}>
                   <a
-                    href={`#/rooms/draft?report=${encodeURIComponent(e.id)}`}
+                    href={`#/v2/draft/report?id=${encodeURIComponent(e.id)}`}
                     className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 transition-colors hover:bg-white/[0.03]"
                   >
                     <span className="font-telemetry text-[20px] font-bold italic leading-none text-v2-ink">{e.grade || '—'}</span>

@@ -195,7 +195,7 @@ export default function PlayerDeepDive() {
                   </li>
                 ))}
               </ol>
-              <a href="/docs/draft-room-how-it-works.html#s07" className="block px-4 pb-4 text-[12px] font-medium text-v2-ink2 underline-offset-2 hover:text-v2-ink hover:underline">
+              <a href="#/v2/method/how-it-works?s=s07" className="block px-4 pb-4 text-[12px] font-medium text-v2-ink2 underline-offset-2 hover:text-v2-ink hover:underline">
                 Read the full method
               </a>
             </details>

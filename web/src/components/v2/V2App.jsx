@@ -2,11 +2,21 @@ import { useEffect, useState } from 'react'
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import JukeLogo from '../juke-logo/JukeLogo.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
+import { useSignedIn } from '../../hooks/useAuthState.js'
 import HeroTelemetry from './HeroTelemetry.jsx'
 import PlayerDeepDive from './PlayerDeepDive.jsx'
 import GradeInstrument from './GradeInstrument.jsx'
 import RoomHub from './RoomHub.jsx'
 import V2DraftsPage from './V2DraftsPage.jsx'
+import V2DraftEntry from './draft/V2DraftEntry.jsx'
+import V2Insights from './draft/V2Insights.jsx'
+import V2Cockpit from './cockpit/V2Cockpit.jsx'
+import V2Report from './cockpit/V2Report.jsx'
+import V2MyLeague from './league/V2MyLeague.jsx'
+import V2History from './league/V2History.jsx'
+import V2You from './league/V2You.jsx'
+import V2Room from './rooms/V2Room.jsx'
+import V2Method from './method/V2Method.jsx'
 import { Arrow, Kicker } from './v2ui.jsx'
 
 /* Juke v2 — "Telemetry". A complete, independent proposal for the site's
@@ -43,15 +53,24 @@ function useTelemetryFace() {
   }, [])
 }
 
+/* Every v2 page, and the one place its address is written down. `match`
+   is the set of first path segments that light a tab, so the draft
+   launcher, the live draft, a report and Your Insights all read as Draft. */
 const NAV = [
-  { key: '', label: 'Board', href: '#/v2' },
-  { key: 'rooms', label: 'Rooms', href: '#/v2/rooms' },
-  { key: 'drafts', label: 'Drafts', href: '#/v2/drafts' },
-  { key: 'method', label: 'Method', href: '/docs/draft-room-how-it-works.html' },
+  { key: '', label: 'Board', href: '#/v2', match: [''] },
+  { key: 'league', label: 'My League', href: '#/v2/league', match: ['league'] },
+  { key: 'rooms', label: 'Rooms', href: '#/v2/rooms', match: ['rooms'] },
+  { key: 'draft', label: 'Draft', href: '#/v2/draft', match: ['draft', 'insights'] },
+  { key: 'drafts', label: 'Locker', href: '#/v2/drafts', match: ['drafts', 'history'] },
+  { key: 'method', label: 'Method', href: '#/v2/method', match: ['method'] },
 ]
 
 function Header({ sub }) {
   const ready = useAccountUiReady()
+  // Without a Clerk key there is no <SignedIn> to render, so the header
+  // asks the same signal every v2 page does rather than always offering a
+  // login to somebody the rest of the page treats as signed in.
+  const signedIn = useSignedIn()
   const [open, setOpen] = useState(false)
   useEffect(() => setOpen(false), [sub])
   const current = sub.split('/')[0]
@@ -68,7 +87,7 @@ function Header({ sub }) {
 
         <nav aria-label="Primary" className="ml-4 hidden items-center gap-1 md:flex">
           {NAV.map((n) => {
-            const on = n.key === current && n.key !== 'method'
+            const on = n.match.includes(current)
             return (
               <a
                 key={n.label}
@@ -100,9 +119,12 @@ function Header({ sub }) {
                 </SignInButton>
               </SignedOut>
               <SignedIn>
+                <a href="#/v2/you" className="rounded-[8px] px-3 py-2 text-[13px] font-medium text-v2-ink2 transition-colors hover:text-v2-ink">You</a>
                 <UserButton />
               </SignedIn>
             </>
+          ) : signedIn ? (
+            <a href="#/v2/you" className="rounded-[8px] px-3 py-2 text-[13px] font-medium text-v2-ink transition-colors hover:bg-white/[0.05]">You</a>
           ) : (
             <button type="button" className="rounded-[8px] px-3 py-2 text-[13px] font-medium text-v2-ink">Log in</button>
           )}
@@ -148,10 +170,10 @@ function Footer() {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2 text-[13px]">
-          <a className="text-v2-ink2 hover:text-v2-ink" href="/docs/draft-room-how-it-works.html">How it works</a>
-          <a className="text-v2-ink2 hover:text-v2-ink" href="/docs/draft-room-how-it-works.html#s06">The draft grade</a>
-          <a className="text-v2-ink2 hover:text-v2-ink" href="/docs/privacy.html">Privacy</a>
-          <a className="text-v2-ink2 hover:text-v2-ink" href="/docs/terms.html">Terms</a>
+          <a className="text-v2-ink2 hover:text-v2-ink" href="#/v2/method">How it works</a>
+          <a className="text-v2-ink2 hover:text-v2-ink" href="#/v2/method/how-it-works?s=s06">The draft grade</a>
+          <a className="text-v2-ink2 hover:text-v2-ink" href="#/v2/method/privacy">Privacy</a>
+          <a className="text-v2-ink2 hover:text-v2-ink" href="#/v2/method/terms">Terms</a>
         </div>
       </div>
     </footer>
@@ -226,9 +248,50 @@ function RoomsPage() {
   )
 }
 
+function NotFound() {
+  return (
+    <div className="grid min-h-[50vh] place-items-center text-center">
+      <div className="max-w-[520px]">
+        <Kicker tone="text-v2-ink2">404 · off the board</Kicker>
+        <h1 className="mt-3 font-telemetry text-[clamp(3rem,8vw,6rem)] font-extrabold uppercase italic leading-[0.86] text-v2-ink">
+          Nobody drafted this page.
+        </h1>
+        <p className="mt-4 text-[16px] leading-[1.55] text-v2-ink2">
+          The address doesn&apos;t match anything in Juke. The board, the rooms and your locker are all a click away.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <a href="#/v2" className="rounded-[10px] bg-v2-volt px-4 py-2.5 text-[14px] font-semibold text-v2-voltInk">Back to the board</a>
+          <a href="#/v2/rooms" className="rounded-[10px] px-4 py-2.5 text-[14px] font-medium text-v2-ink ring-1 ring-inset ring-white/[0.12]">See the rooms</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* The route table. A page that fills the viewport itself (the live draft)
+   draws without the site header and footer — a draft is a workspace, and
+   a footer under a pick clock is furniture. */
+function route(sub) {
+  const parts = (sub || '').split('/')
+  const [a, b] = parts
+  if (!a) return { page: <Home /> }
+  if (a === 'rooms' && !b) return { page: <RoomsPage /> }
+  if (a === 'rooms' && b) return { page: <V2Room slug={b} /> }
+  if (a === 'drafts') return { page: <V2DraftsPage /> }
+  if (a === 'draft' && b === 'live') return { page: <V2Cockpit />, bare: true }
+  if (a === 'draft' && b === 'report') return { page: <V2Report /> }
+  if (a === 'draft') return { page: <V2DraftEntry /> }
+  if (a === 'insights') return { page: <V2Insights /> }
+  if (a === 'league') return { page: <V2MyLeague /> }
+  if (a === 'history') return { page: <V2History /> }
+  if (a === 'you') return { page: <V2You /> }
+  if (a === 'method') return { page: <V2Method doc={b || 'how-it-works'} /> }
+  return { page: <NotFound /> }
+}
+
 export default function V2App({ sub = '' }) {
   useTelemetryFace()
-  const page = (sub || '').split('/')[0]
+  const { page: content, bare } = route(sub)
   return (
     <div className="relative min-h-screen overflow-x-clip bg-v2-ground font-body text-v2-ink">
       {/* A faint pitch grid under everything: telemetry, not decoration.
@@ -241,11 +304,15 @@ export default function V2App({ sub = '' }) {
         className="pointer-events-none absolute left-1/2 top-[-240px] h-[520px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(0,255,102,0.07),transparent)]"
         aria-hidden="true"
       />
-      <Header sub={sub || ''} />
-      <main className="relative mx-auto max-w-[1320px] px-4 pt-10 sm:px-8 sm:pt-14">
-        {page === 'rooms' ? <RoomsPage /> : page === 'drafts' ? <V2DraftsPage /> : <Home />}
-      </main>
-      <Footer />
+      {bare ? (
+        <main className="relative">{content}</main>
+      ) : (
+        <>
+          <Header sub={sub || ''} />
+          <main className="relative mx-auto max-w-[1320px] px-4 pt-10 sm:px-8 sm:pt-14">{content}</main>
+          <Footer />
+        </>
+      )}
     </div>
   )
 }
