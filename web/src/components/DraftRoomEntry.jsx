@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { BarChart3, ChevronLeft, ChevronRight, Lock, Play, Settings, Trash2, Users } from 'lucide-react'
 import { NAV_PILL_CLEARANCE } from './phone/FloatingNavPill.jsx'
 import PracticeScenarios from './PracticeScenarios.jsx'
+import { SPORT_ICONS } from './roomIcons.jsx'
 import { POS_CHALK, CELL_INK } from './draftRoomPositions.js'
 
 /* The Draft Room's own entry — what #/rooms/draft is, at every width.
@@ -86,16 +87,21 @@ function shortAgo(ms) {
    chips open the same early-access dialog every other unbuilt thing in
    this app does, rather than carrying a "soon" badge nothing stands
    behind. */
+function SportIcon({ sport, size }) {
+  const Icon = SPORT_ICONS[sport]
+  return Icon ? <Icon size={size} /> : null
+}
+
 const SPORTS = [
-  { key: 'nfl', label: 'Football', emoji: '🏈', live: true },
-  { key: 'nba', label: 'Basketball', emoji: '🏀', live: false },
-  { key: 'mlb', label: 'Baseball', emoji: '⚾', live: false },
+  { key: 'nfl', label: 'Football', live: true },
+  { key: 'nba', label: 'Basketball', live: false },
+  { key: 'mlb', label: 'Baseball', live: false },
   /* Retired, not deleted, for the same reason the Prospect Room is:
      design_handoff_v3_alive draws three sports on this screen and only
      three, at both breakpoints and in both auth states (2cg/2cu/3cg/3cu
      are Football, Basketball, Baseball). Soccer arrived with the mobile
      pass. Drop `retired` to bring it back. */
-  { key: 'epl', label: 'Soccer', emoji: '⚽', live: false, retired: true },
+  { key: 'epl', label: 'Soccer', live: false, retired: true },
 ]
 
 /* How many finished drafts this screen shows before handing off to the
@@ -284,7 +290,11 @@ export default function DraftRoomEntry({
                   : 'border-line-hairline text-voidInk-muted')
               }
             >
-              <span aria-hidden="true">{s.emoji}</span>
+              {/* Drawn, not an emoji: SPORT_ICONS shares the rooms' stroke,
+                  and takes the chip's own colour through currentColor. */}
+              <span className="inline-flex shrink-0" aria-hidden="true">
+                <SportIcon sport={s.key} size={16} />
+              </span>
               {s.label}
               {!s.live && <Lock className="h-3 w-3" aria-hidden="true" />}
             </button>

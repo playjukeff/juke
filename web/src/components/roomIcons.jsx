@@ -140,6 +140,40 @@ export function IconLock({ size }) {
 
 export { IconDoor }
 
+/* The three sports on the Draft Room's entry, in the same 20-unit box and
+   1.4 stroke as the rooms. They were emoji, which craft-floor bans as an
+   icon system, and Lucide draws none of the three -- so they are authored
+   here rather than borrowed, because a fourth stroke weight on one chip
+   row would be the failure this file exists to end. Each is the ball's
+   own tell and nothing more: the football's lace, the basketball's seams,
+   the baseball's two stitch arcs. */
+function IconFootball({ size }) {
+  return (
+    <Svg size={size}>
+      <path d="M3.2 16.8c-1.2-1.2-1-6.3 3.4-10.7S15.6 2 16.8 3.2s1 6.3-3.4 10.7S4.4 18 3.2 16.8Z" />
+      <path d="M7.2 12.8l5.6-5.6M8.6 8.8l1.2 1.2M10.4 7l1.2 1.2M8.8 12.2l1.2 1.2M11 10l1.2 1.2" />
+    </Svg>
+  )
+}
+function IconBasketball({ size }) {
+  return (
+    <Svg size={size}>
+      <circle cx="10" cy="10" r="7.2" />
+      <path d="M10 2.8v14.4M2.8 10h14.4M4.9 4.9c2.2 2 3.3 3.7 3.3 5.1s-1.1 3.1-3.3 5.1M15.1 4.9c-2.2 2-3.3 3.7-3.3 5.1s1.1 3.1 3.3 5.1" />
+    </Svg>
+  )
+}
+function IconBaseball({ size }) {
+  return (
+    <Svg size={size}>
+      <circle cx="10" cy="10" r="7.2" />
+      <path d="M5.4 4.2c1.8 1.6 2.7 3.5 2.7 5.8s-.9 4.2-2.7 5.8M14.6 4.2c-1.8 1.6-2.7 3.5-2.7 5.8s.9 4.2 2.7 5.8" />
+      <path d="M6.4 6.6l1.1.5M6.1 9.2l1.2.2M6.4 12.1l1.1-.4M13.6 6.6l-1.1.5M13.9 9.2l-1.2.2M13.6 12.1l-1.1-.4" />
+    </Svg>
+  )
+}
+export const SPORT_ICONS = { nfl: IconFootball, nba: IconBasketball, mlb: IconBaseball }
+
 export const ROOM_ICONS = {
   prospect: IconProspect,
   draft: IconDraftRoom,
