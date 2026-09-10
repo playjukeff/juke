@@ -6,6 +6,7 @@ import YouScreen from './components/YouScreen.jsx'
 import DraftsScreen from './components/DraftsScreen.jsx'
 import HistoryScreen from './components/HistoryScreen.jsx'
 import V2App from './components/v2/V2App.jsx'
+import V3App from './components/v3/V3App.jsx'
 import { useHashRoute } from './hooks/useHashRoute.js'
 
 /* The one tree #root renders, and the only place the routes React owns are
@@ -26,5 +27,6 @@ export default function App() {
   if (view === 'drafts') return <DraftsScreen />
   if (view === 'history') return <HistoryScreen />
   if (view === 'v2') return <V2App sub={slug} />
+  if (view === 'v3') return <V3App sub={slug} />
   return <Homepage />
 }

@@ -30,6 +30,36 @@ export default {
           loss: '#FF6B6B',
           warn: '#FFB547',
         },
+        // v3 "Call Sheet": the full-autonomy proposal, light-first. Same
+        // quarantine as v2 — nothing outside components/v3 reads these.
+        //
+        // Measured on paper / sheet / well (#F2F4F7 / #FFF / #E8ECF1):
+        // ink 16.7/18.4/15.5, ink2 8.8/9.7/8.2, ink3 5.6/6.2/5.2, call
+        // 6.7/7.4/6.2, gain 5.4/6.0/5.0, cost 5.7/6.3/5.3, warn 5.7/6.3/5.3.
+        // White on call is 7.4 and white on band 18.4. `call` is the one
+        // action colour and is never a value; gain/cost/warn are values and
+        // never actions.
+        v3: {
+          paper: '#F2F4F7',
+          sheet: '#FFFFFF',
+          well: '#E8ECF1',
+          rule: '#D5DBE3',
+          band: '#0C1422',
+          bandSoft: '#1A2436',
+          bandInk: '#9AA7B8',
+          ink: '#0C1422',
+          ink2: '#394556',
+          ink3: '#556274',
+          call: '#1F3FE0',
+          callDeep: '#1731B8',
+          callWash: '#E6EBFD',
+          gain: '#0A7338',
+          gainWash: '#E3F3E9',
+          cost: '#B8261B',
+          costWash: '#FBE7E5',
+          warn: '#8A5300',
+          warnWash: '#FBF0DC',
+        },
         obsidian: '#0B0E14',
         charcoal: '#151923',
         teal: {
@@ -449,6 +479,10 @@ export default {
         // headlines and big numerals. Fetched by V2App on mount and never
         // before, so no live page pays for it.
         telemetry: ['"Barlow Condensed"', 'Gabarito', 'system-ui', 'sans-serif'],
+        // v3 only: one grotesk for everything worded, one condensed mono for
+        // every figure. Fetched by V3App on mount, never before.
+        sheet: ['"Schibsted Grotesk"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        figure: ['Inconsolata', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
         // The display face, and it has to be the same string style.css's
         // --font-display carries — two copies of "what the display face
         // is" is the written-down-twice failure with a typeface in it, and

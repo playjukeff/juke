@@ -869,7 +869,9 @@ function onDraftRoomRoute() {
    turn. */
 function onV2LiveRoute() {
   const path = location.hash.replace(/^#\/?/, "").split("?")[0];
-  return path === "v2/draft/live";
+  // v3's live draft (#/v3/draft/live) needs exactly the same carry-on, for
+  // the same reason: it renders inside #view-home and drives nothing itself.
+  return path === "v2/draft/live" || path === "v3/draft/live";
 }
 
 /* Split out of applyRoute() so the hashchange listener's bare-anchor guard
