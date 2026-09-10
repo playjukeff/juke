@@ -6796,6 +6796,131 @@ returns the CSS-uppercased label, so a case-sensitive
 **WIN PROBABILITY**. That is the fourth appearance of this trap in this
 file, after `/nan/i` and Monangai, the hero eyebrow, and `/Randomize/`.
 
+### One snapshot, however many components ask
+
+Screen 16 wants a per-room stake on the rooms grid. It shares screen 20's
+source — `roomStakes.js`, already shipped — so nothing about the arithmetic
+was missing, and this file recorded it as blocked on **where the snapshot is
+fetched**. That was the real blocker and it is worth stating precisely,
+because it is the one entry in that list that was about a cost rather than a
+gap.
+
+`useLeagueSnapshot()` held its answer in component state. So the cost of a
+stake was one upstream call per mounted caller, which is exactly the
+objection its own comment raised against folding rosters in with the
+league's identity: *"four upstream calls behind every page load to draw a
+chip that needs a name"*. And the grid is the worst possible place to pay
+it — it draws on `#/rooms` **and** on the homepage, so a reader landing on
+either would fetch a snapshot the room they open next then fetches again.
+
+**`web/src/lib/snapshotStore.js` removes the constraint rather than breaking
+it.** One answer, keyed on the league, shared by every caller. Measured on
+the real page: lobby → Strategy Room → Waiver Room costs **one** request
+with it and **two** without, and a guest costs **zero** — the grid asks for
+nothing when there is no league to ask about.
+
+**The freshness window is the worker's own number.** `SNAPSHOT_TTL` is 120
+in both `worker/espn.js` and `worker/sleeper.js` and the route sends it as
+`max-age=120`, so a second ask inside that window is answered off the edge
+cache with bytes identical to the ones already in hand. `live.js` says the
+same thing from the other side ("cached at the edge for a couple of
+minutes, so calling this on every navigation is cheap"). Move the two
+together.
+
+**A window and not a once-per-session cache**, deliberately: a lineup really
+does change during a Sunday, and a room drawing a stale one is worse than a
+room that waited 200ms. That distinction is asserted rather than left in a
+comment, because "fetch once and keep it" passes every other test in the
+suite.
+
+### Sharing an answer creates three failures a per-component fetch cannot have
+
+Each renders perfectly and none of them throws, which is why they are the
+whole of what the offline suite asserts.
+
+- **A caller handed ANOTHER league's rosters.** The store settles a switch
+  while the first request is still in the air, and the old answer lands
+  afterwards. That draws one league's lineup under the other league's name —
+  the same rule the player sheet already follows for news, *which request an
+  answer belongs to is checked when it LANDS*. Two guards, because they are
+  two questions: `isCurrent()` asks whether a newer ATTEMPT has started, and
+  the key check asks whether the reader has switched LEAGUES.
+- **A caller asking about nothing wiping an answer a sibling is drawing.**
+  `RoomPage` passes `live ? league.leagueId : null`, so a room that is not
+  live asks for no league at all. Reaching the store, that would settle it to
+  "none". **So the null case is answered in the hook and never reaches the
+  store** — which is the one thing a shared store has to get right that a
+  per-component one could not get wrong.
+- **Every mount re-asking**, which is invisible until somebody reads a log
+  and is the entire cost the sharing exists to remove.
+
+**A failure is bounded the same way a success is**, and that is a separate
+gate rather than the same one: an unreachable worker must not be asked once
+per navigation for as long as somebody keeps clicking, and the answer cannot
+change faster than the cache in front of it. `retrySnapshot()` clears the
+window rather than calling through and hoping — which would return at the
+guard and do nothing, the same shape as a backoff that resets its own
+budget.
+
+**And one latent bug came across with it.** The hook returned early when
+`live.js` had not landed and **nothing re-ran when it did**, so a cold load
+straight onto a room could sit in "loading" for ever. That is the identical
+shape `leagueStore` already had and fixed, and it takes the identical fix: a
+`juke:data-loaded` listener.
+
+`scripts/test_snapshot_state.mjs` — 19 checks, in `tests.yml`. Three
+mutations confirmed red, each naming its own assertion: dropping the
+stale-answer key check, and dropping either freshness gate.
+
+### The stake goes on the eyebrow row, and that is not a styling choice
+
+The room cards are `justify-between` under a fixed `min-height`, so the text
+block sits on the card's floor and **anything added above it pushes the title
+up**. This grid has already shipped that defect once: measured 3 September
+2026 at 1440, "The Draft Room" sat 30px below "Waiver Room" beside it,
+because the two cards ordered their eyebrow and title differently.
+
+Only two of the five rooms can answer, so a stake on a line of its own would
+misalign precisely the row it is trying to inform — two cards with a fourth
+line and three without. On the eyebrow row it adds no height at all, at the
+eyebrow's own 10px so the line box cannot grow. Measured after: title tops
+identical across every card in every row, at 375 and at 1440.
+
+**`cost`, never the room's accent and never teal.** The magnitude is what a
+claim or a swap would GAIN and the cost is that it has not been made — the
+sign `WaiverRoomLive`'s own stake card already prints it under, and the sign
+`roomStakes.js` hands out rather than letting each caller choose.
+
+**And the unit is in the words**, because the two stakes are in different
+units: `+330 on the wire` is season points over replacement and `+1.9 this
+week` is points this week. `stakeLabel()` is the one phrasing, shared with
+the phone's More sheet, so the grid and the sheet cannot describe one number
+two ways.
+
+**The four rooms that cannot answer draw nothing**, rather than a zero. A
+tile reading "+0" claims the room was asked and had nothing to say.
+
+**And the fixture that verified it was wrong first, in the direction that
+looks like a bug.** Its roster held the top of the board, so `rosterGaps()`
+— which compares the best HELD at a position against the best FREE one —
+correctly found nothing on the wire worth having, and the Waiver stake was
+correctly absent. A middling roster is what the check needed. **A fixture
+that models a shape the product never sees reports the product as broken**,
+which is the same lesson the deep-bench fixture already taught from the
+other direction.
+
+### `useRailItems()` still carries no stake, and the reason changed
+
+It used to be cost: the desktop rail is on screen at every width above `lg`,
+on every route, always, so a fetch behind it was a snapshot per page load.
+With the store that is no longer true — it would cost nothing the reader was
+not already spending.
+
+What is left is a design question nobody has answered: a nav rail is a list
+of destinations, and putting a value on two of its seven rows is not what the
+guide asks for. **It is no longer expensive, merely undecided**, and saying
+which is the difference between a constraint and a habit.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
@@ -6830,9 +6955,13 @@ container's width".
 half of that screen still listed as open, and it needed no fetch at all —
 see "The week's win probability" below.
 
-Open: **16**, plus the half of **05** named above. **16 is no longer
-blocked on data** — it shares 20's source and is blocked on where the
-snapshot is fetched, which is an architecture question rather than a gap.
+**16** ships with this pass. It was never blocked on data — it shares 20's
+source — and the architecture question it WAS blocked on is answered by
+`snapshotStore.js`: see "One snapshot, however many components ask" below.
+
+Open: the half of **05** named above, and nothing else. That is the whole
+of the twenty-screen guide except a season win-% which needs a simulator
+this project does not have and should not fake.
 **05's own half is genuinely blocked** and is the only entry left in this
 section that is: a season win-% needs a simulator.
 

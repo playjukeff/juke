@@ -254,3 +254,26 @@ jobs:
       # dropping the starter floor accepts a four-man lineup.
       - name: A lineup's week, mean and spread
         run: node scripts/test_matchup.mjs
+
+      # The shared league-snapshot store, which is what unblocked screen 16.
+      #
+      # `useLeagueSnapshot()` used to hold its answer in component state, so
+      # a per-room stake on the rooms grid would have paid for a snapshot
+      # the room page then paid for again. Sharing it removes that, and
+      # introduces three failures a per-component fetch could not have —
+      # every one of them silent:
+      #
+      #   * a caller handed ANOTHER league's rosters, because the store
+      #     settled a switch while the first request was in the air. That
+      #     renders perfectly, under the right league's name;
+      #   * a caller asking about nothing (RoomPage passes a null id for a
+      #     room that is not live) wiping an answer a sibling is drawing;
+      #   * every mount re-asking, which is invisible until somebody reads
+      #     a log and is the whole cost the sharing exists to remove.
+      #
+      # Three mutations were confirmed red, each naming its own assertion:
+      # dropping the stale-answer key check, and dropping either freshness
+      # gate (the success one and the failure one are separate, because an
+      # unreachable worker must not be asked once per navigation).
+      - name: The shared snapshot store
+        run: node scripts/test_snapshot_state.mjs
