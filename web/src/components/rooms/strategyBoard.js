@@ -52,6 +52,99 @@ export function weekScorer(base, week) {
   }
 }
 
+/* The league's own number first, and Juke's only where the league has none.
+ *
+ * A connected league has to show the projection its platform shows -- the
+ * owner's requirement, stated as non-negotiable on 10 September 2026. The
+ * snapshot now carries it (`projections`, from ESPN's `appliedTotal`; see
+ * weekProjection() in worker/espn.js for why that is exact rather than an
+ * opinion), and this is where a screen asks for it.
+ *
+ * ---- Only for the week it was stamped with ----
+ *
+ * `projections.week` has to equal the week being scored. ESPN's number for
+ * week 1 is not an answer about week 2, and serving it would be the
+ * right-value-wrong-column failure with a date on it -- the same rule
+ * weekProjectionUnder() already follows for Juke's own weekly block.
+ *
+ * ---- The fallback is per player, not per lineup ----
+ *
+ * A starter the league has no number for -- a provider that sends none
+ * (Sleeper, today), or one row the platform left out -- still gets Juke's
+ * own projection rather than blanking the lineup. That makes a total that
+ * mixes two sources possible, and that is strictly better than the
+ * alternative: a null here is what projectedTotal() reads as "cannot
+ * total", and a lineup that cannot be totalled over one missing row is the
+ * wrong way to be honest about it. The provider is named on screen.
+ *
+ * Deliberately not the bye rule's job to override: the platform's number
+ * for a player on bye IS the league's answer, and the fallback beneath it
+ * already zeroes a bye through weekScorer(). */
+export function platformScorer(base, projections, week) {
+  const points = projections && week && Number(projections.week) === Number(week)
+    ? projections.points
+    : null
+  if (!points || typeof points !== 'object') return base
+  return (player) => {
+    if (!player) return null
+    const v = points[String(player.id)]
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    return typeof base === 'function' ? base(player) : null
+  }
+}
+
+/* The one weekly scorer every connected screen builds, so no two of them
+ * can disagree about what a player is worth this week.
+ *
+ * There were three, and they disagreed. The Strategy Room scored the real
+ * week with the bye taken out; the phone's More sheet and the rooms grid
+ * scored the SEASON AVERAGE with no week at all -- so the "+X this week" on
+ * a room tile was a different number from the swap the room itself
+ * offered, for the same player, one tap apart. That is the written-down-
+ * twice rule with a scorer in it, and it drifted the day the Strategy Room
+ * learned about weeks and nothing else did.
+ *
+ * `engine` is passed in rather than read off window, for the reason this
+ * file imports nothing: a suite can hand it a stub.
+ *
+ * In order of preference: the league's own projection for this week
+ * (platformScorer), then Juke's weekly block for this week under the
+ * league's own rules (weekProjectionUnder), then the season average under
+ * those rules (projPerGameUnder) -- with a player on bye zeroed beneath the
+ * league's number, never above it. */
+export function leagueWeekPts(engine, snapshot) {
+  if (!engine) return null
+  const rules = snapshot && snapshot.rules ? snapshot.rules : null
+  const week = snapshot ? snapshot.week : null
+  const average = rules && engine.projPerGameUnder
+    ? (player) => engine.projPerGameUnder(player, rules)
+    : engine.projPerGame
+  const forWeek = (player) => {
+    if (!engine.weekProjectionUnder) return average(player)
+    const own = engine.weekProjectionUnder(player, rules, week)
+    return own === null || own === undefined ? average(player) : own
+  }
+  return platformScorer(weekScorer(forWeek, week), snapshot && snapshot.projections, week)
+}
+
+/* Which source a lineup's numbers came from, so a screen can say so.
+ *
+ * `all` when every scored row is the league's own number, `some` when the
+ * fallback filled a gap, `none` when the league sent nothing for the week.
+ * A screen that mixes two sources without saying which is the "claims a
+ * backup it does not have" failure with a projection in it. */
+export function projectionSource(rows, projections, week) {
+  const points = projections && week && Number(projections.week) === Number(week)
+    ? projections.points
+    : null
+  if (!points) return 'none'
+  const scored = (rows || []).filter((r) => r && r.player)
+  if (!scored.length) return 'none'
+  const hits = scored.filter((r) => typeof points[String(r.player.id)] === 'number').length
+  if (hits === scored.length) return 'all'
+  return hits ? 'some' : 'none'
+}
+
 /* Every starter, with what the projection says.
  *
  * `starters` is Sleeper's own array and its ORDER is the league's roster
@@ -118,6 +211,40 @@ function benched(player, week) {
   return injurySeverity(player.inj) === 'out'
 }
 
+/* The board's players with each rostered player's LIVE status laid over
+ * the nightly one.
+ *
+ * `inj` on a board row is whatever the 11:00 UTC pipeline read, so a player
+ * ruled out at Sunday's inactives -- or hurt in a Thursday game -- was not
+ * out in this room until the next morning. The snapshot now carries the
+ * league's own platform's designation for every rostered player, read when
+ * the snapshot was (worker/status.js), and whether his game has kicked off.
+ * Reported 10 September 2026 as TreVeyon Henderson and A.J. Brown sitting
+ * under "Might not play" the morning after the game they had already missed.
+ *
+ * A COPY, never a mutation: the board's rows are the Draft Room's rows too,
+ * and a live "O" written onto one would follow the player into a mock draft.
+ * `inj` is replaced only where the platform said something it could read
+ * (an empty string is "healthy" and does replace a stale "O"); `locked` is
+ * new and means his game has started, so his slot can no longer be changed.
+ *
+ * A status stamped for another week is not an answer about this one. */
+export function withLiveStatus(byId, status, week) {
+  const players = status && status.players
+  if (!byId || !players || typeof players !== 'object') return byId
+  if (week && status.week && Number(status.week) !== Number(week)) return byId
+  const out = new Map(byId)
+  for (const id of Object.keys(players)) {
+    const live = players[id]
+    const player = byId.get(String(id))
+    if (!player || !live) continue
+    const next = { ...player, locked: live.locked === true }
+    if (typeof live.inj === 'string') next.inj = live.inj
+    out.set(String(id), next)
+  }
+  return out
+}
+
 /* What one swap would add.
  *
  * ---- Same position only, and that is a correctness constraint ----
@@ -140,8 +267,13 @@ export function swaps(team, byId, weekPts, week) {
   const bench = benchRows(team, byId, weekPts).filter((r) => r.projPts !== null)
   const out = []
   for (const sit of starters) {
+    /* A starter whose game has kicked off cannot be taken out, and a bench
+       player whose game has cannot be put in -- the platform locks both
+       slots. Offering either is a call the reader cannot make. */
+    if (sit.player.locked) continue
     for (const start of bench) {
       if (start.player.pos !== sit.player.pos) continue
+      if (start.player.locked) continue
       /* Never recommend somebody who will not be on the field.
          Found by driving the room: it offered Ja'Marr Chase over Jordan
          Addison in week 6, and Chase was on bye. A start/sit call for a
@@ -227,6 +359,11 @@ export function injuryWatch(team, byId, week) {
     const key = String(id)
     const player = byId ? byId.get(key) : null
     if (!player) continue
+    /* His game has started: he played or he did not, and either way there
+       is no decision left in it. This is the half of the report that the
+       live designation alone would not have fixed -- both players were
+       correctly OUT and still had no business on the list. */
+    if (player.locked) continue
     const severity = injurySeverity(player.inj)
     const onBye = !!week && Number(player.bye) === Number(week)
     if (!severity && !onBye) continue

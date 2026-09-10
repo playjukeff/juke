@@ -20,7 +20,7 @@
  * one — see CLAUDE.md's ESPN section for the measurement.
  */
 
-import { leagueSnapshot, lookupLeague, normalise } from "./espn.js";
+import { leagueSnapshot, lookupLeague, normalise, weekProjection } from "./espn.js";
 
 let failures = 0;
 function check(what, got, want) {
@@ -484,6 +484,95 @@ console.log("--- the roster's order ---");
 }
 
 
+
+console.log("\n--- the league's own weekly projection ---");
+/* The shape is Jonathan Taylor's real row off a real league's mRoster,
+   10 September 2026, with its neighbours left in on purpose: last season's
+   total, this season's total, and the actual line a player carries once his
+   game has kicked off. Each is the wrong number to call a projection and
+   each is one field away from the right one. */
+const STATS = [
+  { seasonId: 2025, statSourceId: 0, statSplitTypeId: 0, scoringPeriodId: 0, appliedTotal: 378.3 },
+  { seasonId: 2026, statSourceId: 1, statSplitTypeId: 0, scoringPeriodId: 0, appliedTotal: 329.86790072 },
+  { seasonId: 2026, statSourceId: 0, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 31.2 },
+  { seasonId: 2025, statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 12.0 },
+  { seasonId: 2026, statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 18.49790141 },
+];
+check("the week's projection is the one row that is projected, weekly, this week, this season",
+      weekProjection({ stats: STATS }, 2026, 1), 18.4979);
+check("an actual line is never read as a projection",
+      weekProjection({ stats: STATS.filter((s) => s.statSourceId === 0) }, 2026, 1), null);
+check("the season total is never read as a week",
+      weekProjection({ stats: [STATS[1]] }, 2026, 1), null);
+check("last season's week 1 is not this season's",
+      weekProjection({ stats: [STATS[3]] }, 2026, 1), null);
+check("another week answers nothing rather than a neighbour",
+      weekProjection({ stats: STATS }, 2026, 2), null);
+check("no week, no projection", weekProjection({ stats: STATS }, 2026, null), null);
+check("a projected zero is a zero, not a missing number",
+      weekProjection({ stats: [{ seasonId: 2026, statSourceId: 1, statSplitTypeId: 1,
+                                 scoringPeriodId: 1, appliedTotal: 0 }] }, 2026, 1), 0);
+
+{
+  const wk = (pts) => ({ stats: [{ seasonId: 2026, statSourceId: 1, statSplitTypeId: 1,
+                                   scoringPeriodId: 1, appliedTotal: pts }] });
+  const IN_SEASON = JSON.parse(JSON.stringify(LEAGUE));
+  IN_SEASON.scoringPeriodId = 1;
+  const pts = [21.9143, 8.5, 3.1, 0, 17.25, 6.4];
+  IN_SEASON.teams.flatMap((t) => t.roster.entries).forEach((e, i) =>
+    Object.assign(e.playerPoolEntry.player, wk(pts[i])));
+  await withFetch(200, IN_SEASON, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    const p = snapshot.projections;
+    check("the snapshot carries the projection, stamped with its week",
+          [p && p.week, p && p.source], [1, "espn"]);
+    check("keyed by the same Sleeper ids as the rosters, a defense by its club",
+          [p.points["11628"], p.points.HOU, p.points["5555"], p.points["6666"], p.points["4881"]],
+          [21.9143, 8.5, 3.1, 0, 17.25]);
+    check("and nothing for a player the crosswalk could not name",
+          Object.keys(p.points).length, 5);
+  });
+}
+await withFetch(200, LEAGUE, async () => {
+  const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+  check("before the season there is no week, so no projection to stamp",
+        snapshot.projections, null);
+});
+
+console.log("\n--- each rostered player's live status ---");
+/* ESPN's own words on a roster entry, read on 10 September 2026 the
+   morning after the opener: `injuryStatus` in its vocabulary, and
+   `lineupLocked` true on exactly the nine players whose game had been
+   played. The rooms read these instead of the nightly board. */
+{
+  const LIVE = JSON.parse(JSON.stringify(LEAGUE));
+  LIVE.scoringPeriodId = 1;
+  const entries = LIVE.teams.flatMap((t) => t.roster.entries);
+  const set = (i, status, locked) => {
+    if (status !== undefined) entries[i].playerPoolEntry.player.injuryStatus = status;
+    if (locked !== undefined) entries[i].playerPoolEntry.lineupLocked = locked;
+  };
+  set(0, "QUESTIONABLE", false);
+  set(1, "ACTIVE", true);
+  set(2, "INJURY_RESERVE");
+  set(3, "OUT", true);
+  set(4, "DAY_TO_DAY");
+  await withFetch(200, LIVE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    const st = snapshot.status;
+    check("the snapshot carries it, stamped with the week and ESPN's name",
+          [st && st.week, st && st.source, typeof (st && st.at)], [1, "espn", "number"]);
+    check("in the pipeline's codes, keyed by Sleeper id",
+          [st.players["11628"], st.players.HOU, st.players["5555"], st.players["6666"], st.players["4881"]],
+          [{ inj: "Q", locked: false }, { inj: "", locked: true }, { inj: "IR", locked: false },
+           { inj: "O", locked: true }, { inj: "Q", locked: false }]);
+  });
+  await withFetch(200, LEAGUE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("a player ESPN carries with no designation is healthy, not unknown",
+          snapshot.status && snapshot.status.players["11628"], { inj: "", locked: false });
+  });
+}
 
 console.log("\n--- normalise agrees with build_players.py ---");
 [

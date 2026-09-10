@@ -190,6 +190,14 @@ jobs:
       - name: Verify the league standings
         run: node worker/test-standings.mjs
 
+      # The ESPN adapter end to end against a stub -- the crosswalk, the
+      # league's own weekly projection and each player's live status -- and
+      # the injury vocabulary both adapters share with the nightly board.
+      - name: Verify the ESPN adapter
+        run: node worker/test-espn.mjs
+      - name: Verify the live injury vocabulary
+        run: node worker/test-status.mjs
+
       # The secret is read into an env var and tested there rather than
       # interpolated into the script — a secret pasted into a `run:` line is
       # one careless `set -x` away from the log, and GitHub's masking is a

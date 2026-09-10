@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { PosTile } from './sampleParts.jsx'
 import { myTeam } from './waiverBoard.js'
 import {
-  bestSwaps, benchRows, injuryWatch, lineupRows, projectedTotal,
-  weekScorer,
+  bestSwaps, benchRows, injuryWatch, leagueWeekPts, lineupRows,
+  projectedTotal, projectionSource, withLiveStatus,
 } from './strategyBoard.js'
+import { platformFor } from '../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 import { gameInWeek } from '../../lib/schedule.js'
 import { matchupRead, teamWeek } from '../../lib/matchup.js'
@@ -123,7 +124,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   const boardReady = !!(engine && engine.dataReady && engine.dataReady())
   const board = boardReady ? engine.board() : []
 
-  const byId = useMemo(
+  const boardById = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.length]
@@ -131,6 +132,15 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
 
   const mine = myTeam(snapshot, league)
   const week = snapshot ? snapshot.week : null
+
+  /* Every player this room draws, with the league's own LIVE status laid
+     over the nightly board -- see withLiveStatus(). Everything below reads
+     this map, so the lineup's injury chips, the swaps and "Might not play"
+     all agree about who is out and whose game has already kicked off. */
+  const byId = useMemo(
+    () => withLiveStatus(boardById, snapshot && snapshot.status, week),
+    [boardById, snapshot, week]
+  )
 
   /* WEEKLY points, not season. `projPts` on a board row is a season total,
      and summing four starters' season projections and printing it as "you
@@ -153,17 +163,21 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
      back to projPerGame when the league sends no rules -- an older worker,
      a provider without them -- since drawing the previous number beats
      drawing none. */
+  /* Built by leagueWeekPts() in strategyBoard.js, which every connected
+     screen shares -- see its header for why there is one and why it used
+     to be three.
+
+     In order: the LEAGUE'S OWN projection for this week, which is what the
+     platform's matchup screen prints and what a reader will check this
+     number against; then Juke's weekly block under the league's rules; then
+     the season average under those rules, with a bye zeroed. Measured on a
+     real ESPN league on 10 September 2026: 117.3 before, **131.8 after,
+     against ESPN's own 131.8**, every starter equal to the tenth.
+
+     Keyed on the snapshot rather than on its parts: the projections, the
+     rules and the week all arrive on it together and change together. */
   const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
-  const weekPts = useMemo(() => {
-    if (!engine) return null
-    const base = leagueRules
-      ? (player) => engine.projPerGameUnder(player, leagueRules)
-      : engine.projPerGame
-    /* Wrapped rather than inlined so the rule is reachable from
-       scripts/test_strategy_board.mjs, which supplies its own weekPts and
-       would never see a closure built in here. */
-    return weekScorer(base, week)
-  }, [engine, leagueRules, week])
+  const weekPts = useMemo(() => leagueWeekPts(engine, snapshot), [engine, snapshot])
 
   const lineup = useMemo(() => lineupRows(mine, byId, weekPts), [mine, byId, weekPts])
   const bench = useMemo(() => benchRows(mine, byId, weekPts), [mine, byId, weekPts])
@@ -172,6 +186,13 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
     [mine, byId, weekPts, week]
   )
   const total = useMemo(() => projectedTotal(mine, byId, weekPts), [mine, byId, weekPts])
+
+  /* Whose number the total is, said out loud. A mixed total -- the league's
+     projection for most starters and Juke's for a row the league did not
+     send -- is legitimate and has to be labelled as one, or it reads as the
+     league's figure and disagrees with the league's screen. */
+  const source = projectionSource(lineup, snapshot && snapshot.projections, week)
+  const platformName = platformFor(league && league.provider).name
 
   /* Who you actually play, and by how much.
      
@@ -265,6 +286,14 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   )
   const read = matchupRead(winProb)
   const hurt = useMemo(() => injuryWatch(mine, byId, week), [mine, byId, week])
+  /* Where the designations came from and when, because "might not play" is
+     only worth reading if it is current -- and a list that silently drops
+     players whose game has started has to say that it does. */
+  const statusAt = snapshot && snapshot.status && Number(snapshot.status.week) === Number(week)
+    ? snapshot.status.at : null
+  const liveNote = statusAt
+    ? `Designations from ${platformName}, as of ${new Date(statusAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Anybody whose game has kicked off is left off.`
+    : null
   const swapMax = swaps.length ? Math.max(...swaps.map((s) => s.gain)) : 0
   const starting = lineup.filter((r) => r.player).length
   const hurtStarters = hurt.filter((r) => r.starting).length
@@ -290,7 +319,13 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
       label: 'Projected',
       value: total === null ? '—' : total.toFixed(1),
       accent: 'evidence',
-      note: total === null ? 'A starter has no projection.' : 'Points this week, as your lineup is set.',
+      note: total === null
+        ? 'A starter has no projection.'
+        : source === 'all'
+          ? `${platformName}'s projection for week ${week}, as your lineup is set.`
+          : source === 'some'
+            ? `${platformName}'s projection where it has one, Juke's for the rest.`
+            : 'Points this week, as your lineup is set.',
     },
     {
       /* No delta, and the reason is that it was the same number twice.
@@ -534,6 +569,9 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
               Nobody on your roster carries an injury designation or a bye this week.
             </div>
           )}
+          {liveNote ? (
+            <p className="pt-3 text-[12px] leading-snug text-ink-muted">{liveNote}</p>
+          ) : null}
         </Panel>
       </div>
     )
@@ -660,6 +698,9 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
                 Everybody is available.
               </div>
             )}
+            {liveNote ? (
+              <p className="pt-3 text-[12px] leading-snug text-ink-muted">{liveNote}</p>
+            ) : null}
           </Panel>
         </div>
       </div>

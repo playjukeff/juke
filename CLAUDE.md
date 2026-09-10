@@ -114,6 +114,7 @@ the Stack section above, not a one-time migration hiccup.
 | `live.js` | The client end of a room: one socket, the invite code, and the messages. Knows nothing about the board or how anything is drawn. |
 | `worker/` | The Cloudflare Durable Object behind an invite link, plus every proxied route whose key or quota may not be in the page (`/giphy`, `/news`, `/media`, the two league adapters) and its `wrangler.toml`. Deployed to `juke-draft-room.jukeff.workers.dev`. **`.github/workflows/deploy-worker.yml` ships it on a push to `main`** touching anything under `worker/`, or `room.js`, or `draft-engine.js` — the code half of the deploy gap is closed; **D1 migrations are still manual and deliberately so**. `npm --prefix worker run deploy` is the by-hand path and migrates first. See `worker/README.md` and the system section above. |
 | `worker/espn.js`, `worker/sleeper.js` | The two league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A third platform is a third file here, not a fourth vocabulary in the UI. |
+| `worker/status.js` | A player's live injury designation in the pipeline's own codes, from either platform's words. **The vocabulary exists in two languages** — `build_players.py` has the other — and `worker/test-status.mjs` reads that table and fails on any drift. |
 | `worker/names.js` | `normalise()`, the JavaScript half of the name crosswalk. **It exists in two languages and they must not drift** — `build_players.py` has the other one, and `test_engine.py` is the only suite that asserts they agree. A drift does not throw; it stops matching. |
 | `worker/store.js` | The D1 cache: Sleeper's pool and Tank01 headlines. A cache and never a source of truth, and a missing binding is a normal condition rather than a fault. |
 | `worker/migrations/` | D1 schema, applied with `wrangler d1 migrations apply`. The database is not to be shaped by hand — see the note on three variants of one schema. |
@@ -7047,7 +7048,9 @@ together.
 
 **A window and not a once-per-session cache**, deliberately: a lineup really
 does change during a Sunday, and a room drawing a stale one is worse than a
-room that waited 200ms. That distinction is asserted rather than left in a
+room that waited 200ms. **And a mounted screen now asks again on its own**
+every thirty seconds while visible — see "A player's status is his
+platform's" — so the window is the refresh rate as well as the dedupe. That distinction is asserted rather than left in a
 comment, because "fetch once and keep it" passes every other test in the
 suite.
 
@@ -9363,12 +9366,15 @@ upstream once every 120 seconds for a second round trip and a second thing to
 invalidate. **The client payload is the ceiling this project actually has**,
 and 8.3 KB against a 22 KB snapshot is the number that matters.
 
-**ESPN's own projections and win probability are deliberately dropped.** Both
-ride on the payload — `totalProjectedPoints` and `winProbability` — and both
-are somebody else's answer to a question Juke answers itself, from rosters it
-already holds, under the league's own scoring. Carrying them would put two
-numbers side by side for one question and leave the reader to choose, which
-is the written-down-twice failure with a second author. What is kept is what
+**ESPN's team projection and win probability are not carried on the
+schedule.** This paragraph used to say both were "somebody else's answer to a
+question Juke answers itself" and dropped for that reason, and the owner
+overruled it on 10 September 2026 — see "The league's own projection, read
+rather than rebuilt". ESPN's projection IS used now, per player off the
+roster entries, where a room can both sum it into this same team total and
+price a swap with it; carrying `totalProjectedPoints` here too would be one
+number in two places with nothing keeping them agreeing. The win probability
+is still Juke's, from ESPN's projected means. What the schedule keeps is what
 happened: points scored, and who won.
 
 **An unplayed week scores 0 on both sides, and 0 is not a result.** Stored as
@@ -10260,7 +10266,196 @@ nothing, which is the advice a reader most needs in weeks 5 to 14.
 Seven checks, three confirmed red by removing the rule while the four
 asserting the non-bye behaviour stay green.
 
-### The rest is two forecasters, and it is not a defect
+### ~~The rest is two forecasters, and it is not a defect~~ — wrong, and here is what falsified it
+
+**Corrected 10 September 2026, one report later.** Everything below this
+heading was written from a measurement taken under FULL PPR as a stand-in
+for the league's own table, because the league's rules were not in hand.
+That single shortcut made every skill player look one-directionally low, and
+one-directional error reads as a systematic model difference. It hid the
+signal completely.
+
+What falsified it was a screenshot with per-player numbers on BOTH sides:
+
+```
+                Juke    ESPN     diff
+Allen           26.0    24.4    +1.6
+Skattebo        12.8    14.1    -1.3
+Montgomery      12.9    13.1    -0.2
+Nacua           20.9    21.9    -1.0
+London          16.8    15.6    +1.2
+Goedert          9.2    11.1    -1.9
+McConkey        15.3    14.1    +1.2
+   seven skill players           -0.4
+Rams D/ST        6.2     8.5    -2.3
+Cam Little (K)   6.4     9.0    -2.6
+                126.7   131.8   -5.1
+```
+
+**Under the real rules the skill players scatter both ways and net to −0.4.
+The entire gap is two positions**: −4.9 of −5.1. That is not noise, and it
+was findable the moment the comparison was per player instead of in total.
+
+**Measure under the league's own rules or do not measure.** A stand-in table
+is not a smaller version of the right one — it is a different question, and
+here it produced a confident wrong conclusion that stood for a day.
+
+### A projected stat that is another stat divided by ten
+
+Found while chasing the statId above, and it is the larger of the two
+because it is true of **Sleeper leagues as well as ESPN ones**.
+
+`rec_40p` is a catch of 40 or more yards. On an ACTUAL line Sleeper reports
+a real count. On a PROJECTION it reports **receptions divided by ten** —
+measured 10 September 2026, **274 of 274** season-projection rows and
+**349 of 349** weekly rows, to two decimal places, with no exceptions at
+all:
+
+```
+Puka Nacua      10.7 against 107 projected catches
+Drake London     9.0 against  90
+Ladd McConkey    8.1 against  81
+Dallas Goedert   5.3 against  53
+```
+
+**The real rate is a quarter of that and it is stable.** Over the seasons
+this project stores, 40+ yard catches run **2.26 / 2.41 / 2.51 / 2.59 /
+2.37 percent** of receptions from 2025 back to 2021. So the projected value
+is not a forecast that happens to be high; it is one stat wearing another
+one's name, and it overstates by four times for every receiver on the board.
+
+**A ratio that is exact on every row is a formula, not a model**, and that
+is the tell worth keeping. One player at 10% is a projection; 623 of 623 at
+exactly 10% is arithmetic.
+
+**The pipeline's own comment claimed the opposite** — *"Sleeper forecasts
+it, unlike every other big-play key it carries"* — which was written from
+the field being PRESENT rather than from what was in it. Corrected in place.
+
+`FORMULAIC_PROJECTION_KEYS` takes it out of `p`, `wp` and `pp` and leaves
+every actual line alone, and **both directions are asserted**: a rule that
+dropped the key everywhere would silently stop history and the ledger
+scoring a real count, which is a worse bug wearing this fix's clothes.
+
+**Scaling it to the measured 2.4% is refused**, for the reason this file
+already gives about a kicker's short field goals: the pipeline records
+facts, and inventing the number would be recording an opinion.
+`projected_keys` is derived from what the projection actually carries, so
+dropping the value is what takes `rec_40p` out of `PROJECTED_KEYS` — there
+is no second list to keep in step.
+
+**The check for the next one is a ratio sweep.** Nothing here would have
+caught this: the value was present, non-zero, plausibly sized, and stored
+faithfully. What found it was dividing one projected key by another and
+noticing the answer never varied.
+
+### The one gate in `test_crosswalk.py` sat two hundred lines from the end
+
+Found by mutating a new check and watching it print `FAIL` and exit **0**.
+
+`if FAILURES: sys.exit(1)` was mid-file, so every check written after it —
+the weekly kicker fold, and everything added since — reported its failure
+and left the process green. CI reads the exit code, and the exit code said
+fine.
+
+**A suite whose exit code disagrees with its own output is worse than no
+suite**, which is the same rule this file already states about piping a
+Playwright run into `tee`. The gate is at the real end now, and a check
+added below it is gated by construction rather than by whoever remembers.
+
+**And the crash-instead-of-name trap fired again in the same sitting.** A
+mutation that dropped the key everywhere made an assertion read
+`actual[c40]` on a dict that no longer had it, so the run aborted with a
+KeyError instead of naming the check — the same repair as the kicker fold's
+own tests: `.get()`, so a missing key fails one assertion rather than
+skipping every one below it.
+
+### The season projection is missing whole categories for K and DST
+
+Not coarser: missing. Read straight off the feed rather than inferred —
+
+```
+K    season  fgm_40_49 8, fgm_50p 8, xpm 42        nothing under forty yards
+     weekly  fgm 2.0, fgm_20_29, fgm_30_39, fgm_40_49, xpm
+DST  season  sack, int, fum_rec, blk_kick          no points allowed at all
+     weekly  the above, plus pts_allow_* and def_td
+```
+
+Cam Little's season block forecasts **16 field goals and every one of them is
+40+**, against the 30 he really made in 2025 with 14 of those short. That is
+42 points of season, 2.5 a week, on every kicker. Points allowed is the
+largest single component of most leagues' DST scoring and the season block
+does not carry it in any form.
+
+**And this was checked against the endpoint rather than assumed to be the
+pipeline's doing**: the season projections URL genuinely answers without
+those keys. `build_players.py` is not dropping them.
+
+**So `stats.js` grows a `wp` block** — one week, stamped in
+`WEEK_PROJ_META` — and `weekProjectionUnder()` scores it under the league's
+own rules. **Measured payload: 56.5 KB raw, 9.1 KB gzipped** for 460 players
+filtered to the 36 keys `pointsUnder()` reads, which is about 5% on
+`stats.js`. The rule that justifies it is this file's own: the fourteen role
+and red-zone keys were refused at 70 KB because "nothing in the app renders
+any of them", and this is the opposite — it is the product's headline number.
+
+**It answers null for a week it does not hold.** A block for week 3 is not an
+answer about week 5, and serving it would be the right-value-wrong-column bug
+with a date on it. Every caller falls back to the season average, which is
+what they all did before this existed, so an offseason board, a board from a
+nightly that predates this, and a player the feed has no weekly opinion about
+all behave exactly as they did.
+
+### The weekly bands do not sum to the weekly total, and the remainder has only one place to go
+
+The first cut of this fixed almost nothing for the position it was built for:
+the kicker moved 6.41 to 6.60. His weekly block is `fgm 2.0` beside bands
+totalling **1.2**, and a make is only ever charged through a band — so 0.8
+kicks a week scored nothing at all.
+
+Measured across all 32 kickers Sleeper forecast for week 1 of 2026:
+
+```
+sum fgm 56.9    sum bands 38.9    unbanded 17.9  (31%)
+rows carrying ANY 50+ band          0 of 32
+rows where bands exceed the total   0 of 32
+```
+
+**Not one row bands anything at 50 yards or longer, and not one has bands
+exceeding its own total.** So the remainder is not a guess about which band
+it belongs to: there is exactly one band missing. `reconcile()` folds it into
+`fgm_50_59` — the same inference, with the same justification and the same
+check, that it already makes for the season feed's `fgm_50p`.
+
+**Silent on every other shape by construction**, which is the half that
+matters: an actual row states the same total with complete bands, so the
+remainder is zero and nothing is written; a season row has no `fgm` at all.
+Both are asserted, because the row this must never touch is real history.
+
+With the fold, and driven against real week-1 data: **Cam Little 6.41 to
+10.60** against ESPN's 9.0, and the nine-man lineup **115.0 to 128.0**
+against 131.8, under a full-PPR stand-in.
+
+### What is still not closed, said plainly
+
+- **The D/ST is still short** — 6.40 against 8.5. The points-allowed bucket is
+  in the block now, so the category exists; what it is WORTH depends on the
+  league's own tier values, which were not in hand. This is the one number
+  here that has not been verified under the rules that matter.
+- **Josh Allen moves AWAY from ESPN**, 23.85 to 20.80 against their 24.4.
+  That is a real forecaster disagreement about one quarterback in one week,
+  and it is the correct behaviour of a week-specific projection. ESPN is not
+  truth and this file did not claim Juke should equal it — until the owner
+  did. See "The league's own projection, read rather than rebuilt" below: a
+  connected ESPN league shows ESPN's number now, and this model is the
+  fallback.
+- **The happy path cannot be tested in CI until the nightly runs.** Everything
+  above was verified against a LOCAL `stats.js` carrying real week-1 blocks,
+  built and reverted inside one pass and never committed — the same rule the
+  deep-bench verification followed. What CI can hold today is the fold, which
+  is pure and offline, and the refusal to answer for the wrong week.
+
+### The original conclusion, kept because the reasoning is still half right
 
 That leaves about **5 points of 131.8**, and chasing it would be the mistake.
 Juke does not read ESPN's projection **on purpose** — the schedule section
@@ -10283,9 +10478,194 @@ and `build_players.py` has never fetched them. That is a feed and a payload
 decision of the same shape as `WEEKLY_SEASONS` — about 184 KB a season on a
 file that blocks the first paint — rather than a bug to fix inside a room.
 
-**So the honest statement is that this screen shows Juke's own forecast under
-the league's own rules, and it will not equal ESPN's.** What it may not be is
-wrong on its own terms, which is what the two fixes above were.
+**~~So the honest statement is that this screen shows Juke's own forecast under
+the league's own rules, and it will not equal ESPN's.~~ Overruled by the owner
+on 10 September 2026**, in one sentence: *"the projected scoring from the
+league I'm connected to needs to match in Juke. That is a non-negotiable."*
+The reasoning above was about two forecasters and it was internally sound; it
+was answering a question the reader never asks. Somebody who sees 117.3 in
+Juke and 131.8 on ESPN for the same lineup does not conclude that two models
+disagree — they conclude their league was imported wrong, and that is the
+first impression the product makes. Same shape as the orange and Barlow
+reversals: a recorded argument, outranked.
+
+### The league's own projection, read rather than rebuilt
+
+**ESPN's projected points are arithmetic over the league's own table, not an
+opinion, and that was measured before anything was built on it.** Each roster
+entry carries a projected stat line and an `appliedTotal`; reconstructing the
+total by hand — the raw `stats` multiplied through the league's 53
+`scoringItems`, the position-16 override for a defence — matched **60 of 60
+players to four decimal places** on 10 September 2026. So reading it is not
+trusting somebody else's model over ours. It is reading the league's scoring
+applied to a line, including the 28 rules Juke's vocabulary cannot name.
+
+**It costs nothing, because the snapshot was already carrying it.** `mRoster`
+is on the snapshot's request and every entry holds the week's line: 140 of 140
+rostered players on a real league, on the exact views `leagueSnapshot()`
+asks for. `weekProjection()` in `espn.js` picks one row out of five that sit
+beside it, and each field it checks excludes a real neighbour —
+`statSourceId` 1 not 0 (0 is the actual line, present once a game kicks off),
+`statSplitTypeId` 1 not 0 (0 is the 330-point season), the week, and the
+season (last year's week 1 rides along too).
+
+**Measured on screen, not only in a payload.** The real league's snapshot,
+fed to the built Strategy Room: **131.8, captioned "ESPN's projection for
+week 1"**, every starter equal to ESPN's own screen to the tenth — Allen 24.4,
+Skattebo 14.1, Montgomery 13.1, Nacua 21.9, London 15.6 — and the opponent at
+126.3 against ESPN's 126.28. The same page with the projection removed reads
+**117.3**, which is the number the owner reported. That control is what says
+the 131.8 is this change rather than anything else.
+
+**Four decimals, not two**, because a screen rounds to one and rounding twice
+is not rounding once: a line of 13.046 is 13.0 to the league and 13.05 once
+stored, which prints as 13.1. At two decimals that is one line in twenty.
+
+**There were three weekly scorers and now there is one.** The Strategy Room
+scored the real week with the bye taken out; the rooms grid and the phone's
+More sheet scored the SEASON AVERAGE with no week at all, so "+X this week" on
+a room tile was a different number from the swap the room offered one tap
+later. `leagueWeekPts()` in `strategyBoard.js` is the one builder: the
+league's own number for this week, then Juke's weekly block under the
+league's rules, then the season average under those rules, with a bye zeroed
+beneath the league's number and never above it. It takes the engine as a
+parameter so the suite can hand it a stub, which is how every rule in that
+sentence is asserted and confirmed red.
+
+**Only for the week it was stamped with, and per player rather than per
+lineup.** `projections.week` has to equal the week being scored — week 1's
+number is not an answer about week 2. A starter the league sent nothing for
+gets Juke's projection rather than blanking the total, and the card says so:
+`projectionSource()` answers `all`, `some` or `none` and the caption names the
+platform, because a mixed total presented as the league's own would disagree
+with the league's screen and give no reason.
+
+**What this does not cover, stated rather than left to be found:**
+
+- **An unmatched starter is still missing from the lineup.** A player the
+  crosswalk cannot name never reaches `starters`, so his points are absent
+  from the total. Measured 0 unmatched on this league's 2026 rosters; it is
+  the one way a correctly-read league can still come out short, and
+  `unmatchedCount` is what says so.
+- **The win probability is still Juke's**, computed from ESPN's projected
+  means rather than read from ESPN's own `winProbability`. The requirement
+  was projected scoring; whether it extends to the odds is a question for
+  the owner, not something to decide by default.
+- **Free agents and the season-long rooms are unchanged.** The Waiver and
+  Trade rooms price players in season points over replacement, which is
+  Juke's own measure rather than a number ESPN prints, and the playoff odds
+  simulate remaining weeks from Juke's season model.
+- **Once a game kicks off, the platform's number moves and this one does
+  not.** A matchup screen during a game shows points already scored plus
+  projection for what is left; the snapshot carries the pre-game line only.
+  So a Sunday afternoon's total will drift from the platform's by exactly
+  the games in progress. Live scoring is a feature of its own, and what
+  the status block below does is narrower: it stops a started game being
+  treated as a decision.
+
+### Sleeper's projection is arithmetic as well, and it is read the same way
+
+Reported 10 September 2026 from a placeholder Sleeper league, the day after
+ESPN's was matched: **118.5 in Juke against 125.47 on Sleeper's own
+matchup screen.** The reconstruction came first, before any code: Sleeper's
+weekly projection file (`/projections/nfl/<season>/<week>`, one row per
+player) carries each player's projected stat line, and that line multiplied
+through the league's own `scoring_settings`, key for key, summed over the
+nine starters, gives **125.47 exactly**. So Sleeper, like ESPN, is printing
+its league's table applied to a line rather than an opinion Juke would be
+adopting.
+
+`sleeperLinePoints()` in `sleeper.js` is that arithmetic, over **every key
+the league scores** — `bonus_rec_wr`, the points-allowed tiers, anything —
+because the league's table is the authority and a rule Juke's vocabulary
+cannot name is still a rule the league pays. The snapshot publishes it as
+`projections: { week, source: "sleeper", points }`, the same shape ESPN's
+has, so `leagueWeekPts()` needed no change at all: **the platform-first
+scorer written for ESPN picked Sleeper up the moment the block existed.**
+Measured on the built Strategy Room with the real league's snapshot:
+**125.5, captioned "Sleeper's projection for week 1"**, every starter equal
+to Sleeper's screen to the tenth; the same page without the block reads
+118.5, the reported number.
+
+**A row with nothing scoreable in it is 0, and absence is null.** A player
+ruled out keeps a row with no projected line (TreVeyon Henderson, week 1:
+an ADP field and nothing else) and Sleeper shows him at zero, so that is
+the platform's answer. Only a player with no row at all falls back to
+Juke. And a week where no rostered player projects to anything publishes
+no block — a file served before Sleeper has filled a week in is not an
+answer about anybody.
+
+**It costs two more upstream calls, and one of them is heavy.** The file
+is about 2 MB, the same for every league, with no per-league filter.
+Sleeper's own edge serves it with `s-maxage=600` and the route caches the
+whole snapshot for `SNAPSHOT_TTL` on top, so the cost is per league per two
+minutes rather than per reader. It is only asked for in a regular-season
+week, and either call failing is a value like everything else in that
+file: no block, and the room reads Juke's number as before.
+
+### A player's status is his platform's, read when the snapshot is
+
+The same report's second half: **TreVeyon Henderson and A.J. Brown under
+"Might not play" the morning after the game they had both already
+missed.** Two separate facts were wrong, and each is fixed and tested on
+its own so a fix for one cannot pass as a fix for both:
+
+- **The designation was a day old.** Every injury the rooms showed came
+  from the board's `inj`, which the pipeline writes at 11:00 UTC — so a
+  player ruled out at Sunday's inactives was not out in Juke until Monday.
+  Both platforms publish the answer on requests the snapshot already makes:
+  ESPN on every roster entry (`player.injuryStatus` — **not**
+  `entry.injuryStatus`, which read `NORMAL` for Henderson while the player
+  object read `OUT`), Sleeper on every row of the projection file.
+- **A player whose game has kicked off has no decision left in him.** He
+  played or he did not. ESPN says so directly (`lineupLocked`, measured
+  true on exactly the nine rostered players from the one game played);
+  Sleeper's schedule (`/schedule/nfl/regular/<season>`) says `in_game` or
+  `complete`, and the schedule's own status is the whole of the evidence —
+  it carries a date and no kickoff time, so nothing is guessed from a clock.
+
+`status: { week, source, at, players: { <id>: { inj, locked } } }` rides on
+both snapshots, and `worker/status.js` turns either platform's words into
+the pipeline's own codes. **That vocabulary exists in two languages now**,
+the `names.js` situation again, so `worker/test-status.mjs` reads
+`INJURY_CODES` out of `build_players.py` and fails on any disagreement. An
+empty string is healthy and does replace a stale nightly `O`; a word the
+table cannot read (Sleeper's `NA`) leaves the board's value alone rather
+than pretending to know.
+
+**The platforms disagree and each league shows its own.** Measured the same
+morning: ESPN had Brown `QUESTIONABLE`, Sleeper had him `Out`. Neither is
+wrong about its own league — a manager reads the designation their own app
+prints — which is the rule the projection already follows.
+
+`withLiveStatus()` in `strategyBoard.js` lays it over the board **on a
+copy**, because the board's rows are the Draft Room's rows too and a live
+`O` written onto one would follow the player into a mock draft. The
+Strategy Room and `useRoomStakes()` both draw off the overlaid map, so the
+lineup's chips, the swaps, the room tile's "+X this week" and "Might not
+play" agree about who is out. Then two rules in the board itself:
+`injuryWatch()` drops a locked player, and `swaps()` never offers one on
+either side — a locked starter cannot be taken out and a locked bench
+player cannot be put in. Each rule was confirmed red by removing it. The
+panel says where its designations came from and when, because a list that
+silently drops players has to say that it does.
+
+**And the room keeps itself current.** A snapshot used to be read once per
+navigation. `useLeagueSnapshot()` now asks every thirty seconds while the
+tab is in front and at once when it comes back; the store declines inside
+its two-minute window, so the real cadence is a refresh roughly every two
+and a half minutes, measured with a fake clock on the built page (one read
+at load, still one at 60s, two by 160s). **A refresh that fails keeps the
+answer already on screen** — polling makes a failed refresh ordinary, and
+replacing a room that was right two minutes ago with "we could not read
+your league" is worse than showing it. The window still bounds the retry.
+
+**How fresh "live" actually is, stated rather than implied.** ESPN's status
+is at most one snapshot window old: about two minutes, plus the tick.
+Sleeper's is bounded by its own edge cache on the projection file as well
+— up to ten minutes — so a Sleeper designation can trail Sleeper's own app
+by that much. That is the platform's cache and not something this side can
+shorten without asking Sleeper for the file more often than it asks to be.
 
 ## A connected league's scoring, which Juke fetched and threw away
 
@@ -10360,11 +10740,85 @@ at the default". The two adapters differ here on purpose.
 
 ### Still open
 
-**Fifteen of the league's rules map and 29 do not** — return and defensive
-touchdowns, the shorter field-goal bands, the deeper points-allowed tiers.
-Each needs the same evidence the first 24 got; 2025 gave too few non-zero
-samples to separate them from their aliases. They are reported, never
-guessed.
+**Twenty-eight of the league's 53 rules are reported as unrepresentable** —
+return and defensive touchdowns, the deeper points-allowed tiers, every
+yards-allowed tier, and the long-play bonuses Juke has no rule for at all.
+Each is listed by id in `scoring.js` with the measurement that rejected it,
+because a rule left out for a reason is different from one nobody examined.
+
+**And nothing renders that list.** `scoringUnmapped` has ridden on the
+snapshot since the adapter was written and no surface in `web/src` or
+`app.js` reads it — so the app computes exactly the set of rules it cannot
+reproduce, puts it on the wire, and never tells the reader. That is the
+dead-control failure this file records over and over, landing on the honesty
+mechanism itself, and it is the half of the launch concern that is still
+open: a manager's first impression should not be a number that is quietly
+short with nothing on screen to say which of their rules were dropped.
+
+### A subset is not a match, and the derivation could not tell
+
+`rec_40p: 38` shipped, and **38 is the 200-yard rushing game bonus.**
+
+The derivation compared Juke's stored count against ESPN's **only on rows
+where both were non-zero**, which cannot fail for a candidate that is a
+strict SUBSET of the real stat: every row it is missing from is skipped
+rather than counted against it. Measured 10 September 2026 over 328 joined
+players — 38 is non-zero on **5 running backs at 1 apiece**, `rec_40p` on
+**103 players and reaching 8** — and **four of those five backs happen to
+carry `rec_40p: 1` in 2025**, which met the old threshold of four agreeing
+samples while the 99 receivers who disagreed were invisible to it.
+
+So the check that produced the table was **structurally incapable of
+rejecting the wrong answer**, and "everything here is 100%" was true of a
+comparison that could only ever report agreement.
+
+**Re-derived over the whole population, counting a one-sided row as a
+disagreement**, every other id confirms exactly and `rec_40p` matches no
+ESPN id at all. It is out of the table, and its absence is asserted rather
+than merely true — the mapping looked entirely reasonable and would be
+re-added by anybody deriving the same way again.
+
+**What it cost is a live over-score.** The league pays 4 points for statId
+38, so every receiver was paid 4 a catch for a rule the league does not
+have. On the owner's own week-1 lineup that is **9.4 points a week across
+seven skill players**.
+
+**`sack: 99` went in with it, and reading it needed a second edit.**
+`DST_RULES` is a hand-kept list of which keys take the position-16 override,
+and a defensive key added to the table and forgotten there reads the flat
+`points` — which for a defence-only rule is 0. So `sack` scored nothing for
+one run, silently, which is the exact failure the override note above
+already describes. Both lists move together and a test pins it.
+
+### Two errors were cancelling, and the fix makes the gap bigger
+
+Stated plainly because the direction is the opposite of what a fix is
+supposed to do. The owner's reported week 1, reproduced exactly and then
+re-measured:
+
+```
+                    reported   corrected     ESPN
+Josh Allen              26.0        26.0     24.4
+Cam Skattebo            12.8        11.8     14.1
+David Montgomery        12.9        12.1     13.1
+Puka Nacua              20.9        18.4     21.9
+Drake London            16.8        14.7     15.6
+Dallas Goedert           9.2         8.0     11.1
+Ladd McConkey           15.3        13.4     14.1
+LA Rams Defense          6.2         6.2      8.5
+Cam Little               6.4         6.6      9.0
+                       126.7       117.3    131.8
+```
+
+**A rule the league does not have, applied to a stat nobody forecasts, was
+propping the total up** — and the earlier finding that the seven skill
+players "net −0.4" was measured with that inflation already in it. Take it
+out and they are 9.8 light, which is the honest size of the forecaster
+difference the weekly-projection work exists to close.
+
+**So closing a gap is not the test of a scoring fix; reading the league
+correctly is.** A number that agrees with ESPN because two mistakes cancel
+is worse than one that disagrees for a reason anybody can check.
 
 **The on-screen change is unverified by anything automated.** Every room is
 behind Clerk's `<SignedIn>` and a keyless build renders none of them — the

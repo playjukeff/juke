@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useEngine, useJukeTick } from './useJukeEngine.js'
 import { useLeague, useLeagueSnapshot } from './useLeague.js'
 import { roomStakes } from '../components/shell/roomStakes.js'
+import { leagueWeekPts, withLiveStatus } from '../components/rooms/strategyBoard.js'
 
 /* What each room has at stake, assembled for a caller outside any room.
  *
@@ -54,26 +55,31 @@ export function useRoomStakes() {
      mutated in place and never replaced, so a dep on it never fires. What
      moves exactly once is its length, 0 to several hundred, the moment the
      deferred data lands. */
-  const byId = useMemo(
+  const boardById = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.length]
   )
 
-  /* Under THIS LEAGUE's rules rather than the Draft Room's, which is what
-     the Strategy Room already pays for: `projPerGame()` reads a `projPts`
-     scored with `league.rules` — whatever the reader last set for a MOCK —
-     so a real full-PPR league read through a half-PPR default understated
-     a week by a measured 13.3 points. Falls back when the league sends no
-     rules, since the previous number beats none. */
-  const rules = snapshot && snapshot.rules ? snapshot.rules : null
-  const weekPts = useMemo(() => {
-    if (!engine) return null
-    if (!rules) return engine.projPerGame
-    return (player) => engine.projPerGameUnder(player, rules)
-  }, [engine, rules])
+  /* The same scorer the Strategy Room builds, from the same function.
+
+     This used to be its own construction -- the season average under the
+     league's rules, with no week and no bye -- so the "+X this week" on a
+     room tile was a different number from the swap the room itself offered
+     one tap later. leagueWeekPts() is the one answer now: the league's own
+     projection for this week first, Juke's model only where the league
+     sent none. See its header in strategyBoard.js. */
+  const weekPts = useMemo(() => leagueWeekPts(engine, snapshot), [engine, snapshot])
 
   const week = snapshot ? snapshot.week : null
+
+  /* The same live status the Strategy Room lays over the board, so a tile's
+     "+X this week" never offers a swap the room itself refuses because one
+     of the two players' games has already kicked off. */
+  const byId = useMemo(
+    () => withLiveStatus(boardById, snapshot && snapshot.status, week),
+    [boardById, snapshot, week]
+  )
 
   return useMemo(
     () => roomStakes({ snapshot, league, byId, gapOf, weekPts, week }),

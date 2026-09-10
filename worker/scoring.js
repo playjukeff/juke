@@ -21,11 +21,29 @@
  *
  * A wrong statId does not throw. It silently scores the wrong category,
  * which is this project's most expensive class of bug, so none of the table
- * below was guessed. Each entry was cross-referenced 8 September 2026
- * against 319 players -- offence matched by name, defences by club -- by
- * taking every player's real 2025 season line from ESPN and from the
- * pipeline's own stats.js and keeping only the statIds that agreed on EVERY
- * player with at least four non-zero samples. Everything here is 100%.
+ * below was guessed. Each entry was cross-referenced against real 2025
+ * season lines -- offence matched by name, defences by club -- taking every
+ * player's line from ESPN and from the pipeline's own stats.js and keeping
+ * only the statIds that agree with Juke's own stored count.
+ *
+ * ---- The first derivation compared only where BOTH were non-zero ----
+ *
+ * Which cannot fail for a candidate that is a strict SUBSET of the real
+ * stat: every row it does not appear on is skipped rather than counted as a
+ * disagreement. It shipped `rec_40p: 38` on exactly that, and 38 is the
+ * 200-yard rushing game bonus -- measured 10 September 2026 across 328
+ * joined players, it is non-zero on 5 running backs at 1 apiece, against a
+ * `rec_40p` that is non-zero on 103 players and reaches 8.
+ *
+ * FOUR of those five backs happen to carry `rec_40p: 1` in 2025, which met
+ * the old threshold of four agreeing samples, and the 99 receivers with a
+ * 40+ yard catch and a zero on 38 were invisible to it. So a full-PPR
+ * league was paying four points for every long reception under a rule it
+ * does not have.
+ *
+ * **Compare over the whole population, and count a one-sided row as a
+ * disagreement.** Re-derived that way, `rec_40p` matches no ESPN id at all
+ * and is left out -- see the reported gap below.
  *
  * ---- Value equality alone is not enough, and receptions prove it ----
  *
@@ -38,18 +56,50 @@
 export const ESPN_STAT_IDS = {
   // Passing
   pass_yd: 3, pass_td: 4, pass_int: 20, pass_2pt: 19,
+  pass_att: 0, pass_cmp: 1,
   // Rushing
   rush_yd: 24, rush_td: 25, rush_2pt: 26,
   // Receiving -- 53, NOT its identical twin 41; see above.
-  rec: 53, rec_yd: 42, rec_td: 43, rec_2pt: 44, rec_40p: 38,
+  // There is deliberately no rec_40p here: see the note on subsets.
+  rec: 53, rec_yd: 42, rec_td: 43, rec_2pt: 44,
   // Ball security
   fum_lost: 72,
   // Kicking
   xpm: 86, xpmiss: 88, fgm_40_49: 77, fgm_50_59: 198, fgm_60p: 201,
+  fgmiss: 85, fgmiss_50_59: 200, fgmiss_60p: 203,
   // Defence / special teams
-  int: 95, safe: 98, blk_kick: 97,
+  sack: 99, int: 95, safe: 98, blk_kick: 97,
   pts_allow_0: 89, pts_allow_1_6: 90, pts_allow_7_13: 91,
 };
+
+/* What a real league scores that this table still cannot name, measured
+ * against the owner's own ESPN league (53 scoring items) on 10 September
+ * 2026. Written down rather than guessed at, because every one of these
+ * was CHECKED and rejected rather than merely unexamined:
+ *
+ *   96  fumble recovered   -- 10 of 32 defences agree with Juke's fum_rec
+ *                             and 22 differ, ESPN's count mostly higher.
+ *                             Two different definitions, not a mapping.
+ *   103 + 104              -- interception-return and fumble-return TDs.
+ *                             Juke stores ONE def_td, so two ESPN rules
+ *                             feed one rule and there is no single rate to
+ *                             take. Their SUM matches def_td on 31 of 32.
+ *   101 + 102              -- punt- and kickoff-return TDs against
+ *                             def_st_td: the sum differs on 5 of 15, so
+ *                             the two feeds draw the defence/special-teams
+ *                             line in different places.
+ *   92, 121, 124, 125      -- points allowed at 14-17, 18-21, 35-45, 46+.
+ *                             ESPN's tiers are not Sleeper's (14-20,
+ *                             21-27, 28-34, 35+), so these are not the
+ *                             same buckets under a different name.
+ *   128-132, 134-136       -- yards allowed. Juke has no such rule at all.
+ *   16, 36, 37, 38, 46,    -- the long-play and big-game bonuses: a 50+
+ *   56, 57, 63               yard passing TD, 100/150/200-yard rushing
+ *                             games, 100/200-yard receiving games. Juke
+ *                             has no rule for any of them.
+ *   93, 206, 209           -- unidentified, and left that way.
+ *
+ * Every one of them rides out on `unmapped` rather than being dropped. */
 
 /* One ESPN rule that pays several of Juke's.
  *
@@ -95,8 +145,17 @@ function pointsFor(item, dst) {
   return Number(item.points) || 0;
 }
 
+/* Which Juke keys read that override, and it is a SECOND hand-kept list
+ * that has to move with ESPN_STAT_IDS above.
+ *
+ * A defensive key added to the table and forgotten here does not throw: it
+ * reads the flat `points`, which for a defence-only rule is 0, so the rule
+ * silently scores nothing. `sack` was added on 10 September 2026 and did
+ * exactly that for one run -- the league pays 1 a sack in
+ * pointsOverrides["16"] with points: 0 beside it, and it came back 0. */
 const DST_RULES = new Set([
-  "int", "safe", "blk_kick", "pts_allow_0", "pts_allow_1_6", "pts_allow_7_13",
+  "sack", "int", "safe", "blk_kick",
+  "pts_allow_0", "pts_allow_1_6", "pts_allow_7_13",
 ]);
 
 /* `scoringItems` -> { rules, unmapped }.

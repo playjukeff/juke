@@ -12659,6 +12659,45 @@ function rulesFromLeague(raw) {
    drawing nothing is worse than one drawing the same number it drew before.
    Same side-effect-free contract as vorpUnder(): touches no player's real
    projPts and no REPLACEMENT_PTS, both of which the scoring editor owns. */
+/* What the feed forecasts for ONE week, under a connected league's rules.
+ *
+ * Everything else here spreads a season total across the games it covers,
+ * which is an average and is captioned as one. This is the actual week, and
+ * it exists because for two positions the season forecast is not merely
+ * coarser -- it is missing whole scoring categories.
+ *
+ * Sleeper's season block for a kicker carries fgm_40_49 and fgm_50p and
+ * NOTHING under forty yards; the weekly block carries fgm and every band. Its
+ * season block for a defense carries sacks, takeaways and blocks and no
+ * points allowed at all; the weekly block carries pts_allow_* and def_td.
+ * Measured 10 September 2026 against a real ESPN league: the kicker read 6.4
+ * against 9.0 and the defense 6.2 against 8.5, and those two were the whole
+ * of a 5.1-point gap on a 131.8-point lineup. The seven skill players netted
+ * to 0.4.
+ *
+ * ---- It answers null for a week it does not hold ----
+ *
+ * The pipeline stores one week and stamps it in WEEK_PROJ_META. A block for
+ * week 3 is not an answer about week 5, and serving it would be this file's
+ * own right-value-wrong-column bug with a date on it. So the week is checked
+ * rather than assumed, and every caller falls back to the season average --
+ * which is what they all did before this existed.
+ *
+ * The `typeof` guard is not decoration: stats.js only grows WEEK_PROJ_META on
+ * the first nightly after this ships, and until then every board is a board
+ * without it. */
+function weekProjectionUnder(player, leagueRules, week) {
+  if (!player || !week) return null;
+  const meta = typeof WEEK_PROJ_META === "undefined" ? null : WEEK_PROJ_META;
+  if (!meta || meta.week !== week) return null;
+  const s = statOf(player);
+  const block = s && s.wp;
+  if (!block) return null;
+  const rules = rulesFromLeague(leagueRules) || league.rules;
+  return pointsUnder(block, rules);
+}
+
+
 function projPerGameUnder(player, leagueRules) {
   if (!player) return null;
   const rules = rulesFromLeague(leagueRules);
@@ -12743,6 +12782,10 @@ window.JukeEngine = {
   gradeDraft:   gradeDraft,
   leagueDraftReport: leagueDraftReport,
   projPerGameUnder: projPerGameUnder,
+  weekProjectionUnder: weekProjectionUnder,
+  weekProjMeta: function () {
+    return typeof WEEK_PROJ_META === "undefined" ? null : WEEK_PROJ_META;
+  },
   projPerGame: function (player) {
     if (!player) return null;
     const s = statOf(player);

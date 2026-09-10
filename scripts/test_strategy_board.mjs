@@ -14,6 +14,7 @@ import path from "node:path";
 
 const {
   lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
+  platformScorer, leagueWeekPts, projectionSource, withLiveStatus,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
 let failures = 0;
@@ -267,6 +268,137 @@ check("the bench is priced the same way", () => {
                        ["b", { id: "b", bye: 7, projPts: 12 }]]);
   const rows = benchRows({ starters: ["s"], players: ["s", "b"] }, ids, score);
   assert.equal(rows[0].projPts, 0, "a bench player on bye is not a swap worth making");
+});
+
+/* ---- the league's own number, which is the one a reader checks us against ----
+ *
+ * The owner's requirement, 10 September 2026: the projection a connected
+ * league shows has to match in Juke. The snapshot carries the platform's
+ * own weekly number and these are the rules for when it is used. Confirmed
+ * red three ways: platformScorer() returning `base` unconditionally fails
+ * the first; dropping its week check fails the stale-week one; and making
+ * a missing id answer null rather than fall back fails the per-player one. */
+const juke = (p) => (p && typeof p.projPts === "number" ? p.projPts : null);
+const PROJ = { week: 1, source: "espn", points: { a: 24.4419, b: 8.5 } };
+
+check("the league's number wins over Juke's for the same player", () => {
+  assert.equal(platformScorer(juke, PROJ, 1)({ id: "a", projPts: 26.0 }), 24.4419);
+});
+
+check("but only for the week it was stamped with", () => {
+  assert.equal(platformScorer(juke, PROJ, 2)({ id: "a", projPts: 26.0 }), 26.0,
+    "week 1's projection is not an answer about week 2");
+});
+
+check("a player the league sent nothing for falls back to Juke, per player", () => {
+  const score = platformScorer(juke, PROJ, 1);
+  assert.equal(score({ id: "z", projPts: 11 }), 11);
+  const ids = new Map([["a", { id: "a", projPts: 26 }], ["z", { id: "z", projPts: 11 }]]);
+  const total = projectedTotal({ starters: ["a", "z"], players: [] }, ids, score);
+  assert.ok(Math.abs(total - 35.4419) < 1e-9,
+    "one missing row is filled, not a lineup that cannot be totalled: " + total);
+});
+
+check("a league zero is the league's answer, not a gap to fill", () => {
+  const P0 = { week: 1, points: { a: 0 } };
+  assert.equal(platformScorer(juke, P0, 1)({ id: "a", projPts: 14 }), 0);
+});
+
+check("no projections, or no week, leaves the scorer exactly as it was", () => {
+  assert.equal(platformScorer(juke, null, 1), juke);
+  assert.equal(platformScorer(juke, PROJ, null), juke);
+});
+
+check("ids are compared as strings, since a defense's id is its club", () => {
+  const P1 = { week: 3, points: { LAR: 8.5, "4984": 20 } };
+  assert.equal(platformScorer(juke, P1, 3)({ id: "LAR" }), 8.5);
+  assert.equal(platformScorer(juke, P1, 3)({ id: 4984 }), 20);
+});
+
+/* The one builder every connected screen shares. A stub engine stands in
+ * for window.JukeEngine, which is the reason strategyBoard.js takes it as a
+ * parameter rather than reading it off window. */
+const engine = {
+  projPerGame: (p) => p.projPts,
+  projPerGameUnder: (p) => p.projPts + 100,              // "the league's rules"
+  weekProjectionUnder: (p, _r, w) => (p.wk && p.wk[w] != null ? p.wk[w] : null),
+};
+
+check("leagueWeekPts prefers the league, then Juke's week, then the average", () => {
+  const snap = { week: 1, rules: { rec: 1 }, projections: { week: 1, points: { a: 24.44 } } };
+  const score = leagueWeekPts(engine, snap);
+  assert.equal(score({ id: "a", projPts: 1, wk: { 1: 5 } }), 24.44, "the league's own number");
+  assert.equal(score({ id: "b", projPts: 1, wk: { 1: 5 } }), 5, "Juke's weekly block");
+  assert.equal(score({ id: "c", projPts: 1 }), 101, "the average under the league's rules");
+});
+
+check("and a bye beneath the league's number, never above it", () => {
+  const snap = { week: 7, rules: {}, projections: { week: 7, points: { a: 3 } } };
+  const score = leagueWeekPts(engine, snap);
+  assert.equal(score({ id: "a", projPts: 9, bye: 7 }), 3, "the league's answer for that week stands");
+  assert.equal(score({ id: "b", projPts: 9, bye: 7 }), 0, "the fallback still zeroes a bye");
+});
+
+check("projectionSource says whose numbers a lineup carries", () => {
+  const rows = [{ player: { id: "a" } }, { player: { id: "b" } }];
+  assert.equal(projectionSource(rows, { week: 1, points: { a: 1, b: 2 } }, 1), "all");
+  assert.equal(projectionSource(rows, { week: 1, points: { a: 1 } }, 1), "some");
+  assert.equal(projectionSource(rows, { week: 2, points: { a: 1, b: 2 } }, 1), "none");
+  assert.equal(projectionSource(rows, null, 1), "none");
+});
+
+/* ---------- the league's live status over the nightly board ----------
+
+   Reported 10 September 2026: TreVeyon Henderson and A.J. Brown under
+   "Might not play" the morning after the game both had already missed. Two
+   separate facts were wrong -- the designation was a day old, and a player
+   whose game has kicked off has no decision left in him at all -- and each
+   is asserted on its own, so a fix for one cannot pass as a fix for both. */
+
+check("the live designation replaces the nightly one, on a copy", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { s2: { inj: "O", locked: false } } }, 6);
+  assert.equal(live.get("s2").inj, "O");
+  assert.equal(byId.get("s2").inj, "", "the board row itself is untouched -- it is the Draft Room's too");
+  assert.equal(live.get("s1"), byId.get("s1"), "a player the platform said nothing about is the board's");
+});
+
+check("a live 'healthy' clears a stale 'out'", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { out1: { inj: "", locked: false } } }, 6);
+  assert.equal(live.get("out1").inj, "");
+});
+
+check("a designation the platform could not read leaves the board's alone", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { h1: { locked: true } } }, 6);
+  assert.equal(live.get("h1").inj, "Q");
+  assert.equal(live.get("h1").locked, true);
+});
+
+check("a status stamped for another week is not about this one", () => {
+  const status = { week: 5, players: { s2: { inj: "O", locked: true } } };
+  assert.equal(withLiveStatus(byId, status, 6), byId);
+  assert.equal(withLiveStatus(byId, null, 6), byId);
+});
+
+check("a player whose game has kicked off is not 'might not play'", () => {
+  const status = { week: 6, players: {
+    h2: { inj: "O", locked: true },   // ruled out, game over: nothing to decide
+    b1: { inj: "O", locked: false },  // ruled out, game still to come: the list's whole job
+  } };
+  const ids = injuryWatch(TEAM, withLiveStatus(byId, status, 6), 6).map((r) => r.player.id);
+  assert.ok(!ids.includes("h2"), "locked players leave the list: " + ids);
+  assert.ok(ids.includes("b1"), "a fresh live 'out' joins it: " + ids);
+});
+
+check("a swap never involves a locked player, on either side", () => {
+  // b1 beats the starting RB s2 on the board; lock each side in turn.
+  const free = bestSwaps(TEAM, byId, weekPts, 6).map((x) => x.start.id + ">" + x.sit.id);
+  assert.ok(free.includes("b1>s2"), "the control: b1 over s2 is offered unlocked " + free);
+  const benchLocked = withLiveStatus(byId, { week: 6, players: { b1: { locked: true } } }, 6);
+  const a = bestSwaps(TEAM, benchLocked, weekPts, 6).map((x) => x.start.id);
+  assert.ok(!a.includes("b1"), "a bench player whose game started cannot come in: " + a);
+  const starterLocked = withLiveStatus(byId, { week: 6, players: { s2: { locked: true } } }, 6);
+  const b = bestSwaps(TEAM, starterLocked, weekPts, 6).map((x) => x.sit.id);
+  assert.ok(!b.includes("s2"), "a starter whose game started cannot go out: " + b);
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the strategy board");
