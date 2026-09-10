@@ -64,7 +64,7 @@ function gateChip(gate) {
 function Stat({ label, value, tone }) {
   return (
     <div className="flex flex-col items-end gap-px">
-      <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+      <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
         {label}
       </span>
       <span className={'font-mono text-[17px] font-semibold ' + (tone || 'text-ink')}>{value}</span>
@@ -149,7 +149,7 @@ export default function RoomShell({
                 already known, so a failed refresh does not demote anybody
                 on screen. Absent, not wrong. */}
             {tier ? (
-              <span className="rounded-[5px] border border-teal/[0.34] bg-teal/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-teal">
+              <span className="rounded-[5px] border border-teal/[0.34] bg-teal/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-teal">
                 {tierLabel(tier)}
               </span>
             ) : null}
@@ -184,7 +184,7 @@ export default function RoomShell({
                 >
                   {t.label}
                   {t.gate ? (
-                    <span className="ml-1.5 rounded-[3px] bg-flow-amber/[0.14] px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-flow-amber">
+                    <span className="ml-1.5 rounded-[3px] bg-flow-amber/[0.14] px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-flow-amber">
                       {gateChip(t.gate)}
                     </span>
                   ) : null}

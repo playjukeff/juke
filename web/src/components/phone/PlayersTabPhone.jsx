@@ -197,7 +197,7 @@ export default function PlayersTabPhone({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
-        <div className="sticky top-0 z-20 border-b border-white/[0.08] bg-slate-sunk px-3 py-1.5 font-plex text-[9px] font-normal uppercase tracking-[0.1em] text-ink-muted">
+        <div className="sticky top-0 z-20 border-b border-white/[0.08] bg-slate-sunk px-3 py-1.5 font-plex text-[9px] font-normal uppercase tracking-[0.12em] text-ink-muted">
           {posFilter === 'ALL' ? 'All' : posFilter} &middot; {rows.length} available
         </div>
         {rows.map((p, i) => {

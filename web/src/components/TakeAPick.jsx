@@ -158,7 +158,7 @@ function RowTag({ label, tone }) {
         : 'border border-teal-400/40 text-teal-300'
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 font-plex text-[10px] font-semibold uppercase tracking-wide ${toneClass}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 font-plex text-[10px] font-semibold uppercase tracking-[0.12em] ${toneClass}`}
       style={tone === 'gone' ? { color: MUTED } : undefined}
     >
       {label}
@@ -225,7 +225,7 @@ function RosterPanel({ scenario, phase }) {
       <div className="mt-3 flex flex-col gap-[6px]">
         {lineup.map((s, i) => (
           <div key={`${s.slot}-${i}`} className="flex items-center justify-between gap-3 rounded-[10px] bg-surface-row px-3 py-[7px] transition-colors duration-500">
-            <span className="font-plex text-[10px] font-semibold uppercase tracking-wide text-voidInk-muted">{s.slot}</span>
+            <span className="font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-voidInk-muted">{s.slot}</span>
             {s.player ? (
               <span
                 className="truncate text-meta font-semibold text-voidInk-primary transition-colors duration-500"

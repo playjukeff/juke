@@ -625,7 +625,7 @@ export default function HomeAlive() {
                 a third line in one card of a two-card grid is also what
                 pushes the two titles out of alignment. A row under both
                 cards belongs to the ask without belonging to one card. */}
-            <p className="mt-2.5 max-w-[560px] font-mono text-[11px] uppercase tracking-[0.1em] text-voidInk-muted">
+            <p className="mt-2.5 max-w-[560px] font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
               Read-only &middot; Juke never edits your league
             </p>
 

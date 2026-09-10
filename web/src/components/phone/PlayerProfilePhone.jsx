@@ -137,7 +137,7 @@ export default function PlayerProfilePhone({ engine, player, onClose, rules }) {
           <div className="flex flex-col gap-4">
             <OurReadTab engine={engine} player={player} />
             <div>
-              <p className="mb-1.5 font-plex text-[10px] uppercase tracking-wide text-ink-muted">RECENT NEWS</p>
+              <p className="mb-1.5 font-plex text-[10px] uppercase tracking-[0.12em] text-ink-muted">RECENT NEWS</p>
               <LatestNewsTab engine={engine} player={player} />
             </div>
           </div>

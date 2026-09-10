@@ -130,7 +130,7 @@ const RECENT_SHOWN = 5
 function StatusPill({ status }) {
   const live = status === 'PRE-DRAFT'
   return (
-    <span className={'font-plex text-[10px] font-semibold uppercase tracking-[0.08em] ' + (live ? 'text-teal-300' : 'text-[#6E8CC4]')}>
+    <span className={'font-plex text-[10px] font-semibold uppercase tracking-[0.12em] ' + (live ? 'text-teal-300' : 'text-[#6E8CC4]')}>
       {status}
     </span>
   )
@@ -429,7 +429,7 @@ export default function DraftRoomEntry({
       <div>
         {/* lg:mt-0 — the 28px that separates this from the actions above it
             in one column is dead space beside them in two. */}
-        <p className="mb-3 mt-7 font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-voidInk-muted lg:mt-0">
+        <p className="mb-3 mt-7 font-plex text-[11px] font-semibold uppercase tracking-[0.12em] text-voidInk-muted lg:mt-0">
           Your mock drafts
         </p>
 

@@ -339,7 +339,7 @@ export default function PlayerProfileModal({
               <div className="grid grid-cols-3 gap-2 py-4">
                 {mobileStats.map((s) => (
                   <div key={s.key} className="rounded-lg bg-white/[0.03] px-2 py-2.5 text-center">
-                    <p className="font-plex text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-muted">{s.label}</p>
+                    <p className="font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">{s.label}</p>
                     <p className={'mt-1 font-display text-lg font-bold ' + s.tone}>{s.display}</p>
                   </div>
                 ))}

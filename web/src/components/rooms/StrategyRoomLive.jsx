@@ -108,7 +108,7 @@ function SwapLine({ swap }) {
         <span className="font-mono text-[15px] font-semibold text-gain">
           +{swap.gain.toFixed(1)}
         </span>
-        <span className="block font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
           {swap.replacing ? 'slot scores 0' : 'per week'}
         </span>
       </span>
@@ -516,13 +516,13 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
                   <span className="shrink-0 text-right">
                     <span
                       className={
-                        'font-mono text-[11px] font-semibold uppercase tracking-[0.06em] ' +
+                        'font-mono text-[11px] font-semibold uppercase tracking-[0.12em] ' +
                         (row.severity === 'out' || row.onBye ? 'text-cost' : 'text-flow-amber')
                       }
                     >
                       {row.onBye ? 'BYE' : row.player.inj}
                     </span>
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
+                    <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
                       {row.onBye ? 'not playing' : row.severity}
                     </span>
                   </span>

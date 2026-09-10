@@ -116,7 +116,7 @@ function DecisionRow({ decision }) {
        and the band that replaced it is wider, so the column has less slack
        than it did rather than more. */
     <div className="grid grid-cols-1 gap-2 border-b border-line-hairline py-3.5 lg:grid-cols-[190px_1fr_1fr_1fr_auto] lg:items-center lg:gap-4">
-      <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-muted">
+      <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-muted">
         {(decision.room || '').toUpperCase()} · {when}
         {/* The band, not the number. A bare percentage on a row is the one
             thing the decision system's global rules name outright, and the
@@ -130,19 +130,19 @@ function DecisionRow({ decision }) {
           : ''}
       </div>
       <div className="min-w-0">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted lg:hidden">
           Juke said
         </span>
         <div className="truncate text-[15px] font-semibold text-white">{decision.said || '—'}</div>
       </div>
       <div className="min-w-0">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted lg:hidden">
           You did
         </span>
         <div className="truncate text-meta text-voidInk-body">{decision.did || '—'}</div>
       </div>
       <div className="min-w-0">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted lg:hidden">
           Reality
         </span>
         <div className="truncate text-meta text-voidInk-body">{decision.reality || '—'}</div>

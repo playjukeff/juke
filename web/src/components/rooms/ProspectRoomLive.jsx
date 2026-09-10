@@ -211,7 +211,7 @@ function Row({ rank, row, open, onToggle, note }) {
           >
             {row.value == null ? '—' : `${row.value >= 0 ? '+' : ''}${Math.round(row.value)}`}
           </span>
-          <span className="block font-mono text-[10px] uppercase tracking-[0.08em] text-ink-muted">
+          <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
             {open ? 'hide' : `${e.known}/${e.total} known`}
           </span>
         </span>
@@ -220,7 +220,7 @@ function Row({ rank, row, open, onToggle, note }) {
       {open ? (
         <div className="grid gap-4 pb-4 sm:grid-cols-2">
           <div>
-            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-mint">
+            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-mint">
               On file
             </div>
             {known.map((k) => (
@@ -231,7 +231,7 @@ function Row({ rank, row, open, onToggle, note }) {
             ))}
           </div>
           <div>
-            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-flow-amber">
+            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-flow-amber">
               Not known
             </div>
             {missing.map((m) => (
