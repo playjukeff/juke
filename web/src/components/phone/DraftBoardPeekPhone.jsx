@@ -42,13 +42,25 @@ export default function DraftBoardPeekPhone({ engine, league, picks, mySlot, onC
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col" style={{ top: headerH }}>
-      <div className="flex shrink-0 gap-1.5 overflow-x-auto px-2.5 pb-2 pt-2.5 [scrollbar-width:none]">
+      {/* A readout, not a row of chips.
+
+          This drew each position as a bordered pill -- the identical shape
+          the Players tab's FILTER chips take, ~250px below it in the sheet
+          on the same 390px screen. Two rows of "RB 0/2" pills, one inert
+          and one a control, with nothing to tell them apart: the top one
+          gets tapped, and nothing happens. A pill promises a press. What
+          this row is is a status line, so it reads as one -- a mono
+          label, then dot-and-count with no border to promise anything. */}
+      <div className="flex shrink-0 items-center gap-3.5 overflow-x-auto px-3 pb-2 pt-2.5 [scrollbar-width:none]">
+        <span className="shrink-0 font-mono text-[9px] tracking-[0.12em] text-ink-muted" aria-hidden="true">
+          NEED
+        </span>
         {POSITIONS.map((pos) => {
           const c = counts ? counts[pos] : null
           return (
             <span
               key={pos}
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-rule bg-slate-panel px-[9px] py-[5px]"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
             >
               <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: POS_CHALK[pos] }} aria-hidden="true" />
               <span className="font-body text-[11px] font-semibold text-ink-soft">

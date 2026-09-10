@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { NavIcon } from '../roomIcons.jsx'
 import { useRailItems, useActiveRailKey } from '../shell/railItems.js'
 import { stakeLabel } from '../shell/roomStakes.js'
 import { useRoomStakes } from '../../hooks/useRoomStakes.js'
@@ -104,7 +105,7 @@ export default function MoreSheet({ onClose }) {
                     }
                     aria-hidden="true"
                   >
-                    {item.glyph}
+                    <NavIcon item={item} size={18} />
                   </span>
                   {item.label}
                   {/* P1. `cost` is the value colour, never teal -- the

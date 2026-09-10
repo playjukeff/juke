@@ -1,4 +1,5 @@
 import AppShell from './shell/AppShell.jsx'
+import RoomIcon from './roomIcons.jsx'
 import { useEffect, useState } from 'react'
 import RoomShell from './shell/RoomShell.jsx'
 import LockedPreview from './shell/LockedPreview.jsx'
@@ -367,7 +368,7 @@ export default function RoomPage({ slug }) {
             className="mb-1.5 font-mono text-[11px] tracking-[0.1em]"
             style={{ color: room.accent }}
           >
-            <span className="mr-1.5" aria-hidden="true">{room.glyph}</span>
+            <span className="mr-1.5 inline-flex align-[-2px]" aria-hidden="true"><RoomIcon room={room} size={13} /></span>
             {liveEyebrow ||
               (openRoom
                 /* An open room may not call itself a preview, for the same

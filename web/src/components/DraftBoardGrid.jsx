@@ -947,10 +947,10 @@ export default function DraftBoardGrid({ league, picks, mySlot, onClock, teamLab
                         className="relative flex h-full box-border items-center justify-center rounded-lg border-2 border-teal-400 lg:rounded-[7px] bg-teal-500/20 text-[10px] font-bold uppercase tracking-wide text-teal-300"
                       >
                         {overall != null && (
-                          <span className="absolute left-1 top-0.5 text-[10px] font-normal normal-case text-teal-300/75">{overall}</span>
+                          <span className="absolute left-1 top-0.5 text-[10px] font-normal normal-case text-teal-300">{overall}</span>
                         )}
                         On the clock
-                        <Arrow dir={arrow} className="absolute right-1 top-0.5 text-[9px] font-normal normal-case text-teal-300/75" />
+                        <Arrow dir={arrow} className="absolute right-1 top-0.5 text-[9px] font-normal normal-case text-teal-300" />
                       </motion.div>
                     ) : (
                       <div className="relative h-full box-border rounded-lg border border-dashed border-slate-rule lg:rounded-[7px]">
@@ -988,7 +988,14 @@ export default function DraftBoardGrid({ league, picks, mySlot, onClock, teamLab
                             {overall}
                           </span>
                         )}
-                        <Arrow dir={arrow} className="absolute right-1 top-0.5 text-[9px] text-white/20" />
+                        {/* white/40, not /20: the arrow is a mark and answers to
+                            3:1, and at /20 it measured 1.91 on the sunk cell --
+                            140 of them, one per empty cell, the snake drawn in
+                            a tone nobody could read. The live cell's own corner
+                            marks above take full teal-300 for the same reason:
+                            the cell pulses to 0.75 and /75 on top of that
+                            pulse dipped under 4.5 on every other frame. */}
+                        <Arrow dir={arrow} className="absolute right-1 top-0.5 text-[9px] text-white/40" />
                       </div>
                     )}
                   </div>

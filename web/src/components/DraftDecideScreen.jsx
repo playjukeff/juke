@@ -28,7 +28,7 @@ function ordinal(n) {
 // The bucket, the colour and the button's own action never change — only
 // the word painted above a button that was never clickable.
 function verdictFor(survival, actionable = true) {
-  if (survival == null) return { label: 'Unranked market', color: 'text-white/50', action: 'Draft' }
+  if (survival == null) return { label: 'Unranked market', color: 'text-ink-muted', action: 'Draft' }
   if (survival < 0.2) {
     return actionable
       ? { label: 'Take him now', color: 'text-rose-300', action: 'Draft' }
@@ -238,7 +238,7 @@ function Card({ candidate, rankLabel, primary, onDraft, myTurn, engine, board, c
       </div>
 
       <div className="mb-2 rounded-lg bg-white/[0.04] p-3">
-        <div className="mb-[5px] text-[10px] font-bold uppercase tracking-[0.09em] text-white/50">What it does</div>
+        <div className="mb-[5px] text-[10px] font-bold uppercase tracking-[0.09em] text-ink-muted">What it does</div>
         <div className="text-sm leading-[1.45] text-white/90">{whatItDoes(engine, player, vorp)}</div>
       </div>
 
@@ -259,13 +259,13 @@ function Card({ candidate, rankLabel, primary, onDraft, myTurn, engine, board, c
           other half — what it forgoes. Same question asked of all three
           cards, so a reader can compare them on this too, not just VORP. */}
       <div className="mb-4 rounded-lg bg-white/[0.04] p-3">
-        <div className="mb-[5px] text-[10px] font-bold uppercase tracking-[0.09em] text-white/50">What it costs</div>
+        <div className="mb-[5px] text-[10px] font-bold uppercase tracking-[0.09em] text-ink-muted">What it costs</div>
         <div className="text-sm leading-[1.45] text-white/90">{whatItCosts(engine, board, player, counts, nextOverall)}</div>
       </div>
 
       {siblings && (() => {
         const note = tiebreakNote(candidate, siblings)
-        return note ? <div className="mb-3 text-[11.5px] leading-relaxed text-white/50">{note}</div> : null
+        return note ? <div className="mb-3 text-[11.5px] leading-relaxed text-ink-muted">{note}</div> : null
       })()}
 
       <button
@@ -324,7 +324,9 @@ function SurvivorCard({ candidate, engine, onQueueToggle, onDraft, myTurn, queue
         type="button"
         onClick={act}
         disabled={verdict.action === 'Draft' && !myTurn}
-        className="w-full rounded-lg border border-[#FFD166]/45 bg-[#FFD166]/10 py-2.5 text-xs font-bold text-[#FFD166] transition-colors hover:bg-[#FFD166]/[0.18] disabled:cursor-not-allowed disabled:opacity-40"
+        /* The gold border and wash are the seat's mark; the label is ink.
+           Gold as 12px type on its own 10% wash measured 2.81:1. */
+        className="w-full rounded-lg border border-[#FFD166]/45 bg-[#FFD166]/10 py-2.5 text-xs font-bold text-ink transition-colors hover:bg-[#FFD166]/[0.18] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {verdict.action === 'Queue him' && queued ? 'Queued' : verdict.action}
       </button>
@@ -345,10 +347,10 @@ function TierStripMobile({ tierLadder }) {
             <span className={'rounded px-1.5 py-0.5 text-[9px] font-bold ' + (POS_BADGE[row.pos] || 'bg-white/10 text-white/60')}>
               {row.pos}
             </span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-white/50">Tier 1</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-muted">Tier 1</span>
           </div>
-          <div className="mt-1.5 font-numeral tabular-nums text-[10.5px] text-white/50">{row.remaining} left</div>
-          <div className="mt-1 truncate font-numeral text-[9.5px] text-white/50">{tierCaption(row)}</div>
+          <div className="mt-1.5 font-numeral tabular-nums text-[10.5px] text-ink-muted">{row.remaining} left</div>
+          <div className="mt-1 truncate font-numeral text-[9.5px] text-ink-muted">{tierCaption(row)}</div>
         </div>
       ))}
     </div>
@@ -657,7 +659,10 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
         .slice(0, 5)
         .sort((a, b) => a.overall - b.overall)
         .map((p) => ({ player: p, survival: engine.survivalProbability(p, nextOverall) }))
-  const survivalTextColor = (s) => (s == null ? 'text-white/40' : s < 0.2 ? 'text-rose-300' : s < 0.65 ? 'text-amber-300' : 'text-emerald-300')
+  // ink-muted, not white/40: translucent white on slate.panel composites to
+  // 3.56:1 and a sweep reading `color` never sees it -- the same lie the
+  // legacy board's `opacity: .85` told for years. ink-muted is 4.87 there.
+  const survivalTextColor = (s) => (s == null ? 'text-ink-muted' : s < 0.2 ? 'text-rose-300' : s < 0.65 ? 'text-amber-300' : 'text-emerald-300')
 
   return (
     /* flex-col below lg, grid at lg+ — not grid-cols-1 at every width down
@@ -762,7 +767,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
       {mobilePane === 'everyone' && (
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:hidden">
           <div className="mb-2.5 flex items-baseline justify-between gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Everyone else</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Everyone else</span>
             <span className="font-numeral text-[10px] text-ink-muted">VORP &middot; JUKE</span>
           </div>
           {others.length === 0 ? (
@@ -827,7 +832,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
 
       {mobilePane === 'team' && (
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:hidden">
-          <div className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Your team</div>
+          <div className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Your team</div>
           <div className="mb-5 flex flex-col gap-1">
             {lineup.seats.map((s, i) => (
               <div key={i} className="grid h-9 grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-md px-2.5">
@@ -865,7 +870,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
           </div>
 
           <div className="mb-5 border-t border-white/[0.07] pt-[18px]">
-            <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Still to fill</div>
+            <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Still to fill</div>
             <div className="flex flex-col gap-2.5">
               {needRows.map((r) => (
                 <div key={r.pos} className="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2.5">
@@ -882,14 +887,22 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
             </div>
           </div>
 
+          {/* Gold is the seat's MARK and never its type. CLAUDE.md says so
+              about the board ring -- #FFD166 measured 1.04:1 as text on
+              these chips, which had been drawing the pick codes in it. The
+              wash keeps the gold, a 12px gold rule beside the eyebrow keeps
+              "yours" legible as a mark, and the codes take full ink. */}
           {nextPicks.length > 0 && (
             <div className="seat-wash mb-3 rounded-lg p-3.5">
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#FFD166]">Your next picks</div>
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+                <span className="h-px w-3 shrink-0 bg-[#FFD166]" aria-hidden="true" />
+                Your next picks
+              </div>
               <div className="flex flex-wrap gap-[7px]">
                 {nextPicks.map((overall) => {
                   const code = window.DraftEngine ? window.DraftEngine.pickCode(overall, league) : overall
                   return (
-                    <span key={overall} className="rounded bg-white/10 px-2.5 py-1 font-plex text-xs font-semibold text-[#FFD166]">
+                    <span key={overall} className="rounded bg-white/10 px-2.5 py-1 font-plex text-xs font-semibold text-ink">
                       {code}
                     </span>
                   )
@@ -913,7 +926,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                   </div>
                 ))}
               </div>
-              <div className="mt-2.5 font-numeral text-[9px] leading-relaxed text-white/40">
+              <div className="mt-2.5 font-numeral text-[9px] leading-relaxed text-ink-muted">
                 The same survival model the cards use, run forward to your next pick.
               </div>
             </div>
@@ -923,7 +936,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
 
       {/* Roster rail — desktop only, see Centre's own comment above. */}
       <div className="hidden border-white/[0.06] px-[18px] py-5 lg:block lg:overflow-y-auto lg:border-r">
-        <div className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Your team</div>
+        <div className="mb-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Your team</div>
         <div className="mb-5 flex flex-col gap-1">
           {lineup.seats.map((s, i) => (
             <div key={i} className="grid h-8 grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-md px-2.5">
@@ -967,7 +980,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
         </div>
 
         <div className="mb-5 border-t border-white/[0.07] pt-[18px]">
-          <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Still to fill</div>
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Still to fill</div>
           <div className="flex flex-col gap-2.5">
             {needRows.map((r) => (
               <div key={r.pos} className="grid grid-cols-[34px_minmax(0,1fr)_34px] items-center gap-2.5">
@@ -986,12 +999,15 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
 
         {nextPicks.length > 0 && (
           <div className="seat-wash rounded-lg p-3.5">
-            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#FFD166]">Your next picks</div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+                <span className="h-px w-3 shrink-0 bg-[#FFD166]" aria-hidden="true" />
+                Your next picks
+              </div>
             <div className="flex flex-wrap gap-[7px]">
               {nextPicks.map((overall) => {
                 const code = window.DraftEngine ? window.DraftEngine.pickCode(overall, league) : overall
                 return (
-                  <span key={overall} className="rounded bg-white/10 px-2.5 py-1 font-plex text-xs font-semibold text-[#FFD166]">
+                  <span key={overall} className="rounded bg-white/10 px-2.5 py-1 font-plex text-xs font-semibold text-ink">
                     {code}
                   </span>
                 )
@@ -1018,7 +1034,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                 </div>
               ))}
             </div>
-            <div className="mt-2.5 font-numeral text-[9px] leading-relaxed text-white/40">
+            <div className="mt-2.5 font-numeral text-[9px] leading-relaxed text-ink-muted">
               The same survival model the cards use, run forward to your next pick.
             </div>
           </div>
@@ -1058,8 +1074,8 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                 are gone; a lit one is still on the board. */}
             <div className="mb-[18px] rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
               <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Tier 1 remaining, by position</span>
-                <span className="hidden text-[10.5px] text-white/50 sm:inline">Faded = already drafted</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Tier 1 remaining, by position</span>
+                <span className="hidden text-[10.5px] text-ink-muted sm:inline">Faded = already drafted</span>
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {tierLadder.map((row) => {
@@ -1071,9 +1087,9 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                           <span className={'rounded px-1.5 py-0.5 text-[9px] font-bold ' + (POS_BADGE[row.pos] || 'bg-white/10 text-white/60')}>
                             {row.pos}
                           </span>
-                          <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/50">tier 1</span>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">tier 1</span>
                         </span>
-                        <span className="font-numeral tabular-nums text-[10.5px] text-white/50">{row.remaining} left</span>
+                        <span className="font-numeral tabular-nums text-[10.5px] text-ink-muted">{row.remaining} left</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-[3px]">
                         {/* POS_CHALK, not POS_SOLID. These nine-pixel
@@ -1095,7 +1111,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                         ))}
                       </div>
                       <div
-                        className="mt-2 font-numeral text-[10px] text-white/50"
+                        className="mt-2 font-numeral text-[10px] text-ink-muted"
                         title={row.drop != null ? `Next tier projects about ${row.drop} fewer points` : undefined}
                       >
                         {caption}
@@ -1149,7 +1165,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
             {others.length > 0 && (
               <div>
                 <div className="mb-2.5 flex items-baseline justify-between gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Everyone else</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Everyone else</span>
                   <span className="font-numeral text-[10px] text-ink-muted lg:hidden">VORP &middot; JUKE</span>
                 </div>
                 {/* Column heads — a design review caught "+64 · 38 · Draft"
@@ -1263,7 +1279,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
           the position runs this rail summarises. Artboard 1c draws neither
           on the phone for that reason. */}
       <div className="hidden border-white/[0.06] px-[18px] py-5 lg:block lg:overflow-y-auto lg:border-l">
-        <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">The room, live</div>
+        <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">The room, live</div>
 
         {runPos && runCount >= 3 && (
           <div className="mb-4 rounded-lg bg-white/[0.04] p-3.5">
@@ -1285,7 +1301,10 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
           </div>
         )}
 
-        <div className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">Last picks</div>
+        {/* ink-soft on the rows below, not ink-muted: this rail sits a
+            surface lighter than the panel and ink-muted measured 4.48 on
+            it, which is a miss by the width of a rounding error. */}
+        <div className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">Last picks</div>
         <div className="flex flex-col gap-[3px]">
           {picks.slice(-9).reverse().map((p) => {
             const code = window.DraftEngine ? window.DraftEngine.pickCode(p.overall, league) : p.overall
@@ -1295,10 +1314,10 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                 key={p.overall}
                 className={'grid h-[30px] grid-cols-[36px_minmax(0,1fr)] items-center gap-2.5 rounded-[5px] border-l-2 px-2 ' + (mine ? 'seat-wash border-[#FFD166]' : 'border-transparent')}
               >
-                <span className="font-plex text-[10px] text-white/50">{code}</span>
+                <span className="font-plex text-[10px] text-ink-soft">{code}</span>
                 <span className="flex min-w-0 items-baseline gap-[7px]">
-                  <span className={'shrink-0 whitespace-nowrap text-xs font-medium ' + (mine ? 'text-[#FFD166]' : 'text-white')}>{p.player.name}</span>
-                  <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[10px] text-white/50">{p.player.team}</span>
+                  <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white">{p.player.name}</span>
+                  <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[10px] text-ink-soft">{p.player.team}</span>
                 </span>
               </div>
             )

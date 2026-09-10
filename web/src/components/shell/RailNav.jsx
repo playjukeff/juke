@@ -1,4 +1,5 @@
 import { useRailItems, useActiveRailKey } from './railItems.js'
+import { NavIcon } from '../roomIcons.jsx'
 
 /* The desktop room switcher — Juke Journey v3's rail, replacing
    ShellHeader's old three-tab row above `lg`. AppShell renders this beside
@@ -39,7 +40,7 @@ export default function RailNav() {
               }
               aria-hidden="true"
             >
-              {item.glyph}
+              <NavIcon item={item} />
             </span>
             <span className={'text-[10px] font-semibold leading-tight ' + (on ? 'text-mint' : 'text-ink-muted')}>
               {item.label}

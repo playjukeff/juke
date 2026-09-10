@@ -500,7 +500,7 @@ export default function PlayersTab({
                       <span className="w-8 shrink-0 text-right font-plex text-xs text-ink-muted">{row.player.bye || '—'}</span>
                     </>
                   ) : (
-                    <span className="min-w-0 flex-1 text-sm italic text-[#6B7A88]">Empty</span>
+                    <span className="min-w-0 flex-1 text-sm italic text-ink-muted">Empty</span>
                   )}
                 </div>
               ))}

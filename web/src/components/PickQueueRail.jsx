@@ -138,7 +138,7 @@ export default function PickQueueRail({
                 <span className="w-6 shrink-0 text-right font-plex text-[10.5px] text-ink-muted">{row.player.bye || '—'}</span>
               </>
             ) : (
-              <span className="min-w-0 flex-1 text-xs italic text-[#6B7A88]">Empty</span>
+              <span className="min-w-0 flex-1 text-xs italic text-ink-muted">Empty</span>
             )}
           </div>
         ))}

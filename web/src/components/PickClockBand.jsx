@@ -104,7 +104,7 @@ export default function PickClockBand({
           {nextCode && (
             <div className="flex items-baseline gap-2">
               <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-muted">Next</span>
-              <span className="min-w-0 flex-1 truncate font-plex text-[11px] text-[#FFD166]">{nextCode}</span>
+              <span className="min-w-0 flex-1 truncate font-plex text-[11px] text-ink">{nextCode}</span>
               {picksAway != null && picksAway > 0 && (
                 <span className="shrink-0 font-plex text-[10px] text-ink-muted">
                   {picksAway} pick{picksAway === 1 ? '' : 's'} away
