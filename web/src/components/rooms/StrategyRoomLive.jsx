@@ -3,7 +3,7 @@ import { PosTile } from './sampleParts.jsx'
 import { myTeam } from './waiverBoard.js'
 import {
   bestSwaps, benchRows, injuryWatch, leagueWeekPts, lineupRows,
-  projectedTotal, projectionSource,
+  projectedTotal, projectionSource, withLiveStatus,
 } from './strategyBoard.js'
 import { platformFor } from '../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
@@ -124,7 +124,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   const boardReady = !!(engine && engine.dataReady && engine.dataReady())
   const board = boardReady ? engine.board() : []
 
-  const byId = useMemo(
+  const boardById = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.length]
@@ -132,6 +132,15 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
 
   const mine = myTeam(snapshot, league)
   const week = snapshot ? snapshot.week : null
+
+  /* Every player this room draws, with the league's own LIVE status laid
+     over the nightly board -- see withLiveStatus(). Everything below reads
+     this map, so the lineup's injury chips, the swaps and "Might not play"
+     all agree about who is out and whose game has already kicked off. */
+  const byId = useMemo(
+    () => withLiveStatus(boardById, snapshot && snapshot.status, week),
+    [boardById, snapshot, week]
+  )
 
   /* WEEKLY points, not season. `projPts` on a board row is a season total,
      and summing four starters' season projections and printing it as "you
@@ -277,6 +286,14 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   )
   const read = matchupRead(winProb)
   const hurt = useMemo(() => injuryWatch(mine, byId, week), [mine, byId, week])
+  /* Where the designations came from and when, because "might not play" is
+     only worth reading if it is current -- and a list that silently drops
+     players whose game has started has to say that it does. */
+  const statusAt = snapshot && snapshot.status && Number(snapshot.status.week) === Number(week)
+    ? snapshot.status.at : null
+  const liveNote = statusAt
+    ? `Designations from ${platformName}, as of ${new Date(statusAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Anybody whose game has kicked off is left off.`
+    : null
   const swapMax = swaps.length ? Math.max(...swaps.map((s) => s.gain)) : 0
   const starting = lineup.filter((r) => r.player).length
   const hurtStarters = hurt.filter((r) => r.starting).length
@@ -552,6 +569,9 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
               Nobody on your roster carries an injury designation or a bye this week.
             </div>
           )}
+          {liveNote ? (
+            <p className="pt-3 text-[12px] leading-snug text-ink-muted">{liveNote}</p>
+          ) : null}
         </Panel>
       </div>
     )
@@ -678,6 +698,9 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
                 Everybody is available.
               </div>
             )}
+            {liveNote ? (
+              <p className="pt-3 text-[12px] leading-snug text-ink-muted">{liveNote}</p>
+            ) : null}
           </Panel>
         </div>
       </div>

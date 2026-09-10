@@ -16,6 +16,12 @@ import {
   subscribeSnapshot,
 } from '../lib/snapshotStore.js'
 
+/* How often a mounted screen asks whether its snapshot has aged out. Not
+   the refresh rate -- requestSnapshot() declines inside SNAPSHOT_TTL_MS --
+   but a tick short enough that the refresh lands close to the window's end
+   rather than up to a whole window after it. */
+const SNAPSHOT_TICK_MS = 30000
+
 /* React's view of the connected-league store.
  *
  * The store is web/src/lib/leagueStore.js and its own header explains both
@@ -132,9 +138,27 @@ export function useLeagueSnapshot(leagueId, provider) {
        the identical shape leagueStore already had and fixed. */
     const reread = () => requestSnapshot(leagueId, provider)
     window.addEventListener('juke:data-loaded', reread)
+
+    /* Keep it current while somebody is looking at it.
+
+       A snapshot used to be read once per navigation, which for a room left
+       open on a Sunday meant the lineup, the injuries and whose game had
+       kicked off stayed as they were when the page opened -- reported as
+       two players under "Might not play" the morning after the game they
+       had already missed. The store refreshes once its window has passed;
+       this only asks, and only while the tab is the one in front, because a
+       hidden tab polling a league is a cost nobody is reading. Coming back
+       to the tab asks at once, which is when a stale screen is noticed. */
+    const tick = () => {
+      if (document.visibilityState === 'visible') requestSnapshot(leagueId, provider)
+    }
+    const timer = window.setInterval(tick, SNAPSHOT_TICK_MS)
+    document.addEventListener('visibilitychange', tick)
     return () => {
       unsubscribe()
       window.removeEventListener('juke:data-loaded', reread)
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', tick)
     }
   }, [leagueId, provider])
 

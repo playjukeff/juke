@@ -52,6 +52,7 @@
    Leave it unset in production. */
 import { rulesFromSleeper } from "./scoring.js";
 import { lineupFromSleeper } from "./lineup.js";
+import { injuryCode } from "./status.js";
 
 export const SLEEPER_API = "https://api.sleeper.app/v1";
 
@@ -229,6 +230,74 @@ function tradeDeadlineFromSleeper(settings) {
   };
 }
 
+/* ---- The week's own projection and the week's own status ----
+
+   Both live outside /v1, on the same host: the projection file Sleeper's
+   app reads (`/projections/nfl/<season>/<week>`) and the season schedule
+   (`/schedule/nfl/regular/<season>`). Neither takes a league, so they are
+   derived from the base rather than given a second knob -- a stub serving
+   `/v1/...` serves these beside it, and production strips `/v1` off the
+   real host. */
+function feedBase(base) {
+  return String(base || SLEEPER_API).replace(/\/v1\/?$/, "");
+}
+
+const PROJECTION_POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
+
+export function projectionPath(season, week) {
+  return "/projections/nfl/" + encodeURIComponent(season) + "/" + encodeURIComponent(week) +
+    "?season_type=regular&" + PROJECTION_POSITIONS.map((p) => "position[]=" + p).join("&");
+}
+
+/* What Sleeper's app prints as a player's projection: his projected stat
+   line multiplied through the league's own `scoring_settings`, key for key.
+
+   Measured on 10 September 2026 against a real league's week 1: the nine
+   starters summed this way came to 125.47, which is the number Sleeper's
+   own matchup screen showed for the same lineup to the hundredth. So it is
+   not a model of Sleeper's projection but the arithmetic it is made of,
+   the same finding espn.js records for ESPN's `appliedTotal`.
+
+   Every key the league scores is read, not only the ones Juke has a rule
+   for -- `bonus_rec_wr`, the points-allowed tiers, anything -- because the
+   league's table is the authority here and a rule Juke's vocabulary cannot
+   name is still a rule the league pays.
+
+   A row with nothing the league scores is 0, and that is the platform's
+   answer rather than a missing one: a player ruled out carries a row with
+   no projected line in it (measured, TreVeyon Henderson, week 1: only an
+   ADP field) and Sleeper shows him at zero. Absence -- no row at all -- is
+   what answers null, and a caller falls back to Juke's own number. */
+export function sleeperLinePoints(stats, scoring) {
+  if (!stats || typeof stats !== "object" || !scoring || typeof scoring !== "object") return null;
+  let total = 0;
+  for (const key of Object.keys(scoring)) {
+    const rate = Number(scoring[key]);
+    const n = Number(stats[key]);
+    if (!rate || !Number.isFinite(rate) || !n || !Number.isFinite(n)) continue;
+    total += rate * n;
+  }
+  return Math.round(total * 10000) / 10000;
+}
+
+/* Which clubs' games have kicked off this week. A lineup cannot be changed
+   for a player whose game is under way or over, so he is neither a swap nor
+   a "might not play" -- he played, or he did not. `in_game` and `complete`
+   are Sleeper's own words; `pre_game` is the only other one it uses. The
+   schedule carries a date but no kickoff time, so the status is the whole
+   of the evidence and nothing is guessed from a clock. */
+function lockedClubs(schedule, week) {
+  const out = new Set();
+  (Array.isArray(schedule) ? schedule : []).forEach((g) => {
+    if (!g || Number(g.week) !== Number(week)) return;
+    const st = String(g.status || "");
+    if (st !== "in_game" && st !== "complete") return;
+    if (g.home) out.add(String(g.home));
+    if (g.away) out.add(String(g.away));
+  });
+  return out;
+}
+
 export async function leagueSnapshot(leagueId, base) {
   const id = encodeURIComponent(leagueId);
   const [league, rosters, users, state, drafts] = await Promise.all([
@@ -284,6 +353,58 @@ export async function leagueSnapshot(leagueId, base) {
     };
   });
 
+  /* The week's projection and status, fetched only once the league and the
+     week are known -- neither feed is keyed on anything else, and a
+     preseason or postseason week is not a regular-season projection.
+
+     Two more upstream calls, and the projection file is the heavy one
+     (about 2 MB for every player at every position). It is the same file
+     for every league, so Sleeper's own edge answers it (s-maxage=600) and
+     the route caches the whole snapshot for SNAPSHOT_TTL on top. A failure
+     of either is a value like everything else here: no projection, no
+     status, and the rooms read Juke's own numbers exactly as before. */
+  const week = state && Number(state.week) ? Number(state.week) : null;
+  const regular = !state || !state.season_type || String(state.season_type) === "regular";
+  const season = String(league.season || (state && state.season) || "");
+  let feed = null;
+  let schedule = null;
+  if (week && regular && season) {
+    const fb = feedBase(base);
+    [feed, schedule] = await Promise.all([
+      getJson(projectionPath(season, week), fb),
+      getJson("/schedule/nfl/regular/" + encodeURIComponent(season), fb),
+    ]);
+  }
+  const rostered = new Set();
+  teams.forEach((t) => t.players.forEach((id) => rostered.add(id)));
+  const rows = new Map();
+  (Array.isArray(feed) ? feed : []).forEach((r) => {
+    const id = r && r.player_id != null ? String(r.player_id) : "";
+    if (id && rostered.has(id) && !rows.has(id)) rows.set(id, r);
+  });
+
+  const points = {};
+  let scored = 0;
+  const live = {};
+  const locked = lockedClubs(schedule, week);
+  rows.forEach((r, id) => {
+    const pts = sleeperLinePoints(r.stats, league.scoring_settings);
+    if (pts !== null) {
+      points[id] = pts;
+      if (pts) scored += 1;
+    }
+    const pl = r.player || {};
+    const club = String(r.team || pl.team || "");
+    /* Sleeper's own designation, as its app shows it right now -- see
+       status.js. `null` and "" on a row Sleeper sent are healthy; a word
+       the vocabulary cannot read ("NA") leaves the board's value alone. */
+    const raw = pl.injury_status;
+    const inj = raw === null || raw === undefined ? "" : injuryCode(raw);
+    const entry = { locked: !!club && locked.has(club) };
+    if (inj !== null) entry.inj = inj;
+    live[id] = entry;
+  });
+
   const draft = pickDraft(drafts, league.season);
   const scoring = rulesFromSleeper(league.scoring_settings);
   const lineup = lineupFromSleeper(league.roster_positions);
@@ -302,7 +423,7 @@ export async function leagueSnapshot(leagueId, base) {
     draftStatus: draft.status,
     season: String(league.season || ""),
     totalTeams: Number(league.total_rosters) || teams.length,
-    week: state && Number(state.week) ? Number(state.week) : null,
+    week,
     seasonType: (state && state.season_type) || null,
     // The two settings a room actually branches on. Everything else in
     // league.settings stays at Sleeper until something needs it.
@@ -319,6 +440,18 @@ export async function leagueSnapshot(leagueId, base) {
     rules: scoring.rules,
     scoringUnmapped: scoring.unmapped,
     playoffTeams: Number((league.settings || {}).playoff_teams) || null,
+    /* The league's own projection for this week, per rostered player, in
+       the shape espn.js publishes -- see sleeperLinePoints(). Null unless
+       at least one rostered player projects to something: a file served
+       before Sleeper has filled a week in carries rows with nothing in
+       them, and a lineup of zeros is not an answer about anybody. */
+    projections: week && scored
+      ? { week, source: "sleeper", points }
+      : null,
+    /* Live designation and game lock per rostered player -- see status.js. */
+    status: week && rows.size
+      ? { week, source: "sleeper", at: Date.now(), players: live }
+      : null,
     teams,
   };
 }

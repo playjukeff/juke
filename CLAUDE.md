@@ -114,6 +114,7 @@ the Stack section above, not a one-time migration hiccup.
 | `live.js` | The client end of a room: one socket, the invite code, and the messages. Knows nothing about the board or how anything is drawn. |
 | `worker/` | The Cloudflare Durable Object behind an invite link, plus every proxied route whose key or quota may not be in the page (`/giphy`, `/news`, `/media`, the two league adapters) and its `wrangler.toml`. Deployed to `juke-draft-room.jukeff.workers.dev`. **`.github/workflows/deploy-worker.yml` ships it on a push to `main`** touching anything under `worker/`, or `room.js`, or `draft-engine.js` — the code half of the deploy gap is closed; **D1 migrations are still manual and deliberately so**. `npm --prefix worker run deploy` is the by-hand path and migrates first. See `worker/README.md` and the system section above. |
 | `worker/espn.js`, `worker/sleeper.js` | The two league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A third platform is a third file here, not a fourth vocabulary in the UI. |
+| `worker/status.js` | A player's live injury designation in the pipeline's own codes, from either platform's words. **The vocabulary exists in two languages** — `build_players.py` has the other — and `worker/test-status.mjs` reads that table and fails on any drift. |
 | `worker/names.js` | `normalise()`, the JavaScript half of the name crosswalk. **It exists in two languages and they must not drift** — `build_players.py` has the other one, and `test_engine.py` is the only suite that asserts they agree. A drift does not throw; it stops matching. |
 | `worker/store.js` | The D1 cache: Sleeper's pool and Tank01 headlines. A cache and never a source of truth, and a missing binding is a normal condition rather than a fault. |
 | `worker/migrations/` | D1 schema, applied with `wrangler d1 migrations apply`. The database is not to be shaped by hand — see the note on three variants of one schema. |
@@ -7047,7 +7048,9 @@ together.
 
 **A window and not a once-per-session cache**, deliberately: a lineup really
 does change during a Sunday, and a room drawing a stale one is worse than a
-room that waited 200ms. That distinction is asserted rather than left in a
+room that waited 200ms. **And a mounted screen now asks again on its own**
+every thirty seconds while visible — see "A player's status is his
+platform's" — so the window is the refresh rate as well as the dedupe. That distinction is asserted rather than left in a
 comment, because "fetch once and keep it" passes every other test in the
 suite.
 
@@ -10539,14 +10542,6 @@ with the league's screen and give no reason.
 
 **What this does not cover, stated rather than left to be found:**
 
-- **Sleeper leagues still show Juke's number.** Sleeper's app scores its own
-  weekly projection line against the league's `scoring_settings`, and the
-  worker does not fetch that line yet — the full weekly file is about 2 MB
-  and there is no per-league filter, so it wants a cached, shared fetch
-  rather than a per-request one. It is also unverified in the only way that
-  counts: there has been no Sleeper screen to compare a number against. The
-  platform-first scorer already handles it the moment the Sleeper snapshot
-  carries a `projections` block of the same shape.
 - **An unmatched starter is still missing from the lineup.** A player the
   crosswalk cannot name never reaches `starters`, so his points are absent
   from the total. Measured 0 unmatched on this league's 2026 rosters; it is
@@ -10560,6 +10555,117 @@ with the league's screen and give no reason.
   Trade rooms price players in season points over replacement, which is
   Juke's own measure rather than a number ESPN prints, and the playoff odds
   simulate remaining weeks from Juke's season model.
+- **Once a game kicks off, the platform's number moves and this one does
+  not.** A matchup screen during a game shows points already scored plus
+  projection for what is left; the snapshot carries the pre-game line only.
+  So a Sunday afternoon's total will drift from the platform's by exactly
+  the games in progress. Live scoring is a feature of its own, and what
+  the status block below does is narrower: it stops a started game being
+  treated as a decision.
+
+### Sleeper's projection is arithmetic as well, and it is read the same way
+
+Reported 10 September 2026 from a placeholder Sleeper league, the day after
+ESPN's was matched: **118.5 in Juke against 125.47 on Sleeper's own
+matchup screen.** The reconstruction came first, before any code: Sleeper's
+weekly projection file (`/projections/nfl/<season>/<week>`, one row per
+player) carries each player's projected stat line, and that line multiplied
+through the league's own `scoring_settings`, key for key, summed over the
+nine starters, gives **125.47 exactly**. So Sleeper, like ESPN, is printing
+its league's table applied to a line rather than an opinion Juke would be
+adopting.
+
+`sleeperLinePoints()` in `sleeper.js` is that arithmetic, over **every key
+the league scores** — `bonus_rec_wr`, the points-allowed tiers, anything —
+because the league's table is the authority and a rule Juke's vocabulary
+cannot name is still a rule the league pays. The snapshot publishes it as
+`projections: { week, source: "sleeper", points }`, the same shape ESPN's
+has, so `leagueWeekPts()` needed no change at all: **the platform-first
+scorer written for ESPN picked Sleeper up the moment the block existed.**
+Measured on the built Strategy Room with the real league's snapshot:
+**125.5, captioned "Sleeper's projection for week 1"**, every starter equal
+to Sleeper's screen to the tenth; the same page without the block reads
+118.5, the reported number.
+
+**A row with nothing scoreable in it is 0, and absence is null.** A player
+ruled out keeps a row with no projected line (TreVeyon Henderson, week 1:
+an ADP field and nothing else) and Sleeper shows him at zero, so that is
+the platform's answer. Only a player with no row at all falls back to
+Juke. And a week where no rostered player projects to anything publishes
+no block — a file served before Sleeper has filled a week in is not an
+answer about anybody.
+
+**It costs two more upstream calls, and one of them is heavy.** The file
+is about 2 MB, the same for every league, with no per-league filter.
+Sleeper's own edge serves it with `s-maxage=600` and the route caches the
+whole snapshot for `SNAPSHOT_TTL` on top, so the cost is per league per two
+minutes rather than per reader. It is only asked for in a regular-season
+week, and either call failing is a value like everything else in that
+file: no block, and the room reads Juke's number as before.
+
+### A player's status is his platform's, read when the snapshot is
+
+The same report's second half: **TreVeyon Henderson and A.J. Brown under
+"Might not play" the morning after the game they had both already
+missed.** Two separate facts were wrong, and each is fixed and tested on
+its own so a fix for one cannot pass as a fix for both:
+
+- **The designation was a day old.** Every injury the rooms showed came
+  from the board's `inj`, which the pipeline writes at 11:00 UTC — so a
+  player ruled out at Sunday's inactives was not out in Juke until Monday.
+  Both platforms publish the answer on requests the snapshot already makes:
+  ESPN on every roster entry (`player.injuryStatus` — **not**
+  `entry.injuryStatus`, which read `NORMAL` for Henderson while the player
+  object read `OUT`), Sleeper on every row of the projection file.
+- **A player whose game has kicked off has no decision left in him.** He
+  played or he did not. ESPN says so directly (`lineupLocked`, measured
+  true on exactly the nine rostered players from the one game played);
+  Sleeper's schedule (`/schedule/nfl/regular/<season>`) says `in_game` or
+  `complete`, and the schedule's own status is the whole of the evidence —
+  it carries a date and no kickoff time, so nothing is guessed from a clock.
+
+`status: { week, source, at, players: { <id>: { inj, locked } } }` rides on
+both snapshots, and `worker/status.js` turns either platform's words into
+the pipeline's own codes. **That vocabulary exists in two languages now**,
+the `names.js` situation again, so `worker/test-status.mjs` reads
+`INJURY_CODES` out of `build_players.py` and fails on any disagreement. An
+empty string is healthy and does replace a stale nightly `O`; a word the
+table cannot read (Sleeper's `NA`) leaves the board's value alone rather
+than pretending to know.
+
+**The platforms disagree and each league shows its own.** Measured the same
+morning: ESPN had Brown `QUESTIONABLE`, Sleeper had him `Out`. Neither is
+wrong about its own league — a manager reads the designation their own app
+prints — which is the rule the projection already follows.
+
+`withLiveStatus()` in `strategyBoard.js` lays it over the board **on a
+copy**, because the board's rows are the Draft Room's rows too and a live
+`O` written onto one would follow the player into a mock draft. The
+Strategy Room and `useRoomStakes()` both draw off the overlaid map, so the
+lineup's chips, the swaps, the room tile's "+X this week" and "Might not
+play" agree about who is out. Then two rules in the board itself:
+`injuryWatch()` drops a locked player, and `swaps()` never offers one on
+either side — a locked starter cannot be taken out and a locked bench
+player cannot be put in. Each rule was confirmed red by removing it. The
+panel says where its designations came from and when, because a list that
+silently drops players has to say that it does.
+
+**And the room keeps itself current.** A snapshot used to be read once per
+navigation. `useLeagueSnapshot()` now asks every thirty seconds while the
+tab is in front and at once when it comes back; the store declines inside
+its two-minute window, so the real cadence is a refresh roughly every two
+and a half minutes, measured with a fake clock on the built page (one read
+at load, still one at 60s, two by 160s). **A refresh that fails keeps the
+answer already on screen** — polling makes a failed refresh ordinary, and
+replacing a room that was right two minutes ago with "we could not read
+your league" is worse than showing it. The window still bounds the retry.
+
+**How fresh "live" actually is, stated rather than implied.** ESPN's status
+is at most one snapshot window old: about two minutes, plus the tick.
+Sleeper's is bounded by its own edge cache on the projection file as well
+— up to ten minutes — so a Sleeper designation can trail Sleeper's own app
+by that much. That is the platform's cache and not something this side can
+shorten without asking Sleeper for the file more often than it asks to be.
 
 ## A connected league's scoring, which Juke fetched and threw away
 

@@ -51,6 +51,7 @@
 
 import { normalise } from "./names.js";
 import { rulesFromEspn } from "./scoring.js";
+import { injuryCode } from "./status.js";
 import { lineupFromEspn, slotRank } from "./lineup.js";
 import { scheduleFromEspn } from "./matchups.js";
 import { feedFromEspn, playersInFeed, FEED_LIMIT } from "./transactions.js";
@@ -683,6 +684,14 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const projSeason = Number(league.seasonId || season) || null;
   const projected = {};
   let projectedCount = 0;
+  /* Each rostered player's status as ESPN reports it right now -- see
+     status.js for why the rooms stopped reading the nightly board for this.
+     `lineupLocked` is ESPN's own flag that a player's game has kicked off:
+     his slot can no longer be changed, so he is neither a swap nor a
+     "might not play" -- measured true on exactly the nine players from the
+     one game already played in week 1. A missing `injuryStatus` on a
+     player ESPN is carrying on a live roster is healthy, not unknown. */
+  const live = {};
 
   const teams = rawTeams.map((t) => {
     const entries = (t.roster && Array.isArray(t.roster.entries)) ? t.roster.entries : [];
@@ -702,6 +711,9 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       players.push(id);
       const pts = weekProjection(p, projSeason, week);
       if (pts !== null) { projected[id] = pts; projectedCount += 1; }
+      const pe = e.playerPoolEntry || {};
+      const inj = injuryCode(p.injuryStatus != null ? p.injuryStatus : e.injuryStatus);
+      live[id] = { inj: inj === null ? "" : inj, locked: pe.lineupLocked === true };
       /* 20 is ESPN's bench and 21 its IR. Anything else is a starting slot,
          which is how this stays right when a league adds a FLEX or a
          superflex — enumerating the slots that ARE starting would be a
@@ -760,6 +772,12 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          whose rosters carry no projection yet. */
       projections: week && projectedCount
         ? { week, source: "espn", points: projected }
+        : null,
+      /* Live injury designation and lineup lock per rostered player, stamped
+         with when it was read so a screen can say how fresh it is. See
+         status.js. */
+      status: Object.keys(live).length
+        ? { week, source: "espn", at: Date.now(), players: live }
         : null,
       /* ESPN's acquisition budget is FAAB where the league uses it, and 0
          (not null) where it does not — so the same falsy check the rest of

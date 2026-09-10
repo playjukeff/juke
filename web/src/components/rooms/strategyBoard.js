@@ -211,6 +211,40 @@ function benched(player, week) {
   return injurySeverity(player.inj) === 'out'
 }
 
+/* The board's players with each rostered player's LIVE status laid over
+ * the nightly one.
+ *
+ * `inj` on a board row is whatever the 11:00 UTC pipeline read, so a player
+ * ruled out at Sunday's inactives -- or hurt in a Thursday game -- was not
+ * out in this room until the next morning. The snapshot now carries the
+ * league's own platform's designation for every rostered player, read when
+ * the snapshot was (worker/status.js), and whether his game has kicked off.
+ * Reported 10 September 2026 as TreVeyon Henderson and A.J. Brown sitting
+ * under "Might not play" the morning after the game they had already missed.
+ *
+ * A COPY, never a mutation: the board's rows are the Draft Room's rows too,
+ * and a live "O" written onto one would follow the player into a mock draft.
+ * `inj` is replaced only where the platform said something it could read
+ * (an empty string is "healthy" and does replace a stale "O"); `locked` is
+ * new and means his game has started, so his slot can no longer be changed.
+ *
+ * A status stamped for another week is not an answer about this one. */
+export function withLiveStatus(byId, status, week) {
+  const players = status && status.players
+  if (!byId || !players || typeof players !== 'object') return byId
+  if (week && status.week && Number(status.week) !== Number(week)) return byId
+  const out = new Map(byId)
+  for (const id of Object.keys(players)) {
+    const live = players[id]
+    const player = byId.get(String(id))
+    if (!player || !live) continue
+    const next = { ...player, locked: live.locked === true }
+    if (typeof live.inj === 'string') next.inj = live.inj
+    out.set(String(id), next)
+  }
+  return out
+}
+
 /* What one swap would add.
  *
  * ---- Same position only, and that is a correctness constraint ----
@@ -233,8 +267,13 @@ export function swaps(team, byId, weekPts, week) {
   const bench = benchRows(team, byId, weekPts).filter((r) => r.projPts !== null)
   const out = []
   for (const sit of starters) {
+    /* A starter whose game has kicked off cannot be taken out, and a bench
+       player whose game has cannot be put in -- the platform locks both
+       slots. Offering either is a call the reader cannot make. */
+    if (sit.player.locked) continue
     for (const start of bench) {
       if (start.player.pos !== sit.player.pos) continue
+      if (start.player.locked) continue
       /* Never recommend somebody who will not be on the field.
          Found by driving the room: it offered Ja'Marr Chase over Jordan
          Addison in week 6, and Chase was on bye. A start/sit call for a
@@ -320,6 +359,11 @@ export function injuryWatch(team, byId, week) {
     const key = String(id)
     const player = byId ? byId.get(key) : null
     if (!player) continue
+    /* His game has started: he played or he did not, and either way there
+       is no decision left in it. This is the half of the report that the
+       live designation alone would not have fixed -- both players were
+       correctly OUT and still had no business on the list. */
+    if (player.locked) continue
     const severity = injurySeverity(player.inj)
     const onBye = !!week && Number(player.bye) === Number(week)
     if (!severity && !onBye) continue

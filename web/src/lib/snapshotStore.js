@@ -105,6 +105,21 @@ function now() {
   return Date.now()
 }
 
+/* A failed ask, settled -- unless it was a REFRESH of an answer already on
+   screen, which keeps that answer.
+
+   Rooms re-ask every window while they are visible now (useLeagueSnapshot),
+   because a lineup, an injury and a kickoff all change during a Sunday. A
+   refresh that fails is then the ordinary case rather than a rare one, and
+   settling it to "error" would replace a room that was right two minutes
+   ago with "we could not read your league". The answer two minutes old is
+   the better thing to show, and the window still bounds the retry. */
+function failed(key, reason) {
+  fetchedAt = now()
+  if (state.key === key && state.status === 'ready' && state.snapshot) return
+  settle(key, 'error', null, reason)
+}
+
 /* Ask for a league's snapshot. Answers immediately and settles later, and
    is safe to call as often as anything likes — which is the whole point,
    because it is called from an effect in every component that draws off a
@@ -164,22 +179,24 @@ export function requestSnapshot(leagueId, provider) {
              air", which would otherwise write one league's rosters under
              another's name. */
           if (!isCurrent() || state.key !== key) return
-          fetchedAt = now()
           if (!res.ok) {
-            settle(key, 'error', null, res.reason || 'offline')
+            failed(key, res.reason || 'offline')
             return
           }
-          settle(key, res.snapshot ? 'ready' : 'error', res.snapshot, res.snapshot ? null : 'bad-response')
+          if (!res.snapshot) {
+            failed(key, 'bad-response')
+            return
+          }
+          fetchedAt = now()
+          settle(key, 'ready', res.snapshot, null)
         })
         .catch(() => {
           if (!isCurrent() || state.key !== key) return
-          fetchedAt = now()
-          settle(key, 'error', null, 'offline')
+          failed(key, 'offline')
         }),
     () => {
       if (state.key !== key) return
-      fetchedAt = now()
-      settle(key, 'error', null, 'timeout')
+      failed(key, 'timeout')
     }
   )
 }

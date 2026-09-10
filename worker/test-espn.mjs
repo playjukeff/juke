@@ -539,6 +539,41 @@ await withFetch(200, LEAGUE, async () => {
         snapshot.projections, null);
 });
 
+console.log("\n--- each rostered player's live status ---");
+/* ESPN's own words on a roster entry, read on 10 September 2026 the
+   morning after the opener: `injuryStatus` in its vocabulary, and
+   `lineupLocked` true on exactly the nine players whose game had been
+   played. The rooms read these instead of the nightly board. */
+{
+  const LIVE = JSON.parse(JSON.stringify(LEAGUE));
+  LIVE.scoringPeriodId = 1;
+  const entries = LIVE.teams.flatMap((t) => t.roster.entries);
+  const set = (i, status, locked) => {
+    if (status !== undefined) entries[i].playerPoolEntry.player.injuryStatus = status;
+    if (locked !== undefined) entries[i].playerPoolEntry.lineupLocked = locked;
+  };
+  set(0, "QUESTIONABLE", false);
+  set(1, "ACTIVE", true);
+  set(2, "INJURY_RESERVE");
+  set(3, "OUT", true);
+  set(4, "DAY_TO_DAY");
+  await withFetch(200, LIVE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    const st = snapshot.status;
+    check("the snapshot carries it, stamped with the week and ESPN's name",
+          [st && st.week, st && st.source, typeof (st && st.at)], [1, "espn", "number"]);
+    check("in the pipeline's codes, keyed by Sleeper id",
+          [st.players["11628"], st.players.HOU, st.players["5555"], st.players["6666"], st.players["4881"]],
+          [{ inj: "Q", locked: false }, { inj: "", locked: true }, { inj: "IR", locked: false },
+           { inj: "O", locked: true }, { inj: "Q", locked: false }]);
+  });
+  await withFetch(200, LEAGUE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("a player ESPN carries with no designation is healthy, not unknown",
+          snapshot.status && snapshot.status.players["11628"], { inj: "", locked: false });
+  });
+}
+
 console.log("\n--- normalise agrees with build_players.py ---");
 [
   ["Marvin Harrison Jr.", "marvinharrison"],

@@ -107,6 +107,16 @@ jobs:
       - name: Sleeper parse and join
         run: node worker/test-sleeper.mjs
 
+      # ESPN's half of the same job, and the one vocabulary both adapters
+      # translate a player's live injury status into. The second reads
+      # build_players.py's own table and fails on any drift, because the
+      # rooms read a live code and a nightly one through the same functions
+      # and a code only one side knows is a player silently not flagged.
+      - name: ESPN parse and join
+        run: node worker/test-espn.mjs
+      - name: Live injury vocabulary
+        run: node worker/test-status.mjs
+
       # The connected-league state machine. It is here rather than in the
       # browser suite for a reason that is not speed: every surface that can
       # show its failure sits inside Clerk's <SignedIn>, and a build with no

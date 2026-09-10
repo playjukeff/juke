@@ -27,7 +27,9 @@
    which is why every case is awaited rather than caught. */
 
 import { createServer } from "node:http";
-import { lookupUser, leagueSnapshot, nflState, SLEEPER_API } from "./sleeper.js";
+import {
+  lookupUser, leagueSnapshot, nflState, SLEEPER_API, sleeperLinePoints, projectionPath,
+} from "./sleeper.js";
 
 let pass = 0;
 const failures = [];
@@ -370,6 +372,112 @@ ROUTES = healthy();
            .every((p) => p.includes("a%2F..%2Fstate%2Fnfl")),
     ASKED,
   );
+}
+
+/* ---------- the league's own projection, and the week's live status ----------
+
+   Measured against a real league before any of this was written: Sleeper's
+   matchup screen prints a starter's projection as his weekly projected line
+   times the league's scoring_settings, key for key, and nine starters summed
+   that way came to 125.47 -- the number on Sleeper's own screen. So the
+   arithmetic is pinned here on hand-computable lines. */
+
+{
+  const SCORING = { rec: 1, rec_yd: 0.1, rec_td: 6, bonus_rec_wr: 0.5, pass_yd: 0.04 };
+  eq("a line is its stats times the league's own rates",
+    sleeperLinePoints({ rec: 5, rec_yd: 60, rec_td: 0.5 }, SCORING), 14);
+  eq("including a rule Juke has no name for",
+    sleeperLinePoints({ rec: 4, bonus_rec_wr: 4 }, SCORING), 6);
+  eq("and ignoring what the league does not score",
+    sleeperLinePoints({ rec: 1, pts_ppr: 20, adp_dd_ppr: 12 }, SCORING), 1);
+  eq("a row with nothing scoreable in it is zero, the platform's own answer",
+    sleeperLinePoints({ adp_dd_ppr: 1000 }, SCORING), 0);
+  eq("no stats at all is not an answer", sleeperLinePoints(null, SCORING), null);
+  eq("four decimals, not two",
+    sleeperLinePoints({ pass_yd: 263.37 }, SCORING), 10.5348);
+}
+
+{
+  const SCORING = { rec: 1, rec_yd: 0.1, pass_yd: 0.04, pass_td: 4 };
+  const league = { ...LEAGUE, scoring_settings: SCORING };
+  const FEED = [
+    // Rostered, questionable, his club's game not yet started.
+    { player_id: "4046", team: "KC", stats: { pass_yd: 250, pass_td: 2 },
+      player: { injury_status: "Questionable", team: "KC" } },
+    // Rostered, ruled out, and his club's game is already under way.
+    { player_id: "6794", team: "MIN", stats: { adp_dd_ppr: 999 },
+      player: { injury_status: "Out", team: "MIN" } },
+    // Not on any roster in this league: must not ride on the snapshot.
+    { player_id: "9999", team: "DET", stats: { rec: 9 },
+      player: { injury_status: null, team: "DET" } },
+  ];
+  const SCHEDULE = [
+    { week: 3, status: "pre_game", home: "KC", away: "LV" },
+    { week: 3, status: "in_game", home: "MIN", away: "GB" },
+    // A finished game in ANOTHER week locks nobody this week.
+    { week: 2, status: "complete", home: "KC", away: "DEN" },
+  ];
+  const routes = () => ({
+    ...healthy(),
+    "/v1/league/111222333444555666": { body: league },
+    [projectionPath("2026", 3)]: { body: FEED },
+    "/schedule/nfl/regular/2026": { body: SCHEDULE },
+  });
+
+  ROUTES = routes();
+  ASKED = [];
+  const s = await leagueSnapshot("111222333444555666", BASE);
+  ok("the projection file is asked for this week, regular season, off /v1",
+    ASKED.some((p) => p.startsWith("/projections/nfl/2026/3?season_type=regular")), ASKED);
+  eq("the league's own projection, stamped with its week",
+    { week: s.projections.week, source: s.projections.source }, { week: 3, source: "sleeper" });
+  eq("a rostered player scores his line under the league's table", s.projections.points["4046"], 18);
+  eq("a ruled-out player's empty line is zero, not missing", s.projections.points["6794"], 0);
+  ok("a player on nobody's roster does not ride along", !("9999" in s.projections.points));
+
+  eq("status carries Sleeper's designation in the pipeline's codes",
+    s.status.players["4046"], { locked: false, inj: "Q" });
+  eq("and a game under way locks its players", s.status.players["6794"], { locked: true, inj: "O" });
+  ok("status is stamped with when it was read", typeof s.status.at === "number" && s.status.week === 3);
+
+  // A healthy player is "" -- a real answer -- and an unreadable word leaves
+  // the board's value alone rather than pretending to know.
+  ROUTES = { ...routes(), [projectionPath("2026", 3)]: { body: [
+    { player_id: "4046", team: "KC", stats: { pass_yd: 250 }, player: { injury_status: null } },
+    { player_id: "6794", team: "MIN", stats: { rec: 3 }, player: { injury_status: "NA" } },
+  ] } };
+  const h = await leagueSnapshot("111222333444555666", BASE);
+  eq("no designation on a row Sleeper sent is healthy", h.status.players["4046"], { locked: false, inj: "" });
+  eq("a designation the vocabulary cannot read is left out", h.status.players["6794"], { locked: true });
+
+  // A file served before Sleeper has filled the week in: rows with nothing
+  // scoreable, for everybody. Zero for the whole lineup is not an answer.
+  ROUTES = { ...routes(), [projectionPath("2026", 3)]: { body: [
+    { player_id: "4046", stats: { adp_dd_ppr: 1 }, player: {} },
+  ] } };
+  const empty = await leagueSnapshot("111222333444555666", BASE);
+  eq("a week with no projected line at all publishes no projection", empty.projections, null);
+  ok("but the status it did read still rides", !!empty.status);
+
+  // Either feed failing is a value like everything else in this file.
+  ROUTES = { ...routes(), [projectionPath("2026", 3)]: { status: 500, body: "" } };
+  const down = await leagueSnapshot("111222333444555666", BASE);
+  ok("an unreachable projection file still answers the league", !!down && down.name === "Juke Fantasy Football");
+  eq("with no projection", down.projections, null);
+  eq("and no status", down.status, null);
+
+  ROUTES = { ...routes(), "/schedule/nfl/regular/2026": { status: 500, body: "" } };
+  const noSched = await leagueSnapshot("111222333444555666", BASE);
+  eq("no schedule locks nobody, and the designations still ride",
+    noSched.status.players["6794"], { locked: false, inj: "O" });
+
+  // Outside the regular season there is no regular-season week to project.
+  ROUTES = { ...routes(), "/v1/state/nfl": { body: { ...STATE, season_type: "pre" } } };
+  ASKED = [];
+  const pre = await leagueSnapshot("111222333444555666", BASE);
+  ok("a preseason week does not ask for a projection",
+    !ASKED.some((p) => p.startsWith("/projections/")), ASKED);
+  eq("and publishes none", pre.projections, null);
 }
 
 /* ---------- the seam itself ---------- */

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useEngine, useJukeTick } from './useJukeEngine.js'
 import { useLeague, useLeagueSnapshot } from './useLeague.js'
 import { roomStakes } from '../components/shell/roomStakes.js'
-import { leagueWeekPts } from '../components/rooms/strategyBoard.js'
+import { leagueWeekPts, withLiveStatus } from '../components/rooms/strategyBoard.js'
 
 /* What each room has at stake, assembled for a caller outside any room.
  *
@@ -55,7 +55,7 @@ export function useRoomStakes() {
      mutated in place and never replaced, so a dep on it never fires. What
      moves exactly once is its length, 0 to several hundred, the moment the
      deferred data lands. */
-  const byId = useMemo(
+  const boardById = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [board.length]
@@ -72,6 +72,14 @@ export function useRoomStakes() {
   const weekPts = useMemo(() => leagueWeekPts(engine, snapshot), [engine, snapshot])
 
   const week = snapshot ? snapshot.week : null
+
+  /* The same live status the Strategy Room lays over the board, so a tile's
+     "+X this week" never offers a swap the room itself refuses because one
+     of the two players' games has already kicked off. */
+  const byId = useMemo(
+    () => withLiveStatus(boardById, snapshot && snapshot.status, week),
+    [boardById, snapshot, week]
+  )
 
   return useMemo(
     () => roomStakes({ snapshot, league, byId, gapOf, weekPts, week }),

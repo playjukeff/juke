@@ -296,6 +296,43 @@ await (async () => {
   });
 })();
 
+/* ---- a refresh that fails keeps the answer on screen ----------------
+
+   Rooms re-ask every window while visible now, so a failed refresh is the
+   ordinary case. Settling it to "error" would swap a room that was right
+   two minutes ago for "we could not read your league". */
+
+await (async () => {
+  reset();
+  store.requestSnapshot("777", "espn");
+  await settleQueue();
+  const first = store.snapshotState().snapshot;
+  clock += store.SNAPSHOT_TTL_MS + 1;
+  answer = { ok: false, reason: "offline" };
+  store.requestSnapshot("777", "espn");
+  await settleQueue();
+  check("a refresh is asked for once the window has passed", () => {
+    assert.equal(calls.length, 2);
+  });
+  check("and when it fails the answer already drawn stays", () => {
+    const s = store.snapshotState();
+    assert.equal(s.status, "ready");
+    assert.equal(s.snapshot, first);
+  });
+  store.requestSnapshot("777", "espn");
+  await settleQueue();
+  check("and the failed refresh is bounded by the window like any other ask", () => {
+    assert.equal(calls.length, 2);
+  });
+  clock += store.SNAPSHOT_TTL_MS + 1;
+  answer = { ok: true, snapshot: { week: 4, teams: [] } };
+  store.requestSnapshot("777", "espn");
+  await settleQueue();
+  check("the next good answer replaces it", () => {
+    assert.equal(store.snapshotState().snapshot.week, 4);
+  });
+})();
+
 globalThis.Date.now = realNow;
 
 console.log(note.join("\n"));

@@ -14,7 +14,7 @@ import path from "node:path";
 
 const {
   lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
-  platformScorer, leagueWeekPts, projectionSource,
+  platformScorer, leagueWeekPts, projectionSource, withLiveStatus,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
 let failures = 0;
@@ -345,6 +345,60 @@ check("projectionSource says whose numbers a lineup carries", () => {
   assert.equal(projectionSource(rows, { week: 1, points: { a: 1 } }, 1), "some");
   assert.equal(projectionSource(rows, { week: 2, points: { a: 1, b: 2 } }, 1), "none");
   assert.equal(projectionSource(rows, null, 1), "none");
+});
+
+/* ---------- the league's live status over the nightly board ----------
+
+   Reported 10 September 2026: TreVeyon Henderson and A.J. Brown under
+   "Might not play" the morning after the game both had already missed. Two
+   separate facts were wrong -- the designation was a day old, and a player
+   whose game has kicked off has no decision left in him at all -- and each
+   is asserted on its own, so a fix for one cannot pass as a fix for both. */
+
+check("the live designation replaces the nightly one, on a copy", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { s2: { inj: "O", locked: false } } }, 6);
+  assert.equal(live.get("s2").inj, "O");
+  assert.equal(byId.get("s2").inj, "", "the board row itself is untouched -- it is the Draft Room's too");
+  assert.equal(live.get("s1"), byId.get("s1"), "a player the platform said nothing about is the board's");
+});
+
+check("a live 'healthy' clears a stale 'out'", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { out1: { inj: "", locked: false } } }, 6);
+  assert.equal(live.get("out1").inj, "");
+});
+
+check("a designation the platform could not read leaves the board's alone", () => {
+  const live = withLiveStatus(byId, { week: 6, players: { h1: { locked: true } } }, 6);
+  assert.equal(live.get("h1").inj, "Q");
+  assert.equal(live.get("h1").locked, true);
+});
+
+check("a status stamped for another week is not about this one", () => {
+  const status = { week: 5, players: { s2: { inj: "O", locked: true } } };
+  assert.equal(withLiveStatus(byId, status, 6), byId);
+  assert.equal(withLiveStatus(byId, null, 6), byId);
+});
+
+check("a player whose game has kicked off is not 'might not play'", () => {
+  const status = { week: 6, players: {
+    h2: { inj: "O", locked: true },   // ruled out, game over: nothing to decide
+    b1: { inj: "O", locked: false },  // ruled out, game still to come: the list's whole job
+  } };
+  const ids = injuryWatch(TEAM, withLiveStatus(byId, status, 6), 6).map((r) => r.player.id);
+  assert.ok(!ids.includes("h2"), "locked players leave the list: " + ids);
+  assert.ok(ids.includes("b1"), "a fresh live 'out' joins it: " + ids);
+});
+
+check("a swap never involves a locked player, on either side", () => {
+  // b1 beats the starting RB s2 on the board; lock each side in turn.
+  const free = bestSwaps(TEAM, byId, weekPts, 6).map((x) => x.start.id + ">" + x.sit.id);
+  assert.ok(free.includes("b1>s2"), "the control: b1 over s2 is offered unlocked " + free);
+  const benchLocked = withLiveStatus(byId, { week: 6, players: { b1: { locked: true } } }, 6);
+  const a = bestSwaps(TEAM, benchLocked, weekPts, 6).map((x) => x.start.id);
+  assert.ok(!a.includes("b1"), "a bench player whose game started cannot come in: " + a);
+  const starterLocked = withLiveStatus(byId, { week: 6, players: { s2: { locked: true } } }, 6);
+  const b = bestSwaps(TEAM, starterLocked, weekPts, 6).map((x) => x.sit.id);
+  assert.ok(!b.includes("s2"), "a starter whose game started cannot go out: " + b);
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the strategy board");
