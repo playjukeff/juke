@@ -119,7 +119,8 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   const engine = useEngine()
   useJukeTick(engine)
 
-  const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
+  const boardReady = !!(engine && engine.dataReady && engine.dataReady())
+  const board = boardReady ? engine.board() : []
 
   const byId = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
@@ -220,9 +221,28 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
      `weeklyCV()` walks every stored weekly log on the board and is memoised
      in app.js for it (19.3ms a call, measured); the memo here is so a
      re-render does not re-key it. */
+  /* `boardReady` in the deps, and without it this memo answered null for
+     the life of every cold load of this room.
+
+     `useEngine()` returns `window.JukeEngine` itself, so `engine` is one
+     object that never changes identity, and `weeklyCV` is guarded on
+     `dataReady()` -- it answers null until the deferred `stats.js` lands.
+     Keyed on `[engine, leagueRules]` the memo therefore computed null on
+     the first render and had nothing left that could ever invalidate it.
+
+     And this room mounts before the board every time: RoomPage fetches the
+     snapshot on the render the league id arrives on, which CLAUDE.md
+     already records as routinely earlier than `players.js`. So the win
+     probability this file exists to draw fell back to BEST ON THE BENCH on
+     every cold load, and appeared only if the reader happened to navigate
+     away and back. Measured exactly that way -- first mount BENCH,
+     remounted WIN PROB -- which is what named the cause rather than the
+     symptom.
+
+     The same shape as `byId` keying on `board.length` above it. */
   const cv = useMemo(
     () => (engine && engine.weeklyCV ? engine.weeklyCV(leagueRules) : null),
-    [engine, leagueRules]
+    [engine, leagueRules, boardReady]
   )
   const oppLineup = useMemo(
     () => (opponent ? lineupRows(opponent, byId, weekPts) : []),

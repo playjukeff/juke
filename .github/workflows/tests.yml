@@ -277,3 +277,22 @@ jobs:
       # unreachable worker must not be asked once per navigation).
       - name: The shared snapshot store
         run: node scripts/test_snapshot_state.mjs
+
+      # Where a season ends up — the last entry on the decision guide's own
+      # blocked list, and the only one that was genuinely blocked rather than
+      # merely never re-measured.
+      #
+      # It lifts the SHIPPED normalCdf() and winRateAgainst() straight out of
+      # app.js by brace walk rather than restating the formula, so the first
+      # assertion in the file is the one that matters: simulate one matchup
+      # ten thousand times and the empirical win rate has to match what the
+      # analytic model already says in closed form. A second normal-difference
+      # approximation in web/src is exactly the drift winRateAgainst() was
+      # split out to prevent.
+      #
+      # Six mutations confirmed red: a uniform draw instead of a normal, the
+      # record so far ignored, ranking on wins alone, an unprojectable roster
+      # dropped rather than refusing the table, Math.random() instead of the
+      # seed, and the bracket reconciliation removed.
+      - name: Where a season ends up
+        run: node scripts/test_season_sim.mjs

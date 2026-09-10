@@ -6288,15 +6288,21 @@ available place in the product to put a guess.
 
   What a margin was missing is not the opponent, it is the SPREAD. See "The
   week's win probability" below.
-- **05's win-% and bye odds. Still absent, and it is a different
-  quantity from the one above.** 08 asks who wins THIS week, which is one
-  normal difference between two lineups that both exist. 05 asks where a
-  team finishes, which is a joint distribution over every remaining week and
-  every other team's schedule — a season simulator, which this project does
-  not have and which `insightsReport()` already refuses to pretend to
-  ("there is no simulator"). Summing the per-week probabilities would give
-  expected remaining wins exactly and would say nothing about a seed or a
-  bye, which is what the screen asks for.
+- **~~05's win-% and bye odds~~ — the only entry on this list that was
+  genuinely blocked, and it is built.** Everything the sentence below said
+  was true: 08 asks who wins THIS week, which is one normal difference
+  between two lineups that both exist, and 05 asks where a team FINISHES,
+  which is a joint distribution over every remaining week and every other
+  team's schedule. Summing the per-week probabilities gives expected
+  remaining wins exactly and says nothing about a seed or a bye.
+
+  So it needed a season simulator, and `web/src/lib/seasonSim.js` is one —
+  the **generative form of the model 08 already reads** rather than a rival
+  to it, which is what keeps `insightsReport()`'s "there is no simulator"
+  from becoming two answers to one question. See "Where a season ends up"
+  below. **Title odds are still not built and should not be**: a bracket
+  needs reseeding rules and a championship shape neither adapter
+  publishes.
 - **14's "one bar per missed offer", which is the half that IS blocked.**
   Nothing records a trade offer. Neither adapter reports a pending one — both
   would need write-scoped auth this project deliberately does not hold — and
@@ -6921,6 +6927,195 @@ of destinations, and putting a value on two of its seven rows is not what the
 guide asks for. **It is no longer expensive, merely undecided**, and saying
 which is the difference between a constraint and a habit.
 
+### Where a season ends up, and the model it is already made of
+
+Screen 05's playoff and bye odds — the last entry on the guide, and the
+only one of the whole twenty that was blocked on something this project
+genuinely did not have. Five of the others fell to somebody re-reading a
+sentence; this one needed a simulator, and `web/src/lib/seasonSim.js` is
+it.
+
+**It is not a second model, and that is the design rather than a caveat.**
+`teamWeek()` already turns a lineup into a mean and a standard deviation
+and `winRateAgainst()` already answers one matchup in closed form. The
+simulation draws each side's score from its own normal and compares them,
+so **the marginal probability of any single matchup is exactly the
+analytic one** — the generative form of the shipped model rather than a
+rival to it. A second normal-difference approximation living in `web/src`
+is precisely the drift `winRateAgainst()` was split out of
+`projectedWinPctForRoom()` to prevent, and this is the one shape that
+cannot drift from the original, because it IS the original, sampled.
+
+That is an invariant rather than an intention, so it is the first
+assertion in the file: simulate one matchup ten thousand times and the
+empirical rate has to match what the model states in closed form.
+`scripts/test_season_sim.mjs` **lifts the shipped `normalCdf()` and
+`winRateAgainst()` straight out of `app.js` by brace walk** rather than
+restating the formula — a copy in the test would agree with itself while
+the product was wrong.
+
+**Drawing scores rather than flipping the analytic coin buys the thing a
+Bernoulli draw cannot: points for**, which is the standings' own tiebreak.
+Seeding is wins then points for (`standings.js`), so a simulation that
+tracked only wins could not seed the table it is simulating.
+
+**`SIMS = 10000`, derived.** The standard error of a proportion is worst
+at p = 0.5, so ten thousand puts it at **0.5 points** — half a point on a
+figure printed as a whole one. A thousand would put it at 1.6, which is
+visible jitter on a number a reader checks weekly; a hundred thousand buys
+0.16 for ten times the work. Measured at **74ms** for a ten-team league,
+which is nothing once and a stutter on every tick, so the screen memoises
+it.
+
+**Seeded, and that is not a detail.** A reader who reloads must not see
+61% become 58%. The sampling noise is real and `SIMS` is what bounds it,
+but it may not be VISIBLE — a number that moves when nothing happened is a
+number nobody can act on, which is the argument `PAR_SEEDS` already makes
+about the draft grade. `seedFor(leagueId, week)` is derived from the
+league rather than handed in, so two components asking the same question
+get the same answer, and it moves WITH the week: the odds genuinely change
+when a game is played, and pinning the seed across weeks would only hide
+that they had.
+
+**The second Box–Muller draw is thrown away rather than cached.** A cache
+makes the stream's state depend on how many draws a caller has taken, so
+adding a team to a league would change every other team's numbers —
+reproducible for the wrong reason, which is the "a variance of exactly
+zero means the samples are the same sample" hazard from the other end.
+
+### The bye is derived, and refused when it cannot be checked
+
+Neither adapter reports a bye count. It IS derivable — every platform here
+runs a single-elimination bracket, so `2^ceil(log2(P))` seats means
+`bracket - P` byes — and a derivation is only worth printing if it can be
+CHECKED. So it is: a bracket of `2^k` seats takes exactly `k` weeks to
+play, and the schedule says how many playoff weeks there are. When the two
+disagree — a two-week championship, a consolation round counted as playoff
+weeks — **the bye number is refused and the playoff odds beside it are
+unaffected**. Refusing the half that cannot be established rather than the
+whole answer is the same call `waiver` already makes about a budget on an
+order league.
+
+**One unprojectable roster refuses the whole table.** A team Juke cannot
+price is not a team that can be left out: every other team plays it, so its
+absence would silently make somebody's schedule easier. The odds are a
+JOINT distribution and a partial one is not a smaller version of it, it is
+a different and wrong one — and it fails plausibly, because a nine-team
+simulation of a ten-team league produces percentages that add up.
+
+**Title odds are deliberately absent**, and this is the line to read before
+building them: simulating the bracket needs reseeding rules and the shape
+of a championship week neither adapter publishes. Playoff and bye odds are
+decided entirely by the regular season, which IS published in full.
+
+### The card displaces the standing, and the note carries what it displaced
+
+The strip is four cards and `KpiStrip`'s own header says so, so the
+question was which one loses. **The standing is the only card on it a
+reader can already get two inches lower down** — the table draws a rank
+column and highlights their own row — so it has the least to lose, and it
+loses nothing: the rank moves into this card's note, where it reads as the
+thing the percentage is measured FROM. Same call the Strategy Room's own
+strip makes when a matchup exists, and it falls back to the standing on
+every league that cannot answer (Sleeper publishes no schedule at all).
+
+**The bye rides in that note rather than taking a fifth card.** It is a
+BETTER playoff outcome rather than a separate one, so it qualifies the
+number the way a delta qualifies a value.
+
+**`evidence`, never gain or cost.** A probability is a quantity with no
+direction in it — 61% is not a gain of anything — which is the same call
+the Strategy Room's even-matchup band makes and the same one `signOf()`
+makes about zero.
+
+**A whole percent and never a decimal place.** `SIMS` puts the standard
+error at half a point, so a tenth is a digit the simulation cannot support
+— a figure sharper than the thing behind it is this file's own standing
+complaint about the Juke score. 0 and 100 are real answers rather than
+rounding: a season with nothing left to play has already decided every
+seat.
+
+**And the note is the framing this number may not be shown without.** A
+percentage on a card is read as a fact about the season; it is a fact about
+the PROJECTIONS. "10,000 seasons from today's projections" says both what
+was done and what it was done to, which is the demand
+`projectedWinPctForRoom()`'s own method note already makes of the same
+family of model.
+
+### A memo keyed on `engine` can never see the board arrive
+
+The defect that made this whole feature draw nothing — and the same one was
+already shipped in the Strategy Room.
+
+`useEngine()` hands back `window.JukeEngine` **itself**, so `engine` is one
+object whose identity never changes for the life of the page. And every
+bridge entry that reads board data is guarded on `dataReady()` —
+`weeklyCV` answers **null** until the deferred `stats.js` lands, which is
+exactly the guard this file demanded of it. Put those together and
+
+```js
+const cv = useMemo(() => engine.weeklyCV(rules), [engine, rules])
+```
+
+computes null on the first render and **has nothing left that can ever
+invalidate it**. Not a race: a permanent answer, chosen before the data
+existed.
+
+**And these screens mount before the board every time.** `RoomPage` fetches
+the snapshot on the render the league id arrives on, which this file
+already records as routinely earlier than `players.js`. So it is not an
+edge case, it is the only path in.
+
+**Measured, and the measurement is what named the cause rather than the
+symptom.** The Strategy Room's win-probability card — screen 08, shipped
+and written up as done — read **BEST ON THE BENCH on a cold load and WIN
+PROBABILITY after navigating away and back**, on the same league in the
+same session. A remount is the one thing that gives a `useMemo` new deps,
+so "first mount BENCH, remounted WIN PROB" is not a symptom, it is the
+diagnosis.
+
+`boardReady` goes in the deps — a boolean that flips false to true exactly
+once. `CollegeBoard.jsx` had already reached the same answer by writing
+`engine.dataReady()` inline as a dep, which is the precedent; `byId`
+keying on `board.length` two lines above is the same idiom for the same
+reason.
+
+**Both callers were fixed and the rest were counted rather than assumed.**
+Grepping `web/src` for `[engine]` and `[engine, ` returns twenty-odd
+memos, and the others are safe for a reason worth knowing: a `weekPts`
+memo returns a FUNCTION reference and reads the board when the function is
+called rather than when the memo runs, and `useRoomStakes`'s final memo
+depends on `byId`, which does key on `board.length`. **A memo over a
+bridge entry is only stale if it captures a VALUE.**
+
+### An early return is a wall no hook may sit behind, in a file that had one
+
+Found while adding hooks to `StandingsPanel`, and it predates this change:
+its `useState` sat **under** three early returns, so a mount at
+`status: 'loading'` called no hooks and the render after the snapshot
+landed called one. `MyLeagueScreen` does not gate on `snapStatus` — it
+hands it straight through — so that transition is the ordinary way this
+screen opens rather than an edge case.
+
+Every hook in that component is in front of the returns now. Same rule
+`DraftLocker`'s own effect already records; what is new is that the wall
+can be a *status prop* rather than a missing engine, which is the shape
+that made it survive.
+
+### And the served bundle was somebody else's, for the fourth time
+
+`bar-rows.spec.mjs` came back two-red on a change that could not have
+touched it, naming a Waiver label truncated at both widths. The served
+`index-U0dqlbGq.js` against a worktree that had just built
+`index-DI6ho1-j.js`: another checkout's static server on 8765, adopted by
+`reuseExistingServer`.
+
+Nothing was killed — the port is shared and somebody else's run is not
+replaceable. A second server on 8877 with an **absolute** `--directory`
+and `JUKE_SITE` pointed at it took the same three specs to **19 passed**.
+The check is one line and has now paid for itself four times, every one of
+them before the first measurement rather than after the eighth.
+
 ### What is done, and what the twenty-screen guide still has open
 
 Shipped: the tokens, the face, the five primitives (`KpiStrip`, `Bar`/
@@ -6959,11 +7154,16 @@ see "The week's win probability" below.
 source — and the architecture question it WAS blocked on is answered by
 `snapshotStore.js`: see "One snapshot, however many components ask" below.
 
-Open: the half of **05** named above, and nothing else. That is the whole
-of the twenty-screen guide except a season win-% which needs a simulator
-this project does not have and should not fake.
-**05's own half is genuinely blocked** and is the only entry left in this
-section that is: a season win-% needs a simulator.
+**05 finishes it, and the guide is closed.** Its playoff and bye odds were
+the last entry open and the only one on the whole list that was blocked on
+something this project genuinely did not have. It has it now — see "Where a
+season ends up" below — and the twenty screens are done.
+
+**Open: nothing on the guide.** What is deliberately NOT built is named in
+the entries above rather than left as a gap: a net-points column and a
+per-decision verdict, both of which arrive with the grader; a missed-offer
+bar, which no feed here can see; and title odds, which need a bracket
+shape neither adapter publishes.
 
 **Re-measure before re-asserting.** Five of the blockers in this section
 have now been falsified — two by work landing in parallel, **three by
