@@ -158,6 +158,27 @@ export function roomIsOpen(room, leagueStatus) {
   return leagueStatus === 'connected' && !!LIVE_ROOMS[room.slug]
 }
 
+/* WHY a room is shut, for the surfaces that have to tell somebody.
+
+   `roomIsOpen()` answers whether, and a padlock with no stated condition
+   is the question a reader is left holding — the homepage strip drew three
+   of them and said nothing anywhere about what opens them.
+
+   Two answers, and they are genuinely different promises: 'league' is a
+   door the reader can open right now, 'building' is one nobody can. A
+   surface that collapses them into "locked" either overpromises or
+   undersells, and which one it does changes per room as rooms ship.
+
+   A function beside roomIsOpen() rather than an exported list, for that
+   function's own recorded reason: three call sites ask about this padlock,
+   and a list means every one of them learns about a new category
+   separately. Answers null when the room is open, so a caller can branch on
+   truthiness without knowing the vocabulary. */
+export function lockReason(room, leagueStatus) {
+  if (!room || roomIsOpen(room, leagueStatus)) return null
+  return LIVE_ROOMS[room.slug] ? 'league' : 'building'
+}
+
 export default function RoomPage({ slug }) {
   const rooms = useRooms()
   const { status, league } = useLeague()
@@ -357,7 +378,16 @@ export default function RoomPage({ slug }) {
                   ? preview.eyebrow
                   : `${room.season.toUpperCase()} · PREVIEW`)}
           </div>
-          <h1 className="m-0 font-display text-[30px] font-extrabold text-white sm:text-[40px]">
+          {/* uppercase italic, like every other H1 in the app.
+
+              RoomsLobby, YouScreen, DraftsScreen and the homepage all render
+              font-display extrabold uppercase italic; these four room routes
+              alone rendered upright sentence case, so "The Waiver Room" came
+              out in a different typographic voice from "THE ROOMS" one click
+              behind it. The display idiom is the brand's only distinctive
+              type asset, and dropping it on the routes a visitor reaches
+              SECOND means their second impression contradicts their first. */}
+          <h1 className="m-0 font-display text-[30px] font-extrabold uppercase italic text-white sm:text-[40px]">
             {room.name}
           </h1>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-voidInk-body">

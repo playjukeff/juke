@@ -44,17 +44,33 @@ export function useRailItems() {
        questions -- 'drafts I have run' and 'calls Juke made on my real
        roster'. */
     { key: 'history', label: 'History', glyph: '🗓', accent: '#00E5FF', href: '#/history' },
+    /* You, because above 1024px there was no way to reach it at all.
+
+       The phone pill has carried a You tab since it stopped being an
+       action sheet; the rail never gained the matching item, and
+       ShellHeader renders Log in / Sign up signed out and Clerk's own
+       UserButton signed in -- whose menu offers Manage account and Sign
+       out and nothing of Juke's. So #/you was reachable on a phone and
+       reachable by typing the URL, and by nothing else on a desktop, at
+       any auth state.
+
+       That screen holds the connected-league list and the product's ONLY
+       disconnect control. This project's fifth principle is that a
+       control which cannot act must not be offered; a screen nobody can
+       reach is the same failure with the whole surface inside it. */
+    { key: 'you', label: 'You', glyph: '👤', accent: '#8A9BAA', href: '#/you' },
   ]
 }
 
 /* Which rail key the current hash lights, or null before the first tick.
-   A room slug for any #/rooms/<slug>, 'my-league' and 'history' for their
-   own routes, null for everything else (the homepage, #/you) — the rail
+   A room slug for any #/rooms/<slug>, and 'my-league' / 'history' / 'you'
+   for their own routes. Null for everything else (the homepage) — the rail
    has no item for those and lighting none of them is correct. */
 function activeFromHash(hash) {
   if (hash.startsWith('#/my-league')) return 'my-league'
   if (hash.startsWith('#/rooms/')) return hash.slice('#/rooms/'.length).split(/[/?]/)[0]
   if (hash.startsWith('#/history')) return 'history'
+  if (hash.startsWith('#/you')) return 'you'
   /* The archive keeps lighting the same lamp. It is the rail's nearest
      item and the only one it could light -- an unlit rail on a screen
      the rail can reach reads as the nav having lost its place. */

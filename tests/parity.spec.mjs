@@ -115,13 +115,28 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
   expect(phone.text.length, "the phone rendered something").toBeGreaterThan(10);
   expect(desktop.text.length, "the desktop rendered something").toBeGreaterThan(20);
 
-  /* The two pages are genuinely different, and this asserts it rather than
-     leaving it implied. Without this line every check below would still
-     pass if the split silently stopped working and both widths rendered the
-     desktop page — which is the exact regression the hydration note in
-     Homepage.jsx is about, and it would look like a passing suite. */
-  expect(phone.text.length,
-    "the phone gets the launcher, not the marketing page").toBeLessThan(desktop.text.length);
+  /* This asserted `phone.text.length < desktop.text.length`, under the
+     heading "the phone gets the launcher, not the marketing page". That
+     premise is retired: design_handoff_v3_alive collapsed HomePhone and the
+     desktop marketing page into one responsive HomeAlive, and Homepage.jsx's
+     own comment records it — "One tree at every width now". The two widths
+     therefore carry the SAME content and differ only in which responsive
+     labels each layout needs: TrustStrip is `hidden sm:grid` and so
+     desktop-only, the proof section's per-cell side labels are `lg:hidden`
+     and so phone-only.
+
+     Which side has more of those is an accident, and it was a thin one —
+     the margin was two text nodes. It flipped the first time a section
+     below `lg` added labels of its own (phone 177, desktop 175), reporting
+     a copy regression on a page whose copy was identical at both widths.
+
+     What the line was protecting is still worth protecting: one width
+     rendering almost nothing while the other renders the page. That is a
+     ratio, not an ordering, and it does not care which way round the
+     responsive labels happen to fall. */
+  const ratio = Math.min(phone.text.length, desktop.text.length) /
+                Math.max(phone.text.length, desktop.text.length);
+  expect(ratio, "neither width renders a fraction of the other").toBeGreaterThan(0.6);
 
   for (const [name, page] of [["phone", phone], ["desktop", desktop]]) {
     /* The slogan. Title case in the DOM and uppercased in CSS at both
@@ -213,7 +228,19 @@ const DESKTOP_REQUIRED = [
   // HomeAlive's hero — what replaced Hero's own headline and sub-copy.
   "Know the move",
   "before your league.",
-  "Plug in your league from any major platform.",
+  /* The stem only, and the platform names deliberately NOT asserted.
+
+     This line read "Plug in your league from any major platform." and the
+     page said that while two of four platforms were built -- corrected by
+     an 11px caption 200px lower, which is a footnote rather than a
+     correction. The subhead now interpolates LIVE_NAMES from
+     leaguePlatforms.js, so it cannot overclaim and cannot go stale.
+
+     Asserting the rendered names here would reintroduce exactly the drift
+     that constant exists to prevent: the day a third platform ships, this
+     file becomes the last place still saying two. So the assertion is the
+     half of the sentence that is not derived, plus the negative below. */
+  "Plug in your league from",
   "Keep your drafts on every device",
   "FREE · NO ACCOUNT NEEDED · RUNS IN YOUR BROWSER",
   /* Three lines used to sit here -- "Enter the Draft Room", "Open the
@@ -253,5 +280,15 @@ test("each homepage carries its own agreed copy", async ({ browser }) => {
   for (const line of PHONE_REQUIRED) {
     expect(phone.joined.toLowerCase(), `the phone carries: ${line}`)
       .toContain(line.toLowerCase());
+  }
+
+  /* The retired claim, asserted absent at both widths.
+
+     A required-copy list can only catch a sentence going missing. This one
+     went wrong the other way -- it was present and false -- so the guard
+     against it coming back has to be a negative. */
+  for (const [name, page] of [["desktop", desktop], ["the phone", phone]]) {
+    expect(page.joined.toLowerCase(), `${name} no longer claims every platform`)
+      .not.toContain("any major platform");
   }
 });

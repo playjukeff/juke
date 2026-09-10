@@ -677,6 +677,32 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* A document's own name is not a state label.
+
+   .appbar-text was written for the DRAFT bar, where the split above is
+   right and its own comment says why: "the state is the label and the
+   pick is the fact", so the h1 carries a 10px uppercase tertiary label
+   and the p carries the 19px fact. The three docs/ pages reuse that bar,
+   which made the page's own title the SMALLEST, lowest-contrast text on
+   it -- 10px --ink-light -- under a 19px bold deck.
+
+   Inverted content wants the inversion undone, not new sizes invented:
+   the two swap steps on the same scale, so the bar's height is unchanged
+   and nothing else on these pages moves. Scoped by .doc-head so the
+   Draft Room's own header, which is correct as it stands, cannot be
+   reached by this. */
+.doc-head h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg); font-weight: 700;
+  letter-spacing: normal; text-transform: none;
+  color: var(--ink);
+}
+.doc-head p {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs); font-weight: 500;
+  color: var(--ink-mid);
+}
+
 /* The league summary rides inside that line and must not inherit the display
    face or the size — it is reference, not the fact. */
 .appbar-league {

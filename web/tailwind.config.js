@@ -150,7 +150,22 @@ export default {
         voidInk: {
           primary: '#EDEEF2', // oklch(0.95 0.005 265)
           body: '#B9BCC1', // oklch(0.78-0.81 0.008 265), midpoint 0.795
-          muted: '#808389', // oklch(0.60-0.62 0.01 265), midpoint 0.61
+          /* Lifted from #808389 on 9 September 2026, because it missed the
+             project's own 4.5:1 floor on the darkest ground it lands on:
+             measured 4.481 against surface.row (#1A1C22), on the four
+             Practice Scenarios sublines at 13px, at both widths.
+
+             Set from the WORST surface upward, which is the rule this
+             ramp already follows in both themes -- not tuned against the
+             card it was noticed on. Against the four grounds it actually
+             meets it now measures 5.47 / 5.17 / 5.03 / 4.86 (page, card,
+             raised card, row) where it measured 5.04 / 4.77 / 4.64 / 4.48.
+
+             Nothing light names this token -- checked across all 70 call
+             sites -- so lifting it can only raise contrast, never lower
+             it somewhere else. That check is the one CLAUDE.md asks for
+             whenever a token moves. */
+          muted: '#868990', // oklch(~0.635 0.01 265)
         },
         // ---- The two-surface split (Claude Design, "Slate & Mint") ----
         //

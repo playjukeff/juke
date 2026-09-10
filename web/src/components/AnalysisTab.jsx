@@ -178,17 +178,83 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
      catch. showAllTeams/shared belong to the mobile-only block below but
      live here for the same reason. */
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [showAllTeams, setShowAllTeams] = useState(false)
   const [shared, setShared] = useState(false)
 
+  /* The wait, spent explaining the thing being waited for.
+
+     This was two centred lines on an otherwise empty 1440x900 frame -- the
+     emptiest state in the app, in a destination the nav offers with no
+     signal that it will be empty, for the whole of round one of every
+     draft. A first-time drafter's first press of the fourth tab landed on
+     175 characters of "not yet".
+
+     Disabling the tab is the other repair and is worse: a control that
+     cannot act must not be OFFERED, and the tab has somewhere real to go
+     the moment the round closes -- greying it would trade an empty screen
+     for a dead one. So the screen earns the wait instead. The four
+     components and their weights are exactly what the panel will draw, read
+     off the same WEIGHTS the grade runs on rather than typed here, so this
+     cannot describe a grade the app does not compute. A reader who spends
+     the wait here arrives at the real panel already knowing what its four
+     bars are.
+
+     The count is the honest version of "come back later": it says how far
+     off the gate is, and it moves. */
   if (picks.length < teams) {
+    const w = engine.gradeWeights ? engine.gradeWeights() : null
+    const rows = w
+      ? [
+          ['Starter strength', w.starters, 'What your lineup projects, against par for your seat'],
+          ['Draft value', w.value, 'Where you took them against where the board had them'],
+          ['Roster construction', w.build, 'Empty starting slots, and cover at running back and receiver'],
+          ['Bye week safety', w.byes, 'Starters idle in the same week — counted squared'],
+        ]
+      : []
+    const pct = Math.round((picks.length / teams) * 100)
     return (
-      <div className="flex flex-1 items-center justify-center bg-slate p-6">
-        <div className="text-center">
-          <p className="text-sm font-semibold text-white/70">Nothing to grade yet</p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Analysis appears once the first round is done, and updates after every pick.
+      <div className="flex-1 overflow-y-auto bg-slate p-6">
+        <div className="mx-auto max-w-[520px] pt-6 sm:pt-10">
+          <p className="font-plex text-label uppercase tracking-[0.12em] text-ink-label">
+            Grade · after round 1
           </p>
+          <h3 className="mt-2 font-display text-[22px] font-extrabold text-white">
+            Nothing to grade yet
+          </h3>
+          <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
+            Every component here is measured against the rest of the room, so it needs one full
+            round on the board. {picks.length} of {teams} picks in — then it updates after every
+            pick.
+          </p>
+
+          <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-slate-rule">
+            <div
+              className="h-1 rounded-full bg-evidence transition-all duration-300"
+              style={{ width: Math.max(2, pct) + '%' }}
+            />
+          </div>
+
+          {rows.length ? (
+            <>
+              <p className="mt-7 font-plex text-label uppercase tracking-[0.12em] text-ink-label">
+                What gets graded
+              </p>
+              <div className="mt-2.5 space-y-2.5">
+                {rows.map(([label, weight, detail]) => (
+                  <div key={label} className="flex gap-3 border-b border-slate-rule/70 pb-2.5 last:border-b-0">
+                    <span className="w-9 shrink-0 font-numeral text-[13px] font-bold tabular-nums text-ink">
+                      {Math.round(weight * 100)}%
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-white/85">{label}</span>
+                      <span className="block text-[12px] leading-[1.45] text-ink-muted">{detail}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     )
@@ -329,6 +395,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
      signOf() makes about zero. */
   const barFill = { neutral: 'bg-evidence', bad: 'bg-cost-deep' }
   const barTone = { neutral: 'text-ink', bad: 'text-cost' }
+  /* One decimal, and every figure below a bar derived from the figure ON
+     it. See the weighted-sum note further down for what was wrong; the
+     short version is that a panel inviting a reader to check the
+     arithmetic has to survive them doing it. Both layouts read these, so
+     the phone and the desktop cannot drift into two different sums. */
+  const shownPct = (b) => b.pct.toFixed(1)
+  const contributionOf = (b) => Number(shownPct(b)) * b.weight
 
   function median(nums) {
     const sorted = nums.slice().sort((a, b) => a - b)
@@ -389,6 +462,30 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
   const discardLabel = hasRoom ? 'Leave the room' : 'Discard this mock'
   const handleRunAnother = () => engine.restart()
   const handleDiscard = () => engine.restart()
+  /* Mid-draft this is not the same action, and the paragraph above only
+     argues it is for a FINISHED one.
+
+     "clearing the *active* save here throws nothing away" is true because
+     recordHistory() fired on the draftOver() edge. Before that edge there
+     is no history row, so the identical call destroys every pick made so
+     far -- and this button renders mid-draft, unguarded, as the loudest
+     control on the tab, while the same engine.restart() two hundred
+     pixels below is behind a two-step confirm because it is labelled
+     "discard". One action, two labels, two levels of protection, and the
+     unprotected one is the one whose label does not warn anybody.
+
+     Post-draft is untouched: no confirm, same wording, because there the
+     original reasoning holds exactly. */
+  const handleRunAnotherClick = () => {
+    if (done || confirmingRestart) { handleRunAnother(); return }
+    setConfirmingRestart(true)
+    setTimeout(() => setConfirmingRestart(false), 4000)
+  }
+  const runAnotherLabel = done
+    ? 'Run another mock'
+    : confirmingRestart
+      ? 'Click again to discard'
+      : 'Discard and run another'
   // Two-step confirm, mirroring DraftMenuOverlay's own confirmingDiscard
   // pattern exactly (same 4-second window, same "click again" relabel) —
   // reused rather than reinvented. Only the solo "Discard" path arms it;
@@ -536,10 +633,10 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <div className="mt-5 space-y-2.5">
             <button
               type="button"
-              onClick={handleRunAnother}
+              onClick={handleRunAnotherClick}
               className="flex h-[52px] w-full items-center justify-center rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-[15px] font-bold text-white shadow-glass transition-transform duration-150 active:scale-[0.98]"
             >
-              Run another mock
+              {runAnotherLabel}
             </button>
             <a
               href="#/rooms/draft"
@@ -554,13 +651,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             {bars.map((b) => {
               const t = toneOf(b)
               const width = Math.max(2, Math.min(100, b.pct))
-              const contributes = b.pct * b.weight
+              const contributes = contributionOf(b)
               return (
                 <div key={b.key}>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[15px] font-bold text-white">{b.label}</span>
                     <span className={'shrink-0 font-numeral text-[15px] font-bold ' + barTone[t]}>
-                      {Math.round(b.pct)}
+                      {shownPct(b)}
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
@@ -583,7 +680,8 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                 and the reason the number that used to be cyan here is the
                 loudest one on the panel. */}
             <span className="font-numeral text-[17px] font-bold text-ink">
-              {me.total.toFixed(1)} <span className="text-ink-muted">&rarr;</span> {me.grade}
+              {bars.reduce((n, b) => n + contributionOf(b), 0).toFixed(1)}{' '}
+              <span className="text-ink-muted">&rarr;</span> {me.grade}
             </span>
           </div>
           {/* Used to claim all four bars work the same way ("every score is
@@ -761,10 +859,10 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <div className="mt-4 flex items-center gap-2.5">
             <button
               type="button"
-              onClick={handleRunAnother}
+              onClick={handleRunAnotherClick}
               className="rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
             >
-              Run another mock
+              {runAnotherLabel}
             </button>
             <a
               href="#/rooms/draft"
@@ -787,19 +885,41 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                   <div className="h-1.5 min-w-[100px] max-w-[420px] flex-1 rounded-full bg-slate-rule">
                     <div className={'h-1.5 rounded-full transition-all duration-300 ' + barFill[t]} style={{ width: width + '%' }} />
                   </div>
-                  <span className={'w-7 shrink-0 text-right font-numeral text-sm font-bold ' + barTone[t]}>
-                    {Math.round(b.pct)}
+                  <span className={'w-9 shrink-0 text-right font-numeral text-sm font-bold ' + barTone[t]}>
+                    {shownPct(b)}
                   </span>
                   <span className="w-full shrink-0 text-ink-muted sm:w-auto sm:flex-1">{b.detail}</span>
                 </div>
               )
             })}
             {/* The components must visibly add up to the composite above —
-                not just agree with it in principle. */}
+                not just agree with it in principle.
+
+                They did not. The bar printed Math.round(b.pct) and this
+                line multiplied the UNROUNDED b.pct, so a reader checking
+                the panel's own arithmetic got 61 x 0.50 = 30.5 against a
+                printed 30.6. One row of four visibly failed, which is why
+                it survived: the other three happened to round the same way.
+
+                On the one panel that invites a reader to do the sum, the
+                sum was unverifiable -- and this product's binding
+                principle is that every number is explainable on the page
+                where it appears. Every figure below is now derived from
+                the figure printed above it: shownPct() is what the bar
+                shows, the contribution is that value times the weight, and
+                the total is the sum of those contributions. So the whole
+                line reconciles by construction rather than by luck.
+
+                The cost, stated: the printed total can sit up to ~0.2 off
+                the engine's own composite, because it is built from
+                displayed precision. Nothing else on this panel prints that
+                composite, so there is no second number to contradict --
+                and a total a reader can derive is worth more here than one
+                they must take on trust. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-rule/70 pt-2.5 text-xs">
               <span className="w-32 shrink-0 font-plex text-label uppercase text-ink-label sm:w-40">Weighted sum</span>
-              <span className="flex-1 font-numeral text-ink-muted">{bars.map((b) => (b.pct * b.weight).toFixed(1)).join(' + ')}</span>
-              <span className="font-numeral text-sm font-bold text-ink">= {me.total.toFixed(1)}</span>
+              <span className="flex-1 font-numeral text-ink-muted">{bars.map((b) => contributionOf(b).toFixed(1)).join(' + ')}</span>
+              <span className="font-numeral text-sm font-bold text-ink">= {bars.reduce((n, b) => n + contributionOf(b), 0).toFixed(1)}</span>
             </div>
           </div>
 
@@ -870,7 +990,38 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             </div>
           )}
 
-          <p className="mt-5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Starters on bye, by week</p>
+          {/* The chip carries the COUNT; the week is the caption under it.
+
+              It was the other way round: the chip printed the week and the
+              count existed only as a background hue, in four steps, with no
+              key anywhere. So a row labelled "Starters on bye, by week" read
+              "5 6 7 8 9 10 11 12 13 14" -- the numbers a reader already
+              knows -- and the quantity the label promises was the one thing
+              on screen they could not read.
+
+              Colour still carries the severity, because scanning ten weeks
+              for the bad one is what this row is for, and now it agrees with
+              a number instead of replacing it. Four is the threshold the
+              grade's own squared bye penalty already treats as "a week you
+              probably lose"; a nil week stays quiet rather than being drawn
+              as an achievement. The key is inline and states all three
+              steps, so nothing here has to be learned by inference. */}
+          <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+              Starters on bye, by week
+            </p>
+            <p className="flex items-center gap-2 font-numeral text-[10px] text-ink-muted">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-sky-500/40" />2
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-amber-500/40" />3
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-rose-500/40" />4+
+              </span>
+            </p>
+          </div>
           <div className="mt-1.5 flex gap-1">
             {Array.from({ length: 10 }, (_, i) => i + 5).map((w) => {
               const n = me.byes[w] || 0
@@ -881,10 +1032,19 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                     ? 'bg-amber-500/20 text-amber-300'
                     : n === 2
                       ? 'bg-sky-500/20 text-sky-300'
-                      : 'bg-slate-rule text-ink'
+                      : 'bg-slate-rule text-ink-muted'
               return (
-                <span key={w} className={'flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold ' + cls}>
-                  {w}
+                <span key={w} className="flex flex-col items-center gap-0.5">
+                  <span
+                    className={
+                      'flex h-6 w-6 items-center justify-center rounded font-numeral text-[11px] font-semibold tabular-nums ' +
+                      cls
+                    }
+                    title={`Week ${w}: ${n} starter${n === 1 ? '' : 's'} on bye`}
+                  >
+                    {n}
+                  </span>
+                  <span className="font-numeral text-[9px] tabular-nums text-ink-muted">{w}</span>
                 </span>
               )
             })}

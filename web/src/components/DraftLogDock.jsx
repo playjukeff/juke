@@ -27,7 +27,7 @@ function buildPickItems(picks) {
   return items
 }
 
-function PicksList({ items, engine, DE, league, mySlot }) {
+function PicksList({ items, engine, DE, league, mySlot, sniped }) {
   if (items.length === 0) {
     return <p className="px-2 py-6 text-center text-xs text-ink-muted">No picks yet.</p>
   }
@@ -43,13 +43,24 @@ function PicksList({ items, engine, DE, league, mySlot }) {
       /* Gold on your own picks — identity, the same mark the board's
          column ring uses, and never as text colour (CLAUDE.md: #FFD166
          is 1.4:1 as type on a light card). A left border and a wash. */
+      /* Three states, not two. Yours is gold; somebody taking a player
+         off your queue is `cost`, and says so in words rather than
+         relying on a reader to notice a colour; everything else is the
+         resting grey it always was.
+
+         The words matter more than the rail here: a draft log is read in
+         a glance and a tinted border is exactly the kind of signal that
+         gets learned only after it has already mattered once. "was on
+         your queue" needs no learning. */
       <p
         key={item.pick.overall}
         className={
           'mb-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-relaxed ' +
           (item.pick.slot === mySlot
             ? 'border-l-[#FFD166] bg-[#FFD166]/5 text-white/80'
-            : 'border-l-transparent text-white/60')
+            : sniped && sniped.has(item.pick.overall)
+              ? 'border-l-cost bg-cost/[0.07] text-white/75'
+              : 'border-l-transparent text-white/60')
         }
       >
         <span className="text-ink-muted">
@@ -58,6 +69,9 @@ function PicksList({ items, engine, DE, league, mySlot }) {
         <span className="font-medium text-white/80">{engine.teamLabel(item.pick.slot)}</span> took{' '}
         <span className="text-white/90">{item.pick.player.name}</span>{' '}
         <span className="text-ink-muted">({item.pick.player.pos})</span>
+        {sniped && sniped.has(item.pick.overall) ? (
+          <span className="text-cost"> — was on your queue</span>
+        ) : null}
       </p>
     )
   )
@@ -66,7 +80,7 @@ function PicksList({ items, engine, DE, league, mySlot }) {
 // Chat owns its own scroll region (the log scrolls, the composer stays
 // pinned) and needs a flex column to size that against, so it gets a bare
 // wrapper rather than the padded, single-axis-scrolling one Log/Picks share.
-function TabContent({ tab, engine, recentOthers, pickItems, DE, league, mySlot }) {
+function TabContent({ tab, engine, recentOthers, pickItems, DE, league, mySlot, sniped }) {
   if (tab === 'chat') {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -77,9 +91,9 @@ function TabContent({ tab, engine, recentOthers, pickItems, DE, league, mySlot }
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-2">
       {tab === 'picks' ? (
-        <PicksList items={pickItems} engine={engine} DE={DE} league={league} mySlot={mySlot} />
+        <PicksList items={pickItems} engine={engine} DE={DE} league={league} mySlot={mySlot} sniped={sniped} />
       ) : (
-        <ActivityLog picks={recentOthers} engine={engine} DE={DE} league={league} />
+        <ActivityLog picks={recentOthers} engine={engine} DE={DE} league={league} sniped={sniped} />
       )}
     </div>
   )
@@ -89,7 +103,7 @@ function TabContent({ tab, engine, recentOthers, pickItems, DE, league, mySlot }
 // PlayerHub.jsx's bottom sheet instead. A real column in the panel row
 // beside the board, not a float over it, so it draws no card chrome of
 // its own: DraftRoom's row already gives it a border and a ground.
-export default function DraftLogDock({ recentOthers }) {
+export default function DraftLogDock({ recentOthers, sniped }) {
   const engine = useEngine()
   useJukeTick(engine)
   // 'log', not 'chat'. A brand new room's chat starts empty ("Nobody has
@@ -135,6 +149,7 @@ export default function DraftLogDock({ recentOthers }) {
           DE={DE}
           league={league}
           mySlot={mySlot}
+          sniped={sniped}
         />
       </div>
     </div>
