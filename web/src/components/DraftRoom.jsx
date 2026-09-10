@@ -529,6 +529,63 @@ export default function DraftRoom() {
   // reachable before that (a fresh board, nobody on the clock yet), so it
   // falls back to seat 0 rather than leaving every "mine" check undefined.
   const mySlot = engine ? engine.mySlot() ?? 0 : 0
+
+  /* Which picks took a player off YOUR queue.
+
+     Placed here, above every early return in this component, and that
+     placement is load-bearing rather than tidy: DraftRoom returns early
+     three times (the loader, the lobby branch, the pre-draft screen) and
+     a hook behind any of them changes the hook COUNT between renders.
+     Written below them first, it threw "Rendered more hooks than during
+     the previous render" the moment a draft started -- the exact wall
+     DraftLocker's own effect is documented for.
+
+     The draft log drew "Bone-Thugs-N-Montgomery took Garrett Wilson (WR)"
+     in the same grey whether or not he was the man you had starred and
+     were reading three seconds earlier. There is a queue, there is a star,
+     and nothing anywhere reacted when somebody else took one -- the
+     largest missed beat in a draft, since being sniped is the whole
+     emotional shape of the thing.
+
+     It cannot be read off queuedNames, which is the obvious guess and is
+     wrong: pruneQueue() drops a drafted player the moment the pick lands,
+     and says why in its own comment ("he leaves quietly rather than
+     sitting there as a row you cannot draft"). By the time anything
+     renders, the sniped player is already gone from the queue. So the
+     fact has to be caught as it happens rather than derived afterwards.
+
+     Diffed here rather than recorded in app.js because the engine has no
+     business knowing which of its readers cared -- and this stays correct
+     on all three ways a name can leave the queue. Drafted by another seat
+     is a snipe; drafted by you is not (slot === mySlot); un-starred by
+     hand has no pick behind it at all and is skipped.
+
+     State rather than a ref, deliberately: a ref would record the snipe
+     and schedule no render, so the highlight would not appear until the
+     NEXT pick moved something else. */
+  const [sniped, setSniped] = useState(() => new Set())
+  const queueSeenRef = useRef(null)
+  useEffect(() => {
+    /* engine is null until useEngine() resolves, and this hook sits above
+       every early return, so it runs in that window -- every other read of
+       `engine` in this file is guarded the same way for the same reason. */
+    if (!engine) return
+    const now = new Set(engine.queue() || [])
+    const before = queueSeenRef.current
+    queueSeenRef.current = now
+    if (!before) return
+    // A fresh draft: forget the last one's snipes, for the same reason
+    // armFreshDraft() clears `view` and `soloAutopick`. This component
+    // does not unmount between drafts.
+    if (!picks.length) { setSniped((prev) => (prev.size ? new Set() : prev)); return }
+    const found = []
+    for (const name of before) {
+      if (now.has(name)) continue
+      const pick = picks.find((x) => x.player && x.player.name === name)
+      if (pick && pick.slot !== mySlot) found.push(pick.overall)
+    }
+    if (found.length) setSniped((prev) => new Set([...prev, ...found]))
+  }, [tick, picks, mySlot, engine])
   const onClock = engine && DE && league ? DE.onTheClock(league, picks.length) : null
   const overall = picks.length + 1
   const myTurn = !!onClock && onClock.slot === mySlot
@@ -1567,6 +1624,7 @@ export default function DraftRoom() {
   const queuePlayers = (engine.queue() || []).map((name) => board.find((p) => p.name === name)).filter(Boolean)
   const handleToggleQueue = (name) => engine.queueToggle(name)
 
+
   /* Everybody else's picks, most recent first — the Draft Log's data.
      Computed once here and handed to both surfaces that draw it (the
      desktop panel and the mobile sheet's Log tab) rather than each
@@ -2103,7 +2161,7 @@ export default function DraftRoom() {
                     — DraftLogDock.jsx already has exactly these three tabs
                     and needed no change for this tab to reuse it. */}
                 <div className="hidden w-[360px] shrink-0 lg:flex">
-                  <DraftLogDock recentOthers={recentOthers} />
+                  <DraftLogDock recentOthers={recentOthers} sniped={sniped} />
                 </div>
               </div>
 

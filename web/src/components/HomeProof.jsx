@@ -300,9 +300,37 @@ function Pair({ claim, children }) {
           `calc(50% - 3rem)` is the grid's half minus the left cell's own
           `pr-12`, so a heading wraps exactly where the flat cell beneath it
           ends and the two share an edge. */}
-      <h2 className="mt-14 font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:mt-16 sm:text-[32px] lg:col-span-2 lg:max-w-[calc(50%-3rem)] lg:text-[38px]">
-        {claim}
-      </h2>
+      {/* The heading row carries the seam across itself.
+
+          The seam is `lg:border-l` on each right cell, and the heading rows
+          span both columns -- so the line stopped at every heading and
+          started again after it. Measured at 1440: four segments of 420,
+          500, 625 and 378px separated by three gaps of 141, which is
+          exactly this row (a 4rem margin plus a two-line heading). The
+          direction contract names "one vertical seam down the page" as the
+          single new device on this page, and 18% of it was missing, in
+          three even bites, precisely where the eye carries it anyway.
+
+          A full-height absolute rule is how this was drawn the FIRST time
+          and it is what put a line through four headings -- reported twice.
+          What makes a connector safe now is the cap that fixed that: the
+          heading is `max-w-[calc(50%-3rem)]`, so its ink stops 3rem short
+          of the axis and cannot reach the line at any width.
+
+          The wrapper exists because the cap is on the heading itself, so
+          `left-1/2` inside it would resolve against half the grid rather
+          than the whole of it. The wrapper takes the margin too -- the
+          connector reaches up through it to meet the cell above, which is
+          where two thirds of each gap actually was. */}
+      <div className="relative mt-14 sm:mt-16 lg:col-span-2">
+        <h2 className="font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:text-[32px] lg:max-w-[calc(50%-3rem)] lg:text-[38px]">
+          {claim}
+        </h2>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-14 bottom-0 left-1/2 hidden w-px bg-line-hairline sm:-top-16 lg:block"
+        />
+      </div>
       {children}
     </>
   )
