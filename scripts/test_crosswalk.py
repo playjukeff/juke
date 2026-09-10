@@ -1292,4 +1292,53 @@ print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED: " + ", ".join(FAILURES))
     sys.exit(1)
+
+# --------------------------------------------------- the weekly kicker fold
+#
+# A weekly projection row states fgm -- the complete count -- and bands
+# everything except the long ones. Measured across all 32 kickers Sleeper
+# forecast for week 1 of 2026: 56.9 made against 38.9 banded, not one row
+# carrying fgm_50_59/fgm_60p/fgm_50p, and not one with bands exceeding its
+# own total. So the remainder is the one band that is missing.
+#
+# It matters because a make is only ever charged through a band, so unbanded
+# kicks score nothing: on the league this was reported from that was 0.8 a
+# week, and the kicker read 6.4 against ESPN's 9.0.
+
+weekly_k = bp.reconcile(
+    {"fgm": 2.0, "fgm_20_29": 0.31, "fgm_30_39": 0.46, "fgm_40_49": 0.41,
+     "xpm": 2.71})
+# .get() and not [] on purpose: with the fold removed this key is absent, and
+# a KeyError would abort every check below it while naming none of them.
+_long = weekly_k.get("fgm_50_59")
+check("the unbanded remainder becomes the one band that is missing",
+      round(_long, 2) if _long is not None else None, 0.82)
+
+check("and nothing else on the row is touched",
+      (weekly_k["fgm_20_29"], weekly_k["xpm"]), (0.31, 2.71))
+
+# An ACTUAL row states the same total with complete bands, so there is no
+# remainder and nothing may be written -- this is the row shape the rule must
+# stay silent on, and it is the one that would corrupt real history.
+actual_k = bp.reconcile(
+    {"fgm": 30, "fgm_20_29": 5, "fgm_30_39": 9, "fgm_40_49": 8,
+     "fgm_50_59": 6, "fgm_60p": 2})
+check("a complete row is left exactly alone", actual_k.get("fgm_50_59"), 6)
+
+# The season projection has no fgm at all; fgm_50p is what it carries, and the
+# older fold above owns that shape.
+season_k = bp.reconcile({"fgm_40_49": 8, "fgm_50p": 8, "xpm": 42})
+check("the season shape still goes through the fgm_50p fold",
+      season_k["fgm_50_59"], 8)
+check("and gains no total it never had", "fgm" in season_k, False)
+
+# Bands that already reach the total leave nothing over. Guarded on a margin
+# rather than on equality because these are floats.
+exact = bp.reconcile({"fgm": 1.0, "fgm_30_39": 0.6, "fgm_40_49": 0.4})
+check("bands that sum to the total add no long kicks", "fgm_50_59" in exact, False)
+
+# And a row that already knows about long kicks is not second-guessed.
+knows = bp.reconcile({"fgm": 3.0, "fgm_30_39": 1.0, "fgm_50_59": 1.0})
+check("a row carrying a 50+ band is never topped up", knows["fgm_50_59"], 1.0)
+
 print("OK")

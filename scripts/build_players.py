@@ -6,7 +6,8 @@ Sources (all free, no key, no account -- except the last, which is optional)
   https://api.sleeper.app/v1/players/nfl                    player master, injury, depth chart
   https://api.sleeper.app/v1/stats/nfl/regular/{season}     season totals
   https://api.sleeper.app/v1/stats/nfl/regular/{yr}/{wk}    weekly game logs
-  https://api.sleeper.app/v1/projections/nfl/regular/{yr}   projections
+  https://api.sleeper.app/v1/projections/nfl/regular/{yr}   projections, whole season
+  https://api.sleeper.app/projections/nfl/{yr}/{wk}         projections, one week
   https://fantasyfootballcalculator.com/api/v1/adp/{format} ADP, one set per scoring format
   .../getNFLPlayerList (Tank01, via RapidAPI)               source-id crosswalk, needs TANK01_KEY
   github.com/nflverse/nflverse-data/releases/download/...   a second, independent record of
@@ -45,6 +46,9 @@ import urllib.request
 from datetime import datetime, timezone
 
 SLEEPER = "https://api.sleeper.app/v1"
+# The weekly projections endpoint is not under /v1, and it answers with a
+# LIST of rows rather than the season endpoint's dict keyed by player id.
+SLEEPER_ROOT = "https://api.sleeper.app"
 
 FFC_URL = ("https://fantasyfootballcalculator.com/api/v1/adp/{fmt}"
            "?teams={teams}&year={year}&position=all")
@@ -466,6 +470,36 @@ def reconcile(row):
     if row.get("fgmiss_50p") and not row.get("fgmiss"):
         row = dict(row) if row is not None else {}
         row["fgmiss"] = row["fgmiss_50p"]
+
+    # The same fold, for the WEEKLY shape, which states the total and bands
+    # everything except the long ones.
+    #
+    # A weekly kicker row carries fgm -- the complete count -- alongside
+    # fgm_0_19 through fgm_40_49 and no 50+ band of any kind. Measured across
+    # all 32 kickers Sleeper forecast for week 1 of 2026: 56.9 made against
+    # 38.9 banded, so 31% of every projected kick is unbanded, NOT ONE row
+    # carries fgm_50_59, fgm_60p or fgm_50p, and not one has bands exceeding
+    # its own total. So the remainder is not a guess about which band it
+    # belongs to -- there is exactly one band missing, and this is the same
+    # inference the fold above already makes, checked the same way.
+    #
+    # It matters because a make can only ever be charged through a band (see
+    # "The symmetry with fgm is false" in CLAUDE.md): unbanded, those kicks
+    # score nothing at all. On the league this was reported from that is 0.8
+    # kicks a week, and the kicker read 6.4 against ESPN's 9.0.
+    #
+    # Silent on every other shape by construction. A season projection has no
+    # fgm at all and is handled above; an ACTUAL row has fgm with complete
+    # bands, so the remainder is zero and nothing is written.
+    fine = ("fgm_0_19", "fgm_20_29", "fgm_30_39", "fgm_40_49")
+    long_bands = ("fgm_50_59", "fgm_60p", "fgm_50p")
+    total = row.get("fgm")
+    if total and not any(row.get(k) for k in long_bands):
+        banded = sum(float(row.get(k) or 0) for k in fine)
+        rest = float(total) - banded
+        if rest > 0.05:
+            row = dict(row)
+            row["fgm_50_59"] = rest
     return row
 
 
@@ -503,6 +537,62 @@ TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com"
 # entire allowance on the crosswalk alone and leave nothing for the news the
 # crosswalk exists to serve. getNFLPlayerList is the whole league in one.
 TANK01_LIST = f"https://{TANK01_HOST}/getNFLPlayerList"
+
+
+def fetch_week_projections():
+    """This week's forecast, which the season endpoint cannot stand in for.
+
+    The season projection is a COARSER dataset than the weekly one, and for
+    two positions it is missing whole scoring categories rather than detail:
+
+        K    season: fgm_40_49, fgm_50p, xpm       nothing under forty yards
+             weekly: fgm, fgm_0_19, fgm_20_29, fgm_30_39, fgm_40_49, xpm
+        DST  season: sack, int, fum_rec, blk_kick  no points allowed at all
+             weekly: the above, plus pts_allow_* and def_td
+
+    Measured on Cam Little, 10 September 2026: the season block forecasts 16
+    field goals and every one of them is 40 yards or longer, where he really
+    made 30 in 2025 with 14 of those short. That is 42 points of season and
+    2.5 a week, on every kicker -- and points allowed is the largest single
+    component of most leagues' DST scoring. CLAUDE.md's "there is no total FG
+    count in the feed to subtract from" is true of the season endpoint and
+    false of this one, which carries fgm outright.
+
+    ONE week rather than eighteen. A week is what any screen asks about, and
+    storing the rest would be the WEEKLY_SEASONS trade with nothing rendering
+    them. The nightly re-runs daily, so the stored week follows the season on
+    its own and nobody edits a constant.
+
+    Optional throughout, like every other feed here. Out of season, or on a
+    week Sleeper has no opinion about, this returns nothing and every caller
+    falls back to the season projection exactly as it did before.
+    """
+    state = fetch_json(f"{SLEEPER}/state/nfl", optional=True) or {}
+    season = str(state.get("season") or "")
+    week = state.get("week")
+    kind = state.get("season_type")
+    if kind != "regular" or not season or not isinstance(week, int) or not 1 <= week <= 18:
+        print(f"No weekly projections: season_type={kind!r} week={week!r}")
+        return {}, None
+
+    print(f"Fetching {season} week {week} projections...")
+    query = "&".join(f"position[]={pos}" for pos in FANTASY_POSITIONS)
+    rows = fetch_json(
+        f"{SLEEPER_ROOT}/projections/nfl/{season}/{week}"
+        f"?season_type=regular&order_by=pts_std&{query}", optional=True)
+
+    # A list, not the dict the season endpoint answers with, and the id is on
+    # the row rather than inside its nested player object.
+    by_id = {}
+    for row in rows or []:
+        pid = row.get("player_id")
+        stats = row.get("stats")
+        if pid and isinstance(stats, dict):
+            by_id[str(pid)] = stats
+    print(f"  {len(by_id)} players")
+    if not by_id:
+        return {}, None
+    return by_id, {"season": int(season), "week": week}
 
 
 def fetch_tank01_players():
@@ -2327,6 +2417,8 @@ def main():
             past_projections[season] = data
         print(f"  {len(data)} lines")
 
+    week_projections, week_proj_meta = fetch_week_projections()
+
     # Optional, keyed, and never fatal: no key means no crosswalk and a build
     # that is otherwise identical to today's.
     tank_rows = fetch_tank01_players()
@@ -2467,6 +2559,16 @@ def main():
             # replacement level toward zero.
             block["gp"] = int(projection.get("gp") or 0)
             record["p"] = block
+
+        # This week's forecast. Deliberately carries no gp: it is one week,
+        # and anything that needs to know WHICH week reads WEEK_PROJ_META
+        # rather than assuming whatever is stored is the week it is asking
+        # about. A stale block is worse than none -- see app.js.
+        week_line = week_projections.get(player_id)
+        if week_line:
+            block = compact(week_line)
+            if block:
+                record["wp"] = block
 
         # What we said about seasons that have since been played, keyed the
         # same way the actuals in "s" are, so the two line up by year without
@@ -2731,6 +2833,7 @@ def main():
             "   ========================================================== */\n\n"
             "const STAT_KEYS = " + json.dumps(key_map, separators=(",", ":")) + ";\n\n"
             "const PROJECTED_KEYS = " + json.dumps(projected_keys, separators=(",", ":")) + ";\n\n"
+            "const WEEK_PROJ_META = " + json.dumps(week_proj_meta, separators=(",", ":")) + ";\n\n"
             "const PLAYER_STATS = " + json.dumps(stats, separators=(",", ":")) + ";\n\n"
             "const TEAM_RANKS_META = " + json.dumps(
                 {"season": team_ranks_season, "teams": len(team_ranks)},

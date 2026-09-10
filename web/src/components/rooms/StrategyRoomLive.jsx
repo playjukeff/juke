@@ -156,13 +156,30 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
   const weekPts = useMemo(() => {
     if (!engine) return null
-    const base = leagueRules
+    const average = leagueRules
       ? (player) => engine.projPerGameUnder(player, leagueRules)
       : engine.projPerGame
-    /* Wrapped rather than inlined so the rule is reachable from
+    /* The real week when the board has one, the season average when it does
+       not, and never a week's block standing in for a different week --
+       weekProjectionUnder() checks WEEK_PROJ_META and answers null rather
+       than serving week 3 as an answer about week 5.
+    
+       The fallback is not a degraded mode, it is what every figure on this
+       screen was before: a board built by a nightly that predates this, an
+       offseason with no week to fetch, or a player the feed has no weekly
+       opinion about. Mixed sources across a lineup is deliberate and strictly
+       better than the average everywhere, which is what it replaced. */
+    const forWeek = (player) => {
+      if (!engine.weekProjectionUnder) return average(player)
+      const own = engine.weekProjectionUnder(player, leagueRules, week)
+      return own === null ? average(player) : own
+    }
+    /* Wrapped rather than inlined so the bye rule is reachable from
        scripts/test_strategy_board.mjs, which supplies its own weekPts and
-       would never see a closure built in here. */
-    return weekScorer(base, week)
+       would never see a closure built in here. A player on bye has no weekly
+       row to find, so this zeroes what the fallback would otherwise average
+       in. */
+    return weekScorer(forWeek, week)
   }, [engine, leagueRules, week])
 
   const lineup = useMemo(() => lineupRows(mine, byId, weekPts), [mine, byId, weekPts])

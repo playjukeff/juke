@@ -10260,7 +10260,123 @@ nothing, which is the advice a reader most needs in weeks 5 to 14.
 Seven checks, three confirmed red by removing the rule while the four
 asserting the non-bye behaviour stay green.
 
-### The rest is two forecasters, and it is not a defect
+### ~~The rest is two forecasters, and it is not a defect~~ — wrong, and here is what falsified it
+
+**Corrected 10 September 2026, one report later.** Everything below this
+heading was written from a measurement taken under FULL PPR as a stand-in
+for the league's own table, because the league's rules were not in hand.
+That single shortcut made every skill player look one-directionally low, and
+one-directional error reads as a systematic model difference. It hid the
+signal completely.
+
+What falsified it was a screenshot with per-player numbers on BOTH sides:
+
+```
+                Juke    ESPN     diff
+Allen           26.0    24.4    +1.6
+Skattebo        12.8    14.1    -1.3
+Montgomery      12.9    13.1    -0.2
+Nacua           20.9    21.9    -1.0
+London          16.8    15.6    +1.2
+Goedert          9.2    11.1    -1.9
+McConkey        15.3    14.1    +1.2
+   seven skill players           -0.4
+Rams D/ST        6.2     8.5    -2.3
+Cam Little (K)   6.4     9.0    -2.6
+                126.7   131.8   -5.1
+```
+
+**Under the real rules the skill players scatter both ways and net to −0.4.
+The entire gap is two positions**: −4.9 of −5.1. That is not noise, and it
+was findable the moment the comparison was per player instead of in total.
+
+**Measure under the league's own rules or do not measure.** A stand-in table
+is not a smaller version of the right one — it is a different question, and
+here it produced a confident wrong conclusion that stood for a day.
+
+### The season projection is missing whole categories for K and DST
+
+Not coarser: missing. Read straight off the feed rather than inferred —
+
+```
+K    season  fgm_40_49 8, fgm_50p 8, xpm 42        nothing under forty yards
+     weekly  fgm 2.0, fgm_20_29, fgm_30_39, fgm_40_49, xpm
+DST  season  sack, int, fum_rec, blk_kick          no points allowed at all
+     weekly  the above, plus pts_allow_* and def_td
+```
+
+Cam Little's season block forecasts **16 field goals and every one of them is
+40+**, against the 30 he really made in 2025 with 14 of those short. That is
+42 points of season, 2.5 a week, on every kicker. Points allowed is the
+largest single component of most leagues' DST scoring and the season block
+does not carry it in any form.
+
+**And this was checked against the endpoint rather than assumed to be the
+pipeline's doing**: the season projections URL genuinely answers without
+those keys. `build_players.py` is not dropping them.
+
+**So `stats.js` grows a `wp` block** — one week, stamped in
+`WEEK_PROJ_META` — and `weekProjectionUnder()` scores it under the league's
+own rules. **Measured payload: 56.5 KB raw, 9.1 KB gzipped** for 460 players
+filtered to the 36 keys `pointsUnder()` reads, which is about 5% on
+`stats.js`. The rule that justifies it is this file's own: the fourteen role
+and red-zone keys were refused at 70 KB because "nothing in the app renders
+any of them", and this is the opposite — it is the product's headline number.
+
+**It answers null for a week it does not hold.** A block for week 3 is not an
+answer about week 5, and serving it would be the right-value-wrong-column bug
+with a date on it. Every caller falls back to the season average, which is
+what they all did before this existed, so an offseason board, a board from a
+nightly that predates this, and a player the feed has no weekly opinion about
+all behave exactly as they did.
+
+### The weekly bands do not sum to the weekly total, and the remainder has only one place to go
+
+The first cut of this fixed almost nothing for the position it was built for:
+the kicker moved 6.41 to 6.60. His weekly block is `fgm 2.0` beside bands
+totalling **1.2**, and a make is only ever charged through a band — so 0.8
+kicks a week scored nothing at all.
+
+Measured across all 32 kickers Sleeper forecast for week 1 of 2026:
+
+```
+sum fgm 56.9    sum bands 38.9    unbanded 17.9  (31%)
+rows carrying ANY 50+ band          0 of 32
+rows where bands exceed the total   0 of 32
+```
+
+**Not one row bands anything at 50 yards or longer, and not one has bands
+exceeding its own total.** So the remainder is not a guess about which band
+it belongs to: there is exactly one band missing. `reconcile()` folds it into
+`fgm_50_59` — the same inference, with the same justification and the same
+check, that it already makes for the season feed's `fgm_50p`.
+
+**Silent on every other shape by construction**, which is the half that
+matters: an actual row states the same total with complete bands, so the
+remainder is zero and nothing is written; a season row has no `fgm` at all.
+Both are asserted, because the row this must never touch is real history.
+
+With the fold, and driven against real week-1 data: **Cam Little 6.41 to
+10.60** against ESPN's 9.0, and the nine-man lineup **115.0 to 128.0**
+against 131.8, under a full-PPR stand-in.
+
+### What is still not closed, said plainly
+
+- **The D/ST is still short** — 6.40 against 8.5. The points-allowed bucket is
+  in the block now, so the category exists; what it is WORTH depends on the
+  league's own tier values, which were not in hand. This is the one number
+  here that has not been verified under the rules that matter.
+- **Josh Allen moves AWAY from ESPN**, 23.85 to 20.80 against their 24.4.
+  That is a real forecaster disagreement about one quarterback in one week,
+  and it is the correct behaviour of a week-specific projection. ESPN is not
+  truth and this file has never claimed Juke should equal it.
+- **The happy path cannot be tested in CI until the nightly runs.** Everything
+  above was verified against a LOCAL `stats.js` carrying real week-1 blocks,
+  built and reverted inside one pass and never committed — the same rule the
+  deep-bench verification followed. What CI can hold today is the fold, which
+  is pure and offline, and the refusal to answer for the wrong week.
+
+### The original conclusion, kept because the reasoning is still half right
 
 That leaves about **5 points of 131.8**, and chasing it would be the mistake.
 Juke does not read ESPN's projection **on purpose** — the schedule section
