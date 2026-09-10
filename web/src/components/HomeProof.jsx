@@ -1104,11 +1104,27 @@ function PairRecord() {
                       <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-white">
                         {r.act}
                       </td>
-                      <td
-                        className={`py-2.5 text-right font-mono text-[13px] tabular-nums ${
-                          r.diff >= 0 ? 'text-gain' : 'text-cost'
-                        }`}
-                      >
+                      {/* `evidence`, not gain/cost, and the column header is
+                          why: this is a MISS, so its magnitude is the
+                          quantity and its sign is only which side of the
+                          forecast he landed.
+
+                          Coloured by direction it ranked the three seasons
+                          in reverse order of forecast quality -- the +71,
+                          a 30% error and the worst row in the table, drew
+                          in the gain colour, while a -20 drew as a loss on
+                          the most accurate season shown. On the one
+                          section whose whole argument is that we publish
+                          our own misses, the colour was congratulating the
+                          biggest one.
+
+                          CLAUDE.md already states the rule this broke: a
+                          delta's sign is direction, its colour is meaning,
+                          and anywhere "up" and "good" point opposite ways
+                          the sign has to be written rather than coloured.
+                          The sign stays, because which side he landed on
+                          is genuinely informative; the verdict goes. */}
+                      <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-evidence">
                         {r.diff >= 0 ? `+${r.diff}` : r.diff}
                       </td>
                       <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-voidInk-muted">

@@ -368,7 +368,16 @@ export default function RoomPage({ slug }) {
                   ? preview.eyebrow
                   : `${room.season.toUpperCase()} · PREVIEW`)}
           </div>
-          <h1 className="m-0 font-display text-[30px] font-extrabold text-white sm:text-[40px]">
+          {/* uppercase italic, like every other H1 in the app.
+
+              RoomsLobby, YouScreen, DraftsScreen and the homepage all render
+              font-display extrabold uppercase italic; these four room routes
+              alone rendered upright sentence case, so "The Waiver Room" came
+              out in a different typographic voice from "THE ROOMS" one click
+              behind it. The display idiom is the brand's only distinctive
+              type asset, and dropping it on the routes a visitor reaches
+              SECOND means their second impression contradicts their first. */}
+          <h1 className="m-0 font-display text-[30px] font-extrabold uppercase italic text-white sm:text-[40px]">
             {room.name}
           </h1>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-voidInk-body">

@@ -178,6 +178,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
      catch. showAllTeams/shared belong to the mobile-only block below but
      live here for the same reason. */
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [showAllTeams, setShowAllTeams] = useState(false)
   const [shared, setShared] = useState(false)
 
@@ -329,6 +330,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
      signOf() makes about zero. */
   const barFill = { neutral: 'bg-evidence', bad: 'bg-cost-deep' }
   const barTone = { neutral: 'text-ink', bad: 'text-cost' }
+  /* One decimal, and every figure below a bar derived from the figure ON
+     it. See the weighted-sum note further down for what was wrong; the
+     short version is that a panel inviting a reader to check the
+     arithmetic has to survive them doing it. Both layouts read these, so
+     the phone and the desktop cannot drift into two different sums. */
+  const shownPct = (b) => b.pct.toFixed(1)
+  const contributionOf = (b) => Number(shownPct(b)) * b.weight
 
   function median(nums) {
     const sorted = nums.slice().sort((a, b) => a - b)
@@ -389,6 +397,30 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
   const discardLabel = hasRoom ? 'Leave the room' : 'Discard this mock'
   const handleRunAnother = () => engine.restart()
   const handleDiscard = () => engine.restart()
+  /* Mid-draft this is not the same action, and the paragraph above only
+     argues it is for a FINISHED one.
+
+     "clearing the *active* save here throws nothing away" is true because
+     recordHistory() fired on the draftOver() edge. Before that edge there
+     is no history row, so the identical call destroys every pick made so
+     far -- and this button renders mid-draft, unguarded, as the loudest
+     control on the tab, while the same engine.restart() two hundred
+     pixels below is behind a two-step confirm because it is labelled
+     "discard". One action, two labels, two levels of protection, and the
+     unprotected one is the one whose label does not warn anybody.
+
+     Post-draft is untouched: no confirm, same wording, because there the
+     original reasoning holds exactly. */
+  const handleRunAnotherClick = () => {
+    if (done || confirmingRestart) { handleRunAnother(); return }
+    setConfirmingRestart(true)
+    setTimeout(() => setConfirmingRestart(false), 4000)
+  }
+  const runAnotherLabel = done
+    ? 'Run another mock'
+    : confirmingRestart
+      ? 'Click again to discard'
+      : 'Discard and run another'
   // Two-step confirm, mirroring DraftMenuOverlay's own confirmingDiscard
   // pattern exactly (same 4-second window, same "click again" relabel) —
   // reused rather than reinvented. Only the solo "Discard" path arms it;
@@ -536,10 +568,10 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <div className="mt-5 space-y-2.5">
             <button
               type="button"
-              onClick={handleRunAnother}
+              onClick={handleRunAnotherClick}
               className="flex h-[52px] w-full items-center justify-center rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-[15px] font-bold text-white shadow-glass transition-transform duration-150 active:scale-[0.98]"
             >
-              Run another mock
+              {runAnotherLabel}
             </button>
             <a
               href="#/rooms/draft"
@@ -554,13 +586,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             {bars.map((b) => {
               const t = toneOf(b)
               const width = Math.max(2, Math.min(100, b.pct))
-              const contributes = b.pct * b.weight
+              const contributes = contributionOf(b)
               return (
                 <div key={b.key}>
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[15px] font-bold text-white">{b.label}</span>
                     <span className={'shrink-0 font-numeral text-[15px] font-bold ' + barTone[t]}>
-                      {Math.round(b.pct)}
+                      {shownPct(b)}
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
@@ -583,7 +615,8 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                 and the reason the number that used to be cyan here is the
                 loudest one on the panel. */}
             <span className="font-numeral text-[17px] font-bold text-ink">
-              {me.total.toFixed(1)} <span className="text-ink-muted">&rarr;</span> {me.grade}
+              {bars.reduce((n, b) => n + contributionOf(b), 0).toFixed(1)}{' '}
+              <span className="text-ink-muted">&rarr;</span> {me.grade}
             </span>
           </div>
           {/* Used to claim all four bars work the same way ("every score is
@@ -761,10 +794,10 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <div className="mt-4 flex items-center gap-2.5">
             <button
               type="button"
-              onClick={handleRunAnother}
+              onClick={handleRunAnotherClick}
               className="rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
             >
-              Run another mock
+              {runAnotherLabel}
             </button>
             <a
               href="#/rooms/draft"
@@ -787,19 +820,41 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                   <div className="h-1.5 min-w-[100px] max-w-[420px] flex-1 rounded-full bg-slate-rule">
                     <div className={'h-1.5 rounded-full transition-all duration-300 ' + barFill[t]} style={{ width: width + '%' }} />
                   </div>
-                  <span className={'w-7 shrink-0 text-right font-numeral text-sm font-bold ' + barTone[t]}>
-                    {Math.round(b.pct)}
+                  <span className={'w-9 shrink-0 text-right font-numeral text-sm font-bold ' + barTone[t]}>
+                    {shownPct(b)}
                   </span>
                   <span className="w-full shrink-0 text-ink-muted sm:w-auto sm:flex-1">{b.detail}</span>
                 </div>
               )
             })}
             {/* The components must visibly add up to the composite above —
-                not just agree with it in principle. */}
+                not just agree with it in principle.
+
+                They did not. The bar printed Math.round(b.pct) and this
+                line multiplied the UNROUNDED b.pct, so a reader checking
+                the panel's own arithmetic got 61 x 0.50 = 30.5 against a
+                printed 30.6. One row of four visibly failed, which is why
+                it survived: the other three happened to round the same way.
+
+                On the one panel that invites a reader to do the sum, the
+                sum was unverifiable -- and this product's binding
+                principle is that every number is explainable on the page
+                where it appears. Every figure below is now derived from
+                the figure printed above it: shownPct() is what the bar
+                shows, the contribution is that value times the weight, and
+                the total is the sum of those contributions. So the whole
+                line reconciles by construction rather than by luck.
+
+                The cost, stated: the printed total can sit up to ~0.2 off
+                the engine's own composite, because it is built from
+                displayed precision. Nothing else on this panel prints that
+                composite, so there is no second number to contradict --
+                and a total a reader can derive is worth more here than one
+                they must take on trust. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-rule/70 pt-2.5 text-xs">
               <span className="w-32 shrink-0 font-plex text-label uppercase text-ink-label sm:w-40">Weighted sum</span>
-              <span className="flex-1 font-numeral text-ink-muted">{bars.map((b) => (b.pct * b.weight).toFixed(1)).join(' + ')}</span>
-              <span className="font-numeral text-sm font-bold text-ink">= {me.total.toFixed(1)}</span>
+              <span className="flex-1 font-numeral text-ink-muted">{bars.map((b) => contributionOf(b).toFixed(1)).join(' + ')}</span>
+              <span className="font-numeral text-sm font-bold text-ink">= {bars.reduce((n, b) => n + contributionOf(b), 0).toFixed(1)}</span>
             </div>
           </div>
 

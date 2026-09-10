@@ -102,6 +102,11 @@ function activeFromHash(hash) {
   // resolves to what it always meant rather than to the tab it used to
   // light.
   if (hash.startsWith('#/drafts')) return 'lobby'
+  /* History is listed in MoreSheet, so it has to light More like the two
+     routes beside it. Without this the hash fell through to null and NO
+     tab in the pill was lit on a route the sheet itself offers -- the
+     rail already handles #/history and the pill was never taught it. */
+  if (hash.startsWith('#/history')) return 'history'
   if (hash.startsWith('#/rooms')) return 'rooms'
   if (hash.startsWith('#/my-league')) return 'my-league'
   if (hash.startsWith('#/you')) return 'you'
@@ -324,7 +329,9 @@ export default function FloatingNavPill() {
             // every other tab can — it lights instead for the two routes
             // it now holds (the old Rooms and Drafts tabs), which is what
             // activeFromHash still resolves those hashes to.
-            const isActive = t.key === 'more' ? active === 'lobby' || active === 'rooms' : active === t.key
+            const isActive = t.key === 'more'
+              ? active === 'lobby' || active === 'rooms' || active === 'history'
+              : active === t.key
             const cls =
               'flex h-[58px] flex-1 flex-col items-center justify-center gap-[3px] rounded-full text-[10px] font-semibold transition-colors duration-150 ' +
               (isActive ? 'text-mint' : 'text-ink-muted')

@@ -228,7 +228,19 @@ const DESKTOP_REQUIRED = [
   // HomeAlive's hero — what replaced Hero's own headline and sub-copy.
   "Know the move",
   "before your league.",
-  "Plug in your league from any major platform.",
+  /* The stem only, and the platform names deliberately NOT asserted.
+
+     This line read "Plug in your league from any major platform." and the
+     page said that while two of four platforms were built -- corrected by
+     an 11px caption 200px lower, which is a footnote rather than a
+     correction. The subhead now interpolates LIVE_NAMES from
+     leaguePlatforms.js, so it cannot overclaim and cannot go stale.
+
+     Asserting the rendered names here would reintroduce exactly the drift
+     that constant exists to prevent: the day a third platform ships, this
+     file becomes the last place still saying two. So the assertion is the
+     half of the sentence that is not derived, plus the negative below. */
+  "Plug in your league from",
   "Keep your drafts on every device",
   "FREE · NO ACCOUNT NEEDED · RUNS IN YOUR BROWSER",
   /* Three lines used to sit here -- "Enter the Draft Room", "Open the
@@ -268,5 +280,15 @@ test("each homepage carries its own agreed copy", async ({ browser }) => {
   for (const line of PHONE_REQUIRED) {
     expect(phone.joined.toLowerCase(), `the phone carries: ${line}`)
       .toContain(line.toLowerCase());
+  }
+
+  /* The retired claim, asserted absent at both widths.
+
+     A required-copy list can only catch a sentence going missing. This one
+     went wrong the other way -- it was present and false -- so the guard
+     against it coming back has to be a negative. */
+  for (const [name, page] of [["desktop", desktop], ["the phone", phone]]) {
+    expect(page.joined.toLowerCase(), `${name} no longer claims every platform`)
+      .not.toContain("any major platform");
   }
 });

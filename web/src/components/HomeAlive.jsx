@@ -538,7 +538,21 @@ export default function HomeAlive() {
             </h1>
 
             <p className="mt-3.5 max-w-[44ch] text-[15px] leading-[1.45] text-voidInk-body sm:mt-[22px] sm:text-[18px] sm:leading-[1.5]">
-              Plug in your league from any major platform. Juke tracks who&apos;s rising, who&apos;s
+              {/* PLATFORM_NAMES, never "any major platform".
+
+                  Two of four platforms are built, and the Connect card 200px
+                  below has always said so -- so the headline claim was
+                  corrected by an 11px caption further down the page, which
+                  this file's own comment at the caption already described as
+                  its job. A caption is a footnote, not a correction, and
+                  being caught overclaiming once costs the credit the next
+                  3,000px of proof is trying to earn -- on the page whose
+                  whole thesis is that adjectives are not evidence.
+
+                  Derived rather than typed, for leaguePlatforms.js's own
+                  reason: "Sleeper today, more to come" was still on this
+                  page the day ESPN shipped. */}
+              Plug in your league from {PLATFORM_NAMES}. Juke tracks who&apos;s rising, who&apos;s
               fading, and which room to handle it in.
             </p>
 
