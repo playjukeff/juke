@@ -4,6 +4,32 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ---- v2 "Telemetry" (the #/v2 comparison build, web/src/components/v2) ----
+        //
+        // Its own namespace on purpose. v2 is a side-by-side proposal, not a
+        // re-theme: nothing outside components/v2 may read these, so the live
+        // site cannot drift toward them by accident, and deleting v2 is
+        // deleting this block and one directory.
+        //
+        // Measured on `panel` (#10151F): ink 16.3, ink2 8.7, ink3 5.2, volt
+        // 14.9, loss 6.6 — every text tone clears 4.5. `voltInk` is the only
+        // ink allowed ON volt (15.1:1); white on volt is 1.1 and never used.
+        v2: {
+          ground: '#0B0F19',
+          inset: '#0D121C',
+          panel: '#10151F',
+          raised: '#161C29',
+          hover: '#1B2332',
+          ink: '#E7ECF3',
+          ink2: '#A7B1C2',
+          ink3: '#7F8A9E',
+          volt: '#00FF66',
+          voltInk: '#03140A',
+          cyan: '#22D3EE',
+          violet: '#8B5CF6',
+          loss: '#FF6B6B',
+          warn: '#FFB547',
+        },
         obsidian: '#0B0E14',
         charcoal: '#151923',
         teal: {
@@ -419,6 +445,10 @@ export default {
       },
       transitionDuration: { hover: '160ms' },
       fontFamily: {
+        // v2 only: a condensed scoreboard face for the telemetry build's
+        // headlines and big numerals. Fetched by V2App on mount and never
+        // before, so no live page pays for it.
+        telemetry: ['"Barlow Condensed"', 'Gabarito', 'system-ui', 'sans-serif'],
         // The display face, and it has to be the same string style.css's
         // --font-display carries — two copies of "what the display face
         // is" is the written-down-twice failure with a typeface in it, and
