@@ -454,6 +454,14 @@ Ranked by what a measurement supports, not by what sounds alarming.
    is what this gap produces — not an outage, a permanent silent tax nobody is
    told about.
 
+   **Half of that is closed and the half that is closed is the regression
+   half.** `tests/no-console-errors.spec.mjs` fails on any console error or
+   uncaught exception across the ten guest routes at both widths and through a
+   live draft's four tabs, so the *next* #418 cannot ship the way that one did.
+   It is not error tracking: it watches CI rather than real users, so it sees
+   what a clean run in a browser we drive does and nothing about what a phone
+   in a stadium does. The ceiling above is unchanged for that.
+
 **What is genuinely fine, so nobody spends effort here.** Pages is a CDN and
 the site is static; a Durable Object is one per room and shards by
 construction; D1 is touched only by `/me/*` and the news cache, at human
@@ -11302,6 +11310,89 @@ remains, after a close, where there is no client-side condition to poll.
   for every major you skip, not just the one you land on: v5 was the node24
   bump, v6 moved the credentials, v7 blocked fork checkouts for
   `pull_request_target` and `workflow_run`, which this repository does not use.
+
+### Nothing in the suite was listening
+
+Measured 10 September 2026: **forty-one spec files, zero `pageerror`
+handlers, zero console listeners.** The three mentions of "console" in
+`tests/` are all prose in comments.
+
+So the failure this file already records under the browser-error ceiling —
+React's #418 and #423 on every load of the site for the whole life of
+accounts, found by somebody opening dev tools — could have happened again in
+exactly the same way, and the suite would have gone on reporting green
+through all of it. Every spec here asserts something is *present and correct*;
+none of them asked whether the page was complaining while it did.
+
+`tests/no-console-errors.spec.mjs` asks. Ten guest routes at 1440 and 375,
+plus a live draft across its four tabs.
+
+**Two things are filtered and nothing else**, because a check that reports
+somebody else's weather is a check nobody reads by the end of the week:
+
+- **Anything downstream of a request to a host we do not serve.** Every one of
+  those integrations is documented as failing by disappearing — the score
+  strip's own contract — so a red run when ESPN has a bad afternoon would be
+  asserting a third party's uptime. `Failed to load resource` names no host in
+  its text, so it is matched against what actually failed rather than guessed
+  at from the string.
+- **The inline-script CSP refusal**, which is Cloudflare's bot-detection
+  script being blocked on purpose.
+
+**The second filter would be unsafe alone, so the premise it rests on is
+asserted rather than trusted.** It would equally swallow an inline script of
+*ours* being refused — so a fourth test pins that this app ships none.
+Measured rather than taken from the rule: the served production page carries
+exactly one inline script and it is Cloudflare's; the built page carries zero.
+
+**`pageerror` is never filtered.** An uncaught exception is ours by
+definition, and the blocked third-party script never runs, so it cannot raise
+one.
+
+**Confirmed non-vacuous four ways**, which is the whole reason to believe a
+green run: a planted `console.error` is reported with its route attached, a
+planted uncaught throw is reported as a `pageerror`, a planted inline script
+fails the fourth test, and the third-party filter is proved *live* rather than
+by argument — ESPN genuinely fails from this sandbox, dozens of console errors
+per run, and the spec passes anyway.
+
+It is green against production as well as locally, so it can live in the
+nightly rather than being a local-only check. The inline-script assertion is
+the one part that skips against production, because Cloudflare's injection is
+not ours to remove — **verified in both directions**, which this file already
+says is the difference between a skip and a deletion.
+
+### The score strip was not broken, and one curl said so
+
+That sweep reported the ESPN scoreboard failing CORS **on production**, from
+`https://jukeff.com` — which reads as the one runtime third-party dependency
+this project has being dead on the live site, in September, mid-season.
+
+It is the sandbox. `curl` with an `Origin: https://jukeff.com` header gets
+**200 with `Access-Control-Allow-Origin: *`**, so the endpoint is healthy and
+permissive and the browser's complaint is a proxy that never delivered the
+response — the same shape as the render-blocking Google Fonts `<link>` this
+file already records for the same environment.
+
+Worth its own note for the cost rather than the conclusion: it is the same
+"tooling wearing a bug's clothes" pattern, and it took **one command** to
+settle. The tell is that Chrome reports a request that never arrived and one
+that arrived without headers identically, so "blocked by CORS policy" is not
+evidence of a CORS policy. **Ask the origin directly before believing a
+browser about a third party.**
+
+### `<script>` in a comment is still not a `<script>`
+
+`smoke-pages.mjs` already records this — its first production run reported a
+`.woff2` as a 404 because `index.html` quotes a `<link rel="preload">` tag in
+its own prose. It happened again here, in the analysis rather than in a
+check: a grep for inline scripts returned two, and **both were sentences
+about inline scripts**, in comments explaining why the page has none.
+
+That very nearly shipped a filter resting on a false premise. Strip comments
+before matching markup in a file this heavily commented — and note the shape
+is not "a regex is imprecise" but "this repository writes prose that looks
+exactly like the thing you are searching for".
 
 ### The site had no post-deploy check, and the worker has had one for weeks
 
