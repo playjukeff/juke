@@ -375,8 +375,16 @@ export default {
            room's own H1. Named so the primitives cannot drift from each
            other the way eleven hand-picked sizes on one screen already did
            once (see style.css's type-scale note). */
-        label: ['10px', { letterSpacing: '0.13em', lineHeight: '1' }],
-        'label-sm': ['10.5px', { letterSpacing: '0.14em', lineHeight: '1' }],
+        /* 0.12em on both, and on every mono eyebrow in web/src, because the
+           role had NINE tracking values across it -- 0.06 to 0.14em plus
+           Tailwind's `wide` -- for one job: a 9-11px uppercase Plex label.
+           Measured 10 September 2026 at 62 sites. 0.12 is the value the
+           most sites already carried by hand beside these tokens' 0.13 and
+           0.14; the two tokens move to it so a token site and a class site
+           can never disagree by a hundredth nobody can see and everybody
+           can feel. A repeated role stays identical across screens. */
+        label: ['10px', { letterSpacing: '0.12em', lineHeight: '1' }],
+        'label-sm': ['10.5px', { letterSpacing: '0.12em', lineHeight: '1' }],
         kpi: ['26px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
         'room-h1': ['34px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
         // The metadata role: captions, table cells, hints, the line under a

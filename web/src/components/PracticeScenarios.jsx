@@ -139,7 +139,7 @@ export default function PracticeScenarios({ engine, tick, onLaunch }) {
             12px/.14em: "YOUR MOCK DRAFTS" is eleven pixels at .11em two
             inches below this, and two labels doing the same job at two
             sizes is what makes a screen look assembled rather than designed. */}
-        <p className="font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-voidInk-muted">
+        <p className="font-plex text-[11px] font-semibold uppercase tracking-[0.12em] text-voidInk-muted">
           Practice a scenario
         </p>
         <p className="shrink-0 text-meta text-voidInk-muted">{data.rightLabel}</p>

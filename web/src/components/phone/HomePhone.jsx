@@ -152,7 +152,7 @@ function GameRow({ icon, eyebrow, title, cta, href, onClick, locked, hero }) {
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={'block font-plex text-[10px] font-semibold uppercase tracking-[0.1em] ' + (locked ? 'text-white/30' : 'text-teal-300/80')}>
+        <span className={'block font-plex text-[10px] font-semibold uppercase tracking-[0.12em] ' + (locked ? 'text-white/30' : 'text-teal-300/80')}>
           {eyebrow}
         </span>
         {/* 20px, not 21, and the CTA pill below is 11px rather than 12.
@@ -280,7 +280,7 @@ export default function HomePhone() {
             className="mt-6 flex items-center gap-3 rounded-[18px] border border-teal-400/30 bg-teal-500/[0.07] px-4 py-3.5 transition-transform active:scale-[0.985]"
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
+              <span className="block font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-300">
                 In progress
               </span>
               <span className="mt-0.5 block truncate text-[15px] font-bold text-white">
@@ -366,7 +366,7 @@ export default function HomePhone() {
         {accountUiReady && (
           <SignedOut>
             <div className="mt-7 rounded-[18px] border border-line-hairline bg-surface-card px-3.5 py-4">
-              <p className="font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
+              <p className="font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-300">
                 Optional
               </p>
               <p className="mt-1 font-display text-[19px] font-bold leading-tight text-white">
@@ -426,7 +426,7 @@ export default function HomePhone() {
                       "Live", which is exactly the drift the shared
                       ROOM_TIER data was introduced to stop, surviving in the
                       half of the homepage that data never reached. */}
-                  <span className="font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
+                  <span className="font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-teal-300">
                     Free Access · {liveRoom.season}
                   </span>
                 </span>
@@ -462,7 +462,7 @@ export default function HomePhone() {
                   <span className="mt-2.5 font-display text-[16px] font-bold leading-tight text-white/80">
                     {room.name.replace(/^The\s+/, '')}
                   </span>
-                  <span className="mt-1 flex items-center gap-1 font-plex text-[10px] font-semibold uppercase tracking-[0.08em] text-voidInk-muted">
+                  <span className="mt-1 flex items-center gap-1 font-plex text-[10px] font-semibold uppercase tracking-[0.12em] text-voidInk-muted">
                     <Lock className="h-[10px] w-[10px]" aria-hidden="true" />
                     {room.season}
                   </span>

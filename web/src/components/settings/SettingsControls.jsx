@@ -28,7 +28,7 @@ export function Section({ icon: Icon, title, hint, action, children }) {
     <section className="border-b border-slate-rule/50 px-4 py-5 last:border-b-0">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-ink-soft">
+          <h3 className="flex items-center gap-2 font-plex text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
             {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-hidden="true" />}
             {title}
           </h3>

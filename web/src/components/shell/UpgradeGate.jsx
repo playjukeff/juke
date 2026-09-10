@@ -72,7 +72,7 @@ export default function UpgradeGate({ need, title, children }) {
       >
         <div className="w-full max-w-[440px] rounded-[18px] border border-line-hairline bg-charcoal px-5 py-6 text-center sm:px-6">
           <span
-            className="inline-block rounded-[5px] bg-flow-amber/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.07em] text-flow-amber"
+            className="inline-block rounded-[5px] bg-flow-amber/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-flow-amber"
           >
             {tierLabel(need)}
           </span>

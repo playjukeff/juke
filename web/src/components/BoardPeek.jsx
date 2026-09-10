@@ -175,7 +175,7 @@ export default function BoardPeek() {
       className="rounded-[18px] border border-line-hairline bg-surface-card px-5 py-5 sm:px-6"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-body">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-body">
           Tonight&apos;s board{format ? <span className="text-voidInk-muted"> &middot; {format}</span> : null}
         </span>
         {/* The unit is named here because nothing else names it for 845px.

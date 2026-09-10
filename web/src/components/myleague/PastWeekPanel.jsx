@@ -86,7 +86,7 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-teal">
+          <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-teal">
             {isDraft ? 'Draft' : `Week ${weekKey}`}
           </div>
           <div className="mt-1 text-[15px] font-semibold text-white">
@@ -108,7 +108,7 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
       {scored ? (
         <div className="mb-4 rounded-[14px] border border-line-hairline bg-surface-card px-4 py-4 sm:px-6">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-label">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-label">
               {game.playoff ? 'Playoff week' : 'The week'}
             </span>
             <span
@@ -163,7 +163,7 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
               key={d.id}
               className="flex flex-wrap items-center gap-3 border-b border-line-hairline py-3.5 last:border-b-0"
             >
-              <span className="w-full font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted sm:w-auto">
+              <span className="w-full font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted sm:w-auto">
                 {(d.room || '').toUpperCase()}
               </span>
               <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">

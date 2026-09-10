@@ -143,7 +143,7 @@ function TargetRow({ rank, row, max, index = 0 }) {
       ) : null}
       <span className="w-14 shrink-0 text-right">
         <Gap value={row.gap} />
-        <span className="block font-plex text-[10px] uppercase tracking-[0.08em] text-ink-muted">
+        <span className="block font-plex text-[10px] uppercase tracking-[0.12em] text-ink-muted">
           over repl.
         </span>
       </span>
@@ -268,7 +268,7 @@ function NewsWire({ rows, engine }) {
             >
               <PosTile pos={player.pos} size={30} />
               <span className="min-w-0 flex-1">
-                <span className="block font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
                   {player.name}
                   {item.source ? ` · ${item.source}` : ''}
                 </span>

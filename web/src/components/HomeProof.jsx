@@ -235,7 +235,7 @@ function useEngineData(read, enabled) {
 function Flat({ label, children }) {
   return (
     <div className="rounded-[18px] bg-black/30 px-5 py-6 sm:px-6 sm:py-7">
-      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-muted lg:hidden">
+      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted lg:hidden">
         {label}
       </span>
       {children}
@@ -246,7 +246,7 @@ function Flat({ label, children }) {
 function Lit({ label, children }) {
   return (
     <div className="rounded-[18px] border border-line-hairline bg-surface-card px-5 py-6 sm:px-6 sm:py-7">
-      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.14em] text-teal lg:hidden">
+      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.12em] text-teal lg:hidden">
         {label}
       </span>
       {children}
@@ -767,7 +767,7 @@ function PairYourRules() {
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>
-                  <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-voidInk-muted">
+                  <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
                     {r.pos}
                   </span>
                   {/* A mark, not a colour-only signal: the arrow carries
@@ -1115,7 +1115,7 @@ function PairRecord() {
                            has to read to parse the row under it, so it is
                            the wrong place to spend the last of a token's
                            contrast on hierarchy. */
-                        className={`pb-2 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-voidInk-body ${
+                        className={`pb-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-voidInk-body ${
                           i === 0 ? 'text-left' : 'text-right'
                         }`}
                       >
@@ -1191,10 +1191,10 @@ export default function HomeProof() {
   return (
     <section aria-label="What Juke shows that a ranking cannot" className="relative mt-16 pb-8 sm:mt-20 sm:pb-14">
       <div className="hidden lg:grid lg:grid-cols-2">
-        <span className="pr-12 font-mono text-[10px] uppercase tracking-[0.14em] text-voidInk-muted">
+        <span className="pr-12 font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted">
           What you're handed
         </span>
-        <span className="pl-12 font-mono text-[10px] uppercase tracking-[0.14em] text-teal">
+        <span className="pl-12 font-mono text-[10px] uppercase tracking-[0.12em] text-teal">
           What Juke shows
         </span>
       </div>

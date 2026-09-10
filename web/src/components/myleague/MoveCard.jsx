@@ -57,7 +57,7 @@ export default function MoveCard({
     <div className="mx-auto mt-4 max-w-[1280px] px-5 sm:px-10">
       <div className="jd-rise rounded-card border-l-[3px] border-teal bg-[#151920] p-[18px] sm:p-6 lg:grid lg:grid-cols-[1fr_300px] lg:gap-6">
         <div>
-          <span className="font-plex text-label uppercase tracking-[0.1em] text-teal">
+          <span className="font-plex text-label uppercase tracking-[0.12em] text-teal">
             THE MOVE{room ? ` · ${room.toUpperCase()}` : ''}
           </span>
           <div className="mt-1.5 flex items-start gap-3">

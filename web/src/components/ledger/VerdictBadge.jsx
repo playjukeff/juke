@@ -21,7 +21,7 @@ export default function VerdictBadge({ verdict, className = '' }) {
     <span
       className={
         'inline-flex flex-none items-center gap-1 whitespace-nowrap rounded-md border border-line-hairline ' +
-        'bg-surface-card px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] ' +
+        'bg-surface-card px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] ' +
         v.tone +
         (className ? ' ' + className : '')
       }

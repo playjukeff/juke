@@ -54,7 +54,7 @@ export default function NotificationSettings({ onBack }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[env(safe-area-inset-bottom)] pt-5">
-        <p className="mb-4 font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-ink-soft">
+        <p className="mb-4 font-plex text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
           Draft notification settings
         </p>
 
