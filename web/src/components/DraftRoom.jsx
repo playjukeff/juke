@@ -251,6 +251,76 @@ export default function DraftRoom() {
   // be the same modal (Edit setup -> Invite tab), and collapsing them back
   // into one flag would silently re-bury this behind Edit setup again.
   const [friendsModalOpen, setFriendsModalOpen] = useState(false)
+  /* #/rooms/draft?friends=1 opens that popover on arrival.
+
+     The homepage's "Or draft with friends -- same board, real managers"
+     row pointed at bare #/rooms/draft, which is the same href as the
+     Mock Draft card directly above it, the league-error card's own
+     fallback link and the closing CTA. Five links, one destination, and
+     the one promising multiplayer landed on a screen where multiplayer
+     is a row the reader then has to find for themselves. That is the
+     mobile pass's own finding -- "it was the control that was missing,
+     not the feature" -- reappearing one layer up: this time the control
+     exists and the link simply does not reach it.
+
+     The hash is the channel because the homepage is a different React
+     tree, which is the identical argument ?report= above already makes
+     for the archive, and #/draft?room=ABC1 makes for an invite. route()
+     and syncHomeVisibility() both split the query off before deciding a
+     path, so the parameter costs the routing nothing.
+
+     Read on hashchange as well as at mount, for ?report='s reason: this
+     component does not unmount between routes, so arriving from the
+     homepage is a hashchange and a mount-only read would never fire. */
+  useEffect(() => {
+    const read = () => {
+      const params = new URLSearchParams(window.location.hash.split('?')[1] || '')
+      if (params.get('friends')) { setFriendsModalOpen(true); return }
+      /* Leaving closes it, and the ONE exception is the hash change this
+         modal's own Create a room / Join makes.
+
+         Not symmetric with ?report= above, and the asymmetry is the whole
+         point: that one selects a view, this one has an action running
+         inside it. engine.createRoom() sets the hash to
+         #/draft-room?room=<code>, so a plain "clear when the parameter is
+         gone" would close this on the exact tick RoomPanel renders the
+         invite link -- destroying the thing DraftWithFriendsModal's own
+         comment exists to protect ("the host never saw the link
+         RoomPanel just rendered"). A hash carrying ?room= is that action
+         reporting itself, so it survives; everything else closes.
+
+         Without this the flag is a stale-modal leak of exactly the kind
+         DraftRoom already documents for `view` and `soloAutopick`: this
+         component does not unmount between routes, so a modal opened
+         here and navigated away from is still open on the way back.
+         Confirmed reachable before this change too, with no parameter
+         involved -- open it from the entry screen's own row, go home,
+         come back, and it is sitting there unasked. */
+      if (!params.get('room')) setFriendsModalOpen(false)
+    }
+    window.addEventListener('hashchange', read)
+    read()
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
+  /* Closing drops the parameter, and that is not tidiness.
+
+     A hash that does not change fires no hashchange, so leaving it in
+     place makes the link inert for anybody already standing on it --
+     press, close, press again, nothing. replaceState rather than
+     assigning location.hash: it leaves the path alone, adds no
+     back-button entry to a modal that was never a page, and fires no
+     hashchange, so applyRoute() and the two useHashActive watchers all
+     stay out of it. */
+  const closeFriendsModal = () => {
+    setFriendsModalOpen(false)
+    const [path, q] = window.location.hash.split('?')
+    if (!q) return
+    const params = new URLSearchParams(q)
+    if (!params.has('friends')) return
+    params.delete('friends')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + window.location.search + path + (rest ? `?${rest}` : ''))
+  }
   /* The seat, shared between the form's dropdown, the lobby board and the
      Draft Settings screen's own Draft order section.
 
@@ -979,7 +1049,7 @@ export default function DraftRoom() {
 
         {friendsModalOpen && (
           <DraftWithFriendsModal
-            onClose={() => setFriendsModalOpen(false)}
+            onClose={closeFriendsModal}
             onCreated={handleRoomCreatedFromLobby}
             onEnter={enterDraftRoom}
           />
@@ -1222,8 +1292,8 @@ export default function DraftRoom() {
             onEnter is what this screen's own Start button already does. */}
         {friendsModalOpen && (
           <DraftWithFriendsModal
-            onClose={() => setFriendsModalOpen(false)}
-            onEnter={() => setFriendsModalOpen(false)}
+            onClose={closeFriendsModal}
+            onEnter={closeFriendsModal}
           />
         )}
       </div>

@@ -609,8 +609,18 @@ export default function HomeAlive() {
               Read-only &middot; Juke never edits your league
             </p>
 
+            {/* ?friends=1, not bare #/rooms/draft.
+
+                This row was the fifth link on the page pointing at the
+                same place as the Mock Draft card 40px above it, and it is
+                the one whose words promise something the other four do
+                not. Landing on the identical screen makes the sentence
+                read as a restatement of the card rather than a second
+                door, and the multiplayer flow behind it is a row the
+                reader then has to go and find. DraftRoom.jsx reads the
+                parameter and opens DraftWithFriendsModal on arrival. */}
             <a
-              href="#/rooms/draft"
+              href="#/rooms/draft?friends=1"
               className="mt-2.5 flex max-w-[560px] items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-[14px] text-voidInk-primary transition-colors duration-150 hover:border-teal/50 sm:px-[18px] sm:py-3.5"
             >
               <span className="flex items-center gap-2.5">
