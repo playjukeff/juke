@@ -68,6 +68,22 @@ function relativeAge(at) {
 }
 
 function Row({ entry, onOpen, onDelete }) {
+  /* Two presses, armed in place, mirroring the pattern this app already
+     uses in three other places (DraftMenuOverlay's discard,
+     AnalysisTab's, and ConnectedLeagues' disconnect on #/you) -- same
+     four-second window, same relabel.
+
+     A completed draft is graded, frozen and unrecoverable, and one tap on
+     a 🗑 destroyed it with no confirm and no undo. #/you arms a disconnect
+     in place and NAMES the league before removing something a reader can
+     simply reconnect; the archive was destroying the less recoverable
+     thing with the more casual gesture. Two screens disagreeing about how
+     careful an irreversible action should be, and the archive was on the
+     wrong side of it.
+
+     Armed state names the draft rather than saying "Sure?", because a row
+     in a list of twenty is one mis-scroll away from being the wrong one. */
+  const [arming, setArming] = useState(false)
   return (
     <div className="flex items-center gap-3.5 border-b border-line-hairline py-3.5">
       <button
@@ -101,11 +117,24 @@ function Row({ entry, onOpen, onDelete }) {
       </button>
       <button
         type="button"
-        onClick={onDelete}
-        aria-label={`Delete ${entry.leagueType}`}
-        className="shrink-0 px-1 text-ink-muted transition-colors duration-150 hover:text-flow-rose"
+        onClick={() => {
+          if (arming) { onDelete(); return }
+          setArming(true)
+          setTimeout(() => setArming(false), 4000)
+        }}
+        aria-label={
+          arming
+            ? `Confirm delete: ${entry.leagueType}. This cannot be undone.`
+            : `Delete ${entry.leagueType}`
+        }
+        className={
+          'shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold transition-colors duration-150 ' +
+          (arming
+            ? 'bg-flow-rose/15 text-flow-rose'
+            : 'text-ink-muted hover:text-flow-rose')
+        }
       >
-        <span aria-hidden="true">🗑</span>
+        {arming ? 'Delete?' : <span aria-hidden="true">🗑</span>}
       </button>
     </div>
   )

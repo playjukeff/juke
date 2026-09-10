@@ -2,7 +2,8 @@ import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
 import { useRoomStakes } from '../hooks/useRoomStakes.js'
 import { stakeLabel } from './shell/roomStakes.js'
-import { roomIsOpen } from './RoomPage.jsx'
+import { roomIsOpen, lockReason } from './RoomPage.jsx'
+import RoomIcon from './roomIcons.jsx'
 
 /* The room cards, written once for the two screens that draw them: the
    Rooms lobby (#/rooms) and the homepage's own THE ROOMS section. The
@@ -50,7 +51,7 @@ function LeadCard({ room, lgSpan, stake }) {
         style={{ background: '#0f2e34', color: room.accent }}
         aria-hidden="true"
       >
-        {room.glyph}
+        <RoomIcon room={room} />
       </span>
       <span className="min-w-0 flex-1 lg:flex-none">
         {/* Screen 16: what this room has at stake, ON THE EYEBROW ROW rather
@@ -85,7 +86,17 @@ function LeadCard({ room, lgSpan, stake }) {
             </span>
           ) : null}
         </span>
-        <span className="mt-[3px] block font-display text-[22px] font-bold leading-[1.05] text-white">
+        {/* Same size and same reserve as LockedCard's title, because the
+            five cards sit in ONE row and their text blocks are all
+            bottom-anchored. At 22px against the locked cards' 20px the two
+            reserves resolve to different heights (46.2 vs 42), so the row
+            still stepped even with both reserving two lines. The lead
+            card's prominence comes from its accent eyebrow and accent-tinted
+            tile, which is a stronger signal than two pixels of type.
+
+            This grid is shared with the Rooms lobby, so the alignment fix
+            lands on both screens. */}
+        <span className="mt-[3px] block min-h-[2.1em] font-display text-[20px] font-bold leading-[1.05] text-white">
           {room.name}
         </span>
         {/* The same two-line box the locked cards give their hook, and
@@ -108,6 +119,15 @@ function LeadCard({ room, lgSpan, stake }) {
   )
 }
 
+/* "The Waiver Room, The Trade Room and The Strategy Room" — and the same
+   sentence with one or two of them, because which rooms are locked changes
+   as rooms ship and the copy has to survive that without being rewritten. */
+function nameList(rooms) {
+  const names = rooms.map((r) => r.name)
+  if (names.length <= 1) return names[0] || ''
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
+}
+
 function LockedCard({ room, wide = false, lgSpan }) {
   const inner = (
     <>
@@ -115,7 +135,7 @@ function LockedCard({ room, wide = false, lgSpan }) {
         className="grid h-10 w-10 place-items-center rounded-xl bg-flow-tile text-[18px] text-ink-muted"
         aria-hidden="true"
       >
-        {room.glyph}
+        <RoomIcon room={room} />
       </span>
       {/* Eyebrow, then title, then the hook -- the same three in the same
           order as LeadCard, because the two sit in one row and every card
@@ -129,11 +149,49 @@ function LockedCard({ room, wide = false, lgSpan }) {
           Which means the margins and line-heights below have to match
           LeadCard's too, and a change to one of them is a change to both. */}
       <span>
-        <span className="block font-mono text-[10px] tracking-[0.1em] text-ink-muted">
-          <span aria-hidden="true">🔒</span> {room.season.toUpperCase()}
+        {/* The lock is drawn and it is announced.
+
+            It was `<span aria-hidden="true">🔒</span>`, so with
+            aria-hidden content stripped the card read "IN-SEASON Waiver
+            Room Preview: 4 claims worth making this week" and nothing in
+            it said locked — three of the five cards in this row led
+            somewhere the reader was never warned about. An emoji is also
+            not an icon system; this is the one stroke weight the rest of
+            the row uses. */}
+        <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] text-ink-muted">
+          <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
+            <path
+              d="M3.4 5.2V3.6a2.6 2.6 0 0 1 5.2 0v1.6"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+            <rect x="2.4" y="5.2" width="7.2" height="5.4" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
+          </svg>
+          <span className="sr-only">Locked. </span>
+          {room.season.toUpperCase()}
         </span>
-        <span className="mt-[3px] block font-display text-[20px] font-bold leading-[1.05] text-white sm:text-[22px]">
-          {room.name.replace(/^The /, '')}
+        {/* The article stays. PRODUCT.md is explicit that a room is a
+            proper name taking "The", and stripping it here put two
+            spellings of the same room within one screenful — the strip
+            read "The Draft Room / Waiver Room / Trade Room" while the
+            footer 200px below listed all five with it. Confirmed in the
+            accessibility tree, card named "Waiver Room" against footer
+            link "The Waiver Room".
+
+            text-[20px] at every width rather than stepping up to 22:
+            "The Strategy Room" needs the extra line at 246px and the
+            card already reserves a two-line box below the title, so the
+            bottom-anchored baseline is unaffected. */}
+        {/* Two lines reserved, for the reason the hero cards now do it.
+
+            "The Prospect Room" wraps in a 246px card and the other four do
+            not — measured, a 46px title against 21-23px, which put card
+            one's eyebrow 23-25px above the rest of its own row. These
+            blocks are bottom-anchored under a fixed min-height, so a title
+            that takes a second line lifts everything above it. */}
+        <span className="mt-[3px] block min-h-[2.1em] font-display text-[20px] font-bold leading-[1.05] text-white">
+          {room.name}
         </span>
         {/* No `block` here: `line-clamp-*` works by setting
             `display:-webkit-box`, and a `block` in the same layer wins and
@@ -209,10 +267,14 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
      exists for the gap between them: League Room used to render real
      standings for a connected reader (RoomPage's LIVE_ROOMS) while this
      grid drew a padlock on it regardless, so the lobby said locked about a
-     room that opened. League graduated into My League and left LIVE_ROOMS
-     empty, but the gap it exposed can reopen the moment any of Waiver,
-     Trade or Strategy gets a real connected body — so this stays rather
-     than being simplified back to `r.live` alone. Prospect then made it a
+     room that opened. League graduated into My League — and the rest of
+     this sentence used to say that left LIVE_ROOMS empty, which stopped
+     being true the moment Waiver, Trade and Strategy got real connected
+     bodies. It holds all three today, so `opensForMe` is load-bearing
+     rather than defensive: without it this grid would padlock three rooms
+     a connected reader can walk into. (That stale clause was read as fact
+     in a review and reported as "connecting unlocks none of them", which
+     is exactly what a confident comment costs.) Prospect then made it a
      three-way question (open to everybody, open with a league, locked), so
      the answer is roomIsOpen() rather than a slug list every caller has to
      keep in step. */
@@ -239,6 +301,20 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
   const opensForMe = (r) => roomIsOpen(r, status)
   const lead = rooms.filter(opensForMe)
   const locked = rooms.filter((r) => !opensForMe(r))
+
+  /* What opens the padlocks, in the reader's own words, derived.
+
+     The homepage strip drew three locked cards and said nothing about what
+     opens them — an unexplained gate on a pre-launch page reads as a
+     paywall nobody can price. The lobby one click away does say it; this
+     surface never did.
+
+     Built from lockReason() rather than written as a sentence, because a
+     sentence is what goes stale: this file's own comment above claimed
+     LIVE_ROOMS was empty long after it held three rooms. Derived, the line
+     cannot say "connect a league" about a room no league opens. */
+  const needLeague = locked.filter((r) => lockReason(r, status) === 'league')
+  const beingBuilt = locked.filter((r) => lockReason(r, status) === 'building')
   const grid = GRID[columns] || GRID.lobby
 
   /* How many cards land in the desktop grid's final row, and what those
@@ -269,29 +345,51 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
   const oddOut = locked.length % 2 === 1
 
   return (
-    <div className={'grid grid-cols-2 gap-2.5 lg:gap-3 ' + grid.cls}>
-      {lead.map((r, i) => (
-        <LeadCard
-          key={r.name}
-          room={r}
-          lgSpan={spanFor(i)}
-          /* The unit is in the WORDS — "+8.4 this week" against "+31 on the
-             wire" — because the two stakes are in different units and a tile
-             printing both as "pts" would be the right-value-wrong-column
-             failure this project has shipped once in a standings table.
-             `stakeLabel()` is the one phrasing, shared with the phone's More
-             sheet, so the two surfaces cannot describe one number two ways. */
-          stake={stakeLabel(stakes[r.slug])}
-        />
-      ))}
-      {locked.map((r, i) => (
-        <LockedCard
-          key={r.name}
-          room={r}
-          wide={oddOut && i === locked.length - 1}
-          lgSpan={spanFor(lead.length + i)}
-        />
-      ))}
-    </div>
+    <>
+      <div className={'grid grid-cols-2 gap-2.5 lg:gap-3 ' + grid.cls}>
+        {lead.map((r, i) => (
+          <LeadCard
+            key={r.name}
+            room={r}
+            lgSpan={spanFor(i)}
+            /* The unit is in the WORDS — "+8.4 this week" against "+31 on the
+               wire" — because the two stakes are in different units and a tile
+               printing both as "pts" would be the right-value-wrong-column
+               failure this project has shipped once in a standings table.
+               `stakeLabel()` is the one phrasing, shared with the phone's More
+               sheet, so the two surfaces cannot describe one number two ways. */
+            stake={stakeLabel(stakes[r.slug])}
+          />
+        ))}
+        {locked.map((r, i) => (
+          <LockedCard
+            key={r.name}
+            room={r}
+            wide={oddOut && i === locked.length - 1}
+            lgSpan={spanFor(lead.length + i)}
+          />
+        ))}
+      </div>
+
+      {/* The homepage only. The lobby states this in its own SubCopy, and
+          two components saying it is the failure this file keeps naming. */}
+      {columns === 'home' && (needLeague.length > 0 || beingBuilt.length > 0) && (
+        <p className="mt-3.5 text-[13px] leading-[1.5] text-voidInk-muted">
+          {needLeague.length > 0 && (
+            <>
+              {nameList(needLeague)} open{needLeague.length === 1 ? 's' : ''} when you connect a
+              league — read-only, and it stays that way.
+            </>
+          )}
+          {needLeague.length > 0 && beingBuilt.length > 0 ? ' ' : null}
+          {beingBuilt.length > 0 && (
+            <>
+              {nameList(beingBuilt)} open{beingBuilt.length === 1 ? 's' : ''} as{' '}
+              {beingBuilt.length === 1 ? 'it is' : 'they are'} built.
+            </>
+          )}
+        </p>
+      )}
+    </>
   )
 }

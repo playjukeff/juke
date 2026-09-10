@@ -59,6 +59,18 @@ function whatItDoes(engine, player, vorp) {
 // is riskier. Re-sorting the cards by the number shown would undo that —
 // the fix is to say the actual reason a card won its slot instead of
 // leaving a bare number to imply one that may not be true.
+/* The line below which "scarce" and "safe" stop meaning anything.
+
+   Module scope because reasonFor() has to answer the SAME question the
+   demotion asked -- a second copy of this number is how the label and its
+   own explanation drift apart, which is exactly what happened. */
+const BAD_VORP = -30
+
+/* Genuinely likely gone, on the same 0.4 the "If you wait" box already
+   treats as a real risk. One reading of one threshold, used by the
+   demotion and by the sentence that explains it. */
+const AT_RISK = 0.4
+
 function reasonFor(rankLabel, candidate, engine) {
   if (rankLabel === 'Scarcest') {
     return candidate.tierLeft != null
@@ -67,7 +79,7 @@ function reasonFor(rankLabel, candidate, engine) {
   }
   if (rankLabel === 'Safest wait') return 'Deepest tier of the three — the least urgent pick here.'
   // 'Also available' — a candidate too far below replacement for
-  // "scarce"/"safe" to mean anything (see BAD_VORP below). Was "Nobody's
+  // "scarce"/"safe" to mean anything (see BAD_VORP above). Was "Nobody's
   // rushing for him — pure bench depth at this point," which read as a
   // verdict on the player rather than a fact about the market — "pure"
   // and "nobody's rushing" both frame him as barely worth having, when
@@ -75,7 +87,31 @@ function reasonFor(rankLabel, candidate, engine) {
   // else here scored him low, the market just isn't pricing urgency into
   // him. Same "no rush" fact Safest wait states, in the same neutral
   // register.
-  if (rankLabel === 'Also available') return 'No urgency behind him — steady bench value whenever you need it.'
+  if (rankLabel === 'Also available') {
+    /* Say WHY this card was demoted, rather than one sentence for three
+       different reasons.
+
+       A card reaches 'Also available' three ways: Scarcest with a VORP
+       below BAD_VORP, Safest wait with a VORP below it, or Safest wait
+       whose survival is under AT_RISK. The third is demoted precisely
+       BECAUSE he is likely gone -- and every one of them printed "No
+       urgency behind him", directly above an "If you wait" box reading
+       "Gone before pick 20 in 100% of boards". The mechanism guaranteed
+       the contradiction: the same condition that moved the label wrote
+       the sentence denying it.
+
+       The label was fixed once already for this exact shape (see the
+       demotion's own comment on a real −100 VORP card reading
+       "Scarcest") and the sentence underneath it was not. Both now read
+       the same two thresholds. */
+    if (candidate.survival != null && candidate.survival < AT_RISK) {
+      return 'Likely gone before your next pick — but not the best of the three.'
+    }
+    if (candidate.vorp != null && candidate.vorp < BAD_VORP) {
+      return 'Below the tier worth rushing for — depth, not a starter.'
+    }
+    return 'No urgency behind him — steady bench value whenever you need it.'
+  }
   const fit = engine.draftFit(candidate.player)
   return fit && fit.startsNow ? 'Best value for a slot you still need to fill.' : 'Best value still on the board.'
 }
@@ -488,13 +524,12 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
   // survival number that just chose it is itself below the same 0.4 the
   // "If you wait" box already treats as a real risk — genuinely likely
   // gone is not safe to wait on, whichever of the two candidates it is.
-  const BAD_VORP = -30
   rankLabels = rankLabels.map((label, i) => {
     const c = candidates[i]
     if (!c) return label
     if (label === 'Scarcest' && c.vorp != null && c.vorp < BAD_VORP) return 'Also available'
     if (label === 'Safest wait') {
-      const genuinelyAtRisk = c.survival != null && c.survival < 0.4
+      const genuinelyAtRisk = c.survival != null && c.survival < AT_RISK
       const badPick = c.vorp != null && c.vorp < BAD_VORP
       if (genuinelyAtRisk || badPick) return 'Also available'
     }

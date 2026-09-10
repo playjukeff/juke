@@ -37,7 +37,7 @@ function EmptyNoRoom() {
     <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
       <p className="text-sm font-semibold text-ink">Nobody to talk to here</p>
       <p className="text-xs leading-relaxed text-ink-muted">
-        Chat is for a shared room. Invite a friend from settings and this fills in for both of you.
+        Chat is for a shared room. Start one from Mock Drafts and this fills in for both of you.
       </p>
     </div>
   )

@@ -40,7 +40,10 @@ function seatIsAuto(slot, mySlot, autopick, roomSeats) {
   return slot === mySlot ? !!autopick : true
 }
 
-function formatClock(seconds) {
+/* Exported for DraftCockpitHeader, which had no digits at all on the two
+   tabs this ticker does not mount under. One formatter, so the ribbon and
+   the pill can never render the same second differently. */
+export function formatClock(seconds) {
   if (seconds == null) return '—:—'
   const s = Math.max(0, Math.round(seconds))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`

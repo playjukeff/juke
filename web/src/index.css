@@ -200,6 +200,48 @@ body {
   color: #E7ECF3;
 }
 
+/* One focus ring for the whole app, because there was none.
+
+   Measured by tabbing the homepage: exactly ONE control had a designed
+   focus state — the proof section's scoring pills, whose own comment
+   admitted the global style did not exist rather than adding it. Every
+   other control on the page (both hero cards, the draft-with-friends row,
+   Sign up, Log in, all five room cards, every footer link, all four social
+   buttons) fell back to Chrome's UA ring, `outline: auto 1px
+   rgb(238,238,238)`, which on this ground is close to invisible.
+
+   `:focus-visible` rather than `:focus`, so a mouse press does not draw a
+   ring the pointer already explains — that difference is the whole reason
+   the browser exposes two selectors.
+
+   The offset is what makes it legible on the dark surfaces this app is
+   built from: a ring drawn hard against a control's own edge on
+   #0B0E14 reads as part of the border. Teal is correct here and is not a
+   value: a focus ring is a state, which is exactly what this palette
+   reserves brand teal for.
+
+   A component that genuinely needs a different ring still overrides it —
+   this is a floor, not a ceiling. */
+:where(a, button, [role='button'], [role='radio'], [role='tab'], summary, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid theme('colors.teal.DEFAULT');
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* Browser surfaces the design system should own rather than inherit.
+
+   Selection and the caret ship with defaults that belong to no design
+   system, and on a dark ground the stock blue selection is the loudest
+   colour on the page the moment somebody drags across a paragraph. */
+::selection {
+  background: rgba(0, 229, 255, 0.28);
+  color: #FFFFFF;
+}
+
+:root {
+  caret-color: theme('colors.teal.DEFAULT');
+}
+
 /* Tailwind 3 has no backdrop: variant, so ::backdrop is styled directly.
    ComingSoonModal.jsx and EarlyAccessModal.jsx are the two <dialog>s in
    web/src, and both want the identical treatment — one rule for both rather
