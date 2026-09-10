@@ -1876,10 +1876,20 @@ is left is a greedy snake failing to reach a feasible assignment that demonstrab
 exists — 380 picks against 387 capacity still landing 15 on the unstartable.
 
 That is a real, open problem and a different one from the rejected experiment.
-It lives in `cpuChoice()`, the one function every client and the worker must
-agree on, so it is a separate change with a worker deploy attached rather than a
-tightening of this guard — and anybody picking it up should read the section
+It lives in `cpuChoice()` — and anybody picking it up should read the section
 below first and note that its conclusion does not cover this case.
+
+**It does NOT have a worker deploy attached, and this sentence used to say
+it did.** Corrected 10 September 2026 by a grep rather than a measurement:
+`cpuChoice` appears in `app.js` and in three spec files, and nowhere in
+`worker/`, `room.js` or `draft-engine.js`. The host's browser is the CPU —
+it works the opinion out where the board already is and submits it as an
+ordinary pick, which the room validates for LEGALITY and never for which
+player. So no two clients ever compute this function for the same seat,
+and changing how it breaks a tie cannot fork a room. What every
+participant does have to agree on is `DraftEngine.jitter()`, because each
+client draws its own `suggestions()` from it — and that is about advice
+reading the same on two screens rather than about room integrity.
 
 **And the draft it would have run does finish**, which is exactly what made this
 hard to see. It finishes with roster spots nobody chose to waste, and a grade
@@ -3651,6 +3661,64 @@ cell's opacity pulse from JavaScript, so it survives
 shots with nothing changed between them is what says whether the noise floor
 is zero — the same lesson as killing transitions before measuring a colour,
 one layer along.
+
+**It happened again, and the second time it was the box rather than the
+glyph.** `DraftRoomEntry`'s hero carries four position tiles at
+`transform: rotate(-6deg)` — a 98px grid (46 + 6 + 46) that PAINTS
+`98·cos6 + 90·sin6 = 107`. A transform does not change layout, and the
+grid is `shrink-0`, so the flex row reserved 98 and the element drew 107:
+**~4.5px of bleed on each side**, measured as `clientWidth 1200` against
+`scrollWidth 1204` at 1440 and 343 against 347 at 375.
+
+**The same at both widths, which is the tell that it is not a phone
+problem.** A `sm:` breakpoint would have fixed half of it — the same
+half-fix `<BarRow>` avoided, where a label was truncated in a 360px rail
+at 1440 as well as at 375.
+
+`mr-1.5` is the repair, and it is **clearance rather than spacing**: the
+left bleed already lands in `ml-2`'s eight pixels and costs nothing, and
+the right had nothing to land in. Same shape as `RANK_COL_W`, which is the
+gap the longest rank line leaves rather than the width of anything.
+
+**Not `overflow-hidden`, which is what the Arrow took**, and the
+difference is worth keeping. There the clip removed an overflowing GLYPH
+and left the box 14x14, because clipping happens in the element's own
+coordinates before the transform. Here the content fits its box exactly
+and it is the rotated box itself that paints wide — clipping would shave
+the tiles rather than the overflow.
+
+**And nothing was clipped on screen either way.** The page's own
+`px-5 sm:px-10` sits further right, so no reader lost ink — which is
+exactly what this file already says is not a defence.
+
+**The sweep is a spec now, because the class has shipped twice.**
+Both instances were found by somebody sweeping by hand, months apart, and
+both were a few pixels of a transform nobody had budgeted for.
+`tests/no-sideways-leak.spec.mjs` walks the ten guest routes at 1440 and
+375 and asserts the condition this file states: an element wider than its
+box that can neither scroll nor ellipsise nor clip. Guest routes because
+they need no fixture and run against production unchanged; both widths
+because a narrow BOX is not a narrow viewport.
+
+**Confirmed red by putting the bug back**, at both widths, naming the
+element and the count:
+
+```
++ "#/rooms/draft DIV.relative flex items-start over=4 "Rooms MOCK DRAFTS  Practice drafting you""
++ "#/rooms/draft DIV.relative flex items-start over=5 "MOCK DRAFTS  Practice drafting your fant""
+```
+
+**It needs no entry in `tests.yml`** — `browser-tests.yml` runs
+`npx playwright test` with no file list, so a new spec is picked up by the
+nightly the moment it lands.
+
+**And the first version of that sweep reported nothing, on the one screen
+carrying the defect.** It read `#view-home`, and `#/rooms/draft` is the
+single route `applyRoute()` hides `#view-home` for — `DraftRoomEntry`
+renders into `#draftroom-root` and mounts its own shell. So the probe was
+measuring a hidden container and coming back clean. **A sweep scoped to
+the wrong root is a clean report about nothing**, which is this file's own
+"read `errors` before `issues`" lesson arriving through a selector.
 
 **A monospace box stops being code the moment its lines become sentences.**
 The formulas on the how-it-works page are prose now, which made them long

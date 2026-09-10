@@ -218,10 +218,40 @@ export default function DraftRoomEntry({
 
           {/* Four cells of a board, in the six real hues. Rotated slightly
               so it reads as an object rather than as a UI element that
-              failed to line up. */}
+              failed to line up.
+
+              ---- `mr-1.5` is the clearance the rotation needs ----
+
+              A transform does not change layout. The grid lays out at
+              46+6+46 = 98px and, turned 6 degrees, PAINTS
+              98·cos6 + 90·sin6 = 107 -- so it bleeds ~4.5px past its own
+              box on each side. `shrink-0` means it never gives that back,
+              so the flex row measured 1200 against a scrollWidth of 1204
+              at 1440 and 343 against 347 at 375: an element overflowing
+              its container that can neither scroll nor ellipsise, which
+              is this project's own definition of a leak.
+
+              The left bleed lands in `ml-2`'s 8px and costs nothing. The
+              right had nothing to land in. Six pixels of margin is the
+              clearance rather than a spacing choice -- the same shape as
+              `RANK_COL_W`, which is the gap the longest rank line leaves
+              rather than the width of anything.
+
+              **Nothing is clipped on screen either way, and that is not a
+              defence.** The page's own `px-5 sm:px-10` is further right,
+              so a reader loses no ink today; the board card's rotated
+              `Arrow` bled 3px into exactly the same kind of harmless
+              place and was still fixed, because the condition is stated
+              without reference to where the bleed happens to land.
+
+              Not `overflow-hidden`, which is what the Arrow took: there
+              the clip removed an overflowing GLYPH and left the box 14x14,
+              and here the content fits its box exactly and it is the
+              rotated box itself that paints wide. Clipping would shave the
+              tiles rather than the overflow. */}
           <div
             aria-hidden="true"
-            className="relative ml-2 mt-6 grid shrink-0 grid-cols-2 gap-1.5"
+            className="relative ml-2 mr-1.5 mt-6 grid shrink-0 grid-cols-2 gap-1.5"
             style={{ transform: 'rotate(-6deg)' }}
           >
             {['RB', 'WR', 'QB', 'TE'].map((pos, i) => (
