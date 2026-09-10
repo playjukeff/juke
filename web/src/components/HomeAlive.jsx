@@ -420,16 +420,30 @@ export default function HomeAlive() {
   const deviceLine = ready ? <SignedOut>{deviceLineText}</SignedOut> : deviceLineText
 
   return (
-    <div className="relative overflow-hidden pb-6 pt-[22px] sm:pb-14 sm:pt-10">
+    <div className="relative pb-6 pt-[22px] sm:pb-14 sm:pt-10">
       {/* The watermark is the mark itself at 12%, not a background image:
           one file, already in web/public, already the one copy of the
-          geometry every icon in the project is generated from. */}
+          geometry every icon in the project is generated from.
+
+          It sits in its own clipping layer, and the wrapper above no
+          longer carries `overflow-hidden`. Any overflow value but visible
+          makes an element the scroll container for every `position:
+          sticky` inside it -- and this wrapper holds HomeProof, whose
+          flat cards stick beside their working. With the clip up here
+          they stuck to a box that never scrolls, which is to say not at
+          all. The layer is `absolute inset-0`, so it clips exactly what
+          the wrapper clipped and nothing else. Two comments below still
+          describe rows this block "clips silently"; it does not any more,
+          and an over-wide row now reports as page overflow, which is the
+          state those comments were already arguing for. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <img
         src="/juke-shark-mark.svg"
         alt=""
         aria-hidden="true"
         className="pointer-events-none absolute -right-[90px] -top-[30px] w-[260px] object-contain opacity-[0.12] sm:-right-[160px] sm:-top-20 sm:w-[620px]"
       />
+      </div>
 
       {/* px lives INSIDE the max-width, not on the full-bleed wrapper
           above. Outside it the column comes out the full 1280 and starts

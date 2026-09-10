@@ -281,6 +281,23 @@ function Joint() {
   )
 }
 
+/* The left cell stretches to its row and the flat card inside it sticks.
+
+   Measured at 1440: the four left cells are 257 / 215 / 222 / 215px
+   beside right cells of 441 / 531 / 649 / 378 -- so with `items-start`
+   each claim sat at the top of its row and left 184, 316, 427 and 163px
+   of nothing under itself. Four times down one page, the reader's eye
+   dropped off the number into a void while the working was still going
+   on across the seam.
+
+   Sticky rather than centred, because the section's argument is that the
+   flat number and its working are the same number: the card should stay
+   beside the working for as long as the working is on screen, and
+   centring would only move the void from below the card to above it.
+   The cell is the sticky element's containing block, so it sticks within
+   its own row and hands off at the next heading; 88px is the 68px shell
+   header plus a 20px breath. Nothing about the seam moves -- it is the
+   right cell's own border, and the heading rows still cross it. */
 function Pair({ claim, children }) {
   return (
     <>
@@ -483,7 +500,8 @@ function PairRankReason() {
 
   return (
     <Pair claim="A rank is not a reason.">
-      <div ref={ref} className="lg:pr-12">
+      <div ref={ref} className="lg:self-stretch lg:pr-12">
+        <div className="lg:sticky lg:top-[88px]">
         <Flat label="What you're handed">
           {d ? (
             <>
@@ -510,6 +528,7 @@ function PairRankReason() {
             <Skeleton lines={3} />
           )}
         </Flat>
+        </div>
       </div>
 
       <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
@@ -706,7 +725,8 @@ function PairYourRules() {
 
   return (
     <Pair claim="Your rules, or somebody else's.">
-      <div ref={ref} className="lg:pr-12">
+      <div ref={ref} className="lg:self-stretch lg:pr-12">
+        <div className="lg:sticky lg:top-[88px]">
         <Flat label="What you're handed">
           <span className="block font-display text-[30px] font-extrabold uppercase italic leading-[1.05] text-voidInk-muted sm:text-[36px]">
             One scoring
@@ -718,6 +738,7 @@ function PairYourRules() {
             assumptions you never agreed to, and none of them are shown to you.
           </p>
         </Flat>
+        </div>
       </div>
 
       <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
@@ -875,7 +896,8 @@ function PairGraded() {
 
   return (
     <Pair claim="Where every other mock stops.">
-      <div ref={ref} className="lg:pr-12">
+      <div ref={ref} className="lg:self-stretch lg:pr-12">
+        <div className="lg:sticky lg:top-[88px]">
         <Flat label="What you're handed">
           <ul className="space-y-2.5 text-[14px] text-voidInk-muted">
             <li>A finished board.</li>
@@ -887,6 +909,7 @@ function PairGraded() {
             came to answer is the one nobody answers.
           </p>
         </Flat>
+        </div>
       </div>
 
       <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
@@ -1072,7 +1095,8 @@ function PairRecord() {
 
   return (
     <Pair claim="We grade our own forecasts.">
-      <div ref={ref} className="lg:pr-12">
+      <div ref={ref} className="lg:self-stretch lg:pr-12">
+        <div className="lg:sticky lg:top-[88px]">
         <Flat label="What you're handed">
           <span className="block max-w-[12ch] font-display text-[30px] font-extrabold uppercase italic leading-[1.05] text-voidInk-muted sm:text-[36px]">
             Trust the projections
@@ -1082,6 +1106,7 @@ function PairRecord() {
             A forecast nobody grades is not a forecast.
           </p>
         </Flat>
+        </div>
       </div>
 
       <div className="relative mt-5 lg:mt-0 lg:border-l lg:border-line-hairline lg:pl-12">
