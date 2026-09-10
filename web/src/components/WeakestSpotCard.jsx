@@ -29,13 +29,13 @@ export default function WeakestSpotCard({ stats }) {
         <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-300/90">Weakest Spot</p>
         <p className="mt-1 font-display text-[22px] font-bold text-white">{posName}</p>
         {h ? (
-          <p className="mt-1.5 text-[12.5px] leading-[1.5] text-white/75">
+          <p className="mt-1.5 text-meta leading-[1.5] text-white/75">
             Below replacement in {stats.weakestSpot.pct}% of your last {breakdown[0] ? breakdown[0].total : ''} rosters — it isn't
             your first pick, it's rounds {h.startRound}–{h.endRound}, where you've taken a{' '}
             {(POS_NAMES[h.topOtherPos] || h.topOtherPos).toLowerCase()} {h.topOtherCount} of {h.total} times.
           </p>
         ) : (
-          <p className="mt-1.5 text-[12.5px] leading-[1.5] text-white/75">
+          <p className="mt-1.5 text-meta leading-[1.5] text-white/75">
             Below replacement in {stats.weakestSpot.pct}% of your last {breakdown[0] ? breakdown[0].total : ''} rosters — the
             most consistent gap on your board.
           </p>

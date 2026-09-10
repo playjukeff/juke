@@ -69,7 +69,7 @@ function Row({ row, i, hot, onHover, onOpen }) {
         >
           {row.pos === 'DST' ? 'D/ST' : row.pos}
         </span>
-        <span className="truncate text-[13.5px] text-ink">{row.name}</span>
+        <span className="truncate text-[14px] text-ink">{row.name}</span>
       </div>
 
       <div className="relative h-[30px]">
@@ -106,7 +106,7 @@ function Row({ row, i, hot, onHover, onOpen }) {
       </div>
 
       <div className="col-span-2 text-right sm:col-span-1">
-        <p className="font-plex text-[13px] font-semibold" style={{ color: TONE_INK[row.tone] }}>
+        <p className="font-plex text-meta font-semibold" style={{ color: TONE_INK[row.tone] }}>
           {(row.delta < 0 ? '−' : '+') + Math.abs(row.delta).toFixed(1)} rd
         </p>
         <p className="mt-[3px] text-[12px] text-ink-soft">{row.note}</p>
@@ -126,12 +126,12 @@ export default function ViewField({ report, hover, onHover, onOpen }) {
             which is the view's own sub-line reworded, rendered directly under
             it. What is left is the two things a reader cannot get from the
             chart: what the room is, and what the tick means. */}
-        <p className="max-w-[620px] text-[13.5px] leading-[1.55] text-ink/80">
+        <p className="max-w-[620px] text-[14px] leading-[1.55] text-ink/80">
           The room is every other seat in the mocks you ran — same board, same ADP,
           same night. The tick is the pick at which that position&rsquo;s starting tier runs out; being
           right of it is being late.
         </p>
-        <div className="flex shrink-0 flex-wrap gap-4 text-[12.5px] text-ink-soft">
+        <div className="flex shrink-0 flex-wrap gap-4 text-meta text-ink-soft">
           <span className="inline-flex items-center gap-[7px]">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: YOU }} />
             You
@@ -164,7 +164,7 @@ export default function ViewField({ report, hover, onHover, onOpen }) {
           a tooltip: the reading a reader wants is a comparison of three
           values, and a comparison does not fit in a title attribute. */}
       <div className="mt-4 border-t border-white/[0.06] pt-4">
-        <p className="text-[13.5px] leading-[1.55] text-ink/80">
+        <p className="text-[14px] leading-[1.55] text-ink/80">
           {hovered
             ? `${hovered.name}: you at ${hovered.you.toFixed(1)}, the room at ${hovered.field.toFixed(1)}` +
               (hovered.cliff === null

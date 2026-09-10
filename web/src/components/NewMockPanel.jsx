@@ -184,7 +184,7 @@ export default function NewMockPanel({
       <div className="flex flex-wrap gap-2 lg:hidden">
         <ChipSelect value={league.teams} onChange={setTeams} disabled={locked} options={chipTeamOptions} />
         <ChipSelect value={league.scoring} onChange={setScoring} disabled={locked} options={chipScoringOptions} />
-        <span className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-[7px] font-numeral tabular-nums text-[12.5px] text-white/80">
+        <span className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-[7px] font-numeral tabular-nums text-meta text-white/80">
           {league.rounds} rounds
         </span>
         <ChipSelect value={lobbySlot + 1} onChange={setSeat} disabled={locked} options={chipSeatOptions} />

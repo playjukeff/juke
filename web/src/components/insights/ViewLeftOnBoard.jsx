@@ -60,7 +60,7 @@ function PickRow({ pick, i }) {
       style={delay(260 + i * 55)}
       className="grid grid-cols-[52px_minmax(0,1.2fr)_60px] items-center gap-3 border-b border-white/[0.05] py-[9px] sm:grid-cols-[58px_minmax(0,1.15fr)_minmax(0,1.15fr)_150px_62px]"
     >
-      <span className="font-plex text-[12.5px] text-ink-soft">{pick.code}</span>
+      <span className="font-plex text-meta text-ink-soft">{pick.code}</span>
 
       <div className="flex min-w-0 items-center gap-2">
         <span
@@ -70,7 +70,7 @@ function PickRow({ pick, i }) {
           {pick.you.pos === 'DST' ? 'D/ST' : pick.you.pos}
         </span>
         <span
-          className={'truncate text-[13.5px] text-ink ' + (cost ? 'font-semibold' : 'font-normal')}
+          className={'truncate text-[14px] text-ink ' + (cost ? 'font-semibold' : 'font-normal')}
           title={pick.you.name}
         >
           {pick.you.name}
@@ -91,7 +91,7 @@ function PickRow({ pick, i }) {
       <div data-pick-best={pick.best ? pick.best.pos : 'none'} className="hidden min-w-0 items-center gap-2 sm:flex">
         <span className="shrink-0 font-plex text-[11px] text-ink-muted">{pick.best ? 'over' : '—'}</span>
         <span
-          className="truncate text-[13px]"
+          className="truncate text-meta"
           style={{ color: pick.best ? POS_CHALK[pick.best.pos] : '#8A9BAA' }}
           title={pick.best ? pick.best.name : undefined}
         >
@@ -121,7 +121,7 @@ function PickRow({ pick, i }) {
           )}
         </span>
         <span
-          className="w-11 shrink-0 text-right font-plex text-[12.5px] font-semibold"
+          className="w-11 shrink-0 text-right font-plex text-meta font-semibold"
           style={{ color: cost ? OXBLOOD_INK : '#66F0FF' }}
         >
           {cost ? '−' + pick.delta : '0'}
@@ -167,7 +167,7 @@ export default function ViewLeftOnBoard({ report, mock, selectedId, hover, onHov
         <p className="font-plex text-[10.5px] tracking-[0.14em] text-ink-soft">
           POINTS LEFT ON THE BOARD, PER MOCK
         </p>
-        <p className="text-[13px] text-ink-soft">
+        <p className="text-meta text-ink-soft">
           The room&rsquo;s median from the same seats:{' '}
           <b className="font-semibold" style={{ color: STEEL }}>
             {report.fieldMedian}
@@ -226,7 +226,7 @@ export default function ViewLeftOnBoard({ report, mock, selectedId, hover, onHov
             <p className="mt-1 font-plex text-[10.5px] tracking-[0.1em] text-ink-soft">LEFT ON THE BOARD</p>
           </div>
         </div>
-        <p className="mt-2 max-w-[620px] text-[13.5px] leading-[1.5] text-ink/80">
+        <p className="mt-2 max-w-[620px] text-[14px] leading-[1.5] text-ink/80">
           Every pick against the best value still on the board at that slot, each alternative counted once.
           Zero means you took the top of the board.
         </p>
@@ -242,7 +242,7 @@ export default function ViewLeftOnBoard({ report, mock, selectedId, hover, onHov
           they are looking at. Mono at the bottom of the type scale, so the row
           reads as a rule rather than as data. */}
       <div className="mt-3">
-        <div className="hidden grid-cols-[58px_minmax(0,1.15fr)_minmax(0,1.15fr)_150px_62px] items-center gap-3 border-b border-white/[0.06] pb-1.5 font-plex text-[9.5px] tracking-[0.12em] text-ink-muted sm:grid">
+        <div className="hidden grid-cols-[58px_minmax(0,1.15fr)_minmax(0,1.15fr)_150px_62px] items-center gap-3 border-b border-white/[0.06] pb-1.5 font-plex text-[10px] tracking-[0.12em] text-ink-muted sm:grid">
           <span>SLOT</span>
           <span>YOUR PICK</span>
           <span>BEST AVAILABLE</span>

@@ -96,7 +96,7 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
         <button
           type="button"
           onClick={onBack}
-          className="rounded-full border border-line-hairline px-3.5 py-[7px] text-[13px] font-semibold text-voidInk-body transition-colors duration-150 hover:text-white"
+          className="rounded-full border border-line-hairline px-3.5 py-[7px] text-meta font-semibold text-voidInk-body transition-colors duration-150 hover:text-white"
         >
           Back to this week
         </button>
@@ -147,7 +147,7 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
       ) : null}
 
       {isDraft ? (
-        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-[13px] leading-relaxed text-voidInk-body">
+        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-meta leading-relaxed text-voidInk-body">
           Draft picks are kept with the draft that made them, not in the decision
           ledger — so every board you have run, with its grade and its report, is
           on{' '}
@@ -169,13 +169,13 @@ export default function PastWeekPanel({ weekKey, rows, game, opponent, onBack })
               <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">
                 {d.said || '—'}
               </span>
-              <span className="min-w-0 truncate text-[13px] text-voidInk-body">{d.did || '—'}</span>
+              <span className="min-w-0 truncate text-meta text-voidInk-body">{d.did || '—'}</span>
               <VerdictBadge verdict={d.verdict} />
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-center text-[13px] text-ink-muted">
+        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-center text-meta text-ink-muted">
           Nothing was recorded in this week.
         </div>
       )}

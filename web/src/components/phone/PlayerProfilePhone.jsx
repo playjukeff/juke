@@ -45,7 +45,7 @@ export default function PlayerProfilePhone({ engine, player, onClose, rules }) {
       {player.inj && INJURY_META[player.inj] && (
         <div className="flex shrink-0 items-center justify-center gap-2 bg-gradient-to-r from-[#4A3A16] to-[#6B5320] py-[9px]">
           <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#E0A72B] text-[11px] font-bold text-[#4A3A16]">?</span>
-          <span className="text-[13px] font-bold uppercase tracking-[0.1em] text-white">{INJURY_META[player.inj].label}</span>
+          <span className="text-meta font-bold uppercase tracking-[0.1em] text-white">{INJURY_META[player.inj].label}</span>
         </div>
       )}
 

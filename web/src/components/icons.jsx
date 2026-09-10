@@ -129,7 +129,7 @@ export function TierBadge({ tier, className = '' }) {
   const { label, Icon, color, bg } = meta
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-[9px] py-[3px] font-numeral text-[9.5px] font-semibold tracking-[0.04em] ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-[9px] py-[3px] font-numeral text-[10px] font-semibold tracking-[0.04em] ${className}`}
       style={{ color, background: bg }}
     >
       <Icon className="h-[10px] w-[10px] shrink-0" />

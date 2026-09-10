@@ -87,7 +87,7 @@ function SaidLine({ entry, grouped, room, mine, gif, reactions, connected, picke
 
   const body = (
     <div className="min-w-0 flex-1">
-      {entry.text && <span className="whitespace-pre-wrap break-words text-[13px] text-white/85">{entry.text}</span>}
+      {entry.text && <span className="whitespace-pre-wrap break-words text-meta text-white/85">{entry.text}</span>}
       {gif && <img src={gif} alt="" loading="lazy" className="mt-1 max-h-40 rounded-lg" />}
       <ReactRow entry={entry} onReact={onReact} />
     </div>

@@ -86,7 +86,7 @@ export default function PickClockBand({
                 (myTurn ? 'animate-pulse bg-teal-300' : urgent ? 'animate-pulse bg-rose-400' : 'bg-white/30')
               }
             />
-            <span className={'min-w-0 flex-1 truncate font-plex text-[11px] font-bold tracking-[0.07em] ' + (myTurn ? 'text-teal-200' : urgent ? 'text-rose-300' : 'text-white/55')}>
+            <span className={'min-w-0 flex-1 truncate font-plex text-[11px] font-semibold tracking-[0.07em] ' + (myTurn ? 'text-teal-200' : urgent ? 'text-rose-300' : 'text-white/55')}>
               {label}
             </span>
             <span className={'shrink-0 font-display text-[25px] font-bold tabular-nums leading-none ' + (urgent ? 'text-rose-300' : myTurn ? 'text-teal-200' : 'text-white/70')}>
@@ -103,7 +103,7 @@ export default function PickClockBand({
 
           {nextCode && (
             <div className="flex items-baseline gap-2">
-              <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.1em] text-ink-muted">Next</span>
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-muted">Next</span>
               <span className="min-w-0 flex-1 truncate font-plex text-[11px] text-ink">{nextCode}</span>
               {picksAway != null && picksAway > 0 && (
                 <span className="shrink-0 font-plex text-[10px] text-ink-muted">

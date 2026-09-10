@@ -379,6 +379,14 @@ export default {
         'label-sm': ['10.5px', { letterSpacing: '0.14em', lineHeight: '1' }],
         kpi: ['26px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
         'room-h1': ['34px', { letterSpacing: '-0.02em', lineHeight: '1', fontWeight: '800' }],
+        // The metadata role: captions, table cells, hints, the line under a
+        // heading. It was `text-[13px]` at 172 sites -- the single most-used
+        // size on the app side, and the one Tailwind's own scale skips (xs
+        // is 12, sm is 14) -- so it was the largest role on the site with no
+        // name. A size only, deliberately: a lineHeight here would override
+        // whatever an ancestor's `leading-*` had set at 172 places at once,
+        // and the rename has to be byte-identical on screen to be safe.
+        meta: '13px',
       },
       borderRadius: {
         // The decision system's own ladder, by job rather than by number:
@@ -463,6 +471,17 @@ export default {
         // index.html's preload), not loaded from Google Fonts any more.
         // Same font either way, still not homepage-only.
         plex: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // `font-mono` is Plex too, and this is a correction rather than an
+        // alias for convenience. The comment above says a grep of web/src
+        // for the literal class came back with zero matches; measured 10
+        // September 2026 it is 130 call sites, and with no `mono` key in
+        // this config every one of them fell through to Tailwind's default
+        // -- ui-monospace, which is Menlo on a Mac and Consolas on Windows.
+        // On the homepage that was 95 of 200 text nodes rendering in a face
+        // nobody chose, beside zero in Plex, and a different face per OS.
+        // One key here puts all 130 on the face the site self-hosts, at
+        // the weights it actually loads, without touching a call site.
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
         /* ---- Juke decision system: the rooms' own display face ----
 
            Bricolage Grotesque, self-hosted from /fonts/ like Plex and

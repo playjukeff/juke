@@ -104,10 +104,10 @@ export default function LockedPreview({
           <div className="mt-2 font-display text-[22px] font-bold text-white sm:text-[26px]">
             {headline}
           </div>
-          <p className="mx-auto mt-1.5 max-w-[38ch] text-[13px] leading-[1.4] text-voidInk-body">
+          <p className="mx-auto mt-1.5 max-w-[38ch] text-meta leading-[1.4] text-voidInk-body">
             Connecting is read-only. Juke never edits your league.
           </p>
-          <span className="mt-1 block text-[12px] text-ink-muted sm:text-[13px]">{platforms}</span>
+          <span className="mt-1 block text-[12px] text-ink-muted sm:text-meta">{platforms}</span>
           {/* Not 50/50. "Sign up & connect" is four words against "Log in"'s
               two, so equal columns wrap the primary control on a 375px
               screen while the secondary carries dead space either side.

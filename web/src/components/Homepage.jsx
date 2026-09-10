@@ -251,7 +251,7 @@ export default function Homepage() {
   // identical five rooms with the identical source string.
   const openRoom = (room) => earlyAccessRef.current?.open(roomSignupCopy(room), ROOM_SIGNUP_SOURCE[room.name])
 
-  const roomLinkClass = 'flex min-h-[44px] items-center text-sm text-voidInk-body transition-colors hover:text-white lg:min-h-0 lg:text-[13px]'
+  const roomLinkClass = 'flex min-h-[44px] items-center text-sm text-voidInk-body transition-colors hover:text-white lg:min-h-0 lg:text-meta'
 
   return (
     <>
@@ -373,7 +373,7 @@ export default function Homepage() {
             product, kept because it's true and worth keeping rather than
             cut to match a shape that has no room for it. */}
         <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-3 border-t border-line-divider px-10 py-6 text-center">
-          <p className="max-w-[560px] text-[13px] text-voidInk-muted">
+          <p className="max-w-[560px] text-meta text-voidInk-muted">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere.
             Drafting with your league uses a server, just for that room.
           </p>

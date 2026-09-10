@@ -194,7 +194,7 @@ export default function Hero() {
 
               Not a tap target, so exempt from the 44px floor; 11.5px is the
               handoff's own value and sits on the type floor for mono. */}
-          <p className="mt-3 text-center font-plex text-[11.5px] tracking-[0.1em] text-voidInk-muted lg:mt-5 lg:text-left">
+          <p className="mt-3 text-center font-plex text-[12px] tracking-[0.1em] text-voidInk-muted lg:mt-5 lg:text-left">
             Free Draft Room &bull; No Account Needed
           </p>
         </motion.div>

@@ -105,7 +105,7 @@ function Banner({ rows }) {
       <div className="font-plex text-label uppercase text-cost">
         What is known, and what is not
       </div>
-      <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-voidInk-body">
+      <p className="mt-1.5 max-w-[72ch] text-meta leading-relaxed text-voidInk-body">
         {anything ? (
           <>
             Where <strong className="font-plex font-semibold text-ink">{drafted}</strong> of these
@@ -205,7 +205,7 @@ function Row({ rank, row, open, onToggle, note }) {
         <span className="shrink-0 text-right">
           <span
             className={
-              'block font-mono text-[13px] tabular-nums ' +
+              'block font-mono text-meta tabular-nums ' +
               (row.value == null ? 'text-ink-muted' : row.value >= 0 ? 'text-gain' : 'text-cost')
             }
           >
@@ -224,7 +224,7 @@ function Row({ rank, row, open, onToggle, note }) {
               On file
             </div>
             {known.map((k) => (
-              <div key={k.label} className="flex justify-between gap-3 py-1 text-[13px]">
+              <div key={k.label} className="flex justify-between gap-3 py-1 text-meta">
                 <span className="text-ink-muted">{k.label}</span>
                 <span className="font-mono text-voidInk-primary">{k.value}</span>
               </div>
@@ -235,7 +235,7 @@ function Row({ rank, row, open, onToggle, note }) {
               Not known
             </div>
             {missing.map((m) => (
-              <div key={m} className="py-1 text-[13px] text-ink-muted">
+              <div key={m} className="py-1 text-meta text-ink-muted">
                 {m}
               </div>
             ))}
@@ -405,7 +405,7 @@ export default function ProspectRoomLive({ tab }) {
           /* Absent, not broken. Between the last game of a season and the
              next class being added to the board this is the honest state,
              and it says which one it is. */
-          <div className="py-10 text-center text-[13px] text-ink-muted">
+          <div className="py-10 text-center text-meta text-ink-muted">
             No first-year players are on the board yet. Between the season and the incoming class
             that is the normal state rather than an error.
           </div>

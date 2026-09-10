@@ -134,7 +134,7 @@ export default function RoomsGrid() {
                   tone (4.66:1) rather than a new value, since the two read
                   as one pair — a section label and its count, both meant
                   to sit at the same quiet weight. */}
-              <span className="font-numeral tabular-nums text-[11.5px] font-semibold text-[#7D8086]">
+              <span className="font-numeral tabular-nums text-[12px] font-semibold text-[#7D8086]">
                 {roadmapRooms.length} rooms
               </span>
             </div>
@@ -147,7 +147,7 @@ export default function RoomsGrid() {
                   className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#1C1F25] py-[13px] text-left last:border-b-0"
                 >
                   <div className="min-w-0">
-                    <p className="text-[15.5px] font-bold text-voidInk-primary">{room.name}</p>
+                    <p className="text-[16px] font-bold text-voidInk-primary">{room.name}</p>
                     {/* room.lead, not room.blurb — §9's own "one-line
                         promise" is the short imperative line ("Win the
                         wire."), not the long description. The .dc.html

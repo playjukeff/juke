@@ -222,7 +222,7 @@ function YouSheet({ onClose }) {
               {user?.fullName && (
                 <span className="block truncate text-[15px] font-bold text-white">{user.fullName}</span>
               )}
-              <span className="block truncate text-[13px] text-voidInk-muted">
+              <span className="block truncate text-meta text-voidInk-muted">
                 {user?.primaryEmailAddress?.emailAddress || 'Signed in'}
               </span>
             </span>

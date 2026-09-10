@@ -156,7 +156,7 @@ function RailButton({ view, on, onSelect }) {
       </div>
       <p
         className={
-          'mt-[7px] font-display text-[17.5px] font-bold leading-[1.15] ' + (on ? 'text-white' : 'text-ink')
+          'mt-[7px] font-display text-[18px] font-bold leading-[1.15] ' + (on ? 'text-white' : 'text-ink')
         }
       >
         {view.title}
@@ -165,7 +165,7 @@ function RailButton({ view, on, onSelect }) {
           four tabs, and below xl it is also a third copy of a sentence the
           centre panel prints in full two inches below. Dropped there so the
           strip is four readable options rather than one and a half. */}
-      <p className={'mt-1 hidden text-[13px] leading-[1.45] xl:block ' + (on ? 'text-ink/80' : 'text-ink-soft')}>
+      <p className={'mt-1 hidden text-meta leading-[1.45] xl:block ' + (on ? 'text-ink/80' : 'text-ink-soft')}>
         {view.sub}
       </p>
     </button>
@@ -219,7 +219,7 @@ function NotYet({ report, onStart }) {
             <button
               type="button"
               onClick={onStart}
-              className="mt-5 rounded-[10px] bg-teal-400 px-5 py-3 text-[12.5px] font-extrabold tracking-[0.03em] text-obsidian transition-transform duration-150 hover:-translate-y-0.5"
+              className="mt-5 rounded-[10px] bg-teal-400 px-5 py-3 text-meta font-extrabold tracking-[0.03em] text-obsidian transition-transform duration-150 hover:-translate-y-0.5"
             >
               Run a mock draft
             </button>
@@ -351,14 +351,14 @@ export default function YourInsights({ engine, roomActive, onRunAtSeat }) {
             {report.runNext && (
               <div className="mt-0 rounded-[13px] border border-teal-400/30 bg-slate-panel p-[15px] xl:mt-1">
                 <p className="font-plex text-[10.5px] tracking-[0.14em] text-teal-300">RUN THIS NEXT</p>
-                <p className="mt-2 text-[13.5px] leading-[1.45] text-ink/80">{report.runNext.line}</p>
+                <p className="mt-2 text-[14px] leading-[1.45] text-ink/80">{report.runNext.line}</p>
                 <button
                   type="button"
                   onClick={() => runAt(report.runNext.scoring, report.runNext.seat)}
                   disabled={roomActive}
                   title={roomActive ? 'Not available in a room' : undefined}
                   className={
-                    'mt-3 w-full rounded-[10px] py-[11px] text-[12.5px] font-extrabold tracking-[0.03em] transition-transform duration-150 ' +
+                    'mt-3 w-full rounded-[10px] py-[11px] text-meta font-extrabold tracking-[0.03em] transition-transform duration-150 ' +
                     (roomActive
                       ? 'cursor-not-allowed bg-white/10 text-white/30'
                       : 'bg-teal-400 text-obsidian hover:-translate-y-0.5')
@@ -380,7 +380,7 @@ export default function YourInsights({ engine, roomActive, onRunAtSeat }) {
             <div className="mb-[18px] flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <h3 className="font-display text-[20px] font-bold text-white sm:text-[23px]">{head.title}</h3>
-                <p className="mt-[5px] text-[13.5px] text-ink-soft">{sub}</p>
+                <p className="mt-[5px] text-[14px] text-ink-soft">{sub}</p>
               </div>
               <span className="shrink-0 rounded-full bg-teal-400/[0.12] px-3 py-1.5 font-plex text-[10.5px] tracking-[0.1em] text-teal-300">
                 {head.badge}

@@ -31,12 +31,12 @@ function AutopickRibbon({ onToggleAutopick }) {
       </span>
       <span className="min-w-0 flex-1">
         <p className="font-display text-lg font-bold leading-tight text-white">You're on Autopick</p>
-        <p className="text-[11.5px] text-ink-soft">Juke is picking for you from your queue. Disable Autopick to draft players yourself.</p>
+        <p className="text-[12px] text-ink-soft">Juke is picking for you from your queue. Disable Autopick to draft players yourself.</p>
       </span>
       <button
         type="button"
         onClick={onToggleAutopick}
-        className="shrink-0 rounded-full bg-cta px-[18px] py-2 text-[11.5px] font-bold uppercase tracking-[0.08em] text-white"
+        className="shrink-0 rounded-full bg-cta px-[18px] py-2 text-[12px] font-bold uppercase tracking-[0.08em] text-white"
       >
         Disable Autopick
       </button>
@@ -416,7 +416,7 @@ export default function PlayersTab({
           </div>
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
             {queuePlayers.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] leading-relaxed text-ink-muted">
+              <p className="px-4 py-8 text-center text-meta leading-relaxed text-ink-muted">
                 No players in queue. Star a player in the pool and Autopick will draft him for you.
               </p>
             ) : (
@@ -514,7 +514,7 @@ export default function PlayersTab({
               <div className="grid grid-cols-4 gap-1.5">
                 {limitChips.map((c) => (
                   <span key={c.label} className="flex items-baseline justify-between gap-1 rounded bg-white/[0.03] px-1.5 py-1.5">
-                    <span className="font-plex text-[9.5px] font-semibold text-ink-soft">{c.label}</span>
+                    <span className="font-plex text-[10px] font-semibold text-ink-soft">{c.label}</span>
                     <span className={'font-plex text-[10px] font-semibold ' + (c.have >= c.need ? 'text-emerald-300' : c.have > 0 ? 'text-ink' : 'text-ink-muted')}>
                       {c.have}/{c.need}
                     </span>

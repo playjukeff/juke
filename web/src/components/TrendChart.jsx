@@ -176,7 +176,7 @@ export default function TrendChart({
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+7px)] whitespace-nowrap rounded-md border border-white/10 bg-slate-panel px-2 py-1 text-[11px] shadow-lg"
           style={{ left: `${(hovered.x / w) * 100}%`, top: `${(hovered.y / h) * 100}%` }}
         >
-          <span className="font-display text-[13px] font-bold text-teal-300">{formatValue(hovered.value)}{suffix}</span>
+          <span className="font-display text-meta font-bold text-teal-300">{formatValue(hovered.value)}{suffix}</span>
           {hoveredDate && <span className="ml-1.5 text-white/35">{hoveredDate}</span>}
         </div>
       )}

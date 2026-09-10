@@ -36,7 +36,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
   const sample = report.sample
   return (
     <div>
-      <p className="max-w-[680px] text-[13.5px] leading-[1.55] text-ink/80">
+      <p className="max-w-[680px] text-[14px] leading-[1.55] text-ink/80">
         {report.mocks} mocks is not {report.mocks} data points. {cov.sampled} of {cov.total} seat-and-format
         cells have any data at all, and what repeats between your own drafts costs some of the rest.
       </p>
@@ -66,7 +66,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
               </div>
               {cov.rows.map((row, ri) => (
                 <div key={row.key} className="mb-[5px] flex items-center gap-[5px]">
-                  <span className="w-[92px] shrink-0 text-[13px] text-ink">{row.format}</span>
+                  <span className="w-[92px] shrink-0 text-meta text-ink">{row.format}</span>
                   {row.counts.map((n, ci) => (
                     <span
                       key={ci}
@@ -78,7 +78,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
                           ? ` · ${row.teams[ci].join('/')}-team`
                           : '')
                       }
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-[9px] border font-plex text-[12.5px] font-semibold"
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-[9px] border font-plex text-meta font-semibold"
                       style={{ ...cellStyle(n), ...delay(140 + (ri * cov.seats + ci) * 16) }}
                     >
                       {n === 0 ? '·' : n}
@@ -88,7 +88,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
               ))}
             </div>
           </div>
-          <p className="mt-3 text-[12.5px] text-ink-soft">
+          <p className="mt-3 text-meta text-ink-soft">
             Empty cells are guesses, not reads. A seat you have never drafted from tells you nothing about
             drafting from it.
           </p>
@@ -118,7 +118,7 @@ export default function ViewTrust({ report, onRun, roomActive }) {
                     <p className="text-[14px] font-semibold text-white">{e.title}</p>
                     <p className="shrink-0 font-plex text-[12px] text-teal-300">{e.tag}</p>
                   </div>
-                  <p className="mt-1.5 text-[12.5px] leading-[1.45] text-ink-soft">{e.note}</p>
+                  <p className="mt-1.5 text-meta leading-[1.45] text-ink-soft">{e.note}</p>
                   {/* What the press does, beside what the card advises. The
                       title above is a prescription — "three mocks" — and the
                       button starts one; without this line the card promises
@@ -146,8 +146,8 @@ export default function ViewTrust({ report, onRun, roomActive }) {
             >
               SAMPLE CORRELATION
             </p>
-            <p className="mt-[7px] text-[13.5px] leading-[1.5] text-ink">{sample.line}</p>
-            <p className="mt-[7px] text-[12.5px] leading-[1.45] text-ink/80">{sample.sub}</p>
+            <p className="mt-[7px] text-[14px] leading-[1.5] text-ink">{sample.line}</p>
+            <p className="mt-[7px] text-meta leading-[1.45] text-ink/80">{sample.sub}</p>
             <div className="mt-3.5 h-[7px] overflow-hidden rounded-full bg-white/[0.06]">
               <span
                 data-ins-grow-x

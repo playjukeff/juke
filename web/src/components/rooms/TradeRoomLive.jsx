@@ -36,7 +36,7 @@ const BOARD_ROWS = 40
 
 function Val({ value }) {
   if (value === null || value === undefined) {
-    return <span className="font-plex text-[13px] text-ink-muted">—</span>
+    return <span className="font-plex text-meta text-ink-muted">—</span>
   }
   const n = Math.round(value)
   /* Unsigned ink, not a sign colour. A player's trade value is a quantity
@@ -157,7 +157,7 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
       <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-10">
         <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-center">
           <div className="text-[15px] font-semibold text-white">We could not read your league</div>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[13px] leading-relaxed text-voidInk-body">
+          <p className="mx-auto mt-2 max-w-[52ch] text-meta leading-relaxed text-voidInk-body">
             {reason === 'not-found'
               ? 'That league no longer answers. It may have been deleted, or made private.'
               : 'Nothing is wrong with your roster — this page just could not fetch it.'}
@@ -229,7 +229,7 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
                 </div>
               ))
             ) : (
-              <div className="py-10 text-center text-[13px] text-ink-muted">
+              <div className="py-10 text-center text-meta text-ink-muted">
                 No rival has a hole worth trading into.
               </div>
             )}
@@ -242,7 +242,7 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
   if (!mine) {
     return (
       <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
-        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-[13px] text-ink-muted">
+        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-meta text-ink-muted">
           Reconnect this league to build a trade — Juke does not know which of the{' '}
           {snapshot.totalTeams} rosters is yours.
         </div>
@@ -347,7 +347,7 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
                  direction, so the room says it cannot call it. */
               <div className="font-display text-[22px] font-bold text-ink-muted">—</div>
             )}
-            <div className={'mt-2 text-[13px] font-semibold ' + verdict.tone}>{verdict.text}</div>
+            <div className={'mt-2 text-meta font-semibold ' + verdict.tone}>{verdict.text}</div>
           </div>
           {!swing.priced ? (
             <p className="border-t border-line-hairline py-3 text-[12px] leading-relaxed text-ink-muted">
@@ -402,7 +402,7 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
             />
           ))
         ) : (
-          <div className="py-10 text-center text-[13px] text-ink-muted">
+          <div className="py-10 text-center text-meta text-ink-muted">
             Pick a manager to trade with.
           </div>
         )}

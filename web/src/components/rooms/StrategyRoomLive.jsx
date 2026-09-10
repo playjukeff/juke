@@ -50,7 +50,7 @@ function Pts({ value }) {
   if (value === null || value === undefined) {
     // A dash, never a 0 — the "treat a missing number as missing" rule, on
     // a screen where a 0 is a real and very different projection.
-    return <span className="font-mono text-[13px] text-ink-muted">—</span>
+    return <span className="font-mono text-meta text-ink-muted">—</span>
   }
   return <span className="font-mono text-[15px] font-semibold text-white">{value.toFixed(1)}</span>
 }
@@ -357,7 +357,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
       <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-10">
         <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-center">
           <div className="text-[15px] font-semibold text-white">We could not read your league</div>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[13px] leading-relaxed text-voidInk-body">
+          <p className="mx-auto mt-2 max-w-[52ch] text-meta leading-relaxed text-voidInk-body">
             {reason === 'not-found'
               ? 'That league no longer answers. It may have been deleted, or made private.'
               : 'Nothing is wrong with your roster — this page just could not fetch it.'}
@@ -370,7 +370,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   if (!mine) {
     return (
       <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
-        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-[13px] text-ink-muted">
+        <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-meta text-ink-muted">
           Reconnect this league to see your lineup — Juke does not know which of the{' '}
           {snapshot.totalTeams} rosters is yours.
         </div>
@@ -415,7 +415,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
           />
         ))
       ) : (
-        <div className="py-10 text-center text-[13px] text-ink-muted">
+        <div className="py-10 text-center text-meta text-ink-muted">
           No lineup is set for this week yet.
         </div>
       )}
@@ -441,7 +441,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
                   />
                 ))
             ) : (
-              <div className="py-10 text-center text-[13px] text-ink-muted">Nobody on the bench.</div>
+              <div className="py-10 text-center text-meta text-ink-muted">Nobody on the bench.</div>
             )}
           </Panel>
         </div>
@@ -488,7 +488,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
               />
             ))
           ) : (
-            <div className="py-10 text-center text-[13px] text-ink-muted">
+            <div className="py-10 text-center text-meta text-ink-muted">
               Your lineup is already the best one Juke can build from this roster.
             </div>
           )}
@@ -530,7 +530,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
               />
             ))
           ) : (
-            <div className="py-10 text-center text-[13px] text-ink-muted">
+            <div className="py-10 text-center text-meta text-ink-muted">
               Nobody on your roster carries an injury designation or a bye this week.
             </div>
           )}
@@ -631,7 +631,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
             {best ? (
               <SwapLine swap={best} />
             ) : (
-              <div className="py-8 text-center text-[13px] text-ink-muted">
+              <div className="py-8 text-center text-meta text-ink-muted">
                 Nothing on your bench beats a starter at its own position.
               </div>
             )}
@@ -656,7 +656,7 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
                 />
               ))
             ) : (
-              <div className="py-8 text-center text-[13px] text-ink-muted">
+              <div className="py-8 text-center text-meta text-ink-muted">
                 Everybody is available.
               </div>
             )}

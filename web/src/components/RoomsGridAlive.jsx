@@ -106,7 +106,7 @@ function LeadCard({ room, lgSpan, stake }) {
             five-across strip at 1440 -- 246px cells, three hooks wrapping
             and two not, titles spread over 18px. `min-h` in em rather than
             px because the size steps 12 -> 13 at `sm` and em follows it. */}
-        <span className="mt-0.5 block truncate text-[13px] leading-[1.35] text-ink-muted lg:mt-1 lg:line-clamp-2 lg:min-h-[2.7em] lg:whitespace-normal">
+        <span className="mt-0.5 block truncate text-meta leading-[1.35] text-ink-muted lg:mt-1 lg:line-clamp-2 lg:min-h-[2.7em] lg:whitespace-normal">
           {room.lead}
         </span>
       </span>
@@ -197,7 +197,7 @@ function LockedCard({ room, wide = false, lgSpan }) {
             gives the hook ~144px and it wraps to three. The reserve is
             what keeps every title in a row on one baseline; the clamp is
             the guard for a hook longer than the reserve. */}
-        <span className="mt-0.5 text-[12px] leading-[1.35] line-clamp-3 min-h-[4.05em] text-ink-muted sm:text-[13px] sm:line-clamp-2 sm:min-h-[2.7em] lg:mt-1">
+        <span className="mt-0.5 text-[12px] leading-[1.35] line-clamp-3 min-h-[4.05em] text-ink-muted sm:text-meta sm:line-clamp-2 sm:min-h-[2.7em] lg:mt-1">
           {room.hook}
         </span>
       </span>
@@ -392,7 +392,7 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
       {/* The homepage only. The lobby states this in its own SubCopy, and
           two components saying it is the failure this file keeps naming. */}
       {columns === 'home' && (needLeague.length > 0 || beingBuilt.length > 0) && (
-        <p className="mt-3.5 text-[13px] leading-[1.5] text-voidInk-muted">
+        <p className="mt-3.5 text-meta leading-[1.5] text-voidInk-muted">
           {needLeague.length > 0 && (
             <>
               {nameList(needLeague)} open{needLeague.length === 1 ? 's' : ''} when you connect a

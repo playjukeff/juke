@@ -77,7 +77,7 @@ export default function StakeCard({ eyebrow = 'Costing you most', title, cost, g
         </p>
       ) : null}
 
-      {children ? <p className="mt-2.5 text-[13px] leading-[1.45] opacity-80">{children}</p> : null}
+      {children ? <p className="mt-2.5 text-meta leading-[1.45] opacity-80">{children}</p> : null}
 
       {action ? (
         <button
@@ -86,7 +86,7 @@ export default function StakeCard({ eyebrow = 'Costing you most', title, cost, g
           disabled={action.disabled}
           title={action.title}
           className={
-            'mt-4 h-10 w-full rounded-chip font-body text-[13px] font-semibold text-ink transition-transform duration-hover ' +
+            'mt-4 h-10 w-full rounded-chip font-body text-meta font-semibold text-ink transition-transform duration-hover ' +
             (action.disabled ? 'cursor-not-allowed opacity-50' : 'hover:-translate-y-0.5')
           }
           style={{ background: STAKE_INK }}

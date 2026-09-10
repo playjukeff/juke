@@ -158,7 +158,7 @@ function RowTag({ label, tone }) {
         : 'border border-teal-400/40 text-teal-300'
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 font-plex text-[9.5px] font-semibold uppercase tracking-wide ${toneClass}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 font-plex text-[10px] font-semibold uppercase tracking-wide ${toneClass}`}
       style={tone === 'gone' ? { color: MUTED } : undefined}
     >
       {label}
@@ -200,7 +200,7 @@ function BoardPanel({ scenario, phase }) {
                 {row.pos}
               </span>
               <span
-                className={`min-w-0 truncate text-[13.5px] font-semibold transition-colors duration-500 ${isGoneNow ? 'line-through decoration-[#6b7680] text-voidInk-muted' : 'text-voidInk-primary'}`}
+                className={`min-w-0 truncate text-[14px] font-semibold transition-colors duration-500 ${isGoneNow ? 'line-through decoration-[#6b7680] text-voidInk-muted' : 'text-voidInk-primary'}`}
               >
                 {row.name}
               </span>
@@ -228,13 +228,13 @@ function RosterPanel({ scenario, phase }) {
             <span className="font-plex text-[10px] font-semibold uppercase tracking-wide text-voidInk-muted">{s.slot}</span>
             {s.player ? (
               <span
-                className="truncate text-[13px] font-semibold text-voidInk-primary transition-colors duration-500"
+                className="truncate text-meta font-semibold text-voidInk-primary transition-colors duration-500"
                 style={s.player.name === scenario.player.name && phase >= 1 ? { color: '#5EEAD4' } : undefined}
               >
                 {s.player.name}
               </span>
             ) : (
-              <span className="text-[13px] text-voidInk-muted">Empty</span>
+              <span className="text-meta text-voidInk-muted">Empty</span>
             )}
           </div>
         ))}
@@ -248,7 +248,7 @@ function GradeBar({ label, weight, before, after, animate }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[12.5px] font-medium text-voidInk-body">{label}</span>
+        <span className="text-meta font-medium text-voidInk-body">{label}</span>
         {/* text-voidInk-body, not -muted — measured too dim against this
             panel's own #0E2628-adjacent surroundings next to the brighter
             label and letter beside it; body is the next step up the same
@@ -295,7 +295,7 @@ function GradePanel({ scenario, phase }) {
           <span className="font-numeral text-[42px] font-bold leading-none text-[#59E4F3] transition-all duration-700">{grade.letter}</span>
           <span className="font-numeral text-[9px] font-semibold tracking-[0.14em] text-[#82A6AA]">GRADE</span>
         </div>
-        <p className="font-numeral tabular-nums text-[12.5px] font-medium text-[#83868C]">after {grade.picksMade} picks</p>
+        <p className="font-numeral tabular-nums text-meta font-medium text-[#83868C]">after {grade.picksMade} picks</p>
       </div>
       <div className="mt-4 flex flex-col gap-3">
         {COMPONENT_LABELS.map((c) => (
@@ -390,7 +390,7 @@ export default function TakeAPick() {
               height doesn't jump between phases. */}
           <div
             aria-live="polite"
-            className="mt-[28px] flex min-h-[52px] items-center rounded-[14px] border border-line-hairline bg-surface-card px-4 py-3 text-[13.5px] leading-[1.5] text-voidInk-body lg:hidden"
+            className="mt-[28px] flex min-h-[52px] items-center rounded-[14px] border border-line-hairline bg-surface-card px-4 py-3 text-[14px] leading-[1.5] text-voidInk-body lg:hidden"
           >
             {caption}
           </div>
@@ -417,7 +417,7 @@ export default function TakeAPick() {
           <div className="mt-3 hidden items-center justify-between gap-3 lg:flex">
             <div
               aria-live="polite"
-              className="flex min-h-[52px] items-center rounded-[10px] border border-line-hairline bg-surface-card px-4 py-[11px] text-[14.5px] leading-[1.5] text-voidInk-body"
+              className="flex min-h-[52px] items-center rounded-[10px] border border-line-hairline bg-surface-card px-4 py-[11px] text-[15px] leading-[1.5] text-voidInk-body"
             >
               <span className="mr-3 shrink-0 font-numeral text-[10.5px] font-semibold uppercase tracking-[0.12em] text-teal-400">{PHASE_TAGS[phase]}</span>
               {caption}

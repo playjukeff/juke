@@ -168,7 +168,7 @@ function Card({ gradient, eyebrow, eyebrowColor, title, sub, glyph, href, dataHe
             three lines for the platform line. Same fix RoomsGridAlive
             already uses on its hook, for the same reason. */}
         <span
-          className="mt-1 block min-h-[4.5em] text-[12px] leading-[1.5] sm:min-h-[3em] sm:text-[13px]"
+          className="mt-1 block min-h-[4.5em] text-[12px] leading-[1.5] sm:min-h-[3em] sm:text-meta"
           style={{ color: gradient ? '#14343d' : '#8A9BAA' }}
         >
           {sub}
@@ -194,7 +194,7 @@ function TrustStrip() {
       ].map(([title, body]) => (
         <span key={title}>
           <span className="block text-[14px] font-semibold text-white">{title}</span>
-          <span className="mt-[3px] block text-[13px] leading-[1.4] text-ink-muted">{body}</span>
+          <span className="mt-[3px] block text-meta leading-[1.4] text-ink-muted">{body}</span>
         </span>
       ))}
     </div>
@@ -267,7 +267,7 @@ function ConnectCard() {
           </button>
           <a
             href="#/rooms/draft"
-            className="text-[13px] text-ink-muted underline-offset-2 hover:underline"
+            className="text-meta text-ink-muted underline-offset-2 hover:underline"
           >
             Start a mock draft
           </a>
@@ -298,7 +298,7 @@ function ConnectCard() {
           >
             Open My League
           </a>
-          <a href="#/you" className="text-[13px] text-ink-muted underline-offset-2 hover:underline">
+          <a href="#/you" className="text-meta text-ink-muted underline-offset-2 hover:underline">
             Manage
           </a>
         </div>
@@ -319,7 +319,7 @@ function ConnectCard() {
       </p>
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <ConnectLeagueCta variant="gradient" />
-        <span className="text-[13px] text-ink-muted">{PLATFORM_LINE}</span>
+        <span className="text-meta text-ink-muted">{PLATFORM_LINE}</span>
       </div>
       <TrustStrip />
     </div>

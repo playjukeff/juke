@@ -117,7 +117,7 @@ export default function StrategyPreview() {
               <span className="block font-mono text-[9px] tracking-[0.1em] text-ink-muted">
                 WK {t.wk}
               </span>
-              <span className="mt-1 block text-[13px] font-semibold text-white">{t.who}</span>
+              <span className="mt-1 block text-meta font-semibold text-white">{t.who}</span>
               <span
                 className="mt-0.5 block font-mono text-[11px]"
                 style={{ color: t.odds ? '#74E5CE' : '#F7A8A8' }}

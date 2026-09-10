@@ -265,7 +265,7 @@ function Card({ candidate, rankLabel, primary, onDraft, myTurn, engine, board, c
 
       {siblings && (() => {
         const note = tiebreakNote(candidate, siblings)
-        return note ? <div className="mb-3 text-[11.5px] leading-relaxed text-ink-muted">{note}</div> : null
+        return note ? <div className="mb-3 text-[12px] leading-relaxed text-ink-muted">{note}</div> : null
       })()}
 
       <button
@@ -350,7 +350,7 @@ function TierStripMobile({ tierLadder }) {
             <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-muted">Tier 1</span>
           </div>
           <div className="mt-1.5 font-numeral tabular-nums text-[10.5px] text-ink-muted">{row.remaining} left</div>
-          <div className="mt-1 truncate font-numeral text-[9.5px] text-ink-muted">{tierCaption(row)}</div>
+          <div className="mt-1 truncate font-numeral text-[10px] text-ink-muted">{tierCaption(row)}</div>
         </div>
       ))}
     </div>
@@ -715,7 +715,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
       {mobilePane === 'juke' && (
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:hidden">
           <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-white">What Juke would do</h2>
-          <p className="mb-4 mt-1 text-[13.5px] text-white/60">
+          <p className="mb-4 mt-1 text-[14px] text-white/60">
             {myTurn ? 'Three options, ranked.' : `Who's still here at ${nextOverall ?? '—'}.`}
             {candidates.length > 0 && ` Card ${Math.min(cardIndex, candidates.length - 1) + 1} of ${candidates.length}.`}
           </p>
@@ -771,7 +771,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
             <span className="font-numeral text-[10px] text-ink-muted">VORP &middot; JUKE</span>
           </div>
           {others.length === 0 ? (
-            <p className="py-6 text-center text-[13px] text-ink-muted">Nobody left off the top three right now.</p>
+            <p className="py-6 text-center text-meta text-ink-muted">Nobody left off the top three right now.</p>
           ) : (
             <div className="flex flex-col gap-1">
               {others.map((o) => (
@@ -821,7 +821,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
             <button
               type="button"
               onClick={() => onOpenHub()}
-              className="mt-4 flex h-[46px] w-full items-center justify-center gap-1.5 rounded-[10px] border border-white/[0.12] text-[14.5px] font-semibold text-white/65"
+              className="mt-4 flex h-[46px] w-full items-center justify-center gap-1.5 rounded-[10px] border border-white/[0.12] text-[15px] font-semibold text-white/65"
             >
               Browse all {availableCount} players
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -1067,7 +1067,7 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
                 What Juke would do
               </h2>
             </div>
-            <p className="mb-4 text-[13.5px] text-white/60 lg:text-sm">Three options, ranked. Every number is the same one the grade uses.</p>
+            <p className="mb-4 text-[14px] text-white/60 lg:text-sm">Three options, ranked. Every number is the same one the grade uses.</p>
 
             {/* Tier ladder — you already compute tiers; this just shows the
                 structure the three cards below are reacting to. Faded pips

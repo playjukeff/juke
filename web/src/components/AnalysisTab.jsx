@@ -25,7 +25,7 @@ function ComponentBand({ item }) {
     return (
       <div className="mb-3.5 last:mb-0">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[12.5px] font-medium text-white/80">{item.label}</span>
+          <span className="text-meta font-medium text-white/80">{item.label}</span>
           <span
             className="font-numeral text-[11px] font-semibold text-ink-muted"
             title="Not enough of the room has drafted yet to compare this."
@@ -43,7 +43,7 @@ function ComponentBand({ item }) {
   return (
     <div className="mb-3.5 last:mb-0">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[12.5px] font-medium text-white/80">{item.label}</span>
+        <span className="text-meta font-medium text-white/80">{item.label}</span>
         {/* cost/gain, not rose/teal. This is the panel's only signed
             number and it was cyan when it was good -- which is the one
             thing the decision system exists to stop, because the Draft
@@ -116,7 +116,7 @@ function FixThisFirst({ item, upgrade, before, dense }) {
       <p className={'mt-2 font-bold text-white ' + (dense ? 'text-[15px] leading-snug' : 'font-display text-lg')}>
         {item.label} — your weakest number, carrying the most weight
       </p>
-      <p className={'mt-2 leading-relaxed text-white/60 ' + (dense ? 'text-[13px]' : 'max-w-2xl text-xs')}>
+      <p className={'mt-2 leading-relaxed text-white/60 ' + (dense ? 'text-meta' : 'max-w-2xl text-xs')}>
         At {Math.round(item.pct)} it is {Math.round(item.median - item.pct)} points below the room median, and at{' '}
         {Math.round(item.weight * 100)}% weight it is your single most expensive component right now.
       </p>
@@ -124,7 +124,7 @@ function FixThisFirst({ item, upgrade, before, dense }) {
         <span className={'rounded px-1.5 py-0.5 text-[10px] font-bold ' + (POS_BADGE[upgrade.player.pos] || 'bg-white/10 text-white/60')}>
           {upgrade.player.pos}
         </span>
-        <span className="text-[13px] font-semibold text-white">{upgrade.player.name}</span>
+        <span className="text-meta font-semibold text-white">{upgrade.player.name}</span>
         <span className="text-[11px] text-ink-soft">
           {upgrade.player.team}
           {upgrade.player.bye ? ` · bye ${upgrade.player.bye}` : ''}
@@ -134,7 +134,7 @@ function FixThisFirst({ item, upgrade, before, dense }) {
             own teal -- the teal here is the card saying "this is Juke's
             prescription", which is a brand claim about the CARD and never
             about the figure inside it. */}
-        <span className="ml-auto font-numeral text-[13px] font-bold text-gain">
+        <span className="ml-auto font-numeral text-meta font-bold text-gain">
           {before} → {upgrade.after}
         </span>
       </div>
@@ -222,7 +222,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
           <h3 className="mt-2 font-display text-[22px] font-extrabold text-white">
             Nothing to grade yet
           </h3>
-          <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
+          <p className="mt-1.5 text-meta leading-[1.5] text-ink-muted">
             Every component here is measured against the rest of the room, so it needs one full
             round on the board. {picks.length} of {teams} picks in — then it updates after every
             pick.
@@ -243,11 +243,11 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
               <div className="mt-2.5 space-y-2.5">
                 {rows.map(([label, weight, detail]) => (
                   <div key={label} className="flex gap-3 border-b border-slate-rule/70 pb-2.5 last:border-b-0">
-                    <span className="w-9 shrink-0 font-numeral text-[13px] font-bold tabular-nums text-ink">
+                    <span className="w-9 shrink-0 font-numeral text-meta font-bold tabular-nums text-ink">
                       {Math.round(weight * 100)}%
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold text-white/85">{label}</span>
+                      <span className="block text-meta font-semibold text-white/85">{label}</span>
                       <span className="block text-[12px] leading-[1.45] text-ink-muted">{detail}</span>
                     </span>
                   </div>
@@ -691,7 +691,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
               Fixed in place rather than left standing: it was the same
               "0 reads as a verdict" confusion the vs.-room tag on each bar
               now heads off closer to the number itself, just stated wrong. */}
-          <p className="mt-3 text-[13.5px] leading-relaxed text-ink-muted">
+          <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">
             Starter strength, draft value and bye safety are ranked against the other {teams - 1} teams — 50 is
             the room average on those three, and 0 means "worst in this room," never "no value." Roster
             construction is scored on its own scale instead: an absolute 0-100, not ranked against anyone.
@@ -730,11 +730,11 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3">
               <span>
                 <span className="block text-[14px] font-bold text-white">How this grade is calculated</span>
-                <span className="mt-0.5 block text-[13.5px] text-ink-muted">The full method, in plain English</span>
+                <span className="mt-0.5 block text-[14px] text-ink-muted">The full method, in plain English</span>
               </span>
               <Plus className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-45" />
             </summary>
-            <p className="mt-3 max-w-[70ch] text-[13.5px] leading-relaxed text-ink-muted">{methodologyText}</p>
+            <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-ink-muted">{methodologyText}</p>
           </details>
 
           <div className="mt-7 flex items-center justify-between">
@@ -761,7 +761,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                       — and the rank is already the first thing in the row, so
                       the number was restating the ordering in a scale that
                       argues with the letter. */}
-                  <span className={'shrink-0 font-numeral text-[13.5px] font-semibold ' + (mine ? 'text-teal-300' : 'text-white/70')}>
+                  <span className={'shrink-0 font-numeral text-[14px] font-semibold ' + (mine ? 'text-teal-300' : 'text-white/70')}>
                     {t.grade}
                   </span>
                 </div>
@@ -772,7 +772,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             <button
               type="button"
               onClick={() => setShowAllTeams((v) => !v)}
-              className="mt-1 flex h-11 items-center text-[13.5px] font-semibold text-ink-muted transition-colors duration-150 hover:text-teal-300"
+              className="mt-1 flex h-11 items-center text-[14px] font-semibold text-ink-muted transition-colors duration-150 hover:text-teal-300"
             >
               {showAllTeams ? 'Show fewer ‹' : 'Show all ' + teams + ' ›'}
             </button>
@@ -791,7 +791,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-12 flex-1 items-center justify-center rounded-full border border-white/15 px-2 text-center text-[13.5px] font-semibold leading-tight text-white/60 transition-colors duration-150 active:bg-white/[0.06]"
+                className="flex h-12 flex-1 items-center justify-center rounded-full border border-white/15 px-2 text-center text-[14px] font-semibold leading-tight text-white/60 transition-colors duration-150 active:bg-white/[0.06]"
               >
                 Close
               </button>
@@ -799,7 +799,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                 type="button"
                 onClick={handleDiscardClick}
                 className={
-                  'flex h-12 flex-1 items-center justify-center rounded-full border px-2 text-center text-[13.5px] font-semibold leading-tight transition-colors duration-150 ' +
+                  'flex h-12 flex-1 items-center justify-center rounded-full border px-2 text-center text-[14px] font-semibold leading-tight transition-colors duration-150 ' +
                   (confirmingDiscard
                     ? 'border-rose-400 bg-rose-500/15 text-rose-300'
                     : 'border-rose-500/30 text-rose-400 active:bg-rose-500/10')

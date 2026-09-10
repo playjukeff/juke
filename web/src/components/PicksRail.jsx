@@ -21,7 +21,7 @@ export default function PicksRail({ picks, league, mySlot, teamLabelOf, initials
   const list = (
     <div className={'min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-1.5 ' + (mobile ? 'no-scrollbar' : '')}>
       {ordered.length === 0 ? (
-        <p className="px-2 py-6 text-center text-[11.5px] text-ink-muted">No picks yet.</p>
+        <p className="px-2 py-6 text-center text-[12px] text-ink-muted">No picks yet.</p>
       ) : (
         ordered.map((pick) => {
           const mine = pick.slot === mySlot
@@ -47,7 +47,7 @@ export default function PicksRail({ picks, league, mySlot, teamLabelOf, initials
               </span>
               <span className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-white/90">{pick.player.name}</p>
-                <p className="truncate font-plex text-[9.5px] text-ink-muted">{code} · {teamLabelOf(pick.slot)}</p>
+                <p className="truncate font-plex text-[10px] text-ink-muted">{code} · {teamLabelOf(pick.slot)}</p>
               </span>
             </div>
           )

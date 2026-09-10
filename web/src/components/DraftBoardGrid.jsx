@@ -641,7 +641,7 @@ export default function DraftBoardGrid({ league, picks, mySlot, onClock, teamLab
                   rails. Measured 11.81:1 on the header's own bar ground. */}
               <span
                 className={
-                  'w-full text-center text-[9.5px] font-semibold leading-[1.15] [overflow-wrap:anywhere] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden ' +
+                  'w-full text-center text-[10px] font-semibold leading-[1.15] [overflow-wrap:anywhere] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden ' +
                   'lg:block lg:truncate lg:text-[11px] lg:leading-normal ' +
                   (isMine ? 'text-teal-300' : 'text-white/60')
                 }
@@ -666,7 +666,7 @@ export default function DraftBoardGrid({ league, picks, mySlot, onClock, teamLab
               {onClockHere && isMine && (
                 <>
                   <span
-                    className="font-plex hidden shrink-0 rounded-full px-[7px] py-[2px] text-[8px] font-bold uppercase tracking-[0.1em] leading-[1.4] lg:inline-block"
+                    className="font-plex hidden shrink-0 rounded-full px-[7px] py-[2px] text-[8px] font-semibold uppercase tracking-[0.1em] leading-[1.4] lg:inline-block"
                     style={{ backgroundColor: '#00E5FF', color: '#06222A' }}
                   >
                     On the clock
@@ -863,7 +863,7 @@ export default function DraftBoardGrid({ league, picks, mySlot, onClock, teamLab
                               cards ellipsised, "J. Smith-Njigba" among them,
                               which is the exact name that width was measured
                               against. */}
-                          <p className="min-w-0 truncate text-[12px] font-semibold lg:text-[13px] lg:font-bold" title={pick.player.name}>
+                          <p className="min-w-0 truncate text-[12px] font-semibold lg:text-meta lg:font-bold" title={pick.player.name}>
                             {shortNameOf ? shortNameOf(pick.player) : pick.player.name}
                           </p>
                           {/* data-pick-code, not the font class it happens to

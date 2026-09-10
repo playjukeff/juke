@@ -47,7 +47,7 @@ function Row({ glyph, label, value, href, onClick }) {
     <>
       <span className="w-8 text-center" aria-hidden="true">{glyph}</span>
       <span className="flex-1 text-left">{label}</span>
-      <span className="text-[13px] text-ink-muted" aria-hidden={!value}>
+      <span className="text-meta text-ink-muted" aria-hidden={!value}>
         {value || '›'}
       </span>
     </>
@@ -156,7 +156,7 @@ function Identity() {
         <span className="block truncate font-display text-[24px] font-bold leading-none text-white">
           {name}
         </span>
-        <span className="mt-[3px] block text-[13px] text-ink-muted">
+        <span className="mt-[3px] block text-meta text-ink-muted">
           {since ? `Member since ${since} · ` : ''}
           {mocks} {mocks === 1 ? 'mock' : 'mocks'}
         </span>
@@ -233,14 +233,14 @@ function ConnectedLeagues() {
   if (status === 'error') {
     return (
       <div className="rounded-[14px] border border-line-hairline px-4 py-3">
-        <p className="text-[13px] leading-[1.5] text-voidInk-body">
+        <p className="text-meta leading-[1.5] text-voidInk-body">
           Could not reach your account just now, so this list may be incomplete. Nothing has been
           disconnected.
         </p>
         <button
           type="button"
           onClick={retry}
-          className="mt-2 text-[13px] font-semibold text-teal"
+          className="mt-2 text-meta font-semibold text-teal"
         >
           Try again
         </button>
@@ -274,7 +274,7 @@ function ConnectedLeagues() {
             }
           >
             <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg font-display text-[13px] font-extrabold text-surface-page"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg font-display text-meta font-extrabold text-surface-page"
               style={{ background: '#00E5FF' }}
             >
               {plat.mark}
@@ -306,14 +306,14 @@ function ConnectedLeagues() {
                   type="button"
                   disabled={busy}
                   onClick={() => act(remove, lg)}
-                  className="text-[13px] font-semibold text-flow-rose disabled:opacity-50"
+                  className="text-meta font-semibold text-flow-rose disabled:opacity-50"
                 >
                   Disconnect
                 </button>
                 <button
                   type="button"
                   onClick={() => setArming(null)}
-                  className="text-[13px] text-ink-muted"
+                  className="text-meta text-ink-muted"
                 >
                   Cancel
                 </button>
@@ -326,7 +326,7 @@ function ConnectedLeagues() {
                   // (RoomPage.jsx), so linking it directly skips a
                   // pointless redirect hop on the one row a reader is
                   // most likely to press.
-                  <a href="#/my-league" className="text-[13px] font-semibold text-teal">
+                  <a href="#/my-league" className="text-meta font-semibold text-teal">
                     Open
                   </a>
                 ) : (
@@ -334,7 +334,7 @@ function ConnectedLeagues() {
                     type="button"
                     disabled={busy}
                     onClick={() => act(select, lg)}
-                    className="text-[13px] font-semibold text-teal disabled:opacity-50"
+                    className="text-meta font-semibold text-teal disabled:opacity-50"
                   >
                     Use
                   </button>
@@ -343,7 +343,7 @@ function ConnectedLeagues() {
                   type="button"
                   onClick={() => { setFailed(null); setArming(keyOf(lg)) }}
                   aria-label={`Disconnect ${lg.name}`}
-                  className="text-[13px] text-ink-muted transition-colors hover:text-voidInk-primary"
+                  className="text-meta text-ink-muted transition-colors hover:text-voidInk-primary"
                 >
                   &times;
                 </button>

@@ -459,7 +459,7 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
       {banner ? (
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[14px] border border-line-hairline bg-[#151920] px-4 py-3">
           <DraftCountdown league={snapshot} variant="chip" />
-          <span className="text-[13px] leading-[1.45] text-voidInk-body">
+          <span className="text-meta leading-[1.45] text-voidInk-body">
             {draft.phase === 'drafting'
               ? 'Your draft is running now — rosters fill here as picks land.'
               : draft.phase === 'late'
@@ -545,7 +545,7 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
         <div className="mt-3 rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] lg:mt-0">
           <span className="font-mono text-[10px] tracking-[0.14em] text-flow-gold">THE LEAGUE</span>
           <div className="mt-2 font-display text-[22px] font-bold text-white">{snapshot.name}</div>
-          <dl className="mt-3 flex flex-col gap-2 text-[13px]">
+          <dl className="mt-3 flex flex-col gap-2 text-meta">
             <div className="flex justify-between gap-3">
               <dt className="text-ink-muted">Season</dt>
               <dd className="text-voidInk-primary">{snapshot.season}</dd>
