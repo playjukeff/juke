@@ -182,14 +182,79 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
   const [showAllTeams, setShowAllTeams] = useState(false)
   const [shared, setShared] = useState(false)
 
+  /* The wait, spent explaining the thing being waited for.
+
+     This was two centred lines on an otherwise empty 1440x900 frame -- the
+     emptiest state in the app, in a destination the nav offers with no
+     signal that it will be empty, for the whole of round one of every
+     draft. A first-time drafter's first press of the fourth tab landed on
+     175 characters of "not yet".
+
+     Disabling the tab is the other repair and is worse: a control that
+     cannot act must not be OFFERED, and the tab has somewhere real to go
+     the moment the round closes -- greying it would trade an empty screen
+     for a dead one. So the screen earns the wait instead. The four
+     components and their weights are exactly what the panel will draw, read
+     off the same WEIGHTS the grade runs on rather than typed here, so this
+     cannot describe a grade the app does not compute. A reader who spends
+     the wait here arrives at the real panel already knowing what its four
+     bars are.
+
+     The count is the honest version of "come back later": it says how far
+     off the gate is, and it moves. */
   if (picks.length < teams) {
+    const w = engine.gradeWeights ? engine.gradeWeights() : null
+    const rows = w
+      ? [
+          ['Starter strength', w.starters, 'What your lineup projects, against par for your seat'],
+          ['Draft value', w.value, 'Where you took them against where the board had them'],
+          ['Roster construction', w.build, 'Empty starting slots, and cover at running back and receiver'],
+          ['Bye week safety', w.byes, 'Starters idle in the same week — counted squared'],
+        ]
+      : []
+    const pct = Math.round((picks.length / teams) * 100)
     return (
-      <div className="flex flex-1 items-center justify-center bg-slate p-6">
-        <div className="text-center">
-          <p className="text-sm font-semibold text-white/70">Nothing to grade yet</p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Analysis appears once the first round is done, and updates after every pick.
+      <div className="flex-1 overflow-y-auto bg-slate p-6">
+        <div className="mx-auto max-w-[520px] pt-6 sm:pt-10">
+          <p className="font-plex text-label uppercase tracking-[0.12em] text-ink-label">
+            Grade · after round 1
           </p>
+          <h3 className="mt-2 font-display text-[22px] font-extrabold text-white">
+            Nothing to grade yet
+          </h3>
+          <p className="mt-1.5 text-[13px] leading-[1.5] text-ink-muted">
+            Every component here is measured against the rest of the room, so it needs one full
+            round on the board. {picks.length} of {teams} picks in — then it updates after every
+            pick.
+          </p>
+
+          <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-slate-rule">
+            <div
+              className="h-1 rounded-full bg-evidence transition-all duration-300"
+              style={{ width: Math.max(2, pct) + '%' }}
+            />
+          </div>
+
+          {rows.length ? (
+            <>
+              <p className="mt-7 font-plex text-label uppercase tracking-[0.12em] text-ink-label">
+                What gets graded
+              </p>
+              <div className="mt-2.5 space-y-2.5">
+                {rows.map(([label, weight, detail]) => (
+                  <div key={label} className="flex gap-3 border-b border-slate-rule/70 pb-2.5 last:border-b-0">
+                    <span className="w-9 shrink-0 font-numeral text-[13px] font-bold tabular-nums text-ink">
+                      {Math.round(weight * 100)}%
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-white/85">{label}</span>
+                      <span className="block text-[12px] leading-[1.45] text-ink-muted">{detail}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     )
@@ -925,7 +990,38 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             </div>
           )}
 
-          <p className="mt-5 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Starters on bye, by week</p>
+          {/* The chip carries the COUNT; the week is the caption under it.
+
+              It was the other way round: the chip printed the week and the
+              count existed only as a background hue, in four steps, with no
+              key anywhere. So a row labelled "Starters on bye, by week" read
+              "5 6 7 8 9 10 11 12 13 14" -- the numbers a reader already
+              knows -- and the quantity the label promises was the one thing
+              on screen they could not read.
+
+              Colour still carries the severity, because scanning ten weeks
+              for the bad one is what this row is for, and now it agrees with
+              a number instead of replacing it. Four is the threshold the
+              grade's own squared bye penalty already treats as "a week you
+              probably lose"; a nil week stays quiet rather than being drawn
+              as an achievement. The key is inline and states all three
+              steps, so nothing here has to be learned by inference. */}
+          <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+              Starters on bye, by week
+            </p>
+            <p className="flex items-center gap-2 font-numeral text-[10px] text-ink-muted">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-sky-500/40" />2
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-amber-500/40" />3
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-sm bg-rose-500/40" />4+
+              </span>
+            </p>
+          </div>
           <div className="mt-1.5 flex gap-1">
             {Array.from({ length: 10 }, (_, i) => i + 5).map((w) => {
               const n = me.byes[w] || 0
@@ -936,10 +1032,19 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                     ? 'bg-amber-500/20 text-amber-300'
                     : n === 2
                       ? 'bg-sky-500/20 text-sky-300'
-                      : 'bg-slate-rule text-ink'
+                      : 'bg-slate-rule text-ink-muted'
               return (
-                <span key={w} className={'flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold ' + cls}>
-                  {w}
+                <span key={w} className="flex flex-col items-center gap-0.5">
+                  <span
+                    className={
+                      'flex h-6 w-6 items-center justify-center rounded font-numeral text-[11px] font-semibold tabular-nums ' +
+                      cls
+                    }
+                    title={`Week ${w}: ${n} starter${n === 1 ? '' : 's'} on bye`}
+                  >
+                    {n}
+                  </span>
+                  <span className="font-numeral text-[9px] tabular-nums text-ink-muted">{w}</span>
                 </span>
               )
             })}
