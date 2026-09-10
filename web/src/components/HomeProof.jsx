@@ -364,7 +364,7 @@ function MethodLink({ href, children }) {
          measured 18px high. The link sits under a proof pair with room
          beneath it, so a 44px target costs nothing here and is the one
          route from a claim to the working behind it. */
-      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[12px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
+      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[13px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
     >
       {children}
       <span aria-hidden="true">&rarr;</span>
@@ -533,7 +533,7 @@ function PairRankReason() {
                   should be taken on trust, is the sharpest self-
                   contradiction the critique found. The three lines below
                   explain +145; none of them explained 100. */}
-              <p className="mt-2 text-[12px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-2 text-[13px] leading-[1.5] text-voidInk-muted">
                 100 is the most value on tonight&apos;s board. Every other score is a share of his.
               </p>
               <div className="mt-5">
@@ -763,7 +763,7 @@ function PairYourRules() {
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   className="flex items-baseline gap-3 border-b border-line-divider py-2.5 last:border-b-0"
                 >
-                  <span className="w-5 shrink-0 font-mono text-[12px] tabular-nums text-voidInk-muted">
+                  <span className="w-5 shrink-0 font-mono text-[13px] tabular-nums text-voidInk-muted">
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>

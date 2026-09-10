@@ -267,7 +267,7 @@ function ConnectCard() {
           </button>
           <a
             href="#/rooms/draft"
-            className="text-[12px] text-ink-muted underline-offset-2 hover:underline"
+            className="text-[13px] text-ink-muted underline-offset-2 hover:underline"
           >
             Start a mock draft
           </a>
@@ -298,7 +298,7 @@ function ConnectCard() {
           >
             Open My League
           </a>
-          <a href="#/you" className="text-[12px] text-ink-muted underline-offset-2 hover:underline">
+          <a href="#/you" className="text-[13px] text-ink-muted underline-offset-2 hover:underline">
             Manage
           </a>
         </div>
@@ -319,7 +319,7 @@ function ConnectCard() {
       </p>
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         <ConnectLeagueCta variant="gradient" />
-        <span className="text-[12px] text-ink-muted">{PLATFORM_LINE}</span>
+        <span className="text-[13px] text-ink-muted">{PLATFORM_LINE}</span>
       </div>
       <TrustStrip />
     </div>
@@ -537,7 +537,13 @@ export default function HomeAlive() {
               <span className="text-mint">before your league.</span>
             </h1>
 
-            <p className="mt-3.5 max-w-[44ch] text-[14px] leading-[1.45] text-voidInk-body sm:mt-[22px] sm:text-[18px] sm:leading-[1.5]">
+            {/* 16px on a phone, which is the ordinary web body floor rather than
+                a preference. This is the page's primary prose, and the pass that
+                collapsed a 15px step into 14 pushed it the wrong way -- fewer
+                sizes is not the goal, roles that carry different jobs is. Card
+                copy stays at 14: a two-up grid is the denser role the floor
+                allows an exception for, and the hero subhead is not. */}
+            <p className="mt-3.5 max-w-[44ch] text-[16px] leading-[1.45] text-voidInk-body sm:mt-[22px] sm:text-[18px] sm:leading-[1.5]">
               {/* PLATFORM_NAMES, never "any major platform".
 
                   Two of four platforms are built, and the Connect card 200px
