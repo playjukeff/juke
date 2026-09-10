@@ -700,7 +700,13 @@
 
   </div>
 
-  <main>
+  <!-- A div, not a <main>. The React tree mounted into #root below draws
+       its own <main> (Homepage.jsx), and this element wraps #root — so the
+       page carried two main landmarks, one inside the other, which is
+       invalid and makes a screen reader announce the main region twice.
+       The inner one is the real content region; this wrapper only exists
+       to hold the landing section and the retired #view-app. -->
+  <div>
 
     <!-- ---------- LANDING ---------- -->
     <!-- The id stays here on purpose: applyRoute() already does
@@ -1011,7 +1017,7 @@
 
     </div>
 
-  </main>
+  </div>
 
   <!-- The new React draft room page (web/src/components/DraftRoom.jsx),
        reached at #/draft-room. Deliberately outside #view-app/#view-home's

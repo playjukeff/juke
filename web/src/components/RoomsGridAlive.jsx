@@ -68,7 +68,7 @@ function LeadCard({ room, lgSpan, stake }) {
             every card in the row, at 375 and at 1440.
 
             `font-plex` at the eyebrow's own size for the same reason —
-            10px against 10px, so the line box cannot grow. The digits are
+            the same size either side, so the line box cannot grow. The digits are
             what wants the mono, which is what `tabular-nums` is for.
 
             P1: `cost`, never the room's accent and never teal. The
@@ -76,7 +76,7 @@ function LeadCard({ room, lgSpan, stake }) {
             that it has not been made — the sign `WaiverRoomLive`'s own
             stake card already prints it under, and the sign `roomStakes.js`
             hands out rather than letting each caller choose. */}
-        <span className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.1em]">
+        <span className="flex items-baseline justify-between gap-2 font-mono text-[11px] tracking-[0.1em]">
           <span className="truncate" style={{ color: room.accent }}>
             FREE · {room.season.toUpperCase()}
           </span>
@@ -158,7 +158,7 @@ function LockedCard({ room, wide = false, lgSpan }) {
             somewhere the reader was never warned about. An emoji is also
             not an icon system; this is the one stroke weight the rest of
             the row uses. */}
-        <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] text-ink-muted">
+        <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.1em] text-ink-muted">
           <IconLock size={12} />
           <span className="sr-only">Locked. </span>
           {room.season.toUpperCase()}

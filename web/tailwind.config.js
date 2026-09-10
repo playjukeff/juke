@@ -436,7 +436,15 @@ export default {
         // No narrow fallback: Gabarito is not a narrow face, so falling
         // back to one would reflow every heading on the one load the
         // fallback exists for.
-        display: ['Gabarito', 'system-ui', 'sans-serif'],
+        //
+        // 'Gabarito Fallback' is Arial sized to Gabarito's width, declared
+        // in index.css with the measurement behind it. It is the same face
+        // with a better stand-in, not a second opinion about the face, so
+        // style.css's --font-display is deliberately left as it is: the
+        // legacy pages (404, docs) have no fallback face declared, and
+        // naming one there would change nothing but the stamp on a file
+        // every returning visitor has cached.
+        display: ['Gabarito', '"Gabarito Fallback"', 'system-ui', 'sans-serif'],
         // Hanken Grotesk as of the sitewide font-consistency pass that
         // followed the homepage cosmetic revision — was Inter, and Inter
         // was barely load-bearing when it was: the homepage never applied

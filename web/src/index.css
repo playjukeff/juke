@@ -151,10 +151,96 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* Gabarito's stand-in while Google Fonts is still in flight: Arial, sized
+   so a line of it is as wide as the same line of Gabarito.
+
+   The display face arrives with font-display: swap from a cross-origin
+   stylesheet, so every heading first paints in whatever comes next in the
+   stack. That used to be system-ui, which sets the hero headline about 9%
+   wider than Gabarito -- enough to wrap "KNOW THE MOVE BEFORE YOUR LEAGUE."
+   onto one extra line. Measured 10 Sep 2026 on the live site at 375px: the
+   headline was 225px tall on first paint and 180px once Gabarito landed,
+   and everything under it jumped up 45px (one 50px line at leading 0.9).
+   That single swap was the largest layout shift on the phone homepage; the
+   proof headings did the same from two lines to one.
+
+   The numbers are measured, not guessed, and the first guess was wrong in
+   an instructive way. Averaged over mixed text, Gabarito 800 is 0.917 of
+   Arial Bold's width -- and a fallback sized to that still wrapped the
+   headline onto a fifth line, because this page's display type is almost
+   all UPPERCASE and Gabarito's capitals are narrower than its lowercase
+   relative to Arial: 0.894 over the thirteen uppercase headings on the
+   page, 0.858 for "BEFORE YOUR" alone, against 0.940 for the mixed-case
+   card titles. No one size can match both, so this one favours the
+   capitals, which are the big type and so the most pixels of error, and
+   sits far enough toward the lowercase to keep the card titles close.
+
+   Checked element by element rather than trusted: each of the 22
+   display-font elements on the homepage, in Gabarito and in this face, at
+   fourteen widths from 320 to 1440. The headline matches at every width
+   from 375 up, which is every iPhone but the first SE. What still differs:
+   the headline at 360 (Android widths, and Android has no Arial, so it
+   never reaches this face); the account card's heading at 393, which is
+   below the fold there; and some room titles and the Mock Draft title, whose
+   cards reserve their height, so nothing moves (3px at 320, none at the
+   others). The regular face (Gabarito 600, rare here) keeps the
+   mixed-text figure of 0.9506.
+
+   Ascent and descent are Gabarito's own (0.94 / 0.26 of the em), divided
+   by size-adjust because the browser scales overridden metrics by it too
+   -- the same arithmetic Next.js's fallback fonts use.
+
+   Two faces rather than one with a synthesized bold: every heading here is
+   700-800, and a fake bold of regular Arial is neither the width nor the
+   weight measured above. Italic is not declared on purpose -- Gabarito has
+   no italic and is obliqued by the browser, so the fallback being obliqued
+   the same way is what keeps the two the same width.
+
+   Arial because it is local on Windows, macOS and iOS. Android has none, so
+   `local()` misses there and the stack falls through to system-ui exactly
+   as before -- this cannot make any device worse, only most of them
+   better. */
+@font-face {
+  font-family: 'Gabarito Fallback';
+  font-style: normal;
+  font-weight: 700 900;
+  src: local('Arial Bold'), local('Arial-BoldMT');
+  size-adjust: 90.5%;
+  ascent-override: 103.9%;
+  descent-override: 28.7%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Gabarito Fallback';
+  font-style: normal;
+  font-weight: 400 600;
+  src: local('Arial'), local('ArialMT');
+  size-adjust: 95.1%;
+  ascent-override: 98.8%;
+  descent-override: 27.3%;
+  line-gap-override: 0%;
+}
+
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* #view-home still carries the retired legacy class `.landing`, and
+   style.css gives that class 64px of bottom padding for a landing page
+   that no longer renders. The React tree inside ends in its own footer, so
+   the padding became 64px of bare <html> ground under the footer -- a
+   visibly different navy (#0a1119 against the footer's own surface) at the
+   foot of every screen this section hosts. Measured 10 Sep 2026 at 375 and
+   1440 alike.
+
+   Undone here rather than in style.css: the id outranks the class
+   whatever the order, and style.css is a stamped legacy file whose every
+   edit means a ?v= bump across four HTML files for a rule that only the
+   React tree needs changed. */
+#view-home {
+  padding-bottom: 0;
 }
 
 /* Header.jsx's row is `fixed`, so an anchor landing at its natural scroll
