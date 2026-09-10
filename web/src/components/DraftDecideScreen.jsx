@@ -1182,7 +1182,19 @@ export default function DraftDecideScreen({ engine, league, mySlot, myTurn, auto
             </h2>
             <p className="mb-4 text-sm text-white/60">Same three cards, different question. Survival odds run off the board's own ADP distribution.</p>
 
-            <div className="mb-4 grid grid-cols-1 gap-3.5 md:grid-cols-3">
+            {/* auto-fit against the CONTAINER, not `md:grid-cols-3` against the
+                viewport. The Decide column is ~350px wide at 1024 whatever the
+                window is doing, so three across left each card 105px - 73 after
+                its own p-4 - against a 23px display name wanting 94 and a
+                "52% still there" line wanting 95. Measured: three cards
+                overflowing a box that can neither scroll nor ellipsise.
+
+                Same defect as <BarRow>'s, and the same reading: a `md:` variant
+                is a question about the window and the answer depends on the
+                box. 150px is the floor a card needs to hold its own name (126
+                measured, plus margin), so this is two across in the room's
+                column and still three wherever there is room for three. */}
+            <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3.5">
               {candidates.map((c) => (
                 <SurvivorCard
                   key={c.player.name}

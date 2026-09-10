@@ -157,10 +157,10 @@ export default function DraftCockpitHeader({
              this bar's own pick pill, which the ribbon replaces on Board
              and Players anyway (hidePill, above). */
           (preDraft ? 'grid ' : 'hidden lg:grid ') +
-          'h-[62px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-white/[0.06] bg-slate-bar/90 px-4 backdrop-blur-md lg:gap-[22px] lg:px-6'
+          'h-[62px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-white/[0.06] bg-slate-bar/90 px-4 backdrop-blur-md lg:px-6 xl:gap-[22px]'
         }
       >
-        <div className="flex min-w-0 items-center gap-3 lg:gap-[22px]">
+        <div className="flex min-w-0 items-center gap-3 xl:gap-[22px]">
         <a
           href="#/rooms/draft"
           aria-label="Back to your draft locker"
@@ -169,19 +169,58 @@ export default function DraftCockpitHeader({
         >
           <ChevronLeft className="h-4 w-4" />
         </a>
-        {/* lg rather than sm, which is where the room's own layout switches
-            anyway. The logo is the second thing to stand down and the easiest:
-            the chevron immediately to its left already goes back, so below lg
-            this is the second way out of a bar that has room for one - the same
-            call the legacy header made when it merged its mark and its chevron
-            into a single control. 95px of lockup plus a 22px gap plus the
-            divider and its gap is 140px, the largest single saving available
-            here, and mark-only would have returned just 63 of it. */}
-        <a href="#/" aria-label="Juke home" className="hidden shrink-0 lg:block">
+        {/* The logo is the second thing to stand down and the easiest: the
+            chevron immediately to its left already goes back, so this is the
+            second way out of a bar that has room for one - the same call the
+            legacy header made when it merged its mark and its chevron into a
+            single control. 95px of lockup plus a 22px gap plus the divider and
+            its gap is 140px, the largest single saving available here, and
+            mark-only would have returned just 63 of it.
+
+            ---- The concession is at xl now, and it used to be at lg ----
+
+            All of that arithmetic was done for a bar that rendered at EVERY
+            width. It is `hidden lg:grid` once a draft is live (the note on the
+            className above says why), so `lg:block` stopped meaning "stand
+            down when the bar is tight" and started meaning "whenever this bar
+            exists at all" - the saving was being collected only at widths the
+            bar no longer occupies.
+
+            So at 1024, the narrowest width this bar now has, the left cell got
+            345px and its contents wanted 463. Nothing up the tree clips it,
+            checked rather than assumed, so the tab nav painted from 391 to 487
+            straight over the centre cell - the pick pill, the one thing on the
+            bar that says whose turn it is, on the two tabs that draw it.
+            Measured on Decide: 96px of overlap at 1024, 58 at 1100, 18 at
+            1180, gone by 1260. Players and Board never showed it because
+            hidePill empties the centre column there, which is why this needed
+            a per-tab sweep to find at all.
+
+            It is a symmetric `1fr auto 1fr`, so the left cell can never exceed
+            (bar - pill)/2 however much the right cell leaves unused - 149px of
+            it at 1024. That is what makes a dead-centre pill and a left block
+            wider than half the remainder mutually exclusive, and why the fix
+            is a subtraction rather than a reflow.
+
+            The cost is stated rather than hidden: between lg and xl this bar
+            carries no wordmark, while the 46px header below lg does. Function
+            beats brand on a bar that has run out of room, and the chevron is
+            still the way home. preDraft keeps it at lg because that branch
+            renders no nav at all - see `{!preDraft && (<nav` below - so it has
+            the room. */}
+        <a
+          href="#/"
+          aria-label="Juke home"
+          className={'hidden shrink-0 ' + (preDraft ? 'lg:block' : 'xl:block')}
+        >
           <JukeLogo size={19} surface="appbar" />
         </a>
 
-        <div className="hidden h-6 w-px shrink-0 bg-white/10 lg:block" />
+        <div
+          className={
+            'hidden h-6 w-px shrink-0 bg-white/10 ' + (preDraft ? 'lg:block' : 'xl:block')
+          }
+        />
 
         {/* The tabs do not stand down between md and lg, and that is
             deliberate: `decide` swaps the whole content area, so a width that
@@ -197,7 +236,7 @@ export default function DraftCockpitHeader({
             kebab menu. That is now fixed and fixed somewhere better, so the
             note is corrected rather than left standing. */}
         {!preDraft && (
-          <nav className="hidden shrink-0 items-center gap-3 md:flex lg:gap-5">
+          <nav className="hidden shrink-0 items-center gap-3 md:flex xl:gap-5">
             {/* Decide has nothing left to decide once the draft is over —
                 DraftRoom.jsx already redirects off it on that edge, and a
                 design review asked for the tab itself to disappear too

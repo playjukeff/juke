@@ -4463,6 +4463,12 @@ in and the bar needs **941px** before it stops clipping. Mark-only brings 640px
 back to 622 and fixes it; nothing about the logo fixes 768. **The bar wants a
 real answer at `md`, and the logo is 95px of a 173px problem there.**
 
+**It got that answer, and the band moved rather than closing.** Corrected
+in place 10 September 2026: the bar is `hidden lg:grid` once a draft is
+live, so the md band this paragraph measures no longer has the bar in it
+at all. What survived is the diagnosis rather than the width — see "The
+concession that fired where the bar was not" under the draft room header.
+
 **The handoff named the wrong component for that check, which is worth knowing
 before trusting the next one.** It said to verify `DraftRoomStatusBar.jsx` at
 `sm`, and nothing has imported that file since `DraftCockpitHeader.jsx` took
@@ -5032,6 +5038,125 @@ depth zero, and a non-zero depth at the end.
 The tell in the browser is a rule that is demonstrably matching and doing
 nothing: `matchMedia` agrees the query applies, the computed style disagrees.
 That reads like a specificity problem and is not one.
+
+### The concession that fired where the bar was not
+
+Found 10 September 2026 by sweeping the live DESKTOP draft room, which
+nothing had ever swept. At **1024** the cockpit bar's tab nav paints
+straight over the pick pill — the one thing on that bar saying whose turn
+it is:
+
+```
+width   left cell   needs   nav ends   pill starts   overlap
+1024      345        463       487        391          96
+1100      383        463       487        429          58
+1180      423        463       487        469          18
+1280      473        473       487        519           0
+1440      553        553       487        599           0
+```
+
+**Nothing clips it anywhere up the tree**, checked rather than assumed, so
+the overlap is painted rather than merely reserved. Gone by 1260 — but 1024
+to 1260 is most of the laptop range and every non-maximised window on a
+larger display.
+
+**It shows on Decide and Analysis and not on Players or Board**, because
+`hidePill` empties the centre column on those two and the `auto` centre
+track then costs the side cells nothing. A single-tab sweep would have
+reported the bar clean, which is why this needed a per-tab one.
+
+**The cause is a concession that had stopped firing.** The logo's own
+comment does the arithmetic — 95px of lockup plus its gap plus the divider
+and its gap is 140px, "the largest single saving available here" — and
+gates it on `lg:block`, meaning *stand down below lg where the bar is
+tight*. Then the bar itself became `hidden lg:grid` for a live draft. From
+that moment `lg:block` meant "whenever this bar exists at all", and the
+saving was being collected only at widths the bar no longer occupies.
+
+**That is the same shape as `openApp()`'s `||` short-circuit and
+`board-marks.spec.mjs`'s dark-ground precondition**: nothing broke, a
+condition retired. Here it retired into *never conceding*, which is the
+direction that costs rather than the direction that hides.
+
+**And `lg:` spends what `lg:` buys.** At exactly the width the bar first
+renders, `lg` also turns on the lockup, the divider, the bar's own
+`gap-[22px]` and the nav's `gap-5`. The roomy treatment arrives at the
+width with the least room for it.
+
+**The grid is why it cannot be reflowed.** `minmax(0,1fr) auto
+minmax(0,1fr)` puts the pill dead-centre, so the left cell can never exceed
+`(bar − pill) / 2` however much the right cell leaves unused — **149px of it
+at 1024**. A dead-centre pill and a left block wider than half the remainder
+are mutually exclusive, so the fix has to be a subtraction. Making the side
+cells asymmetric was measured and rejected: it fits at every width and
+drifts the pill 110–149px off centre at *every* width, which changes the
+design everywhere to mend it in one band.
+
+**So the concessions move to `xl`, and `preDraft` keeps them at `lg`**
+because that branch renders no nav at all and has the room. Measured after:
+no overflow at 1024, 1100, 1180, 1280 or 1440, and 49px of clearance
+between the nav and the pill at the xl boundary where the lockup returns.
+
+**The cost is stated rather than hidden.** Between lg and xl this bar
+carries no wordmark while the 46px header below lg does, so the mark is
+absent in the middle of the range. Function beats brand on a bar that has
+run out of room — the chevron beside it is still the way home — and
+mark-only was measured and does not close the gap: it returns 63px of a
+118px deficit.
+
+### `md:grid-cols-3` is a question about the window
+
+The same sweep found the Decide screen's three survivor cards overflowing
+at 1024, and it is `<BarRow>`'s defect exactly. The Decide column is **350px
+wide whatever the window is doing**, so three across left each card 105px —
+**73 after its own `p-4`** — against a 23px display name wanting 94 and a
+"52% still there" line wanting 95.
+
+`grid-cols-[repeat(auto-fit,minmax(150px,1fr))]` asks the container instead.
+Measured: **two across at 1024** (168px each) and **three from 1280** (193px,
+then 246 at 1440), so "same three cards" survives wherever three fit. 150 is
+the floor a card needs to hold its own name — 126 measured, plus margin —
+rather than a number chosen by eye.
+
+**A container query would be the textbook answer and it is a plugin**, which
+is a dependency this project does not take. `auto-fit` is the same question
+asked in CSS that is already here, which is the call `<BarRow>` already made
+with flex bases.
+
+### What the sweep covers, and the width it had to be run at
+
+`tests/draft-room-widths.spec.mjs` drives a real solo draft and sweeps all
+four desktop tabs at **1024 and 1440**, then asserts the nav/pill
+non-overlap directly — the reader-visible half, which the generic condition
+only reaches one step removed.
+
+**1024 is the whole point.** 1440 is clean, and so are 900, 768 and 700,
+where a different and simpler layout runs. Every defect above lived at one
+viewport, which is CLAUDE.md's own "a narrow BOX is not a narrow viewport"
+with the box narrow at ONE width rather than at the small ones. **1440 runs
+as the control**: without it a fix that mended the narrow case by breaking
+the wide one would pass.
+
+**Its condition is byte-identical to `phone.spec.mjs`'s `sweepOverflow()`**,
+dpr slack and absolute-decoration exemption included, so the two cannot
+disagree about what a leak is. Correct one and correct both.
+
+**Confirmed red against both bugs**: reverting them fails 1024 and leaves
+1440 passing, which is the shape that matters — a control that stays green
+is what says the failure is about the width rather than about the change.
+The nav/pill assertion is confirmed by its own measurement rather than by
+that run, which stops at the sweep: 487 against 391 at 1024 is
+`navRight <= pillLeft` false.
+
+**No `tests.yml` entry** — `browser-tests.yml` runs the suite nightly with
+no file list.
+
+**And the sweep was proved non-vacuous on the real page** before any of it
+was believed, by planting one element that overflows and can neither scroll
+nor ellipsise and confirming the walker names it (`over=330`, on every tab).
+The four tabs' element counts differ by two orders of magnitude — 28,998 /
+15,130 / 375 / 423 — which is what says four different screens were actually
+swept rather than one screen four times.
 
 ## Claim and proof
 
