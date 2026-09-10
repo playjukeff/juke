@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-09 14:56 UTC
+Generated 2026-09-10 14:43 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -18,31 +18,31 @@ Broncos | DEF | DEN | no Tank01 id
 Texans | DEF | HOU | no Tank01 id
 Rams | DEF | LAR | no Tank01 id
 Vikings | DEF | MIN | no Tank01 id
-Patriots | DEF | NE | no Tank01 id
 Eagles | DEF | PHI | no Tank01 id
+Patriots | DEF | NE | no Tank01 id
 Lions | DEF | DET | no Tank01 id
 Steelers | DEF | PIT | no Tank01 id
 Chargers | DEF | LAC | no Tank01 id
 Jaguars | DEF | JAX | no Tank01 id
-Packers | DEF | GB | no Tank01 id
-Ravens | DEF | BAL | no Tank01 id
 Bears | DEF | CHI | no Tank01 id
+Ravens | DEF | BAL | no Tank01 id
 Cowboys | DEF | DAL | no Tank01 id
 Falcons | DEF | ATL | no Tank01 id
 Bills | DEF | BUF | no Tank01 id
 Browns | DEF | CLE | no Tank01 id
-Giants | DEF | NYG | no Tank01 id
 Titans | DEF | TEN | no Tank01 id
-Buccaneers | DEF | TB | no Tank01 id
+Giants | DEF | NYG | no Tank01 id
 Jets | DEF | NYJ | no Tank01 id
+Buccaneers | DEF | TB | no Tank01 id
 Alex Kessman | K | CAR | no Tank01 id
-Commanders | DEF | WAS | no Tank01 id
 Bengals | DEF | CIN | no Tank01 id
-Colts | DEF | IND | no Tank01 id
 Saints | DEF | NO | no Tank01 id
+Colts | DEF | IND | no Tank01 id
 Cardinals | DEF | ARI | no Tank01 id
 Raiders | DEF | LV | no Tank01 id
+Commanders | DEF | WAS | no Tank01 id
 Panthers | DEF | CAR | no Tank01 id
+Packers | DEF | GB | no Tank01 id
 Dolphins | DEF | MIA | no Tank01 id
 49ers | DEF | SF | no Tank01 id
 Chiefs | DEF | KC | no Tank01 id
@@ -236,7 +236,7 @@ every season we store. Sleeper stays authoritative: this changes no
 stored number and never should. It is here so that when the two
 start disagreeing, somebody finds out from this file.
 
-442 of 480 players joined to an nflverse record.
+445 of 481 players joined to an nflverse record.
 
 No nflverse record for:
 Seahawks | DEF | SEA | no nflverse id
@@ -244,39 +244,37 @@ Broncos | DEF | DEN | no nflverse id
 Texans | DEF | HOU | no nflverse id
 Rams | DEF | LAR | no nflverse id
 Vikings | DEF | MIN | no nflverse id
-Patriots | DEF | NE | no nflverse id
 Eagles | DEF | PHI | no nflverse id
+Patriots | DEF | NE | no nflverse id
 Lions | DEF | DET | no nflverse id
 Steelers | DEF | PIT | no nflverse id
 Chargers | DEF | LAC | no nflverse id
 Jaguars | DEF | JAX | no nflverse id
-Packers | DEF | GB | no nflverse id
-Ravens | DEF | BAL | no nflverse id
 Bears | DEF | CHI | no nflverse id
+Ravens | DEF | BAL | no nflverse id
 Cowboys | DEF | DAL | no nflverse id
 Falcons | DEF | ATL | no nflverse id
 Bills | DEF | BUF | no nflverse id
 Browns | DEF | CLE | no nflverse id
-Giants | DEF | NYG | no nflverse id
 Titans | DEF | TEN | no nflverse id
-Buccaneers | DEF | TB | no nflverse id
+Giants | DEF | NYG | no nflverse id
 Jets | DEF | NYJ | no nflverse id
-Commanders | DEF | WAS | no nflverse id
+Buccaneers | DEF | TB | no nflverse id
 Bengals | DEF | CIN | no nflverse id
-Colts | DEF | IND | no nflverse id
 Saints | DEF | NO | no nflverse id
+Colts | DEF | IND | no nflverse id
 Cardinals | DEF | ARI | no nflverse id
 Raiders | DEF | LV | no nflverse id
+Commanders | DEF | WAS | no nflverse id
 Panthers | DEF | CAR | no nflverse id
+Packers | DEF | GB | no nflverse id
 Dolphins | DEF | MIA | no nflverse id
 49ers | DEF | SF | no nflverse id
 Chiefs | DEF | KC | no nflverse id
 Michael Warren | RB | DET | no nflverse id
-RJ Maryland | TE | GB | no nflverse id
 Qadir Ismail | WR | CHI | no nflverse id
 Matt Hibner | TE | BAL | no nflverse id
 Scotty Miller | WR | CHI | no nflverse id
-Irv Charles | WR | SEA | no nflverse id
 
 Two differences are known, applied rather than reported, and
 must not be `fixed' by taking their column:
@@ -298,17 +296,17 @@ for 60+ is slightly under-paying on those seasons. (Same date.)
 season    compared  disagree    rate
 2018           491        77   15.7%
 2019           633        52    8.2%
-2020           790        15    1.9%
-2021           980        14    1.4%
-2022          1253        40    3.2%
-2023          1564        11    0.7%
-2024          1946         7    0.4%
-2025          2308         5    0.2%
+2020           798        15    1.9%
+2021           988        14    1.4%
+2022          1265        40    3.2%
+2023          1571        12    0.8%
+2024          1936         7    0.4%
+2025          2304         5    0.2%
 
 stat  compared   agree   agree%
-cfd       900     838    93.1%
-ct        711     711   100.0%
-cy        965     961    99.6%
+cfd       905     843    93.1%
+ct        713     713   100.0%
+cy        966     962    99.6%
 f19        17      17   100.0%
 f29       129     126    97.7%
 f39       131     131   100.0%
@@ -323,16 +321,16 @@ pfd       262     225    85.9%
 pi        224     224   100.0%
 pt        241     240    99.6%
 py        281     278    98.9%
-ra        833     828    99.4%
-rc        960     958    99.8%
-rfd       690     632    91.6%
+ra        837     832    99.4%
+rc        961     959    99.8%
+rfd       693     635    91.6%
 rt        470     470   100.0%
-ry        821     814    99.1%
-tg        977     964    98.7%
+ry        825     818    99.2%
+tg        978     964    98.6%
 xp        131     130    99.2%
 xpx        94      94   100.0%
 
-221 disagreements beyond 0.5, largest first:
+222 disagreements beyond 0.5, largest first:
   2022 | py   | Joe Burrow | ours 4527 | theirs 4475
   2018 | pfd  | Patrick Mahomes | ours 235 | theirs 187
   2022 | py   | Josh Allen | ours 4316 | theirs 4283
@@ -393,7 +391,7 @@ xpx        94      94   100.0%
   2018 | cfd  | George Kittle | ours 60 | theirs 55
   2018 | cfd  | Christian McCaffrey | ours 40 | theirs 35
   2022 | ry   | Najee Harris | ours 1038 | theirs 1034
-  ... and 161 more, not listed
+  ... and 162 more, not listed
 
 
 
