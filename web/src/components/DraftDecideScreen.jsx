@@ -277,7 +277,7 @@ function Card({ candidate, rankLabel, primary, onDraft, myTurn, engine, board, c
           (!myTurn
             ? 'cursor-not-allowed bg-white/5 text-white/25'
             : primary
-              ? 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white shadow-glass hover:scale-[1.02]'
+              ? 'bg-cta text-white shadow-glass hover:scale-[1.02]'
               : 'bg-white/[0.06] text-white/85 hover:bg-white/10')
         }
       >

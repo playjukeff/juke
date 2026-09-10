@@ -278,7 +278,7 @@ export default function DraftRoomEntry({
               disabled={s.live}
               onClick={() => (s.live ? null : onSignupSport(s.label))}
               className={
-                'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold ' +
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold ' +
                 (s.live
                   ? 'border-teal-400/50 bg-teal-500/10 text-teal-300'
                   : 'border-line-hairline text-voidInk-muted')

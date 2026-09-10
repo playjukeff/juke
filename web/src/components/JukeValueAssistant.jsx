@@ -86,7 +86,7 @@ export default function JukeValueAssistant({ player, vorp, tierLeft, onDraft, my
           className={
             'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold transition-all duration-200 ' +
             (myTurn
-              ? 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white hover:scale-105'
+              ? 'bg-cta text-white hover:scale-105'
               : 'cursor-not-allowed bg-white/5 text-white/25')
           }
         >
@@ -165,7 +165,7 @@ export default function JukeValueAssistant({ player, vorp, tierLeft, onDraft, my
         className={
           'mt-3 w-full rounded-lg py-2 text-sm font-bold transition-all duration-200 ' +
           (myTurn
-            ? 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white shadow-[0_0_18px_rgba(0,229,255,0.5)] hover:scale-[1.02] hover:shadow-[0_0_26px_rgba(0,229,255,0.7)]'
+            ? 'bg-cta text-white shadow-[0_0_18px_rgba(0,229,255,0.5)] hover:scale-[1.02] hover:shadow-[0_0_26px_rgba(0,229,255,0.7)]'
             : 'cursor-not-allowed bg-white/5 text-white/25')
         }
       >

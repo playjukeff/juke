@@ -36,7 +36,7 @@ function AutopickRibbon({ onToggleAutopick }) {
       <button
         type="button"
         onClick={onToggleAutopick}
-        className="shrink-0 rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] px-[18px] py-2 text-[11.5px] font-bold uppercase tracking-[0.08em] text-white"
+        className="shrink-0 rounded-full bg-cta px-[18px] py-2 text-[11.5px] font-bold uppercase tracking-[0.08em] text-white"
       >
         Disable Autopick
       </button>

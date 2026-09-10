@@ -207,7 +207,7 @@ export default function NewMockPanel({
           'mt-4 w-full rounded-full py-[15px] text-base font-bold transition-all duration-200 ' +
           (problem
             ? 'cursor-not-allowed bg-white/5 text-white/25'
-            : 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white shadow-glass hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(0,229,255,0.4)]')
+            : 'bg-cta text-white shadow-glass hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(0,229,255,0.4)]')
         }
         /* data-start-draft is a hook for the phone suite. This label has
            moved three times — "Enter Draft Room", then "Start draft", then

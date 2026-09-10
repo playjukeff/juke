@@ -357,7 +357,13 @@ export default function ProspectRoomLive({ tab }) {
               onClick={() => setPos(key)}
               aria-pressed={pos === key}
               className={
-                'rounded-full border px-3 py-1 font-mono text-[11px] transition-colors duration-150 ' +
+                /* min-h/min-w rather than more padding: these measured
+                   32x27 (and "K" at 32 wide), under the 44px comfort
+                   target on a product that calls phones a first-class
+                   drafting surface. Padding would have grown the pill
+                   visually; a minimum with centred content grows the
+                   TARGET and leaves the chip looking as it did. */
+                'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border px-3 py-1 font-mono text-[11px] transition-colors duration-150 ' +
                 (pos === key
                   ? 'border-mint/60 bg-mint/15 text-mint'
                   : 'border-line-hairline text-ink-muted hover:border-white/25')

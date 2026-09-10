@@ -30,7 +30,7 @@ const ComingSoonModal = forwardRef(function ComingSoonModal(_props, ref) {
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="mt-6 w-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] py-2.5 text-sm font-semibold text-white
+          className="mt-6 w-full rounded-full bg-cta py-2.5 text-sm font-semibold text-white
                      shadow-glass transition-all duration-200 hover:scale-105"
         >
           Got it

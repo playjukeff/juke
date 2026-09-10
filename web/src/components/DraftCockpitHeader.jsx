@@ -488,7 +488,7 @@ export default function DraftCockpitHeader({
                     'shrink-0 rounded-full px-1 py-2 text-xs font-semibold lg:px-5 lg:text-sm ' +
                     (startDisabled
                       ? 'cursor-not-allowed bg-white/5 text-white/25'
-                      : 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white shadow-glass transition-all duration-200 hover:scale-105 hover:shadow-[0_0_15px_rgba(0,229,255,0.4)]')
+                      : 'bg-cta text-white shadow-glass transition-all duration-200 hover:scale-105 hover:shadow-[0_0_15px_rgba(0,229,255,0.4)]')
                   }
                 >
                   {/* Same lever as "Round N ·" and "your turn" elsewhere on
