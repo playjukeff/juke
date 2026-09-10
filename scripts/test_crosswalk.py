@@ -1289,9 +1289,6 @@ test_board_separation()
 
 
 print()
-if FAILURES:
-    print(f"{len(FAILURES)} FAILED: " + ", ".join(FAILURES))
-    sys.exit(1)
 
 # --------------------------------------------------- the weekly kicker fold
 #
@@ -1341,4 +1338,40 @@ check("bands that sum to the total add no long kicks", "fgm_50_59" in exact, Fal
 knows = bp.reconcile({"fgm": 3.0, "fgm_30_39": 1.0, "fgm_50_59": 1.0})
 check("a row carrying a 50+ band is never topped up", knows["fgm_50_59"], 1.0)
 
+
+# ---- a projection may not carry a stat nothing forecast -------------------
+#
+# Sleeper publishes rec_40p on a projection as receptions divided by ten --
+# 274 of 274 season rows and 349 of 349 weekly rows, measured. The real rate
+# is 2.3-2.6% and stable over five seasons, so it overstates fourfold, and a
+# league that scores a 40+ yard catch was paying for it.
+#
+# The two directions are deliberately asymmetric and BOTH are asserted: a
+# rule that dropped the key everywhere would silently stop history and the
+# ledger scoring a real count, which is a worse bug wearing this fix's
+# clothes.
+c40 = bp.STAT_FIELDS["rec_40p"]
+rc = bp.STAT_FIELDS["rec"]
+
+projected = bp.forecast_only(bp.compact({"rec": 107, "rec_yd": 1290, "rec_40p": 10.7}))
+check("a projection does not carry the formulaic key", c40 in projected, False)
+check("and the rest of the projection is untouched", projected[rc], 107)
+
+actual = bp.compact({"rec": 107, "rec_yd": 1290, "rec_40p": 3})
+check("an actual line keeps its real count", actual.get(c40), 3)
+
+check("an empty block is handled", bp.forecast_only({}), {})
+check("and so is one that never had the key",
+      bp.forecast_only({rc: 42}), {rc: 42})
+
+# The one gate, at the END of the file.
+#
+# It used to sit two hundred lines up, so every check written after it --
+# the weekly kicker fold and everything below -- printed FAIL and exited 0.
+# A suite whose exit code disagrees with its own output is worse than no
+# suite: CI reads the code, and the code said fine.
+print()
+if FAILURES:
+    print(f"{len(FAILURES)} FAILED: " + ", ".join(FAILURES))
+    sys.exit(1)
 print("OK")

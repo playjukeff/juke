@@ -10294,6 +10294,76 @@ was findable the moment the comparison was per player instead of in total.
 is not a smaller version of the right one — it is a different question, and
 here it produced a confident wrong conclusion that stood for a day.
 
+### A projected stat that is another stat divided by ten
+
+Found while chasing the statId above, and it is the larger of the two
+because it is true of **Sleeper leagues as well as ESPN ones**.
+
+`rec_40p` is a catch of 40 or more yards. On an ACTUAL line Sleeper reports
+a real count. On a PROJECTION it reports **receptions divided by ten** —
+measured 10 September 2026, **274 of 274** season-projection rows and
+**349 of 349** weekly rows, to two decimal places, with no exceptions at
+all:
+
+```
+Puka Nacua      10.7 against 107 projected catches
+Drake London     9.0 against  90
+Ladd McConkey    8.1 against  81
+Dallas Goedert   5.3 against  53
+```
+
+**The real rate is a quarter of that and it is stable.** Over the seasons
+this project stores, 40+ yard catches run **2.26 / 2.41 / 2.51 / 2.59 /
+2.37 percent** of receptions from 2025 back to 2021. So the projected value
+is not a forecast that happens to be high; it is one stat wearing another
+one's name, and it overstates by four times for every receiver on the board.
+
+**A ratio that is exact on every row is a formula, not a model**, and that
+is the tell worth keeping. One player at 10% is a projection; 623 of 623 at
+exactly 10% is arithmetic.
+
+**The pipeline's own comment claimed the opposite** — *"Sleeper forecasts
+it, unlike every other big-play key it carries"* — which was written from
+the field being PRESENT rather than from what was in it. Corrected in place.
+
+`FORMULAIC_PROJECTION_KEYS` takes it out of `p`, `wp` and `pp` and leaves
+every actual line alone, and **both directions are asserted**: a rule that
+dropped the key everywhere would silently stop history and the ledger
+scoring a real count, which is a worse bug wearing this fix's clothes.
+
+**Scaling it to the measured 2.4% is refused**, for the reason this file
+already gives about a kicker's short field goals: the pipeline records
+facts, and inventing the number would be recording an opinion.
+`projected_keys` is derived from what the projection actually carries, so
+dropping the value is what takes `rec_40p` out of `PROJECTED_KEYS` — there
+is no second list to keep in step.
+
+**The check for the next one is a ratio sweep.** Nothing here would have
+caught this: the value was present, non-zero, plausibly sized, and stored
+faithfully. What found it was dividing one projected key by another and
+noticing the answer never varied.
+
+### The one gate in `test_crosswalk.py` sat two hundred lines from the end
+
+Found by mutating a new check and watching it print `FAIL` and exit **0**.
+
+`if FAILURES: sys.exit(1)` was mid-file, so every check written after it —
+the weekly kicker fold, and everything added since — reported its failure
+and left the process green. CI reads the exit code, and the exit code said
+fine.
+
+**A suite whose exit code disagrees with its own output is worse than no
+suite**, which is the same rule this file already states about piping a
+Playwright run into `tee`. The gate is at the real end now, and a check
+added below it is gated by construction rather than by whoever remembers.
+
+**And the crash-instead-of-name trap fired again in the same sitting.** A
+mutation that dropped the key everywhere made an assertion read
+`actual[c40]` on a dict that no longer had it, so the run aborted with a
+KeyError instead of naming the check — the same repair as the kicker fold's
+own tests: `.get()`, so a missing key fails one assertion rather than
+skipping every one below it.
+
 ### The season projection is missing whole categories for K and DST
 
 Not coarser: missing. Read straight off the feed rather than inferred —
@@ -10476,11 +10546,85 @@ at the default". The two adapters differ here on purpose.
 
 ### Still open
 
-**Fifteen of the league's rules map and 29 do not** — return and defensive
-touchdowns, the shorter field-goal bands, the deeper points-allowed tiers.
-Each needs the same evidence the first 24 got; 2025 gave too few non-zero
-samples to separate them from their aliases. They are reported, never
-guessed.
+**Twenty-eight of the league's 53 rules are reported as unrepresentable** —
+return and defensive touchdowns, the deeper points-allowed tiers, every
+yards-allowed tier, and the long-play bonuses Juke has no rule for at all.
+Each is listed by id in `scoring.js` with the measurement that rejected it,
+because a rule left out for a reason is different from one nobody examined.
+
+**And nothing renders that list.** `scoringUnmapped` has ridden on the
+snapshot since the adapter was written and no surface in `web/src` or
+`app.js` reads it — so the app computes exactly the set of rules it cannot
+reproduce, puts it on the wire, and never tells the reader. That is the
+dead-control failure this file records over and over, landing on the honesty
+mechanism itself, and it is the half of the launch concern that is still
+open: a manager's first impression should not be a number that is quietly
+short with nothing on screen to say which of their rules were dropped.
+
+### A subset is not a match, and the derivation could not tell
+
+`rec_40p: 38` shipped, and **38 is the 200-yard rushing game bonus.**
+
+The derivation compared Juke's stored count against ESPN's **only on rows
+where both were non-zero**, which cannot fail for a candidate that is a
+strict SUBSET of the real stat: every row it is missing from is skipped
+rather than counted against it. Measured 10 September 2026 over 328 joined
+players — 38 is non-zero on **5 running backs at 1 apiece**, `rec_40p` on
+**103 players and reaching 8** — and **four of those five backs happen to
+carry `rec_40p: 1` in 2025**, which met the old threshold of four agreeing
+samples while the 99 receivers who disagreed were invisible to it.
+
+So the check that produced the table was **structurally incapable of
+rejecting the wrong answer**, and "everything here is 100%" was true of a
+comparison that could only ever report agreement.
+
+**Re-derived over the whole population, counting a one-sided row as a
+disagreement**, every other id confirms exactly and `rec_40p` matches no
+ESPN id at all. It is out of the table, and its absence is asserted rather
+than merely true — the mapping looked entirely reasonable and would be
+re-added by anybody deriving the same way again.
+
+**What it cost is a live over-score.** The league pays 4 points for statId
+38, so every receiver was paid 4 a catch for a rule the league does not
+have. On the owner's own week-1 lineup that is **9.4 points a week across
+seven skill players**.
+
+**`sack: 99` went in with it, and reading it needed a second edit.**
+`DST_RULES` is a hand-kept list of which keys take the position-16 override,
+and a defensive key added to the table and forgotten there reads the flat
+`points` — which for a defence-only rule is 0. So `sack` scored nothing for
+one run, silently, which is the exact failure the override note above
+already describes. Both lists move together and a test pins it.
+
+### Two errors were cancelling, and the fix makes the gap bigger
+
+Stated plainly because the direction is the opposite of what a fix is
+supposed to do. The owner's reported week 1, reproduced exactly and then
+re-measured:
+
+```
+                    reported   corrected     ESPN
+Josh Allen              26.0        26.0     24.4
+Cam Skattebo            12.8        11.8     14.1
+David Montgomery        12.9        12.1     13.1
+Puka Nacua              20.9        18.4     21.9
+Drake London            16.8        14.7     15.6
+Dallas Goedert           9.2         8.0     11.1
+Ladd McConkey           15.3        13.4     14.1
+LA Rams Defense          6.2         6.2      8.5
+Cam Little               6.4         6.6      9.0
+                       126.7       117.3    131.8
+```
+
+**A rule the league does not have, applied to a stat nobody forecasts, was
+propping the total up** — and the earlier finding that the seven skill
+players "net −0.4" was measured with that inflation already in it. Take it
+out and they are 9.8 light, which is the honest size of the forecaster
+difference the weekly-projection work exists to close.
+
+**So closing a gap is not the test of a scoring fix; reading the league
+correctly is.** A number that agrees with ESPN because two mistakes cancel
+is worse than one that disagrees for a reason anybody can check.
 
 **The on-screen change is unverified by anything automated.** Every room is
 behind Clerk's `<SignedIn>` and a keyless build renders none of them — the

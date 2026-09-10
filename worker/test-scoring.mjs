@@ -2,12 +2,14 @@
  *
  *   node worker/test-scoring.mjs
  *
- * The ids in scoring.js were derived from 319 players' real 2025 lines
- * rather than looked up, and the failure mode they guard against is silent:
- * a wrong statId scores the wrong category and reports nothing. So these
- * assert the SHAPE of the translation -- overrides, absent categories,
- * aliases, what gets reported -- which is the half a derivation cannot
- * check itself.
+ * The ids in scoring.js were derived from real 2025 lines rather than
+ * looked up, and the failure mode they guard against is silent: a wrong
+ * statId scores the wrong category and reports nothing. So these assert the
+ * SHAPE of the translation -- overrides, absent categories, aliases, what
+ * gets reported -- which is the half a derivation cannot check itself.
+ *
+ * And one of them asserts a statId is ABSENT, which is the shape that
+ * actually shipped wrong: see "a subset is not a match" below.
  */
 
 import { rulesFromEspn, rulesFromSleeper, ESPN_STAT_IDS } from "./scoring.js";
@@ -94,11 +96,59 @@ console.log("\n--- a category the league omits is a zero, not a default ---");
   check("no interception rule means no penalty", rules.pass_int, 0);
 }
 
+/* `rec_40p: 38` shipped, and 38 is the 200-yard rushing game bonus.
+ *
+ * The derivation that produced it compared Juke's count against ESPN's only
+ * on rows where BOTH were non-zero, which cannot fail for a candidate that
+ * is a strict subset of the real stat: every row it is missing from is
+ * skipped instead of counted against it.
+ *
+ * Measured 10 September 2026 over 328 joined players: 38 is non-zero on 5
+ * running backs at 1 apiece, `rec_40p` on 103 players and reaching 8, and
+ * FOUR of those five backs happen to carry `rec_40p: 1` in 2025 -- enough
+ * agreeing samples to pass, with the 99 receivers who disagreed unseen.
+ *
+ * So a full-PPR league paid four points for every 40+ yard catch under a
+ * rule it does not have. This asserts the ABSENCE, because the mapping
+ * looked entirely reasonable and would be re-added by anybody deriving the
+ * same way again. */
+console.log("\n--- a subset is not a match ---");
+check("38 is not on the table at all", ESPN_STAT_IDS.rec_40p, undefined);
+{
+  const { rules, unmapped } = rulesFromEspn([item(53, 1), item(38, 4)]);
+  // Absent rather than zero, and that is the right answer for a key this
+  // table does not claim: rulesFromLeague() merges onto DEFAULT_RULES, so
+  // an unset key keeps Juke's own value, which for rec_40p is 0. A MAPPED
+  // key the league omits is zero-filled instead -- see the note above on
+  // why the two cases differ.
+  check("a 200-yard rushing bonus does not become a reception rule",
+        rules.rec_40p, undefined);
+  check("and it is reported as something Juke cannot reproduce",
+        unmapped, [38]);
+}
+
+/* A defensive key added to ESPN_STAT_IDS and forgotten in DST_RULES reads
+   the flat `points`, which for a defence-only rule is 0 -- so the rule
+   scores nothing and nothing says so. `sack` did exactly that for one run
+   when it was added. */
+console.log("\n--- a defensive key added to the table reads its override ---");
+{
+  const { rules } = rulesFromEspn([item(99, 0, { 16: 1 }), item(53, 1)]);
+  check("a sack is worth what the override says", rules.sack, 1);
+}
+{
+  const { rules } = rulesFromEspn([item(53, 1)]);
+  check("and a league that does not score sacks says zero", rules.sack, 0);
+}
+
 console.log("\n--- what it cannot name, it reports ---");
 {
-  const { rules, unmapped } = rulesFromEspn([item(53, 1), item(4242, 3), item(99, 0, { 16: 1 })]);
+  // 96 is real and deliberately unmapped -- ESPN's fumble-recovery count
+  // disagrees with Juke's own on 22 of 32 defences, so it is reported
+  // rather than mapped to something it is not.
+  const { rules, unmapped } = rulesFromEspn([item(53, 1), item(4242, 3), item(96, 0, { 16: 2 })]);
   check("the rule it knows still lands", rules.rec, 1);
-  check("and the ones it does not are named", unmapped, [99, 4242]);
+  check("and the ones it does not are named", unmapped, [96, 4242]);
 }
 {
   const { unmapped } = rulesFromEspn([item(53, 1), item(4242, 0)]);

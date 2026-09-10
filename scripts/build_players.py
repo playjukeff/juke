@@ -245,7 +245,8 @@ STAT_FIELDS = {
     "rush_fd": "rfd",
     # --- receiving ---
     # rec_40p is a catch of 40 or more yards, not a bonus on one. Sleeper
-    # forecasts it, unlike every other big-play key it carries.
+    # sends it on an ACTUAL line, where it is a real count. It also sends it
+    # on a projection, where it is not -- see FORMULAIC_PROJECTION_KEYS.
     "rec_tgt": "tg", "rec": "rc", "rec_yd": "cy", "rec_td": "ct",
     "rec_2pt": "c2", "rec_fd": "cfd", "rec_40p": "c40",
     # --- returns and fumbles ---
@@ -501,6 +502,51 @@ def reconcile(row):
             row = dict(row)
             row["fgm_50_59"] = rest
     return row
+
+
+# Keys Sleeper "forecasts" with a formula rather than a model.
+#
+# rec_40p on a projection is receptions divided by ten. Not approximately:
+# measured 10 September 2026, 274 of 274 season-projection rows carry
+# exactly one tenth of their own projected receptions, and 349 of 349 weekly
+# rows do the same to two decimal places. Nacua is 10.7 against 107 catches,
+# London 9 against 90, McConkey 8.1 against 81.
+#
+# The real rate is a quarter of that and it is stable: over the seasons this
+# file stores, 40+ yard catches run 2.26%, 2.41%, 2.51%, 2.59% and 2.37% of
+# receptions from 2025 back to 2021. So the projected value is not a
+# forecast that happens to be high, it is receptions wearing another stat's
+# name, and it overstates by four times for every receiver on the board.
+#
+# It cost a real number. A connected league paying 4 points for a 40+ yard
+# catch scored Puka Nacua 42.8 season points -- 2.5 a week -- for something
+# nothing forecast, and that league does not have the rule at all: see
+# worker/scoring.js on the statId that was mapped to it.
+#
+# Dropped from every PROJECTION block and kept on every ACTUAL one, where it
+# is a genuine count that history and the ledger are scored on. Scaling it
+# to the measured 2.4% was the alternative and is refused for the reason
+# this file already gives about a kicker's short field goals: the pipeline
+# records facts, and inventing the number would be recording an opinion.
+#
+# `projected_keys` is derived from what the projection actually carries, so
+# dropping the value here is what takes rec_40p out of PROJECTED_KEYS -- no
+# second list to keep in step.
+FORMULAIC_PROJECTION_KEYS = ("rec_40p",)
+
+
+def forecast_only(block):
+    """A projection block with the formulaic keys taken out.
+
+    Takes the SHORT keys, because it runs on compact()'s output rather than
+    on a raw feed row.
+    """
+    if not block:
+        return block
+    out = dict(block)
+    for key in FORMULAIC_PROJECTION_KEYS:
+        out.pop(STAT_FIELDS[key], None)
+    return out
 
 
 def compact(row):
@@ -2552,7 +2598,7 @@ def main():
 
         projection = projections.get(player_id)
         if projection:
-            block = compact(projection)
+            block = forecast_only(compact(projection))
             # gp is what tells the app this is a real forecast rather than a
             # zero-filled row. Sleeper returns those for players it has no
             # opinion on, and counting them as real projections once dragged
@@ -2566,7 +2612,7 @@ def main():
         # about. A stale block is worse than none -- see app.js.
         week_line = week_projections.get(player_id)
         if week_line:
-            block = compact(week_line)
+            block = forecast_only(compact(week_line))
             if block:
                 record["wp"] = block
 
@@ -2579,7 +2625,10 @@ def main():
             line = past_projections[season].get(player_id)
             if not line:
                 continue
-            block = compact(line)
+            # A forecast, so the same formulaic keys come out: pp is what
+            # projectionRecord() grades against what actually happened, and
+            # grading a number nothing forecast is worse than grading none.
+            block = forecast_only(compact(line))
             games = int(line.get("gp") or 0)
             if games == 0 and not block:
                 continue
@@ -2710,7 +2759,8 @@ def main():
     reconciled = [reconcile(line) for line in projections.values()]
     projected_keys = sorted(
         stat for stat in SCOREABLE
-        if any((line.get(stat) or 0) for line in reconciled)
+        if stat not in FORMULAIC_PROJECTION_KEYS
+        and any((line.get(stat) or 0) for line in reconciled)
     )
     print(f"  {len(projected_keys)} of {len(SCOREABLE)} scoreable stats are forecast")
 
