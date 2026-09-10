@@ -1,6 +1,9 @@
 import { ordered, hasPlayed } from '../../lib/standings.js'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import { lineupRows } from '../rooms/strategyBoard.js'
+import { teamWeek } from '../../lib/matchup.js'
+import { seasonOdds, oddsFor, seedFor, SIMS } from '../../lib/seasonSim.js'
 import { platformFor } from '../shell/leaguePlatforms.js'
 import DraftCountdown from '../shell/DraftCountdown.jsx'
 import { draftPhase } from '../../lib/countdown.js'
@@ -116,6 +119,17 @@ function ordinalSuffix(n) {
   return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'
 }
 
+/* A whole percent, and never a decimal place.
+
+   SIMS puts the standard error at half a point, so a tenth is a digit the
+   simulation cannot support -- and a figure sharper than the thing behind
+   it is this project's own standing complaint about the Juke score. 0 and
+   100 are real answers here rather than rounding: a season with nothing
+   left to play has already decided every seat. */
+function pct(p) {
+  return typeof p === 'number' ? `${Math.round(p * 100)}%` : '--'
+}
+
 /* The draft's date and time, in the reader's own timezone.
 
    `toLocaleString` with no locale argument, which is the browser's — a
@@ -140,10 +154,102 @@ function draftWhen(ms) {
 }
 
 export default function StandingsPanel({ league, snapshot, status, reason }) {
+  /* Every hook this component has is here, in front of the three early
+     returns below, and that is load-bearing rather than tidiness.
+
+     `useState` used to sit under them, so a mount at `status: 'loading'`
+     called no hooks and the render after the snapshot landed called one --
+     which is React throwing "rendered more hooks than during the previous
+     render" on the ordinary path this screen takes every time it opens.
+     MyLeagueScreen does not gate on `snapStatus`; it hands it straight
+     through, so the transition is not an edge case, it is the only way in.
+     Same rule DraftLocker's own effect already records: an early return is
+     a wall no hook may sit behind. */
+  const engine = useEngine()
+  useJukeTick(engine)
+  const [openTeam, setOpenTeam] = useState(null)
+
   /* Which platform this league came from, by name. platformFor() rather
      than a ternary on `provider`, because that is the one list, and a
      third platform should be a row in it rather than an edit here. */
   const platform = platformFor(league && league.provider).name
+
+  /* ---- Screen 05's own half: where this season ends up ----------------
+   *
+   * The last entry on the decision guide's blocked list, and the one that
+   * was genuinely blocked rather than merely unre-measured. 08 asks who
+   * wins THIS week, which is one normal difference between two lineups
+   * that both exist; this asks where a team FINISHES, which is a joint
+   * distribution over every remaining week and every other team's
+   * schedule. `seasonSim.js` is that, and it is the generative form of the
+   * same model the Strategy Room reads rather than a second opinion --
+   * see its own header.
+   *
+   * Every input is one this screen already had. The rosters and the
+   * schedule ride on the snapshot; the per-position weekly spread is
+   * `weeklyCV()`, memoised in app.js because it costs 19ms a call; and
+   * `weekPts` is projPerGameUnder the league's OWN scoring, which is the
+   * correction that was worth 13.3 points a week to the Strategy Room's
+   * total and is worth the same here to every team's mean.
+   *
+   * Memoised because it is 10,000 seasons. Measured at 74ms for a
+   * ten-team league, which is nothing once and is a stutter on every tick
+   * of a screen that re-renders on the engine's own heartbeat. */
+  const boardReady = !!(engine && engine.dataReady && engine.dataReady())
+  const board = boardReady ? engine.board() : []
+  const byId = useMemo(
+    () => new Map(board.map((p) => [String(p.id), p])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [board.length]
+  )
+  const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
+  const weekPts = useMemo(() => {
+    if (!engine) return null
+    if (!leagueRules) return engine.projPerGame
+    return (player) => engine.projPerGameUnder(player, leagueRules)
+  }, [engine, leagueRules])
+  /* `boardReady` is in the dependency list and it is the whole reason this
+     memo answers at all.
+
+     `useEngine()` hands back `window.JukeEngine` itself, so `engine` is one
+     stable object for the life of the page -- and `weeklyCV` is guarded on
+     `dataReady()`, answering null until the deferred `stats.js` lands. So a
+     memo keyed on `[engine, leagueRules]` alone computes null on the first
+     render and never recomputes: nothing in its deps ever changes again.
+     This screen mounts before the board every time (the snapshot fetch
+     starts on the render the league id arrives on), so that is not an edge
+     case, it is the only path. Measured: the strip drew STANDING rather
+     than PLAYOFF ODDS on a league whose odds the module computes perfectly
+     from the same inputs a moment later.
+
+     The same shape as `byId` keying on `board.length` two lines up, and the
+     same failure `useLeagueSnapshot()` already had from the other end -- a
+     value that is right once it is late and never becomes right. */
+  const cv = useMemo(
+    () => (engine && engine.weeklyCV ? engine.weeklyCV(leagueRules) : null),
+    [engine, leagueRules, boardReady]
+  )
+  const odds = useMemo(() => {
+    if (!snapshot || !weekPts || !cv) return null
+    /* Every team's lineup priced the same way the reader's own is, which
+       is what makes the answer a joint distribution rather than one team
+       measured against nine blanks. `teamWeek()` refuses a lineup it
+       cannot price and `seasonOdds()` refuses the whole table when any one
+       team comes back null -- deliberately not repaired here, because a
+       nine-team simulation of a ten-team league produces percentages that
+       add up and are wrong. */
+    const strength = {}
+    for (const t of snapshot.teams || []) {
+      strength[String(t.ownerId)] = teamWeek(lineupRows(t, byId, weekPts), cv)
+    }
+    return seasonOdds({
+      schedule: snapshot.schedule,
+      teams: snapshot.teams,
+      strength,
+      playoffTeams: snapshot.playoffTeams,
+      seed: seedFor(league && league.leagueId, snapshot.week),
+    })
+  }, [snapshot, byId, weekPts, cv, league])
 
   if (status === 'loading') {
     return (
@@ -181,7 +287,6 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
   }
 
   const table = ordered(snapshot.teams)
-  const [openTeam, setOpenTeam] = useState(null)
   const mine = league.ownerId || null
 
   /* Read off the SNAPSHOT, not the connected-league cache.
@@ -213,14 +318,21 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
      -- the reader with a real league was getting less of the product than
      the reader looking at a sample of it.
 
-     The guide's own screen 05 asks for seed, win probability and bye odds.
-     Seed is here; the other two are not, and the reason is written down one
-     directory along: seasonPhase.js already refuses to name a playoff week
-     because neither adapter says how many weeks a regular season runs, and
-     a win probability additionally needs the matchup fetch that costs the
-     Strategy Room three of its seven tabs. Points against is what a league
-     really does report and it answers a question of the same shape -- how
-     much of your record is you.
+     The guide's own screen 05 asks for seed, win probability and bye odds,
+     and this comment used to say the last two were blocked -- because
+     "seasonPhase.js refuses to name a playoff week" and "a win probability
+     needs the matchup fetch". Both sentences were about a repository that
+     had already moved: `scheduleFromEspn()` publishes `regularSeasonWeeks`
+     off ESPN's own playoffTierType, and the matchup fetch landed with it.
+     Corrected in place rather than left standing, which is the rule this
+     project keeps having to apply to its own blockers.
+
+     What was really missing was a simulator, and `seasonSim.js` is it. So
+     the strip leads with the playoff odds when a league can answer for them
+     -- see the card below for why that displaces the standing rather than
+     joining it -- and falls back to the standing when it cannot. Points
+     against is what a league really does report and it answers a question
+     of the same shape -- how much of your record is you.
 
      The median is the league's own, not a constant, so the delta says
      "against these nine teams" rather than against a number from nowhere.
@@ -244,14 +356,62 @@ export default function StandingsPanel({ league, snapshot, status, reason }) {
   const pfDelta = me ? me.pointsFor - pfMedian : 0
   const paDelta = me ? (me.pointsAgainst || 0) - paMedian : 0
 
+  /* The reader's own row of the simulation, or null on every league that
+     cannot answer: no schedule at all (Sleeper publishes none), no
+     `playoffTeams`, a roster the board cannot price, or a regular season
+     with nothing left to play. */
+  const myOdds = me ? oddsFor(odds, me.ownerId) : null
+
+  /* Playoff odds DISPLACE the standing rather than joining it, and the
+     reason is that the strip is four cards and its own component says so.
+
+     The standing is the one card on it a reader can already get from two
+     inches lower down: the table draws a rank column and highlights their
+     own row. So it is the card with the least to lose, and it loses
+     nothing at all -- the rank moves into this card's note, where it reads
+     as the thing the percentage is measured FROM. Same call the Strategy
+     Room's own strip makes when a matchup exists.
+
+     The bye rides in the note rather than taking a fifth card. It is a
+     BETTER playoff outcome rather than a separate one, so it qualifies
+     this number in the way a delta qualifies a value, and `byeSeats()`
+     answers null for a bracket it cannot reconcile with the published
+     playoff weeks and 0 for one that simply has no byes -- neither of
+     which is a fact worth a sentence. */
+  /* And the note is the framing this number may not be shown without.
+
+     A percentage on a card is read as a fact about the season. It is a
+     fact about the PROJECTIONS -- ten thousand seasons played out from
+     what the board thinks every roster is worth this week, which is a
+     forecast with its own measured error and no knowledge of an injury
+     that has not happened. `projectedWinPctForRoom()`'s own method note
+     makes the same demand of the same family of model. */
+  const oddsNote = () => {
+    const from = `${myRank}${ordinalSuffix(myRank)} of ${table.length} now`
+    const bye = myOdds && odds.byeSeats ? `, a bye in ${pct(myOdds.bye)}` : ''
+    return `${from}${bye}. ${SIMS.toLocaleString()} seasons from today's projections.`
+  }
+
   const kpis = me && played
     ? [
-        {
-          label: 'Standing',
-          value: `${myRank}${ordinalSuffix(myRank)}`,
-          accent: 'evidence',
-          note: `Of ${table.length}, on wins then points for.`,
-        },
+        myOdds
+          ? {
+              label: 'Playoff odds',
+              value: pct(myOdds.playoffs),
+              /* `evidence`, never gain or cost. A probability is a
+                 quantity with no direction in it -- 61% is not a gain of
+                 anything -- which is the same call the Strategy Room's
+                 own even-matchup band makes and the same one `signOf()`
+                 makes about zero. */
+              accent: 'evidence',
+              note: oddsNote(),
+            }
+          : {
+              label: 'Standing',
+              value: `${myRank}${ordinalSuffix(myRank)}`,
+              accent: 'evidence',
+              note: `Of ${table.length}, on wins then points for.`,
+            },
         {
           label: 'Record',
           value: `${me.wins}-${me.losses}${me.ties ? `-${me.ties}` : ''}`,

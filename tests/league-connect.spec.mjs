@@ -74,8 +74,20 @@ function stubAccount(page, leagues) {
  * stale specs beside them were invisible inside the noise.
  *
  * Same shape as news.spec.mjs's keyless test, and the same instruction with
- * it: VERIFY A SKIP IN BOTH DIRECTIONS or it is a deletion. Locally these
- * eight run and pass; against production three run and five skip.
+ * it: VERIFY A SKIP IN BOTH DIRECTIONS or it is a deletion. Locally all nine
+ * run and pass; against production three run and six skip.
+ *
+ * What survives is what does not assert signed-in RENDERING: the platform
+ * claim and the guest state, which stub no account at all, plus the PATCH
+ * transport, which stubs one and then watches live.js's own fetch -- and
+ * that runs whether or not Clerk has drawn anything. So reaching for
+ * stubAccount() is NOT the test for which of these stand down.
+ *
+ * This line read "eight ... five" for a while, having been written before
+ * #202 added a ninth test with a skip on it. A tally in a comment goes
+ * stale the same silent way every other number in this repository does,
+ * and this one would have told the next reader to expect 11 skips in the
+ * nightly rather than the 12 it reports.
  */
 const CLERK_GATED = "signed-in rendering is Clerk's, and a keyed build ignores the stub";
 

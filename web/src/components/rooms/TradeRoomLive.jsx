@@ -5,6 +5,8 @@ import { signed } from '../decision/tokens.js'
 import { myTeam, rivalNeeds } from './waiverBoard.js'
 import { freeAgents } from './waiverBoard.js'
 import { rosterTotal, rosterValues, tradeSwing, valueBoard } from './tradeBoard.js'
+import TradeWindow from './TradeWindow.jsx'
+import { tradeWindow } from '../../lib/tradeDeadline.js'
 import UpgradeGate from '../shell/UpgradeGate.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 
@@ -409,20 +411,34 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
   )
 
   if (tab === 'builder') {
-    return <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">{builder}</div>
+    return (
+      <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+        <TradeWindow snapshot={snapshot} />
+        {builder}
+      </div>
+    )
   }
 
   const mineTotal = rosterTotal(mine, byId, gapOf)
+  /* The closing sentence promises the deal can be sent, and that stops being
+     true the moment the window shuts. A room that goes on inviting a trade
+     nobody can make is the dead-control failure in prose -- everything still
+     renders, nothing errors, and the reader finds out from their platform. */
+  const shut = tradeWindow(snapshot && snapshot.tradeDeadline, { week: snapshot && snapshot.week })
+    .state
 
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
+      <TradeWindow snapshot={snapshot} />
       <p className="mb-5 max-w-[68ch] text-[15px] leading-relaxed text-voidInk-body">
         Your roster is worth {Math.round(mineTotal.total)} over replacement across{' '}
         {mineTotal.priced} of {mineTotal.held} players
         {mineTotal.held > mineTotal.priced
           ? ' — the rest are kickers and defenses, which Juke does not rank.'
           : '.'}{' '}
-        Build a deal below and both sides are priced before you send it.
+        {shut === 'passed' || shut === 'disabled'
+          ? 'Both sides of any deal are still priced below.'
+          : 'Build a deal below and both sides are priced before you send it.'}
       </p>
       {builder}
     </div>

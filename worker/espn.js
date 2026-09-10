@@ -463,6 +463,39 @@ function waiverFromEspn(acquisitionSettings) {
   };
 }
 
+/* When the league stops allowing trades.
+
+   The two platforms publish this in different units and neither converts to
+   the other for free, so BOTH ride on the snapshot and each is null where
+   its platform does not say. ESPN gives an instant; Sleeper gives a week
+   number. Turning ESPN's instant into a week would need the date each week
+   starts, which no view here carries, and turning Sleeper's week into an
+   instant needs the same table from the other end.
+
+   That is the same shape as `waiver`: one vocabulary, fields absent rather
+   than guessed. What matters is that "has it passed" is answerable from
+   either -- against the clock, or against the snapshot's own week -- so a
+   screen asks one question and never asks which platform it is on.
+
+   Measured 9 September 2026 against a real league:
+   ESPN  tradeSettings.deadlineDate  1796230800000  (2026-12-02T17:00Z)
+   Sleeper  settings.trade_deadline  11             (a week number) */
+function tradeDeadlineFromEspn(tradeSettings) {
+  const t = tradeSettings || {};
+  const at = Number(t.deadlineDate);
+  return {
+    // Epoch ms, as ESPN sends it. Guarded on being a real positive number
+    // because a league with no deadline is unmeasured here -- one league was
+    // available and it has one -- so an absent or zero value is read as "no
+    // deadline" rather than as midnight in 1970.
+    at: Number.isFinite(at) && at > 0 ? at : null,
+    week: null,
+    // ESPN publishes no "trades are off" flag on any settings group this
+    // adapter reads, so this is unknown rather than false.
+    disabled: null,
+  };
+}
+
 function draftBoard(league, rawTeams, resolveId) {
   const detail = league.draftDetail || {};
   const picks = Array.isArray(detail.picks) ? detail.picks : [];
@@ -633,6 +666,7 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
   const lineup = lineupFromEspn(settings.rosterSettings);
   const waiver = waiverFromEspn(settings.acquisitionSettings);
+  const tradeDeadline = tradeDeadlineFromEspn(settings.tradeSettings);
   const schedule = scheduleFromEspn(league.schedule);
   const draft = snapDraft.status === "complete"
     ? draftBoard(league, rawTeams, sleeperId)
@@ -668,6 +702,10 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       /* How the league actually moves players, so a room can say the right
          thing rather than the only thing it knew how to say. */
       waiver,
+      /* When trading closes. See tradeDeadlineFromEspn() for why this
+         carries an instant AND a week and fills only the one its platform
+         publishes. */
+      tradeDeadline,
       /* The league's own scoring, in Juke's vocabulary -- see scoring.js.
          Without it every room scored a real league with whatever the Draft
          Room's mock table happened to say, which understated a measured

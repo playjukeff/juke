@@ -191,3 +191,108 @@ jobs:
       # schedule and must not be guessed into a playoff by week number.
       - name: Season phase
         run: node scripts/test_season_phase.mjs
+
+      # Whether a connected league is still trading.
+      #
+      # CLAUDE.md listed screen 14's deadline under "the data cannot answer"
+      # until 9 September 2026, and it was wrong: both platforms publish one.
+      # They publish it in different UNITS -- ESPN an instant, Sleeper a week
+      # number -- so half of what this asserts is the same case run twice, once
+      # per unit, which is what stops the two branches drifting apart.
+      #
+      # The other half is the refusals. No deadline, trading switched off, and
+      # a week with no current week to compare it against are all NOT "open",
+      # and a Trade Room that says the window is open when nobody knows is
+      # worse than one that says nothing.
+      - name: Trade deadline
+        run: node scripts/test_trade_deadline.mjs
+
+      # The connected league's schedule, and the season it adds up to.
+      #
+      # This file shipped with NO offline suite at all and My League's
+      # past-week panel has drawn on it since — so the gap is older than the
+      # season summary that walked into it, and both halves are covered here.
+      #
+      # Every case that matters is a week that is not a played game: a bye,
+      # an unplayed week, a preseason schedule ESPN publishes all fourteen
+      # weeks of. Each reads as a plausible zero if it is not refused, and a
+      # season of zeroes averages into a points-per-week a reader believes.
+      - name: The schedule and the season
+        run: node scripts/test_schedule.mjs
+
+      # What each room has at stake, for the rail and the rooms grid.
+      #
+      # The assertion this suite exists for is the UNIT. Waiver's stake is
+      # projected points over replacement for the SEASON and Strategy's is
+      # points THIS WEEK, and a caller printing both as "pts" would be the
+      # right-value-wrong-column failure with a decision attached. So `unit`
+      # is asserted on both and `stakeLabel()` is asserted to say something
+      # different for each — a suite checking only the numbers would pass
+      # against a module that had forgotten which quantity it carried.
+      #
+      # Both mutations were confirmed red: swapping the two units fails the
+      # season assertion and the wire label, and removing the floor starts
+      # reporting a zero stake on a roster with nothing to gain.
+      - name: What a room has at stake
+        run: node scripts/test_room_stakes.mjs
+
+      # A lineup's week as a mean and a spread — the two numbers the Strategy
+      # Room's win probability takes.
+      #
+      # Every assertion here is a REFUSAL, because every way of producing a
+      # plausible wrong probability is silent. A starter with no projection
+      # reads as a lineup worth less than it is; a position with no measured
+      # spread contributes no variance, which makes the matchup look MORE
+      # certain rather than less; and half a lineup against a whole one
+      # reports a near-certainty that is entirely an artefact of a roster
+      # nobody has finished setting. None of those throws and all of them
+      # render.
+      #
+      # Three mutations were confirmed red: summing the spreads instead of
+      # the variances reports 60.5 where 20.85 is right, treating a missing
+      # CV as zero reports 20.23 — a plausible-looking wrong number — and
+      # dropping the starter floor accepts a four-man lineup.
+      - name: A lineup's week, mean and spread
+        run: node scripts/test_matchup.mjs
+
+      # The shared league-snapshot store, which is what unblocked screen 16.
+      #
+      # `useLeagueSnapshot()` used to hold its answer in component state, so
+      # a per-room stake on the rooms grid would have paid for a snapshot
+      # the room page then paid for again. Sharing it removes that, and
+      # introduces three failures a per-component fetch could not have —
+      # every one of them silent:
+      #
+      #   * a caller handed ANOTHER league's rosters, because the store
+      #     settled a switch while the first request was in the air. That
+      #     renders perfectly, under the right league's name;
+      #   * a caller asking about nothing (RoomPage passes a null id for a
+      #     room that is not live) wiping an answer a sibling is drawing;
+      #   * every mount re-asking, which is invisible until somebody reads
+      #     a log and is the whole cost the sharing exists to remove.
+      #
+      # Three mutations were confirmed red, each naming its own assertion:
+      # dropping the stale-answer key check, and dropping either freshness
+      # gate (the success one and the failure one are separate, because an
+      # unreachable worker must not be asked once per navigation).
+      - name: The shared snapshot store
+        run: node scripts/test_snapshot_state.mjs
+
+      # Where a season ends up — the last entry on the decision guide's own
+      # blocked list, and the only one that was genuinely blocked rather than
+      # merely never re-measured.
+      #
+      # It lifts the SHIPPED normalCdf() and winRateAgainst() straight out of
+      # app.js by brace walk rather than restating the formula, so the first
+      # assertion in the file is the one that matters: simulate one matchup
+      # ten thousand times and the empirical win rate has to match what the
+      # analytic model already says in closed form. A second normal-difference
+      # approximation in web/src is exactly the drift winRateAgainst() was
+      # split out to prevent.
+      #
+      # Six mutations confirmed red: a uniform draw instead of a normal, the
+      # record so far ignored, ranking on wins alone, an unprojectable roster
+      # dropped rather than refusing the table, Math.random() instead of the
+      # seed, and the bracket reconciliation removed.
+      - name: Where a season ends up
+        run: node scripts/test_season_sim.mjs

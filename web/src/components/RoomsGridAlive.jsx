@@ -1,5 +1,7 @@
 import { useRooms } from '../hooks/useRooms.js'
 import { useLeague } from '../hooks/useLeague.js'
+import { useRoomStakes } from '../hooks/useRoomStakes.js'
+import { stakeLabel } from './shell/roomStakes.js'
 import { roomIsOpen, lockReason } from './RoomPage.jsx'
 import RoomIcon from './roomIcons.jsx'
 
@@ -28,7 +30,7 @@ import RoomIcon from './roomIcons.jsx'
    and takes away the preview that is the entire pitch. A room with no
    `slug` yet has no page to open and renders as a plain card. */
 
-function LeadCard({ room, lgSpan }) {
+function LeadCard({ room, lgSpan, stake }) {
   return (
     <a
       href={room.href || (room.slug ? `#/rooms/${room.slug}` : undefined)}
@@ -52,8 +54,37 @@ function LeadCard({ room, lgSpan }) {
         <RoomIcon room={room} />
       </span>
       <span className="min-w-0 flex-1 lg:flex-none">
-        <span className="block font-mono text-[10px] tracking-[0.1em]" style={{ color: room.accent }}>
-          FREE · {room.season.toUpperCase()}
+        {/* Screen 16: what this room has at stake, ON THE EYEBROW ROW rather
+            than on a line of its own.
+
+            That placement is the whole care here. These blocks are
+            bottom-anchored under a fixed min-height, so a card that gained a
+            fourth line would push its own title up relative to the cards
+            beside it — which is the defect measured on this exact grid on 3
+            September 2026, where "The Draft Room" sat 30px below "Waiver
+            Room" for the same reason. Only two of the five rooms can answer,
+            so a new line would misalign precisely the row it is trying to
+            inform. Measured after this change: title tops identical across
+            every card in the row, at 375 and at 1440.
+
+            `font-plex` at the eyebrow's own size for the same reason —
+            10px against 10px, so the line box cannot grow. The digits are
+            what wants the mono, which is what `tabular-nums` is for.
+
+            P1: `cost`, never the room's accent and never teal. The
+            magnitude is what a claim or a swap would GAIN and the cost is
+            that it has not been made — the sign `WaiverRoomLive`'s own
+            stake card already prints it under, and the sign `roomStakes.js`
+            hands out rather than letting each caller choose. */}
+        <span className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.1em]">
+          <span className="truncate" style={{ color: room.accent }}>
+            FREE · {room.season.toUpperCase()}
+          </span>
+          {stake ? (
+            <span className="shrink-0 font-plex font-semibold tracking-normal tabular-nums text-cost">
+              {stake}
+            </span>
+          ) : null}
         </span>
         {/* Same size and same reserve as LockedCard's title, because the
             five cards sit in ONE row and their text blocks are all
@@ -248,6 +279,25 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
      the answer is roomIsOpen() rather than a slug list every caller has to
      keep in step. */
   const { status } = useLeague()
+  /* What each room has at stake, for the two of five that can answer.
+
+     This is screen 16, and what unblocked it is not new data: `roomStakes()`
+     has been the shared source since screen 20 shipped, and CLAUDE.md
+     recorded 16 as waiting on WHERE THE SNAPSHOT IS FETCHED rather than on
+     anything missing. A per-component fetch would have made this grid — which
+     draws on `#/rooms` AND on the homepage — pay for a snapshot the room page
+     then paid for again, which is the objection `useLeagueSnapshot`'s own
+     comment raised against four calls a page load.
+
+     `snapshotStore.js` is that answer: one request per league per two
+     minutes however many components ask, so the grid costs nothing a reader
+     was not already going to spend on the room they open next. Nothing else
+     about the hook changed.
+
+     Guests and the four rooms that cannot answer draw nothing at all rather
+     than a zero, which is `roomStakes.js`'s own rule: a tile reading "+0"
+     claims the room was asked and had nothing to say. */
+  const stakes = useRoomStakes()
   const opensForMe = (r) => roomIsOpen(r, status)
   const lead = rooms.filter(opensForMe)
   const locked = rooms.filter((r) => !opensForMe(r))
@@ -298,7 +348,18 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
     <>
       <div className={'grid grid-cols-2 gap-2.5 lg:gap-3 ' + grid.cls}>
         {lead.map((r, i) => (
-          <LeadCard key={r.name} room={r} lgSpan={spanFor(i)} />
+          <LeadCard
+            key={r.name}
+            room={r}
+            lgSpan={spanFor(i)}
+            /* The unit is in the WORDS — "+8.4 this week" against "+31 on the
+               wire" — because the two stakes are in different units and a tile
+               printing both as "pts" would be the right-value-wrong-column
+               failure this project has shipped once in a standings table.
+               `stakeLabel()` is the one phrasing, shared with the phone's More
+               sheet, so the two surfaces cannot describe one number two ways. */
+            stake={stakeLabel(stakes[r.slug])}
+          />
         ))}
         {locked.map((r, i) => (
           <LockedCard

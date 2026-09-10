@@ -409,6 +409,56 @@ console.log("--- the waiver system ---");
 }
 
 
+/* ---- when the league stops trading -------------------------------------
+ *
+ * `tradeSettings.deadlineDate` was on every snapshot request this adapter
+ * has ever made and nothing read it, which is why CLAUDE.md listed the
+ * decision guide's screen 14 under "the data cannot answer" until somebody
+ * looked. The value below is the real one, measured 9 September 2026:
+ * 1796230800000 is 2026-12-02T17:00:00Z.
+ *
+ * What is asserted here is the ADAPTER's half — that the field arrives on
+ * the snapshot in the shape a screen expects. Whether a given instant has
+ * passed is `web/src/lib/tradeDeadline.js`'s question and has its own suite,
+ * because that one is pure and this one needs a stubbed fetch. */
+console.log("");
+console.log("--- the trade deadline ---");
+{
+  const DEADLINE = { ...LEAGUE, settings: { ...LEAGUE.settings, tradeSettings: {
+    deadlineDate: 1796230800000, max: -1, revisionHours: 48, vetoVotesRequired: 6,
+  } } };
+  await withFetch(200, DEADLINE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("the instant comes through", snapshot.tradeDeadline.at, 1796230800000);
+    /* ESPN publishes no week and no trades-off flag, and both are absent
+       rather than invented — the Sleeper adapter fills the week, and a
+       screen reads whichever field its league actually has. */
+    check("and no week, which ESPN does not publish", snapshot.tradeDeadline.week, null);
+    check("and no opinion about trading being off", snapshot.tradeDeadline.disabled, null);
+  });
+}
+{
+  /* A league with no deadline at all. The 0 is the falsy-feed rule: read as
+     a real instant it would put every such league permanently past its own
+     deadline, in 1970. */
+  const NONE = { ...LEAGUE, settings: { ...LEAGUE.settings, tradeSettings: { deadlineDate: 0 } } };
+  await withFetch(200, NONE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("a zero deadline is no deadline", snapshot.tradeDeadline.at, null);
+  });
+}
+{
+  /* And the settings group missing outright, which is what an older season
+     or a changed payload looks like. It must not throw. */
+  const BARE = { ...LEAGUE, settings: { ...LEAGUE.settings } };
+  delete BARE.settings.tradeSettings;
+  await withFetch(200, BARE, async () => {
+    const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
+    check("no tradeSettings at all still answers", snapshot.tradeDeadline.at, null);
+  });
+}
+
+
 console.log("--- the roster's order ---");
 {
   const OUT_OF_ORDER = {
