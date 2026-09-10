@@ -581,7 +581,26 @@ export default function DraftInsightsDashboard({
           className={PANEL + ' flex flex-col items-center gap-4 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-8'}
         >
           <div className="flex items-center gap-5">
-            <span className="bg-gradient-to-br from-[#00E5FF] to-[#7B1FA2] bg-clip-text font-display text-7xl font-black leading-none text-transparent sm:text-8xl">
+            {/* Plain ink, not the CTA gradient clipped to the glyph.
+
+                Measured on this panel's own ground: the #00E5FF stop is
+                9.05:1 and the #7B1FA2 stop is 1.70:1, so the letter ran
+                from legible to invisible across itself and the tail of
+                every glyph sat under the 3:1 a 72px character answers to.
+                CLAUDE.md's rule about gradients is stated for stops rather
+                than for the colour a box happens to reach — "every stop
+                must clear it on its own, do not tie the requirement to a
+                stop percentage" — and bg-clip-text is that rule's worst
+                case, because the reader sees every stop at once.
+
+                It is also the action gradient drawing a VALUE, which the
+                same file forbids ("teal is the brand and the action, and it
+                is never a value"). AnalysisTab's own composite already
+                settled this for the identical pair: "the composite is a
+                score out of a hundred and the grade is a letter. Neither is
+                a gain or a cost, so both take plain ink." Same letter, same
+                answer, so the two panels cannot disagree. */}
+            <span className="font-display text-7xl font-black leading-none text-ink sm:text-8xl">
               {scored.grade}
             </span>
             <div>

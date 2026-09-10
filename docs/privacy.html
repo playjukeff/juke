@@ -62,8 +62,16 @@
       font-size: var(--fs-sm); line-height: 1.65; color: var(--ink-mid);
     }
     .toc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 18px; margin: 22px 0 6px; }
-    .toc ol { margin: 0; padding-left: 20px; line-height: 1.95; font-size: var(--fs-sm); }
-    .toc a { color: var(--link); text-decoration: none; }
+    .toc ol { margin: 0; padding-left: 20px; line-height: 2.2; font-size: var(--fs-sm); }
+    /* inline-block + padding, because an inline <a> is only as tall as its
+       text: these measured 17px high, which fails WCAG 2.2 AA 2.5.8's
+       24x24 minimum -- and on a phone they are the ONLY navigation on a
+       21,551px page. 31px now, inside a 2.2 line box so nothing collides
+       and the block grows by a few pixels rather than by half. Measured
+       after: 45px, which clears the 44px AAA target too -- the 2.2 line
+       box gives more than the padding alone suggests, so this was cheaper
+       than the estimate that sized it. */
+    .toc a { display: inline-block; padding: 7px 0; color: var(--link); text-decoration: none; }
     .toc a:hover { text-decoration: underline; }
     .backlink { display: inline-block; margin-top: 30px; margin-right: 22px; font-size: var(--fs-sm); color: var(--link); text-decoration: none; }
     .backlink:hover { text-decoration: underline; }

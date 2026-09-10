@@ -25,11 +25,27 @@ export default function WeekStrip({ weeks, selected, onSelect }) {
         const clickable = !!onSelect && !w.disabled
         const cls =
           'flex-none whitespace-nowrap border-b-2 px-2.5 py-2.5 font-mono text-[11px] tracking-[0.06em] transition-colors duration-150 ' +
+          /* Three ranks, and none of them below the floor.
+
+             A week with nothing to show was `text-ink-muted/50`, which
+             composites to 2.52:1 -- and the exemption that would have
+             covered it does not apply here: WCAG excuses an INACTIVE
+             COMPONENT, and a week the strip cannot open renders as a
+             <span> a few lines below rather than a disabled <button>. That
+             makes it plain text, and plain text has no exemption.
+
+             Dimming further was never the only way to say "not yet". The
+             recession is re-ranked instead: the reachable weeks move UP to
+             `ink-soft`, so the unreachable ones can sit at full
+             `ink-muted` -- still visibly the quietest thing in the strip,
+             and 4.87:1 rather than 2.52. Alpha is where this project's
+             contrast now fails, and it fails because it is invisible to
+             any sweep that reads `color`. */
           (on
             ? 'border-teal text-white'
             : w.disabled
-              ? 'border-transparent text-ink-muted/50'
-              : 'border-transparent text-ink-muted hover:text-voidInk-primary')
+              ? 'border-transparent text-ink-muted'
+              : 'border-transparent text-ink-soft hover:text-voidInk-primary')
 
         const content = (
           <>
