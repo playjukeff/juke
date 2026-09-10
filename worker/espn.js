@@ -377,6 +377,65 @@ function espnKey(player) {
   };
 }
 
+/* ESPN's own projected points for one player in one week, under THIS
+   league's scoring -- the number the league's own screens print.
+
+   ---- Why this is read rather than recomputed ----
+
+   A connected league has to show the projection its platform shows. That
+   is the owner's requirement, stated as non-negotiable on 10 September
+   2026, and it reverses a decision this file used to record: that ESPN's
+   projections were "somebody else's answer to a question Juke answers
+   itself" and were dropped on the way through. They were, and the
+   consequence was a Strategy Room reading 117.3 for a week ESPN's own
+   matchup screen called 131.8. A reader looking at two numbers for one
+   week does not conclude that two forecasters disagree; they conclude
+   the product imported their league wrong.
+
+   ---- It is exact, and that was measured before it was trusted ----
+
+   `appliedTotal` is ESPN's projected stat line multiplied through the
+   league's own `scoringItems`, D/ST overrides included. Reconstructed by
+   hand from the raw `stats` and the league's 53 items on 10 September
+   2026, it matched on all 60 players checked to four decimal places --
+   so this is not an opinion ESPN attaches to a player, it is arithmetic
+   over the league's own table, and it scores the 28 rules Juke cannot
+   name (the long-play bonuses, every points- and yards-allowed tier) that
+   no translation into Juke's vocabulary could.
+
+   ---- It costs nothing ----
+
+   `mRoster` is already on the snapshot's request, and every entry carries
+   this line: 140 of 140 rostered players on a real league, on the exact
+   views this file asks for. No second fetch, no second cache.
+
+   ---- Four fields pick the one entry, and each excludes a real neighbour ----
+
+   statSourceId 1 is a projection (0 is what actually happened -- present
+   for players whose game has kicked off, and the wrong number to call a
+   projection). statSplitTypeId 1 is one scoring period (0 is the season
+   total, 330-odd points). scoringPeriodId is the week, and seasonId is
+   checked because last season's rows ride along too. Anything else found
+   answers null rather than a neighbour's number. */
+export function weekProjection(player, season, week) {
+  if (!player || !week) return null;
+  const stats = Array.isArray(player.stats) ? player.stats : [];
+  for (const s of stats) {
+    if (!s || Number(s.statSourceId) !== 1 || Number(s.statSplitTypeId) !== 1) continue;
+    if (Number(s.scoringPeriodId) !== Number(week)) continue;
+    if (season && s.seasonId != null && Number(s.seasonId) !== Number(season)) continue;
+    const pts = Number(s.appliedTotal);
+    /* Four decimals, not two. A screen rounds to one, and rounding twice
+       is not rounding once: a line of 13.046 is 13.0 to the league, and
+       13.05 once stored, which prints as 13.1 -- a tenth off the league's
+       own screen on a number whose whole job is to agree with it. At two
+       decimals that happens to one line in twenty; at four, to one in two
+       thousand, for 140 x two characters. */
+    return Number.isFinite(pts) ? Math.round(pts * 10000) / 10000 : null;
+  }
+  return null;
+}
+
 /* Resolve one league's rostered players to Sleeper ids.
 
    `lookup` is injected rather than imported, so this file never touches D1
@@ -614,6 +673,17 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
     return hit || null;
   };
 
+  /* ESPN counts the week as `scoringPeriodId` and answers 0 before the
+     season starts. 0 is not a week, and drawing "Wk 0" is worse than
+     drawing nothing — the same rule the pipeline follows about a 0 from an
+     API meaning missing. Read before the rosters, because each entry's
+     projection is keyed on it. */
+  const scoringPeriod = Number(league.scoringPeriodId) || null;
+  const week = scoringPeriod && scoringPeriod > 0 ? scoringPeriod : null;
+  const projSeason = Number(league.seasonId || season) || null;
+  const projected = {};
+  let projectedCount = 0;
+
   const teams = rawTeams.map((t) => {
     const entries = (t.roster && Array.isArray(t.roster.entries)) ? t.roster.entries : [];
     const players = [];
@@ -630,6 +700,8 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       const id = sleeperId(p);
       if (!id) return;
       players.push(id);
+      const pts = weekProjection(p, projSeason, week);
+      if (pts !== null) { projected[id] = pts; projectedCount += 1; }
       /* 20 is ESPN's bench and 21 its IR. Anything else is a starting slot,
          which is how this stays right when a league adds a FLEX or a
          superflex — enumerating the slots that ARE starting would be a
@@ -657,11 +729,6 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
     };
   });
 
-  /* ESPN counts the week as `scoringPeriodId` and answers 0 before the
-     season starts. 0 is not a week, and drawing "Wk 0" is worse than
-     drawing nothing — the same rule the pipeline follows about a 0 from an
-     API meaning missing. */
-  const week = Number(league.scoringPeriodId) || null;
   const snapDraft = draftInfo(league, Date.now());
   const scoring = rulesFromEspn((settings.scoringSettings || {}).scoringItems);
   const lineup = lineupFromEspn(settings.rosterSettings);
@@ -682,8 +749,18 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       totalTeams: Number(settings.size) || teams.length,
       draftAt: snapDraft.at,
       draftStatus: snapDraft.status,
-      week: week && week > 0 ? week : null,
+      week,
       seasonType: null,
+      /* The league's own projection for this week, per rostered player,
+         keyed by the same Sleeper ids as `players`. See weekProjection()
+         for why it is read and why it is exact. Stamped with its week so a
+         room never serves week 1's number as an answer about week 2 --
+         the rule weekProjectionUnder() already follows for Juke's own. Null
+         when there is nothing to stamp: before the season, or a league
+         whose rosters carry no projection yet. */
+      projections: week && projectedCount
+        ? { week, source: "espn", points: projected }
+        : null,
       /* ESPN's acquisition budget is FAAB where the league uses it, and 0
          (not null) where it does not — so the same falsy check the rest of
          this project applies to a feed's zero. */
@@ -719,8 +796,8 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          scoring it with the mock table, in a different field. */
       lineup,
       /* Who plays whom, all fourteen weeks, published before the season
-         starts. ESPN's own projections and win probability are dropped on
-         the way through -- see matchups.js. */
+         starts. ESPN's team-level projection is not carried here because
+         the `projections` field carries it per player -- see matchups.js. */
       schedule,
       rules: scoring.rules,
       /* What this league scores that Juke cannot name. Reported rather than

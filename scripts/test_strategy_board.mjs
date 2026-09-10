@@ -14,6 +14,7 @@ import path from "node:path";
 
 const {
   lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
+  platformScorer, leagueWeekPts, projectionSource,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
 let failures = 0;
@@ -267,6 +268,83 @@ check("the bench is priced the same way", () => {
                        ["b", { id: "b", bye: 7, projPts: 12 }]]);
   const rows = benchRows({ starters: ["s"], players: ["s", "b"] }, ids, score);
   assert.equal(rows[0].projPts, 0, "a bench player on bye is not a swap worth making");
+});
+
+/* ---- the league's own number, which is the one a reader checks us against ----
+ *
+ * The owner's requirement, 10 September 2026: the projection a connected
+ * league shows has to match in Juke. The snapshot carries the platform's
+ * own weekly number and these are the rules for when it is used. Confirmed
+ * red three ways: platformScorer() returning `base` unconditionally fails
+ * the first; dropping its week check fails the stale-week one; and making
+ * a missing id answer null rather than fall back fails the per-player one. */
+const juke = (p) => (p && typeof p.projPts === "number" ? p.projPts : null);
+const PROJ = { week: 1, source: "espn", points: { a: 24.4419, b: 8.5 } };
+
+check("the league's number wins over Juke's for the same player", () => {
+  assert.equal(platformScorer(juke, PROJ, 1)({ id: "a", projPts: 26.0 }), 24.4419);
+});
+
+check("but only for the week it was stamped with", () => {
+  assert.equal(platformScorer(juke, PROJ, 2)({ id: "a", projPts: 26.0 }), 26.0,
+    "week 1's projection is not an answer about week 2");
+});
+
+check("a player the league sent nothing for falls back to Juke, per player", () => {
+  const score = platformScorer(juke, PROJ, 1);
+  assert.equal(score({ id: "z", projPts: 11 }), 11);
+  const ids = new Map([["a", { id: "a", projPts: 26 }], ["z", { id: "z", projPts: 11 }]]);
+  const total = projectedTotal({ starters: ["a", "z"], players: [] }, ids, score);
+  assert.ok(Math.abs(total - 35.4419) < 1e-9,
+    "one missing row is filled, not a lineup that cannot be totalled: " + total);
+});
+
+check("a league zero is the league's answer, not a gap to fill", () => {
+  const P0 = { week: 1, points: { a: 0 } };
+  assert.equal(platformScorer(juke, P0, 1)({ id: "a", projPts: 14 }), 0);
+});
+
+check("no projections, or no week, leaves the scorer exactly as it was", () => {
+  assert.equal(platformScorer(juke, null, 1), juke);
+  assert.equal(platformScorer(juke, PROJ, null), juke);
+});
+
+check("ids are compared as strings, since a defense's id is its club", () => {
+  const P1 = { week: 3, points: { LAR: 8.5, "4984": 20 } };
+  assert.equal(platformScorer(juke, P1, 3)({ id: "LAR" }), 8.5);
+  assert.equal(platformScorer(juke, P1, 3)({ id: 4984 }), 20);
+});
+
+/* The one builder every connected screen shares. A stub engine stands in
+ * for window.JukeEngine, which is the reason strategyBoard.js takes it as a
+ * parameter rather than reading it off window. */
+const engine = {
+  projPerGame: (p) => p.projPts,
+  projPerGameUnder: (p) => p.projPts + 100,              // "the league's rules"
+  weekProjectionUnder: (p, _r, w) => (p.wk && p.wk[w] != null ? p.wk[w] : null),
+};
+
+check("leagueWeekPts prefers the league, then Juke's week, then the average", () => {
+  const snap = { week: 1, rules: { rec: 1 }, projections: { week: 1, points: { a: 24.44 } } };
+  const score = leagueWeekPts(engine, snap);
+  assert.equal(score({ id: "a", projPts: 1, wk: { 1: 5 } }), 24.44, "the league's own number");
+  assert.equal(score({ id: "b", projPts: 1, wk: { 1: 5 } }), 5, "Juke's weekly block");
+  assert.equal(score({ id: "c", projPts: 1 }), 101, "the average under the league's rules");
+});
+
+check("and a bye beneath the league's number, never above it", () => {
+  const snap = { week: 7, rules: {}, projections: { week: 7, points: { a: 3 } } };
+  const score = leagueWeekPts(engine, snap);
+  assert.equal(score({ id: "a", projPts: 9, bye: 7 }), 3, "the league's answer for that week stands");
+  assert.equal(score({ id: "b", projPts: 9, bye: 7 }), 0, "the fallback still zeroes a bye");
+});
+
+check("projectionSource says whose numbers a lineup carries", () => {
+  const rows = [{ player: { id: "a" } }, { player: { id: "b" } }];
+  assert.equal(projectionSource(rows, { week: 1, points: { a: 1, b: 2 } }, 1), "all");
+  assert.equal(projectionSource(rows, { week: 1, points: { a: 1 } }, 1), "some");
+  assert.equal(projectionSource(rows, { week: 2, points: { a: 1, b: 2 } }, 1), "none");
+  assert.equal(projectionSource(rows, null, 1), "none");
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the strategy board");

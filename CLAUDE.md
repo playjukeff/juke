@@ -9363,12 +9363,15 @@ upstream once every 120 seconds for a second round trip and a second thing to
 invalidate. **The client payload is the ceiling this project actually has**,
 and 8.3 KB against a 22 KB snapshot is the number that matters.
 
-**ESPN's own projections and win probability are deliberately dropped.** Both
-ride on the payload — `totalProjectedPoints` and `winProbability` — and both
-are somebody else's answer to a question Juke answers itself, from rosters it
-already holds, under the league's own scoring. Carrying them would put two
-numbers side by side for one question and leave the reader to choose, which
-is the written-down-twice failure with a second author. What is kept is what
+**ESPN's team projection and win probability are not carried on the
+schedule.** This paragraph used to say both were "somebody else's answer to a
+question Juke answers itself" and dropped for that reason, and the owner
+overruled it on 10 September 2026 — see "The league's own projection, read
+rather than rebuilt". ESPN's projection IS used now, per player off the
+roster entries, where a room can both sum it into this same team total and
+price a swap with it; carrying `totalProjectedPoints` here too would be one
+number in two places with nothing keeping them agreeing. The win probability
+is still Juke's, from ESPN's projected means. What the schedule keeps is what
 happened: points scored, and who won.
 
 **An unplayed week scores 0 on both sides, and 0 is not a result.** Stored as
@@ -10439,7 +10442,10 @@ against 131.8, under a full-PPR stand-in.
 - **Josh Allen moves AWAY from ESPN**, 23.85 to 20.80 against their 24.4.
   That is a real forecaster disagreement about one quarterback in one week,
   and it is the correct behaviour of a week-specific projection. ESPN is not
-  truth and this file has never claimed Juke should equal it.
+  truth and this file did not claim Juke should equal it — until the owner
+  did. See "The league's own projection, read rather than rebuilt" below: a
+  connected ESPN league shows ESPN's number now, and this model is the
+  fallback.
 - **The happy path cannot be tested in CI until the nightly runs.** Everything
   above was verified against a LOCAL `stats.js` carrying real week-1 blocks,
   built and reverted inside one pass and never committed — the same rule the
@@ -10469,9 +10475,91 @@ and `build_players.py` has never fetched them. That is a feed and a payload
 decision of the same shape as `WEEKLY_SEASONS` — about 184 KB a season on a
 file that blocks the first paint — rather than a bug to fix inside a room.
 
-**So the honest statement is that this screen shows Juke's own forecast under
-the league's own rules, and it will not equal ESPN's.** What it may not be is
-wrong on its own terms, which is what the two fixes above were.
+**~~So the honest statement is that this screen shows Juke's own forecast under
+the league's own rules, and it will not equal ESPN's.~~ Overruled by the owner
+on 10 September 2026**, in one sentence: *"the projected scoring from the
+league I'm connected to needs to match in Juke. That is a non-negotiable."*
+The reasoning above was about two forecasters and it was internally sound; it
+was answering a question the reader never asks. Somebody who sees 117.3 in
+Juke and 131.8 on ESPN for the same lineup does not conclude that two models
+disagree — they conclude their league was imported wrong, and that is the
+first impression the product makes. Same shape as the orange and Barlow
+reversals: a recorded argument, outranked.
+
+### The league's own projection, read rather than rebuilt
+
+**ESPN's projected points are arithmetic over the league's own table, not an
+opinion, and that was measured before anything was built on it.** Each roster
+entry carries a projected stat line and an `appliedTotal`; reconstructing the
+total by hand — the raw `stats` multiplied through the league's 53
+`scoringItems`, the position-16 override for a defence — matched **60 of 60
+players to four decimal places** on 10 September 2026. So reading it is not
+trusting somebody else's model over ours. It is reading the league's scoring
+applied to a line, including the 28 rules Juke's vocabulary cannot name.
+
+**It costs nothing, because the snapshot was already carrying it.** `mRoster`
+is on the snapshot's request and every entry holds the week's line: 140 of 140
+rostered players on a real league, on the exact views `leagueSnapshot()`
+asks for. `weekProjection()` in `espn.js` picks one row out of five that sit
+beside it, and each field it checks excludes a real neighbour —
+`statSourceId` 1 not 0 (0 is the actual line, present once a game kicks off),
+`statSplitTypeId` 1 not 0 (0 is the 330-point season), the week, and the
+season (last year's week 1 rides along too).
+
+**Measured on screen, not only in a payload.** The real league's snapshot,
+fed to the built Strategy Room: **131.8, captioned "ESPN's projection for
+week 1"**, every starter equal to ESPN's own screen to the tenth — Allen 24.4,
+Skattebo 14.1, Montgomery 13.1, Nacua 21.9, London 15.6 — and the opponent at
+126.3 against ESPN's 126.28. The same page with the projection removed reads
+**117.3**, which is the number the owner reported. That control is what says
+the 131.8 is this change rather than anything else.
+
+**Four decimals, not two**, because a screen rounds to one and rounding twice
+is not rounding once: a line of 13.046 is 13.0 to the league and 13.05 once
+stored, which prints as 13.1. At two decimals that is one line in twenty.
+
+**There were three weekly scorers and now there is one.** The Strategy Room
+scored the real week with the bye taken out; the rooms grid and the phone's
+More sheet scored the SEASON AVERAGE with no week at all, so "+X this week" on
+a room tile was a different number from the swap the room offered one tap
+later. `leagueWeekPts()` in `strategyBoard.js` is the one builder: the
+league's own number for this week, then Juke's weekly block under the
+league's rules, then the season average under those rules, with a bye zeroed
+beneath the league's number and never above it. It takes the engine as a
+parameter so the suite can hand it a stub, which is how every rule in that
+sentence is asserted and confirmed red.
+
+**Only for the week it was stamped with, and per player rather than per
+lineup.** `projections.week` has to equal the week being scored — week 1's
+number is not an answer about week 2. A starter the league sent nothing for
+gets Juke's projection rather than blanking the total, and the card says so:
+`projectionSource()` answers `all`, `some` or `none` and the caption names the
+platform, because a mixed total presented as the league's own would disagree
+with the league's screen and give no reason.
+
+**What this does not cover, stated rather than left to be found:**
+
+- **Sleeper leagues still show Juke's number.** Sleeper's app scores its own
+  weekly projection line against the league's `scoring_settings`, and the
+  worker does not fetch that line yet — the full weekly file is about 2 MB
+  and there is no per-league filter, so it wants a cached, shared fetch
+  rather than a per-request one. It is also unverified in the only way that
+  counts: there has been no Sleeper screen to compare a number against. The
+  platform-first scorer already handles it the moment the Sleeper snapshot
+  carries a `projections` block of the same shape.
+- **An unmatched starter is still missing from the lineup.** A player the
+  crosswalk cannot name never reaches `starters`, so his points are absent
+  from the total. Measured 0 unmatched on this league's 2026 rosters; it is
+  the one way a correctly-read league can still come out short, and
+  `unmatchedCount` is what says so.
+- **The win probability is still Juke's**, computed from ESPN's projected
+  means rather than read from ESPN's own `winProbability`. The requirement
+  was projected scoring; whether it extends to the odds is a question for
+  the owner, not something to decide by default.
+- **Free agents and the season-long rooms are unchanged.** The Waiver and
+  Trade rooms price players in season points over replacement, which is
+  Juke's own measure rather than a number ESPN prints, and the playoff odds
+  simulate remaining weeks from Juke's season model.
 
 ## A connected league's scoring, which Juke fetched and threw away
 

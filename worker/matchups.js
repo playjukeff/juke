@@ -25,15 +25,21 @@
  * worth having early: a reader can see week one's opponent before the
  * season starts.
  *
- * ---- ESPN's own projections and win probability are deliberately DROPPED
+ * ---- ESPN's team projection and win probability are not carried HERE ----
  *
- * Both are on the payload -- `totalProjectedPoints` and `winProbability` --
- * and both are somebody else's opinion of a question Juke answers itself,
- * from the rosters it already holds, under the league's own scoring.
- * Carrying them would put two numbers next to each other for one question
- * and leave a reader to pick, which is the "written down twice" failure
- * with a second author. What IS kept is what actually happened: points
- * scored, and who won.
+ * Both are on the payload -- `totalProjectedPoints` and `winProbability`.
+ * This used to say they were dropped as "somebody else's opinion of a
+ * question Juke answers itself", and that reasoning was overruled on 10
+ * September 2026: a connected league has to show the projection its
+ * platform shows, and Juke's own came out 14.5 points short of ESPN's on a
+ * real week. See weekProjection() in espn.js.
+ *
+ * So ESPN's projection IS used now -- per PLAYER, off the roster entries,
+ * where the rooms can sum it into exactly this team total and also price a
+ * swap with it. Carrying the team total here as well would be the same
+ * number twice with nothing to keep them agreeing. The win probability is
+ * still Juke's own, computed from ESPN's projected means. What this file
+ * keeps is what actually happened: points scored, and who won.
  *
  * A points total of 0 for a week nobody has played is not a score, so an
  * unplayed matchup reports null rather than a zero somebody could average.

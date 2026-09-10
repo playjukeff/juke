@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { PosTile } from './sampleParts.jsx'
 import { myTeam } from './waiverBoard.js'
 import {
-  bestSwaps, benchRows, injuryWatch, lineupRows, projectedTotal,
-  weekScorer,
+  bestSwaps, benchRows, injuryWatch, leagueWeekPts, lineupRows,
+  projectedTotal, projectionSource,
 } from './strategyBoard.js'
+import { platformFor } from '../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 import { gameInWeek } from '../../lib/schedule.js'
 import { matchupRead, teamWeek } from '../../lib/matchup.js'
@@ -153,34 +154,21 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
      back to projPerGame when the league sends no rules -- an older worker,
      a provider without them -- since drawing the previous number beats
      drawing none. */
+  /* Built by leagueWeekPts() in strategyBoard.js, which every connected
+     screen shares -- see its header for why there is one and why it used
+     to be three.
+
+     In order: the LEAGUE'S OWN projection for this week, which is what the
+     platform's matchup screen prints and what a reader will check this
+     number against; then Juke's weekly block under the league's rules; then
+     the season average under those rules, with a bye zeroed. Measured on a
+     real ESPN league on 10 September 2026: 117.3 before, **131.8 after,
+     against ESPN's own 131.8**, every starter equal to the tenth.
+
+     Keyed on the snapshot rather than on its parts: the projections, the
+     rules and the week all arrive on it together and change together. */
   const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
-  const weekPts = useMemo(() => {
-    if (!engine) return null
-    const average = leagueRules
-      ? (player) => engine.projPerGameUnder(player, leagueRules)
-      : engine.projPerGame
-    /* The real week when the board has one, the season average when it does
-       not, and never a week's block standing in for a different week --
-       weekProjectionUnder() checks WEEK_PROJ_META and answers null rather
-       than serving week 3 as an answer about week 5.
-    
-       The fallback is not a degraded mode, it is what every figure on this
-       screen was before: a board built by a nightly that predates this, an
-       offseason with no week to fetch, or a player the feed has no weekly
-       opinion about. Mixed sources across a lineup is deliberate and strictly
-       better than the average everywhere, which is what it replaced. */
-    const forWeek = (player) => {
-      if (!engine.weekProjectionUnder) return average(player)
-      const own = engine.weekProjectionUnder(player, leagueRules, week)
-      return own === null ? average(player) : own
-    }
-    /* Wrapped rather than inlined so the bye rule is reachable from
-       scripts/test_strategy_board.mjs, which supplies its own weekPts and
-       would never see a closure built in here. A player on bye has no weekly
-       row to find, so this zeroes what the fallback would otherwise average
-       in. */
-    return weekScorer(forWeek, week)
-  }, [engine, leagueRules, week])
+  const weekPts = useMemo(() => leagueWeekPts(engine, snapshot), [engine, snapshot])
 
   const lineup = useMemo(() => lineupRows(mine, byId, weekPts), [mine, byId, weekPts])
   const bench = useMemo(() => benchRows(mine, byId, weekPts), [mine, byId, weekPts])
@@ -189,6 +177,13 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
     [mine, byId, weekPts, week]
   )
   const total = useMemo(() => projectedTotal(mine, byId, weekPts), [mine, byId, weekPts])
+
+  /* Whose number the total is, said out loud. A mixed total -- the league's
+     projection for most starters and Juke's for a row the league did not
+     send -- is legitimate and has to be labelled as one, or it reads as the
+     league's figure and disagrees with the league's screen. */
+  const source = projectionSource(lineup, snapshot && snapshot.projections, week)
+  const platformName = platformFor(league && league.provider).name
 
   /* Who you actually play, and by how much.
      
@@ -307,7 +302,13 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
       label: 'Projected',
       value: total === null ? '—' : total.toFixed(1),
       accent: 'evidence',
-      note: total === null ? 'A starter has no projection.' : 'Points this week, as your lineup is set.',
+      note: total === null
+        ? 'A starter has no projection.'
+        : source === 'all'
+          ? `${platformName}'s projection for week ${week}, as your lineup is set.`
+          : source === 'some'
+            ? `${platformName}'s projection where it has one, Juke's for the rest.`
+            : 'Points this week, as your lineup is set.',
     },
     {
       /* No delta, and the reason is that it was the same number twice.
