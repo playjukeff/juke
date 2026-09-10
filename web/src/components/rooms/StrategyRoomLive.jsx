@@ -3,6 +3,7 @@ import { PosTile } from './sampleParts.jsx'
 import { myTeam } from './waiverBoard.js'
 import {
   bestSwaps, benchRows, injuryWatch, lineupRows, projectedTotal,
+  weekScorer,
 } from './strategyBoard.js'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
 import { gameInWeek } from '../../lib/schedule.js'
@@ -155,9 +156,14 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
   const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
   const weekPts = useMemo(() => {
     if (!engine) return null
-    if (!leagueRules) return engine.projPerGame
-    return (player) => engine.projPerGameUnder(player, leagueRules)
-  }, [engine, leagueRules])
+    const base = leagueRules
+      ? (player) => engine.projPerGameUnder(player, leagueRules)
+      : engine.projPerGame
+    /* Wrapped rather than inlined so the rule is reachable from
+       scripts/test_strategy_board.mjs, which supplies its own weekPts and
+       would never see a closure built in here. */
+    return weekScorer(base, week)
+  }, [engine, leagueRules, week])
 
   const lineup = useMemo(() => lineupRows(mine, byId, weekPts), [mine, byId, weekPts])
   const bench = useMemo(() => benchRows(mine, byId, weekPts), [mine, byId, weekPts])

@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 
 const {
-  lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch,
+  lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
 let failures = 0;
@@ -221,6 +221,52 @@ check("starters come before the bench", () => {
   const team = { starters: ["h1"], players: ["h1", "h2"] };
   const rows = injuryWatch(team, byId, null);
   assert.equal(rows[0].player.id, "h1", "a questionable STARTER is the decision; a hurt bench player is not");
+});
+
+/* ---- the bye, which nothing on the screen was passing a week to ----
+ *
+ * Every figure in the room asks weekPts(player) and none of it passes a
+ * week, so a starter on bye was contributing his season average to a total
+ * captioned "Points this week". Confirmed red by having weekScorer() return
+ * base(player) unconditionally: the bye checks fail and the rest stay green. */
+const byeBase = (p) => (p && typeof p.projPts === "number" ? p.projPts : null);
+
+check("a player on bye this week scores nothing", () => {
+  assert.equal(weekScorer(byeBase, 7)({ bye: 7, projPts: 14 }), 0);
+});
+
+check("and everybody else is untouched", () => {
+  assert.equal(weekScorer(byeBase, 7)({ bye: 11, projPts: 14 }), 14);
+});
+
+check("zero rather than null, because projectedTotal() blanks on null", () => {
+  const score = weekScorer(byeBase, 7);
+  const ids = new Map([["x", { id: "x", bye: 7, projPts: 14 }],
+                       ["y", { id: "y", bye: 11, projPts: 10 }]]);
+  assert.equal(projectedTotal({ starters: ["x", "y"], players: [] }, ids, score), 10,
+    "a bye is a slot worth nothing, not a lineup that cannot be priced");
+});
+
+check("no week means nobody is on bye, rather than everybody", () => {
+  assert.equal(weekScorer(byeBase, null)({ bye: 7, projPts: 14 }), 14,
+    "same rule injuryWatch() follows");
+});
+
+check("a player with no bye recorded is never zeroed", () => {
+  assert.equal(weekScorer(byeBase, 7)({ bye: 0, projPts: 14 }), 14);
+  assert.equal(weekScorer(byeBase, 7)({ projPts: 14 }), 14);
+});
+
+check("a missing player is still null, not zero", () => {
+  assert.equal(weekScorer(byeBase, 7)(null), null);
+});
+
+check("the bench is priced the same way", () => {
+  const score = weekScorer(byeBase, 7);
+  const ids = new Map([["s", { id: "s", bye: 11, projPts: 9 }],
+                       ["b", { id: "b", bye: 7, projPts: 12 }]]);
+  const rows = benchRows({ starters: ["s"], players: ["s", "b"] }, ids, score);
+  assert.equal(rows[0].projPts, 0, "a bench player on bye is not a swap worth making");
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the strategy board");
