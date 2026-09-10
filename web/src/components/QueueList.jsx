@@ -128,7 +128,7 @@ export default function QueueList({ players, myTurn, engine, survivalOf }) {
         className={
           'shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold transition-colors duration-150 ' +
           (myTurn
-            ? 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-white'
+            ? 'bg-cta text-white'
             : 'cursor-not-allowed bg-white/5 text-white/25')
         }
       >

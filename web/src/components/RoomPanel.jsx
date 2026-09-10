@@ -81,7 +81,7 @@ export default function RoomPanel({ onCreated, onEnter }) {
           onClick={() => { if (!started && engine.createRoom() && onCreated) onCreated() }}
           disabled={started}
           title={started ? "Can't create a room mid-draft" : undefined}
-          className="mt-6 w-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] py-3 text-sm font-semibold text-white
+          className="mt-6 w-full rounded-full bg-cta py-3 text-sm font-semibold text-white
                      shadow-glass transition-all duration-200 hover:scale-[1.02] hover:animate-pulse-glow
                      disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 disabled:hover:animate-none"
         >
@@ -201,7 +201,7 @@ export default function RoomPanel({ onCreated, onEnter }) {
       <button
         type="button"
         onClick={onEnter}
-        className="mt-4 w-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] py-3 text-sm font-semibold text-white
+        className="mt-4 w-full rounded-full bg-cta py-3 text-sm font-semibold text-white
                    shadow-glass transition-all duration-200 hover:scale-[1.02] hover:animate-pulse-glow"
       >
         Enter draft room

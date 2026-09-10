@@ -170,7 +170,7 @@ export default function CockpitHeaderPhone({
           when one is present, putting the gap on the wrong side of it. */}
       <div className="mx-2 mb-[10px] mt-2 h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2]"
+          className="h-full rounded-full bg-cta"
           style={{ width: pct + '%' }}
         />
       </div>

@@ -634,7 +634,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             <button
               type="button"
               onClick={handleRunAnotherClick}
-              className="flex h-[52px] w-full items-center justify-center rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] text-[15px] font-bold text-white shadow-glass transition-transform duration-150 active:scale-[0.98]"
+              className="flex h-[52px] w-full items-center justify-center rounded-full bg-cta text-[15px] font-bold text-white shadow-glass transition-transform duration-150 active:scale-[0.98]"
             >
               {runAnotherLabel}
             </button>
@@ -860,7 +860,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
             <button
               type="button"
               onClick={handleRunAnotherClick}
-              className="rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
+              className="rounded-full bg-cta px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
             >
               {runAnotherLabel}
             </button>

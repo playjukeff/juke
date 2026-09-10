@@ -347,6 +347,27 @@ export default {
       backdropBlur: {
         glass: '16px',
       },
+      /* The CTA gradient, once.
+
+         `bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2]` was written out
+         verbatim in EIGHTEEN places across fourteen files. CLAUDE.md
+         records eleven and names them as one idiom -- "that is the CTA
+         idiom; flat teal-on-dark is the tab idiom" -- so the count has
+         grown by seven since anyone counted, which is what a value written
+         down eighteen times does.
+
+         It is also how the pair reached a text node: DraftInsightsDashboard
+         clipped this exact string to the grade glyph, where the #7B1FA2
+         stop measures 1.70:1. A named background is not a style
+         preference here; it is the difference between changing the CTA in
+         one place and finding the seventeen that did not move.
+
+         Deliberately NOT a component. Eleven of these sit on <a> and seven
+         on <button>, and a wrapper would have to reproduce both plus every
+         size, hover and disabled variant already written at each site. */
+      backgroundImage: {
+        cta: 'linear-gradient(to right, #00E5FF, #7B1FA2)',
+      },
       fontSize: {
         /* ---- Juke decision system ----
            Four roles, and each one is a role rather than a size: a mono

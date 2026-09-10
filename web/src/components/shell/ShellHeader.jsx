@@ -166,7 +166,11 @@ export default function ShellHeader({ active = null }) {
     <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-surface-page/90 backdrop-blur-md">
       <div className="mx-auto flex h-[57px] max-w-[1280px] items-center justify-between gap-3 px-5 sm:h-[68px] sm:px-10">
         <div className="flex min-w-0 items-center gap-9">
-          <a href="#/" className="shrink-0" aria-label="Juke — home">
+          {/* The wordmark's own box is the mark's height (30px), and this
+              link is on every app route — so one min-h clears it from six
+              routes' target lists at once. Centred, so the mark does not
+              move: the target grows, the logo does not. */}
+          <a href="#/" className="flex min-h-[44px] shrink-0 items-center" aria-label="Juke — home">
             <JukeLogo size={22} />
           </a>
         </div>

@@ -225,7 +225,7 @@ export default function PlayersTabPhone({
                       onClick={() => onDraft(p)}
                       className={
                         'h-8 w-[54px] shrink-0 rounded-full text-[11px] font-bold text-white ' +
-                        (myTurn ? 'bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2]' : 'cursor-not-allowed bg-white/10 text-white/30')
+                        (myTurn ? 'bg-cta' : 'cursor-not-allowed bg-white/10 text-white/30')
                       }
                     >
                       Draft

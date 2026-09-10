@@ -651,7 +651,7 @@ export default function DraftInsightsDashboard({
           <button
             type="button"
             onClick={handleRunAnother}
-            className="rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
+            className="rounded-full bg-cta px-4 py-2 text-xs font-bold text-white shadow-glass transition-transform duration-150 hover:scale-[1.02]"
           >
             Run another mock
           </button>

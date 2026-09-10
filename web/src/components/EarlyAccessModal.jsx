@@ -89,7 +89,7 @@ const EarlyAccessModal = forwardRef(function EarlyAccessModal(_props, ref) {
             <button
               type="button"
               onClick={close}
-              className="mt-6 w-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] py-2.5 text-sm font-semibold text-white
+              className="mt-6 w-full rounded-full bg-cta py-2.5 text-sm font-semibold text-white
                          shadow-glass transition-all duration-200 hover:scale-105
                          motion-reduce:transition-none motion-reduce:hover:scale-100"
             >
@@ -142,7 +142,7 @@ const EarlyAccessModal = forwardRef(function EarlyAccessModal(_props, ref) {
             <button
               type="submit"
               disabled={status === 'submitting'}
-              className="mt-4 w-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#7B1FA2] py-2.5 text-sm font-semibold text-white
+              className="mt-4 w-full rounded-full bg-cta py-2.5 text-sm font-semibold text-white
                          shadow-glass transition-all duration-200 hover:scale-105
                          disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100
                          motion-reduce:transition-none motion-reduce:hover:scale-100"

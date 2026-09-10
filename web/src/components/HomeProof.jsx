@@ -360,7 +360,11 @@ function MethodLink({ href, children }) {
   return (
     <a
       href={href}
-      className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
+      /* min-h, because an inline anchor is only as tall as its text: these
+         measured 18px high. The link sits under a proof pair with room
+         beneath it, so a 44px target costs nothing here and is the one
+         route from a claim to the working behind it. */
+      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[12px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
     >
       {children}
       <span aria-hidden="true">&rarr;</span>
@@ -738,7 +742,7 @@ function PairYourRules() {
                      would otherwise get the browser's default outline,
                      which belongs to no design system and is close to
                      invisible on this ground. */
-                  className={`rounded-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card ${
+                  className={`inline-flex min-h-[44px] items-center rounded-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card ${
                     on
                       ? 'bg-teal text-[#0B0E14]'
                       : 'border border-line-hairline text-voidInk-body hover:border-teal/40 hover:text-white'

@@ -24,7 +24,10 @@ export default function WeekStrip({ weeks, selected, onSelect }) {
         const on = selected === w.key
         const clickable = !!onSelect && !w.disabled
         const cls =
-          'flex-none whitespace-nowrap border-b-2 px-2.5 py-2.5 font-mono text-[11px] tracking-[0.06em] transition-colors duration-150 ' +
+          /* min-h-[44px] with centred content: the chips measured 39px,
+             and this strip is dragged sideways on a phone, where a
+             mis-tap selects the wrong week rather than doing nothing. */
+          'inline-flex min-h-[44px] min-w-[44px] flex-none items-center justify-center whitespace-nowrap border-b-2 px-2.5 py-2.5 font-mono text-[11px] tracking-[0.06em] transition-colors duration-150 ' +
           /* Three ranks, and none of them below the floor.
 
              A week with nothing to show was `text-ink-muted/50`, which
