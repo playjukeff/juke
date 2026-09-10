@@ -68,10 +68,16 @@ import { useLeague } from '../../hooks/useLeague.js'
 function GuestAuth() {
   const ready = useAccountUiReady()
 
-  // Both controls are text-first and only one is loud: white pill for Sign
-  // up, plain text for Log in. Two equally weighted controls in one row is
-  // the "one primary action" rule this project has held since the rebrand,
-  // and the handoff draws it the same way.
+  // Sign up is the louder of the two -- an outlined pill against Log in's
+  // plain text -- and still quieter than the page it sits over.
+  //
+  // It was a solid white pill, which measured as the highest-contrast
+  // object on the homepage's first screen: louder than the gradient Mock
+  // Draft card, the one action that page exists to get somebody to press,
+  // and on a page whose promise is that a mock needs no account. The "one
+  // primary action" rule is about the SCREEN, not the header row, and a
+  // header is on every screen. So the header's own hierarchy survives in
+  // the outline, and the screen's primary gets the only filled accent.
   const login = (
     <button
       type="button"
@@ -83,7 +89,7 @@ function GuestAuth() {
   const signup = (
     <button
       type="button"
-      className="inline-flex h-11 items-center rounded-full bg-white px-4 text-[14px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.03] sm:h-9 sm:px-[18px]"
+      className="inline-flex h-11 items-center rounded-full border border-white/30 px-4 text-[14px] font-bold text-white transition-colors duration-150 hover:border-white/60 hover:bg-white/[0.06] sm:h-9 sm:px-[18px]"
     >
       Sign up
     </button>

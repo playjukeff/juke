@@ -235,7 +235,7 @@ function useEngineData(read, enabled) {
 function Flat({ label, children }) {
   return (
     <div className="rounded-[18px] bg-black/30 px-5 py-6 sm:px-6 sm:py-7">
-      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted lg:hidden">
+      <span className="mb-4 block font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted lg:hidden">
         {label}
       </span>
       {children}
@@ -246,7 +246,7 @@ function Flat({ label, children }) {
 function Lit({ label, children }) {
   return (
     <div className="rounded-[18px] border border-line-hairline bg-surface-card px-5 py-6 sm:px-6 sm:py-7">
-      <span className="mb-4 block font-mono text-[10px] uppercase tracking-[0.12em] text-teal lg:hidden">
+      <span className="mb-4 block font-mono text-[11px] uppercase tracking-[0.12em] text-teal lg:hidden">
         {label}
       </span>
       {children}
@@ -339,7 +339,14 @@ function Pair({ claim, children }) {
           than the whole of it. The wrapper takes the margin too -- the
           connector reaches up through it to meet the cell above, which is
           where two thirds of each gap actually was. */}
-      <div className="relative mt-14 sm:mt-16 lg:col-span-2">
+      {/* pb, not a margin on the cells below: every heading sat with zero
+          gap on the card under it, measured at 375 and 1440 alike, so the
+          heading's last line and the card's top edge read as one object.
+          Padding rather than margin because the seam connector below is
+          `bottom-0` inside this wrapper -- padding keeps it reaching the
+          cell underneath, where a margin would open a gap in the one
+          continuous line this page draws. */}
+      <div className="relative mt-14 pb-4 sm:mt-16 sm:pb-5 lg:col-span-2">
         <h2 className="font-display text-[26px] font-extrabold uppercase italic leading-[1.02] text-white sm:text-[32px] lg:max-w-[calc(50%-3rem)] lg:text-[38px]">
           {claim}
         </h2>
@@ -763,7 +770,7 @@ function PairYourRules() {
                      would otherwise get the browser's default outline,
                      which belongs to no design system and is close to
                      invisible on this ground. */
-                  className={`inline-flex min-h-[44px] items-center rounded-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card ${
+                  className={`inline-flex min-h-[44px] items-center rounded-full px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors sm:px-4 duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card ${
                     on
                       ? 'bg-teal text-[#0B0E14]'
                       : 'border border-line-hairline text-voidInk-body hover:border-teal/40 hover:text-white'
@@ -787,7 +794,15 @@ function PairYourRules() {
                   <span className="w-5 shrink-0 font-mono text-meta tabular-nums text-voidInk-muted">
                     {i + 1}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>
+                  {/* Wraps rather than truncates. At 375 the name gets
+                      about 110px of this row, and "Christian McCaffrey" came
+                      out as "Christian McCa…" with nothing anywhere that
+                      said the rest -- no tooltip, and a tooltip would not
+                      reach a phone anyway. A name is the one cell here a
+                      reader cannot reconstruct, so it takes a second line
+                      when it needs one; `items-baseline` keeps the
+                      position, move and value on the first. */}
+                  <span className="min-w-0 flex-1 text-[14px] leading-snug text-white">{r.name}</span>
                   <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
                     {r.pos}
                   </span>
@@ -934,7 +949,7 @@ function PairGraded() {
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-meta text-voidInk-body">
                         {c.label}
-                        <span className="ml-2 font-mono text-[10px] tabular-nums text-voidInk-muted">
+                        <span className="ml-2 font-mono text-[11px] tabular-nums text-voidInk-muted">
                           ×{c.weight}%
                         </span>
                       </span>
@@ -1134,13 +1149,13 @@ function PairRecord() {
                       <th
                         key={h}
                         scope="col"
-                        /* voidInk-body, not muted: at 10px the muted ink
+                        /* voidInk-body, not muted: at 10px (as this was) the muted ink
                            measured 4.15 against a 4.5 bar on this cell's
                            own ground. A column header is a label somebody
                            has to read to parse the row under it, so it is
                            the wrong place to spend the last of a token's
                            contrast on hierarchy. */
-                        className={`pb-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-voidInk-body ${
+                        className={`pb-2 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-voidInk-body ${
                           i === 0 ? 'text-left' : 'text-right'
                         }`}
                       >
@@ -1216,10 +1231,10 @@ export default function HomeProof() {
   return (
     <section aria-label="What Juke shows that a ranking cannot" className="relative mt-16 pb-8 sm:mt-20 sm:pb-14">
       <div className="hidden lg:grid lg:grid-cols-2">
-        <span className="pr-12 font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted">
+        <span className="pr-12 font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
           What you're handed
         </span>
-        <span className="pl-12 font-mono text-[10px] uppercase tracking-[0.12em] text-teal">
+        <span className="pl-12 font-mono text-[11px] uppercase tracking-[0.12em] text-teal">
           What Juke shows
         </span>
       </div>

@@ -1,4 +1,4 @@
-import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/clerk-react'
+import { SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react'
 import ConnectLeagueCta from './shell/ConnectLeagueCta.jsx'
 import KickoffPill from './shell/KickoffPill.jsx'
 import RoomsGridAlive from './RoomsGridAlive.jsx'
@@ -250,7 +250,7 @@ function ConnectCard() {
     return (
       <div data-league-card className="rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] sm:rounded-[22px] sm:p-[26px]">
         <span className="font-mono text-[11px] tracking-[0.14em] text-ink-muted">YOUR LEAGUE</span>
-        <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
+        <div className="mt-2 font-display text-[22px] font-bold leading-[1.1] text-white [text-wrap:balance] sm:mt-2.5 sm:text-[28px]">
           Couldn&rsquo;t check your league
         </div>
         <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
@@ -281,7 +281,7 @@ function ConnectCard() {
     return (
       <div data-league-card className="rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] sm:rounded-[22px] sm:p-[26px]">
         <span className="font-mono text-[11px] tracking-[0.14em] text-teal">YOUR LEAGUE</span>
-        <div className="mt-2 truncate font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
+        <div className="mt-2 truncate font-display text-[22px] font-bold leading-[1.1] text-white sm:mt-2.5 sm:text-[28px]">
           {league.name}
         </div>
         <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
@@ -310,7 +310,7 @@ function ConnectCard() {
   return (
     <div data-league-card className="rounded-[18px] border border-line-hairline bg-[#151920] p-[18px] sm:rounded-[22px] sm:p-[26px]">
       <span className="font-mono text-[11px] tracking-[0.14em] text-teal">YOUR NEXT MOVE</span>
-      <div className="mt-2 font-display text-[22px] font-bold text-white sm:mt-2.5 sm:text-[28px]">
+      <div className="mt-2 font-display text-[22px] font-bold leading-[1.1] text-white [text-wrap:balance] sm:mt-2.5 sm:text-[28px]">
         Connect your league
       </div>
       <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
@@ -326,14 +326,24 @@ function ConnectCard() {
   )
 }
 
-function AccountCard() {
-  const ready = useAccountUiReady()
+/* `live` is false while Clerk is still loading: the card draws, and its two
+   buttons are the inert versions until there is something for them to open.
+   See AccountSlot below for why the card has to draw at all in that state. */
+function AccountCard({ live = true }) {
+  const ready = useAccountUiReady() && live
 
+  /* A filled neutral pill, not the hero gradient.
+
+     This was the same cyan-to-periwinkle as the Mock Draft card, so the
+     first screen carried two identical primary treatments -- three with the
+     header's white Sign up -- and the one this page is built around (a mock
+     that needs no account) had to compete with the two that ask for one.
+     One filled accent per screen is the "primary action" rule; this stays
+     the louder of its own pair by being filled where Log in is outlined. */
   const signup = (
     <button
       type="button"
-      className="flex-1 whitespace-nowrap rounded-full px-3 py-3 text-[14px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.02] sm:px-5"
-      style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
+      className="flex-1 whitespace-nowrap rounded-full bg-white/[0.1] px-3 py-3 text-[14px] font-bold text-white transition-colors duration-150 hover:bg-white/[0.16] sm:px-5"
     >
       Sign up
     </button>
@@ -355,7 +365,12 @@ function AccountCard() {
           the heading already carries. The honesty it was doing is not
           lost: the body still says mocks run fine without an account, and
           the hero's own caption still says "Free · no account needed". */}
-      <div className="font-display text-[22px] font-bold text-white sm:text-[28px]">
+      {/* leading-[1.1], and balanced. Unset, this inherited the body's 1.5,
+          so on a phone the heading wrapped with 33px lines around 22px type
+          -- looser than the paragraph under it -- and left "device" alone on
+          the second line. Every other display heading on the page sits
+          between 0.9 and 1.02. */}
+      <div className="font-display text-[22px] font-bold leading-[1.1] text-white [text-wrap:balance] sm:text-[28px]">
         Keep your drafts on every device
       </div>
       <p className="mb-3.5 mt-1.5 text-[14px] leading-[1.5] text-voidInk-body sm:mb-[18px] sm:mt-2">
@@ -380,20 +395,52 @@ function AccountCard() {
     </div>
   )
 
-  /* Signed in there is nothing left to offer: the mocks already sync. The
-     whole card goes rather than the buttons alone, which is the rule
-     HomePhone's own account card already follows — a card whose entire
-     purpose is two controls has nothing to say without them. Without a
-     Clerk key there is no SignedOut to render inside, so the card stands
-     on its own and simply opens nothing, the same fallback every other
-     account surface here makes. */
-  if (!ready) return card
-  return <SignedOut>{card}</SignedOut>
+  /* Whether to draw this at all is AccountSlot's decision now, not the
+     card's: it used to wrap itself in <SignedOut>, which is exactly the
+     part that made it vanish while Clerk loaded. */
+  return card
+}
+
+/* The right column's second card, decided in one place and without a gap.
+
+   It was <SignedOut><AccountCard/></SignedOut> beside
+   <SignedIn><ConnectCard/></SignedIn>, and while Clerk is still loading
+   BOTH of those render nothing. The prerender draws the account card
+   (there is no Clerk on the server), hydration then removed it, and it came
+   back when Clerk answered -- measured 10 Sep 2026 on a phone: 234px of
+   card present at 129ms, gone at 189ms, back at 609ms, taking the proof
+   section below it with it each way.
+
+   So "not known yet" draws the account card, inert, and only a confirmed
+   signed-in user gets the connect card instead. That is the answer the
+   prerender has always given every visitor before hydration, so a signed-in
+   reader is not seeing anything new -- they see it for Clerk's load rather
+   than for hydration's -- and the signed-out majority, whom this card is
+   for, see one card that never moves.
+
+   useAuth() is safe here and only here: this renders only when
+   useAccountUiReady() is true, which is to say only under a ClerkProvider.
+   It is one component rather than a ClerkLoading/SignedOut pair so the
+   card is never unmounted and remounted on the way from one to the other. */
+function AccountSlot() {
+  const { isLoaded, isSignedIn } = useAuth()
+  if (isLoaded && isSignedIn) return <ConnectCard />
+  return <AccountCard live={isLoaded} />
+}
+
+/* The device line, held to the same rule for the same reason: it takes a
+   line of its own on a phone, so vanishing during Clerk's load was a
+   layout change too. Signed out and still-loading both show it. */
+function DeviceLine({ children }) {
+  const { isLoaded, isSignedIn } = useAuth()
+  if (isLoaded && isSignedIn) return null
+  return children
 }
 
 export default function HomeAlive() {
-  /* Read here rather than inside the footer line's own branch: <SignedOut>
-     throws without a ClerkProvider ancestor, and main.jsx renders no
+  /* Read here rather than inside the footer line's own branch: useAuth()
+     (inside DeviceLine and AccountSlot) throws without a ClerkProvider
+     ancestor, and main.jsx renders no
      provider at all in a keyless build. A keyless clone therefore shows the
      line unconditionally, which is correct for it — nobody can be signed in
      there. Same shape as AccountCard above. */
@@ -409,15 +456,15 @@ export default function HomeAlive() {
      account needed" is a promise to somebody deciding whether to make one,
      and it reads as a shrug to somebody who already has. Built here rather
      than inline because it sits inside the rooms header row below, and
-     <SignedOut> throws without a ClerkProvider ancestor — main.jsx renders
+     useAuth() throws without a ClerkProvider ancestor — main.jsx renders
      none in a keyless build, where showing it unconditionally is correct
      since nobody can be signed in there. */
   const deviceLineText = (
-    <span className="font-mono text-[10px] tracking-[0.14em] text-voidInk-muted">
+    <span className="font-mono text-[11px] tracking-[0.14em] text-voidInk-muted">
       FREE · NO ACCOUNT NEEDED · RUNS IN YOUR BROWSER
     </span>
   )
-  const deviceLine = ready ? <SignedOut>{deviceLineText}</SignedOut> : deviceLineText
+  const deviceLine = ready ? <DeviceLine>{deviceLineText}</DeviceLine> : deviceLineText
 
   return (
     <div className="relative pb-6 pt-[22px] sm:pb-14 sm:pt-10">
@@ -688,18 +735,7 @@ export default function HomeAlive() {
                 card. Same slot, same job — "the one thing to do next" —
                 and which one is true depends on whether there is an
                 account yet. */}
-            {!ready ? (
-              <AccountCard />
-            ) : (
-              <>
-                <SignedOut>
-                  <AccountCard />
-                </SignedOut>
-                <SignedIn>
-                  <ConnectCard />
-                </SignedIn>
-              </>
-            )}
+            {!ready ? <AccountCard /> : <AccountSlot />}
           </div>
         </div>
 

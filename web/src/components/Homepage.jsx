@@ -173,7 +173,7 @@ function FooterRoomLink({ room, onSignup, className }) {
 function FooterColumn({ title, children }) {
   return (
     <div className="flex flex-col gap-[11px]">
-      <span className="font-numeral text-[10.5px] font-semibold tracking-[0.13em] text-voidInk-body">{title}</span>
+      <span className="font-numeral text-[11px] font-semibold tracking-[0.13em] text-voidInk-body">{title}</span>
       {children}
     </div>
   )
@@ -343,8 +343,20 @@ export default function Homepage() {
           section, which is what "evenly spaced" actually means here: every
           gap between every pair of sections is the same number, not just
           visually close. */}
+      {/* The page's own column, not a narrower one of its own.
+
+          This was max-w-[1200px] px-10 at every width, so the footer's
+          content began 40px right of every other left edge on the page on a
+          desktop (x=160 against the header, hero and rooms at 120) and 20px
+          right of it on a phone (40 against 20). ShellHeader and HomeAlive
+          both use max-w-[1280px] with px-5 below `sm` and px-10 above, which
+          is what "one left margin" means; the footer now answers to it too.
+
+          The legal row's rule moved onto an inner element for the same
+          reason: on the container it spans the padding as well, which at
+          1280 would run 40px past the content edges it used to meet. */}
       <footer className="mt-[72px] border-t border-line-hairline bg-surface-nav">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-12 px-10 py-14 lg:grid lg:grid-cols-4 lg:gap-x-10 lg:gap-y-12">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-12 px-5 py-14 sm:px-10 lg:grid lg:grid-cols-4 lg:gap-x-10 lg:gap-y-12">
           <FooterBrandStack onSocialClick={openSocial} linkClass={roomLinkClass} />
 
           <FooterColumn title="The Rooms">
@@ -379,12 +391,14 @@ export default function Homepage() {
             that has no equivalent in a reference built for a different
             product, kept because it's true and worth keeping rather than
             cut to match a shape that has no room for it. */}
-        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-3 border-t border-line-divider px-10 py-6 text-center">
-          <p className="max-w-[560px] text-meta text-voidInk-muted">
-            A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere.
-            Drafting with your league uses a server, just for that room.
-          </p>
-          <span className="font-numeral tabular-nums text-xs font-medium text-voidInk-muted">&copy; 2026 Juke. All rights reserved.</span>
+        <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
+          <div className="flex flex-col items-center gap-3 border-t border-line-divider py-6 text-center">
+            <p className="max-w-[560px] text-meta text-voidInk-muted">
+              A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere.
+              Drafting with your league uses a server, just for that room.
+            </p>
+            <span className="font-numeral tabular-nums text-xs font-medium text-voidInk-muted">&copy; 2026 Juke. All rights reserved.</span>
+          </div>
         </div>
 
         {/* The footer's one static closing line — see useDataFreshness()
@@ -393,7 +407,7 @@ export default function Homepage() {
             fails-by-disappearing contract as the score strip), rather than
             a placeholder that would flash a wrong count for one frame. */}
         {freshness && (
-          <div className="mx-auto max-w-[1200px] px-10 pb-6 text-center">
+          <div className="mx-auto max-w-[1280px] px-5 pb-6 text-center sm:px-10">
             <p className="font-numeral tabular-nums text-xs font-medium text-voidInk-muted">{freshness}</p>
           </div>
         )}

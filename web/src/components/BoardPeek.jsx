@@ -119,6 +119,9 @@ function readTop(engine) {
 export default function BoardPeek() {
   const [data, setData] = useState(null)
   const [fresh, setFresh] = useState(null)
+  // The board answered and had nothing to show. Only then does the panel
+  // go, because a placeholder that never fills is worse than no panel.
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     const engine = typeof window !== 'undefined' ? window.JukeEngine : null
@@ -129,6 +132,7 @@ export default function BoardPeek() {
       try {
         const next = readTop(engine)
         if (next) setData(next)
+        else setFailed(true)
         /* Inside run(), not beside it.
 
            This was `setFresh(freshnessLine())` after the first run() call,
@@ -146,6 +150,7 @@ export default function BoardPeek() {
         // Fails by disappearing, like the score strip. A hero that throws
         // is worse than a hero with one less panel in it.
         setData(null)
+        setFailed(true)
       }
     }
 
@@ -162,32 +167,82 @@ export default function BoardPeek() {
        deferred data landing, which `juke:data-loaded` already announces. */
   }, [])
 
-  // No skeleton. This sits above the fold, where a placeholder is a
-  // flicker on every cold load rather than a courtesy — and unlike the
-  // proof pairs there is no scroll position that guarantees the reader is
-  // looking at it when the data arrives.
-  if (!data) return null
-  const { rows, format } = data
+  /* A placeholder of the panel's exact height until the board lands, and
+     this reverses a decision that used to be written here.
+
+     The old note said no skeleton, because above the fold a placeholder is
+     a flicker rather than a courtesy. What it cost instead was measured on
+     10 Sep 2026: the deferred board lands at ~3s, this panel appeared from
+     nothing, and everything under it moved -- the account card jumped 327px
+     down on a desktop, in the first screen, on the same frame the splash
+     lifts. That one mount was most of the desktop's layout shift.
+
+     So the frame, the header and five rows are drawn from the first paint
+     (the prerender included, since there is no engine there either), and
+     the data fills them in place. Nothing pulses and nothing shimmers:
+     quiet bars rather than an animation, which is what keeps it from being
+     the flicker the old note was worried about. The one case that still
+     collapses is a board that answered and had nothing to show, where a
+     panel waiting forever would be the worse failure. */
+  if (failed && !data) return null
+  const rows = data ? data.rows : null
+  // The default league's format, invisible, until the real one is known --
+  // so the header wraps the same way before and after, and the words
+  // arriving cannot change the panel's height.
+  const format = data ? data.format : null
 
   return (
     <section
       aria-label="Tonight's board"
+      aria-busy={data ? undefined : 'true'}
       className="rounded-[18px] border border-line-hairline bg-surface-card px-5 py-5 sm:px-6"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-body">
-          Tonight&apos;s board{format ? <span className="text-voidInk-muted"> &middot; {format}</span> : null}
+      {/* Two lines on a phone by construction, not by overflow.
+
+          At 375 the two labels need ~390px of a 295px row, so they always
+          wrapped -- but where they wrapped depended on the words, which
+          made the format arriving a height change. `w-full` below `sm`
+          sends the unit to its own line every time, right-aligned over the
+          numbers it labels; at `sm` and up they share the row. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="w-full whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-body sm:w-auto">
+          Tonight&apos;s board
+          {data ? (
+            format ? <span className="text-voidInk-muted"> &middot; {format}</span> : null
+          ) : (
+            <span className="invisible" aria-hidden="true"> &middot; Half PPR</span>
+          )}
         </span>
         {/* The unit is named here because nothing else names it for 845px.
             "+145" sits at y=145 and the first thing that says what it
             counts is pair 1's own strip at y=990 — five bare integers a
             reader is asked to take on trust, on the page arguing that no
             number should be taken on trust. */}
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-voidInk-muted">
+        <span className="ml-auto whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.12em] text-voidInk-muted">
           Over replacement <span className="text-voidInk-body">(pts)</span>
         </span>
       </div>
 
+      {!rows ? (
+        /* The same <li> as a real row, so the height is the real height:
+           the chip keeps its own box with its text hidden, the name line
+           keeps a no-break space for its line box and draws a bar in it,
+           and the number keeps an invisible "+100" for its width. */
+        <ol className="mt-4" aria-hidden="true">
+          {Array.from({ length: SHOWN }, (_, i) => (
+            <li key={i} className="flex items-center gap-3 border-b border-line-divider py-2.5 last:border-b-0">
+              <span className="w-9 shrink-0 rounded-md bg-white/[0.06] py-0.5 text-center font-mono text-[11px] font-semibold">
+                <span className="invisible">RB</span>
+              </span>
+              <span className="min-w-0 flex-1 text-[14px]">
+                {'\u00a0'}
+                <span className="inline-block h-2.5 w-28 rounded-full bg-white/[0.06] align-middle" />
+              </span>
+              <span className="invisible shrink-0 font-mono text-[14px] tabular-nums">+100</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
       <ol className="mt-4">
         {rows.map((r) => (
           <li
@@ -200,20 +255,24 @@ export default function BoardPeek() {
                 else — which is exactly what the generic cyan-to-periwinkle
                 gradient beside it is not. */}
             <span
-              className="w-9 shrink-0 rounded-md py-0.5 text-center font-mono text-[10px] font-semibold"
+              className="w-9 shrink-0 rounded-md py-0.5 text-center font-mono text-[11px] font-semibold"
               style={{ background: POS_CHALK[r.pos] || '#8A9BAA', color: CELL_INK }}
             >
               {r.pos}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>
+            {/* Truncates rather than wraps, unlike the proof table: rows
+                here are one line by construction so the placeholder above
+                can reserve their exact height. The title carries the full
+                name wherever an ellipsis ever lands. */}
+            <span className="min-w-0 flex-1 truncate text-[14px] text-white" title={r.name}>{r.name}</span>
             <span className="shrink-0 font-mono text-[14px] tabular-nums text-gain">+{r.gap}</span>
           </li>
         ))}
       </ol>
-
-      {fresh && (
-        <p className="mt-4 font-mono text-[11px] tabular-nums text-voidInk-muted">{fresh}</p>
       )}
+
+      {/* Always drawn, so its line is reserved before the words exist. */}
+      <p className="mt-4 font-mono text-[11px] tabular-nums text-voidInk-muted">{fresh || '\u00a0'}</p>
     </section>
   )
 }
