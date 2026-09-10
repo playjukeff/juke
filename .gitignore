@@ -24,6 +24,27 @@ __pycache__/
 # installs is named juke-*, so a skill named `juke-<something>` ships and
 # anything else stays local. Name it right and it needs no line here.
 
+# The same rule, for the tools that write somewhere other than .agents/.
+# .codex/ is Codex's own hooks file and .github/skills/ is where Impeccable
+# installs its skill bundle - 52 files and 17MB of third-party instruction
+# files that run with full agent permissions, which is exactly what the
+# paragraph below refuses for `npx skills add`. .impeccable/questions/ is
+# per-run scratch, a log and a state file per question; the parts of
+# .impeccable/ that are a shared record - config.json, critique/, surfaces/ -
+# are tracked and stay tracked.
+#
+# These were sitting untracked in every `git status` on the shared checkout,
+# which is worse than untidy here: this repository has already had one session
+# sweep another's untracked files into a commit with `git add -A`, and a folder
+# two dozen sessions share is the one place that matters most.
+#
+# .github/agents/ and .github/hooks/ are deliberately NOT here. They are small,
+# readable and arguably belong to the project rather than to a machine - that
+# is the owner's call to make, not one to settle by adding a line.
+.codex/
+.github/skills/
+.impeccable/questions/
+
 # Agent skills installed by `npx skills add`, and the lockfile pinning them.
 # Third-party instruction files that run with full agent permissions, chosen
 # per machine rather than per project — the same reasoning as .claude/ above,
