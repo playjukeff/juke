@@ -96,8 +96,14 @@ const READERS = {
 //     column that reads identically for all 21 defenses is exactly the
 //     "constant is not information" trap CLAUDE.md's grade section names
 //     — Sack/INT/FR stay, all three fully populated.
-// ALL is the union in the order every other position introduces them,
-// matching the desktop table's own "union, not per-position" convention.
+// ALL is the union, matching the desktop table's own "union, not
+// per-position" convention -- but ORDERED by how many cards can fill a
+// column, not by the order the positions happen to be listed in above.
+// Led by QB it put PASS YD / PASS TD / INT first, so on a 390px card a
+// running back's opening three cells were three dashes, and the majority
+// of every roster is not a quarterback. Receiving leads because RB, WR and
+// TE all carry it; rushing follows; passing comes after, where the two
+// quarterbacks on a roster still find it and nobody else pays for it.
 const QB = [['passYd', 'Pass Yd'], ['passTd', 'Pass TD'], ['int', 'INT'], ['cmp', 'Cmp %'], ['att', 'Att'], ['rush', 'Rush'], ['rushYd', 'Rush Yd'], ['rushTd', 'Rush TD'], ['ya', 'Y/A']]
 const RB = [['rushYd', 'Rush Yd'], ['recYd', 'Rec Yd'], ['rec', 'Rec'], ['rushTd', 'Rush TD'], ['recTd', 'Rec TD'], ['rush', 'Rush'], ['ypc', 'YPC'], ['ydrec', 'Yd/Rec']]
 const WR = [['recYd', 'Rec Yd'], ['rec', 'Rec'], ['recTd', 'Rec TD'], ['ydrec', 'Yd/Rec'], ['rush', 'Rush'], ['rushYd', 'Rush Yd'], ['rushTd', 'Rush TD']]
@@ -111,7 +117,7 @@ function dedupe(pairs) {
 }
 
 export const PHONE_POSITION_COLUMNS = {
-  ALL: dedupe([...QB, ...RB, ...WR, ...TE, ...K, ...DEF]),
+  ALL: dedupe([...WR, ...RB, ...TE, ...QB, ...K, ...DEF]),
   QB, RB, FLEX: RB, WR, TE, K, DST: DEF,
 }
 

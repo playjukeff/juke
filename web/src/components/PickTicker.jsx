@@ -55,9 +55,12 @@ function cellClass(item) {
   return ''
 }
 
+/* The cell above already carries the seat's mark -- the wash and the
+   gold underline -- so the name does not repeat it in a colour that is
+   1.4:1 on a light card and under 3:1 on this one. Gold is never type. */
 function nameClass(item) {
-  if (item.isNext) return 'font-bold text-[#FFD166]'
-  if (item.mine) return 'text-[#FFD166]'
+  if (item.isNext) return 'font-bold text-ink'
+  if (item.mine) return 'text-ink'
   return 'text-white/70'
 }
 
@@ -214,7 +217,7 @@ export default function PickTicker({ league, onClock, overall, mySlot, myTurn, u
                 className={'flex w-[116px] shrink-0 flex-col justify-center gap-[3px] border-r border-slate-rule/60 px-3 ' + cellClass(item)}
               >
                 <span className="flex items-center gap-1.5">
-                  <span className={'font-plex text-[9.5px] font-semibold ' + (item.mine ? 'text-[#FFD166]' : 'text-ink-muted')}>
+                  <span className={'font-plex text-[9.5px] font-semibold ' + (item.mine ? 'text-ink-soft' : 'text-ink-muted')}>
                     {DE ? DE.pickCode(item.overall, league) : item.overall}
                   </span>
                   {item.auto && (

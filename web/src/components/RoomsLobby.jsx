@@ -1,4 +1,5 @@
 import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/clerk-react'
+import { IconDoor, IconLock } from './roomIcons.jsx'
 import AppShell from './shell/AppShell.jsx'
 import RoomsGridAlive from './RoomsGridAlive.jsx'
 import ConnectLeagueCta from './shell/ConnectLeagueCta.jsx'
@@ -130,7 +131,7 @@ function UnlockBar() {
 
   const signedInBar = shell(
     <>
-      <span className="text-[26px]" role="img" aria-label="Locked">🔒</span>
+      <span className="inline-flex shrink-0 text-ink-muted" role="img" aria-label="Locked"><IconLock size={26} /></span>
       <span className="flex-1">
         <span className="block text-[16px] font-semibold text-white">
           Connect your league
@@ -145,7 +146,7 @@ function UnlockBar() {
 
   const bar = (
     <div className="mt-3.5 flex flex-col gap-3.5 rounded-2xl border border-line-hairline bg-[#151920] p-[18px] sm:flex-row sm:items-center sm:gap-4 sm:px-[22px]">
-      <span className="text-[26px]" role="img" aria-label="Locked">🔒</span>
+      <span className="inline-flex shrink-0 text-ink-muted" role="img" aria-label="Locked"><IconLock size={26} /></span>
       <span className="flex-1">
         <span className="block text-[16px] font-semibold text-white">
           Connect your league
@@ -230,7 +231,7 @@ export default function RoomsLobby() {
                 arrive a tick after the glyph -- the row keeps its height
                 throughout, so nothing moves. */}
             <div className="mb-1.5 font-mono text-[11px] tracking-[0.1em] text-teal">
-              <span className="mr-1.5" aria-hidden="true">🚪</span>
+              <span className="mr-1.5 inline-flex align-[-2px]" aria-hidden="true"><IconDoor size={13} /></span>
               {rooms.length ? `${rooms.length} ROOMS · ${open} OPEN` : ''}
             </div>
             <h1 className="m-0 font-display text-[30px] font-extrabold uppercase italic leading-[0.9] text-white sm:text-[64px]">

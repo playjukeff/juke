@@ -3,7 +3,7 @@ import { useLeague } from '../hooks/useLeague.js'
 import { useRoomStakes } from '../hooks/useRoomStakes.js'
 import { stakeLabel } from './shell/roomStakes.js'
 import { roomIsOpen, lockReason } from './RoomPage.jsx'
-import RoomIcon from './roomIcons.jsx'
+import RoomIcon, { IconLock } from './roomIcons.jsx'
 
 /* The room cards, written once for the two screens that draw them: the
    Rooms lobby (#/rooms) and the homepage's own THE ROOMS section. The
@@ -159,15 +159,7 @@ function LockedCard({ room, wide = false, lgSpan }) {
             not an icon system; this is the one stroke weight the rest of
             the row uses. */}
         <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] text-ink-muted">
-          <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" fill="none" aria-hidden="true">
-            <path
-              d="M3.4 5.2V3.6a2.6 2.6 0 0 1 5.2 0v1.6"
-              stroke="currentColor"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-            />
-            <rect x="2.4" y="5.2" width="7.2" height="5.4" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
-          </svg>
+          <IconLock size={12} />
           <span className="sr-only">Locked. </span>
           {room.season.toUpperCase()}
         </span>
@@ -328,9 +320,35 @@ export default function RoomsGridAlive({ columns = 'lobby' }) {
      card is more important than the others. */
   const tail = grid.per === 3 ? rooms.length % 3 : 0
   const tailFrom = rooms.length - tail
+  /* The spare tracks go to the FIRST card, not the last two.
+
+     With five rooms on six tracks, three to a row, the old rule stretched
+     the final two cards to three tracks each -- and the final two are
+     Trade and Strategy, both locked. Measured on the lobby: row-one cards
+     392px, row-two 594px, so the two largest cards on the routing screen
+     were padlocks and the flagship Draft Room was one of the small ones. A
+     grid tells the reader what matters by how big it draws things, and
+     this one said the opposite of the truth.
+
+     Giving both spare tracks to the Draft Room fills the same rows with no
+     hole -- 2 + 4 or 4 + 2 across the first, 2 + 2 + 2 across the second.
+     It is found by slug and not by index, because ROOMS runs in season
+     order and the Prospect Room sits in front of it: the first cut of this
+     handed the wide card to index 0 and drew a 794px Prospect Room beside
+     a 392px Draft Room, which is the same wrong answer with a different
+     padlock. Only a card in the first row can take it without opening a
+     hole, so a flagship that ever lands past the third card falls back to
+     the first. The one-card tail keeps its centring: with four spare
+     tracks there is no split that both leads with the flagship and leaves
+     no hole, and centring the last card still says "end of the list". */
+  const flagship = (() => {
+    const i = lead.findIndex((r) => r.slug === 'draft')
+    return i >= 0 && i < 3 ? i : 0
+  })()
   const spanFor = (i) => {
-    if (!tail || i < tailFrom) return grid.span
-    return tail === 2 ? 'lg:col-span-3' : 'lg:col-span-2 lg:col-start-3'
+    if (!tail) return grid.span
+    if (tail === 2) return i === flagship ? 'lg:col-span-4' : grid.span
+    return i < tailFrom ? grid.span : 'lg:col-span-2 lg:col-start-3'
   }
 
   /* The same problem one breakpoint down, and it needs its own answer

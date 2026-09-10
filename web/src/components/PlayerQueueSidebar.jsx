@@ -948,7 +948,7 @@ export default function PlayerQueueSidebar({
                             ADP order. */}
                         {player.deep && (
                           <span
-                            className="rounded px-1 py-px text-[8px] font-bold uppercase leading-tight bg-white/10 text-white/50"
+                            className="rounded px-1 py-px text-[8px] font-bold uppercase leading-tight bg-white/10 text-white/70"
                             title="No real ADP behind this ranking — Sleeper's own depth order, not a live draft"
                           >
                             Deep

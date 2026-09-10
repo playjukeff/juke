@@ -1,4 +1,5 @@
 import { SignInButton, SignUpButton } from '@clerk/clerk-react'
+import { IconLock } from '../roomIcons.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { LINE as PLATFORM_LINE } from './leaguePlatforms.js'
 
@@ -99,7 +100,7 @@ export default function LockedPreview({
         style={{ background: 'linear-gradient(180deg,rgba(13,15,21,.2),rgba(13,15,21,.92) 55%)' }}
       >
         <div className="w-full max-w-[420px] rounded-[18px] border border-line-hairline bg-[#151920] px-[18px] py-5 text-center sm:max-w-[460px] sm:rounded-[22px] sm:px-6 sm:py-7">
-          <span className="text-[28px]" role="img" aria-label="Locked">🔒</span>
+          <span className="inline-flex justify-center text-ink-muted" role="img" aria-label="Locked"><IconLock size={28} /></span>
           <div className="mt-2 font-display text-[22px] font-bold text-white sm:text-[26px]">
             {headline}
           </div>

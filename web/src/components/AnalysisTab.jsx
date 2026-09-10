@@ -125,7 +125,7 @@ function FixThisFirst({ item, upgrade, before, dense }) {
           {upgrade.player.pos}
         </span>
         <span className="text-[13px] font-semibold text-white">{upgrade.player.name}</span>
-        <span className="text-[11px] text-ink-muted">
+        <span className="text-[11px] text-ink-soft">
           {upgrade.player.team}
           {upgrade.player.bye ? ` · bye ${upgrade.player.bye}` : ''}
         </span>
@@ -977,7 +977,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                     (me.reach.gap < -8 ? 'border-cost/30 bg-cost/5' : 'border-slate-rule bg-slate-panel/40')
                   }
                 >
-                  <div className={'text-[10px] font-semibold uppercase tracking-wide ' + (me.reach.gap < -8 ? 'text-cost' : 'text-white/50')}>
+                  <div className={'text-[10px] font-semibold uppercase tracking-wide ' + (me.reach.gap < -8 ? 'text-cost' : 'text-ink-muted')}>
                     Biggest reach
                   </div>
                   <div className="mt-0.5 truncate text-sm font-medium text-white">{me.reach.pick.player.name}</div>
@@ -1005,7 +1005,13 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
               grade's own squared bye penalty already treats as "a week you
               probably lose"; a nil week stays quiet rather than being drawn
               as an achievement. The key is inline and states all three
-              steps, so nothing here has to be learned by inference. */}
+              steps, so nothing here has to be learned by inference.
+
+              A nil week takes full ink, and that is a correction to this
+              pass's own first cut, which dimmed it to ink-muted to keep it
+              quiet -- measured 3.53:1 on slate.rule, under the bar, with
+              ink-soft at 4.45 also short. Quiet comes from the absence of a
+              tint; the digit itself has to be readable to say "none". */}
           <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
               Starters on bye, by week
@@ -1032,7 +1038,7 @@ export default function AnalysisTab({ engine, league, picks, mySlot, onClose }) 
                     ? 'bg-amber-500/20 text-amber-300'
                     : n === 2
                       ? 'bg-sky-500/20 text-sky-300'
-                      : 'bg-slate-rule text-ink-muted'
+                      : 'bg-slate-rule text-ink'
               return (
                 <span key={w} className="flex flex-col items-center gap-0.5">
                   <span
