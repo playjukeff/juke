@@ -287,11 +287,28 @@ export default function StrategyRoomLive({ league, snapshot, status, reason, tab
       note: total === null ? 'A starter has no projection.' : 'Points this week, as your lineup is set.',
     },
     {
+      /* No delta, and the reason is that it was the same number twice.
+
+         `value` and `delta` both read `swaps[0].gain`, so the card printed
+         "+6.9 +6.9" -- and KpiCard's own header says what a delta is FOR:
+         it sits on the value's baseline at a quarter of the size so it
+         reads as a QUALIFIER of the number above it. A qualifier that
+         restates its own subject is the `me.build + " / 100"` caption
+         again, which this project already fixed once by making the second
+         line name what the first one cost.
+
+         There is nothing to qualify it with here. The value is already the
+         gain, already signed, already accented -- what the swap actually
+         IS belongs to the note and to the rows below, which name it.
+
+         `evidence` rather than `gain` when there is no swap: a zero is a
+         quantity with no direction in it, which is the call `signOf()`
+         makes and the same one the win-probability band's `close` makes
+         two cards along. A gain-coloured rule over "0" says a lineup with
+         nothing to gain gained something. */
       label: 'One swap',
       value: swaps.length ? `+${swaps[0].gain.toFixed(1)}` : '0',
-      delta: swaps.length ? swaps[0].gain.toFixed(1) : null,
-      deltaSign: 'gain',
-      accent: 'gain',
+      accent: swaps.length ? 'gain' : 'evidence',
       note: swaps.length ? 'The best legal same-position swap.' : 'Your lineup is already the best one.',
     },
     {
