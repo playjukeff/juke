@@ -7914,15 +7914,62 @@ first hands it straight to `LockerTable`, which pages; the second takes only
 `.length`. `PracticeScenarios` aggregates. Those four call sites are the
 whole set — `grep historyList()` before assuming a fifth.
 
+### The connected half is built, and this list said it was not
+
+**"Fourteen screens, waiting on league connect"** stood here until 10
+September 2026 and had been false since the day ESPN shipped. Connect
+landed, both adapters read a real league, and `LIVE_ROOMS` in
+`RoomPage.jsx` has carried Waiver, Trade and Strategy bodies for weeks —
+so the sentence was describing a repository that had already moved, which
+is the same failure the decision guide's own blocked list produced five
+times over.
+
+**Measured rather than corrected on a hunch.** Every connected route was
+driven with the league stub at 1440 and 375 — Home, the rooms lobby, My
+League, Waiver, Trade, Strategy, Prospect, You. All eight render live
+data, no console error, no overflow that can neither scroll nor
+ellipsise:
+
+```
+My League   PLAYOFF ODDS 80% | RECORD 4-4 | POINTS FOR 820.0 +10.0 | POINTS AGAINST 870.0 −2.5
+Waiver      FAAB POOL $100 | WORTH CLAIMING 29 | BEST CLAIM +110 | POINTS OPEN 240
+Strategy    PROJECTED 84.1 | ONE SWAP +6.9 | MIGHT NOT PLAY 3 | WIN PROBABILITY 53%
+```
+
+**The audit found one defect, and it is the shape this file already
+records.** The Strategy Room's "One swap" card read **`+6.9  +6.9`** —
+`value` and `delta` both `swaps[0].gain`, the same number twice on one
+card. `KpiCard`'s own header says what a delta is for: it sits on the
+value's baseline at a quarter of the size so it reads as a QUALIFIER of
+the number above it, and a qualifier that restates its own subject is
+`me.build + " / 100"` again. There is nothing to qualify it with — the
+value is already the gain, already signed, already accented — so the
+delta is gone. The accent is `evidence` rather than `gain` when there is
+no swap, because a zero is a quantity with no direction in it.
+
+**And the harness wore a bug's clothes twice in one sitting**, which is
+worth more than the defect. A flat `waitForTimeout(1800)` read the Trade
+Room mid-skeleton and reported an empty default tab on a room that was
+fine — `dataReady()` was still false at 2.5s. Then the corrected probe
+read `innerText.slice(-400)` and found the hero as the LAST thing on the
+page, which reads as a body that never rendered: **the rail and header
+come after the room in DOM order**, so the tail of a screen is its
+chrome. The room's own container had 587 characters in it the whole time.
+Wait on a condition, and check which end of a document you are reading
+before believing what it says.
+
 ### Still open
 
-- **The connected half.** Fourteen screens, waiting on league connect.
 - **`LobbyBar` is the last of the old marketing header**, and it now shows on
   exactly one screen — the insights dashboard, one press behind "Your
   insights". `NavLinks`/`RoomsNavMenu` survive only through it.
 - **Waiver's desktop preview is a list where 3dg draws a table with a FAAB
   budget rail beside it.** The other three rooms' desktop layouts are the
-  handoff's two columns; this one is the phone's, widened.
+  handoff's two columns; this one is the phone's, widened. It is the GUEST
+  preview rather than the connected room, and rebuilding it without 3dg's
+  own markup in front of somebody would be inventing a layout rather than
+  reading one — which is the trap the handoff's own README warns about
+  where its prose and its HTML disagree.
 
 ## Accounts
 

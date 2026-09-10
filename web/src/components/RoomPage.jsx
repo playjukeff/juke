@@ -98,9 +98,19 @@ const LIVE_ROOMS = {
     Body: StrategyRoomLive,
     tabs: STRATEGY_TABS,
     sub: 'What your lineup projects, and the one swap that changes it.',
-    /* Nothing yet. What this room's bar wants is the week's matchup
-       margin, which needs the matchups fetch three of its tabs are also
-       waiting on — so it says nothing rather than borrowing a figure. */
+    /* Nothing, and the reason CHANGED rather than the answer.
+
+       This used to read "nothing yet ... the week's matchup margin needs
+       the matchups fetch three of its tabs are also waiting on". That
+       fetch landed with the schedule, and the room draws a real WIN
+       PROBABILITY on its own strip now — so the sentence was a blocker
+       describing a repository that had already moved, which is the fourth
+       copy of that claim this project has had to correct in place.
+
+       It still says nothing, for the reason the Trade entry above gives:
+       the number is on screen where the reader is looking, and a second
+       copy of it in the chrome is one fact in two places, drifting the
+       first time either moves. */
     stats: () => [],
   },
 }
