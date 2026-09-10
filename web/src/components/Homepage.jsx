@@ -283,7 +283,14 @@ export default function Homepage() {
           3ag are one set of content in two layouts, not two screens. That
           also ends the cost the comment above describes, since there is no
           longer a second tree mounting invisibly on every device. */}
-      <div className="min-h-screen overflow-x-hidden bg-surface-page font-body text-voidInk-primary">
+      {/* overflow-x-CLIP, not hidden. `hidden` makes this shell the scroll
+          container for every sticky element on the page, and HomeProof's
+          flat cards stick. `clip` clips without becoming one. A browser
+          that drops `clip` (iOS 15) falls back to visible, and nothing on
+          this page bleeds past the viewport any more -- the hero watermark
+          is clipped by its own layer in HomeAlive -- so the fallback costs
+          nothing that no-sideways-leak.spec would not catch. */}
+      <div className="min-h-screen overflow-x-clip bg-surface-page font-body text-voidInk-primary">
       <ShellHeader active="home" />
 
       <main>
