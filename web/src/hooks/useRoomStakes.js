@@ -10,23 +10,28 @@ import { roomStakes } from '../components/shell/roomStakes.js'
  * has, and for the same reason: everything worth testing runs in CI with
  * no npm install, and only the subscription needs React.
  *
- * ---- Mount this behind a gesture, never on every screen ----
+ * ---- This used to say "mount it behind a gesture, never on every screen" ----
  *
- * `useLeagueSnapshot()`'s own comment states the constraint this hook has
- * to live inside: the league's IDENTITY is wanted by the header on every
- * screen, its ROSTERS by one screen, and folding them together "would put
- * four upstream calls behind every page load to draw a chip that needs a
- * name". A stake is a fact about rosters, so the same sentence applies.
- *
- * So `MoreSheet` calls this and `useRailItems()` deliberately does not.
- * The sheet is mounted by a tap (`{moreOpen && <MoreSheet/>}`) and
- * unmounted on close, which means the fetch is paid for by the reader who
- * asked to see the list — where the desktop rail is on screen at every
+ * The constraint was real and it was about a per-component fetch.
+ * `useLeagueSnapshot()` held its answer in component state, so the cost of
+ * a stake was one upstream call per mounted caller — which is why that
+ * hook's own comment refused to fold rosters in with the league's identity
+ * ("four upstream calls behind every page load to draw a chip that needs a
+ * name"), and why `MoreSheet` called this while `useRailItems()` did not:
+ * the sheet is mounted by a tap and the desktop rail is on screen at every
  * width above `lg`, on every route, always.
  *
- * That is also why screen 16 (the rooms grid) is not wired here yet. It
- * would be a snapshot on the lobby's own page load rather than behind a
- * gesture, which is an architecture question this hook does not settle.
+ * **`web/src/lib/snapshotStore.js` is that constraint removed rather than
+ * broken.** The answer is held once, keyed on the league, fresh for the two
+ * minutes the worker's own cache is good for — so N callers cost one
+ * request, not N. Screen 16 (the rooms grid) is wired now for exactly that
+ * reason: CLAUDE.md recorded it as blocked on WHERE THE SNAPSHOT IS
+ * FETCHED, and it was.
+ *
+ * `useRailItems()` still does not carry a stake, and the reason has changed
+ * from cost to design: a nav rail is a list of destinations, and putting a
+ * value on two of its seven rows is a different question from the one the
+ * guide asks. It is no longer expensive, merely undecided.
  */
 export function useRoomStakes() {
   const { league } = useLeague()

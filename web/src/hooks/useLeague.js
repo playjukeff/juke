@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import {
   leagueState,
   noteLeagueConnected,
@@ -8,6 +8,13 @@ import {
   selectLeague,
   subscribeLeagues,
 } from '../lib/leagueStore.js'
+import {
+  requestSnapshot,
+  retrySnapshot,
+  snapshotKey,
+  snapshotState,
+  subscribeSnapshot,
+} from '../lib/snapshotStore.js'
 
 /* React's view of the connected-league store.
  *
@@ -24,6 +31,7 @@ export {
   removeLeague,
   retryLeagues,
   selectLeague,
+  retrySnapshot,
 }
 
 export function useLeague() {
@@ -82,44 +90,59 @@ export function useLeague() {
   }
 }
 
-/* A league's live state, fetched on demand.
+/* A league's live state, from the one place that holds it.
 
-   Deliberately separate from useLeague(): the identity of the connected
-   league is wanted by the header on every screen, and its rosters and
-   records by exactly one screen. Folding them together would put four
-   upstream calls behind every page load to draw a chip that needs a name.
+   The store is `web/src/lib/snapshotStore.js` and its header explains why
+   the answer is shared rather than per-component. This file is the
+   subscription and nothing else, which is the split `leagueStore`/
+   `useLeague` already has.
 
-   Answers null while loading and on failure alike, with `reason` for the
-   difference — the same contract as everything else here. */
+   The signature and the four states are unchanged, deliberately: every
+   consumer of this — RoomPage, MyLeagueScreen, useRoomStakes — branches on
+   `status` exactly as it did, and the point of the change is the number of
+   requests rather than what anybody renders.
+
+   ---- A null id answers here rather than in the store ----
+
+   `RoomPage` passes `live ? league.leagueId : null`, so a room that is not
+   live asks for nothing at all. If that reached the store it would settle
+   it to "none" and wipe an answer a mounted sibling is still drawing —
+   which is the hazard a SHARED store introduces and a per-component one
+   never had. So "there is no league to ask about" is answered locally and
+   the store is left holding whatever it holds.
+
+   ---- And an answer about another league is not this caller's ----
+
+   During a switch the store still holds the previous league for a tick.
+   Handing that to a caller asking about the new one would draw one render
+   of somebody else's rosters under the right name, which is exactly what
+   the dependency list on the hook this replaces was protecting. The key
+   check is that protection, kept. */
 export function useLeagueSnapshot(leagueId, provider) {
-  const [snapshot, setSnapshot] = useState(null)
-  const [status, setStatus] = useState('loading')
-  const [reason, setReason] = useState(null)
+  const [, bump] = useReducer((n) => n + 1, 0)
 
   useEffect(() => {
-    let alive = true
-    if (!leagueId) {
-      setStatus('none')
-      setSnapshot(null)
-      return () => { alive = false }
-    }
-    if (typeof window === 'undefined' || !window.Live || !window.Live.leagueSnapshot) {
-      return () => { alive = false }
-    }
+    if (!leagueId) return undefined
+    const unsubscribe = subscribeSnapshot(bump)
+    requestSnapshot(leagueId, provider)
 
-    setStatus('loading')
-    window.Live.leagueSnapshot(leagueId, provider).then((res) => {
-      if (!alive) return
-      setSnapshot(res.ok ? res.snapshot : null)
-      setStatus(res.ok ? 'ready' : 'error')
-      setReason(res.ok ? null : res.reason)
-    })
-
-    return () => { alive = false }
-    // provider is in the key because the same numeric id is a different
-    // league on a different platform — re-fetching on it is what stops a
-    // switch between two leagues drawing the first one's rosters.
+    /* The one event that can turn the store's "live.js has not landed yet"
+       early return into an answer. Without it that path is terminal — a
+       cold load straight onto a room sits in "loading" for ever — which is
+       the identical shape leagueStore already had and fixed. */
+    const reread = () => requestSnapshot(leagueId, provider)
+    window.addEventListener('juke:data-loaded', reread)
+    return () => {
+      unsubscribe()
+      window.removeEventListener('juke:data-loaded', reread)
+    }
   }, [leagueId, provider])
 
-  return { snapshot, status, reason }
+  if (!leagueId) return { snapshot: null, status: 'none', reason: null }
+
+  const held = snapshotState()
+  if (held.key !== snapshotKey(leagueId, provider)) {
+    return { snapshot: null, status: 'loading', reason: null }
+  }
+  return { snapshot: held.snapshot, status: held.status, reason: held.reason }
 }
