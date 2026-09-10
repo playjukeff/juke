@@ -81,7 +81,7 @@ export default function MoveCard({
             <button
               type="button"
               onClick={onOpen}
-              className="mt-4 rounded-chip bg-teal px-5 py-2.5 text-[13px] font-bold text-obsidian transition-transform duration-hover hover:-translate-y-0.5"
+              className="mt-4 rounded-chip bg-teal px-5 py-2.5 text-meta font-bold text-obsidian transition-transform duration-hover hover:-translate-y-0.5"
             >
               {ctaLabel}
             </button>

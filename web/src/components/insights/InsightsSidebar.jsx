@@ -89,7 +89,7 @@ export default function InsightsSidebar({ report, roomActive, onRun, onOpenHabit
           >
             {top.title}
           </p>
-          <p className="mt-3 text-[13.5px] leading-[1.5]" style={{ color: '#2B3540' }}>
+          <p className="mt-3 text-[14px] leading-[1.5]" style={{ color: '#2B3540' }}>
             {top.evidence}
           </p>
           <div className="mt-3.5 flex gap-2.5">
@@ -125,7 +125,7 @@ export default function InsightsSidebar({ report, roomActive, onRun, onOpenHabit
               disabled={roomActive}
               title={roomActive ? 'Not available in a room' : undefined}
               className={
-                'mt-3.5 w-full rounded-[11px] py-3 text-[12.5px] font-extrabold uppercase tracking-[0.06em] transition-transform duration-150 ' +
+                'mt-3.5 w-full rounded-[11px] py-3 text-meta font-extrabold uppercase tracking-[0.06em] transition-transform duration-150 ' +
                 (roomActive ? 'cursor-not-allowed opacity-50' : 'hover:-translate-y-0.5')
               }
               style={{ background: CELL_INK, color: GOLD }}
@@ -154,13 +154,13 @@ export default function InsightsSidebar({ report, roomActive, onRun, onOpenHabit
                 {/* h.short, not h.title — see insightsHabits() in app.js for
                     why these two are different sentences rather than one
                     truncated. */}
-                <p className="min-w-0 text-[13.5px] font-semibold text-ink">{h.short}</p>
-                <p className="shrink-0 font-plex text-[12.5px]" style={{ color: OXBLOOD_INK }}>
+                <p className="min-w-0 text-[14px] font-semibold text-ink">{h.short}</p>
+                <p className="shrink-0 font-plex text-meta" style={{ color: OXBLOOD_INK }}>
                   {'−'}
                   {Math.round(h.costPoints)} pts
                 </p>
               </div>
-              <p className="mt-[5px] text-[12.5px] leading-[1.45] text-ink-soft">{h.evidence}</p>
+              <p className="mt-[5px] text-meta leading-[1.45] text-ink-soft">{h.evidence}</p>
             </button>
           ))}
         </Card>
@@ -180,10 +180,10 @@ export default function InsightsSidebar({ report, roomActive, onRun, onOpenHabit
               style={{ background: TONE_MARK[f.tone] }}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] text-ink">{f.title}</p>
-              <p className="mt-1 text-[12.5px] leading-[1.45] text-ink-soft">{f.note}</p>
+              <p className="text-[14px] text-ink">{f.title}</p>
+              <p className="mt-1 text-meta leading-[1.45] text-ink-soft">{f.note}</p>
             </div>
-            <span className="shrink-0 font-plex text-[12.5px]" style={{ color: TONE_MARK[f.tone] }}>
+            <span className="shrink-0 font-plex text-meta" style={{ color: TONE_MARK[f.tone] }}>
               {f.value}
             </span>
           </div>

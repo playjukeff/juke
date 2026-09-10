@@ -65,7 +65,7 @@ function SlotRow({ label, player, pickCode, photoFor, initialsFor }) {
 
       {player && pickCode && (
         <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full bg-slate-panel">
-          <span className="font-numeral text-[13px] font-bold leading-none text-ink">{pickCode}</span>
+          <span className="font-numeral text-meta font-bold leading-none text-ink">{pickCode}</span>
           <span className="text-[9px] leading-tight text-ink-muted">pick</span>
         </div>
       )}

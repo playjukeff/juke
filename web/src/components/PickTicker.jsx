@@ -137,7 +137,7 @@ export default function PickTicker({ league, onClock, overall, mySlot, myTurn, u
   return (
     <div className="hidden shrink-0 items-stretch overflow-hidden border-b border-slate-rule bg-slate-bar lg:flex" style={{ height: 58 }}>
       <div className="flex shrink-0 flex-col justify-center gap-0.5 border-r border-slate-rule px-[18px]">
-        <span className="whitespace-nowrap font-plex text-[9.5px] font-semibold tracking-[0.12em] text-ink-muted">
+        <span className="whitespace-nowrap font-plex text-[10px] font-semibold tracking-[0.12em] text-ink-muted">
           RND {round ?? '—'} OF {league.rounds}
         </span>
         <span className={'font-display text-[25px] font-bold leading-none tabular-nums ' + (myTurn && urgent ? 'text-rose-300' : 'text-teal-300')}>
@@ -165,7 +165,7 @@ export default function PickTicker({ league, onClock, overall, mySlot, myTurn, u
         <div className="flex flex-col gap-[3px]">
           <span
             className={
-              'whitespace-nowrap font-plex text-[10px] font-bold tracking-[0.1em] ' +
+              'whitespace-nowrap font-plex text-[10px] font-semibold tracking-[0.1em] ' +
               (myTurn ? (urgent ? 'text-rose-300' : 'text-teal-300') : 'text-white/55')
             }
             style={
@@ -208,7 +208,7 @@ export default function PickTicker({ league, onClock, overall, mySlot, myTurn, u
                 key={item.key}
                 className="flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 border-x border-slate-rule bg-slate-sunk/70"
               >
-                <span className="font-plex text-[9px] font-bold tracking-[0.1em] text-ink-muted">RND</span>
+                <span className="font-plex text-[9px] font-semibold tracking-[0.1em] text-ink-muted">RND</span>
                 <span className="font-display text-lg font-bold leading-none text-ink-soft">{item.round}</span>
               </div>
             ) : (
@@ -217,16 +217,16 @@ export default function PickTicker({ league, onClock, overall, mySlot, myTurn, u
                 className={'flex w-[116px] shrink-0 flex-col justify-center gap-[3px] border-r border-slate-rule/60 px-3 ' + cellClass(item)}
               >
                 <span className="flex items-center gap-1.5">
-                  <span className={'font-plex text-[9.5px] font-semibold ' + (item.mine ? 'text-ink-soft' : 'text-ink-muted')}>
+                  <span className={'font-plex text-[10px] font-semibold ' + (item.mine ? 'text-ink-soft' : 'text-ink-muted')}>
                     {DE ? DE.pickCode(item.overall, league) : item.overall}
                   </span>
                   {item.auto && (
-                    <span className="rounded px-1 py-px font-plex text-[8px] font-bold tracking-[0.08em] bg-amber-400/[0.14] text-amber-300">
+                    <span className="rounded px-1 py-px font-plex text-[8px] font-semibold tracking-[0.08em] bg-amber-400/[0.14] text-amber-300">
                       AUTO
                     </span>
                   )}
                 </span>
-                <span className={'truncate text-[11.5px] font-semibold ' + nameClass(item)}>
+                <span className={'truncate text-[12px] font-semibold ' + nameClass(item)}>
                   {item.isNext ? 'Your next pick' : item.mine ? 'Your pick' : teamLabelOf(item.slot)}
                 </span>
               </div>

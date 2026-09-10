@@ -59,7 +59,7 @@ export default function LeagueBar({ league, snapshot, snapStatus }) {
           >
             {platform.mark}
           </span>
-          <span className="truncate text-[13px] font-semibold text-voidInk-primary">{league.name}</span>
+          <span className="truncate text-meta font-semibold text-voidInk-primary">{league.name}</span>
         </div>
 
         {phase !== 'unknown' ? (

@@ -72,20 +72,20 @@ export default function UpgradeGate({ need, title, children }) {
       >
         <div className="w-full max-w-[440px] rounded-[18px] border border-line-hairline bg-charcoal px-5 py-6 text-center sm:px-6">
           <span
-            className="inline-block rounded-[5px] bg-flow-amber/[0.14] px-2 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.07em] text-flow-amber"
+            className="inline-block rounded-[5px] bg-flow-amber/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.07em] text-flow-amber"
           >
             {tierLabel(need)}
           </span>
           <div className="mt-2.5 font-display text-[20px] font-bold text-white sm:text-[24px]">
             {title}
           </div>
-          <p className="mx-auto mt-1.5 max-w-[40ch] text-[13px] leading-[1.45] text-voidInk-body">
+          <p className="mx-auto mt-1.5 max-w-[40ch] text-meta leading-[1.45] text-voidInk-body">
             It is real and it is behind {tierLabel(need)} — which is not on sale yet. Leave an
             email and we will tell you when it is.
           </p>
 
           {state === 'success' ? (
-            <p className="mt-4 text-[13px] font-semibold text-mint">
+            <p className="mt-4 text-meta font-semibold text-mint">
               You are on the list. Nothing else to do.
             </p>
           ) : (
@@ -107,7 +107,7 @@ export default function UpgradeGate({ need, title, children }) {
               <button
                 type="submit"
                 disabled={state === 'submitting'}
-                className="rounded-full bg-teal px-4 py-2 text-[13px] font-bold text-obsidian disabled:opacity-60"
+                className="rounded-full bg-teal px-4 py-2 text-meta font-bold text-obsidian disabled:opacity-60"
               >
                 {state === 'submitting' ? 'Sending…' : 'Tell me'}
               </button>

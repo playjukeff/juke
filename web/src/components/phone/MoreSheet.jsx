@@ -114,7 +114,7 @@ export default function MoreSheet({ onClose }) {
                       WaiverRoomLive's own stake card already prints it
                       under. */}
                   {stake ? (
-                    <span className="ml-auto shrink-0 font-plex text-[13px] font-semibold tabular-nums text-cost">
+                    <span className="ml-auto shrink-0 font-plex text-meta font-semibold tabular-nums text-cost">
                       {stake}
                     </span>
                   ) : null}

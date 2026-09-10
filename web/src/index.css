@@ -200,6 +200,22 @@ body {
   color: #E7ECF3;
 }
 
+/* The React trees take the body face, because nothing else gives it to
+   them. style.css is a plain <link> on this same document and its own
+   `body { font-family: var(--font-body) }` is Inter -- kept there
+   deliberately for the legacy pages -- so every component with no
+   `font-*` class of its own inherited Inter. The homepage never showed
+   it, because Homepage.jsx wraps itself in `font-body`; every app route
+   did. Measured 10 September 2026 on #/rooms/waiver: 25 of 41 text nodes
+   in Inter, 0 in Hanken, on a config whose `body` token says the owner
+   wants "one consistent face across both the homepage and the Cockpit".
+   Three roots rather than `body`, so #view-app and the docs keep Inter. */
+#root,
+#appbar-root,
+#draftroom-root {
+  font-family: theme('fontFamily.body');
+}
+
 /* One focus ring for the whole app, because there was none.
 
    Measured by tabbing the homepage: exactly ONE control had a designed

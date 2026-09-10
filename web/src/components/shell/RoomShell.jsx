@@ -105,7 +105,7 @@ export default function RoomShell({
             <a
               href={backHref}
               aria-label={`Back to ${backLabel}`}
-              className="flex min-h-[44px] items-center border-r border-line-hairline px-3.5 text-[13px] font-semibold text-ink-soft transition-colors duration-150 hover:text-white"
+              className="flex min-h-[44px] items-center border-r border-line-hairline px-3.5 text-meta font-semibold text-ink-soft transition-colors duration-150 hover:text-white"
             >
               <span aria-hidden="true">←</span>
             </a>
@@ -149,7 +149,7 @@ export default function RoomShell({
                 already known, so a failed refresh does not demote anybody
                 on screen. Absent, not wrong. */}
             {tier ? (
-              <span className="rounded-[5px] border border-teal/[0.34] bg-teal/[0.14] px-2 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-teal">
+              <span className="rounded-[5px] border border-teal/[0.34] bg-teal/[0.14] px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-teal">
                 {tierLabel(tier)}
               </span>
             ) : null}
@@ -176,7 +176,7 @@ export default function RoomShell({
                   aria-current={on ? 'page' : undefined}
                   onClick={onTab ? () => onTab(t.key) : undefined}
                   className={
-                    'flex-none border-b-2 px-3 py-3 text-[13px] font-semibold transition-colors duration-150 ' +
+                    'flex-none border-b-2 px-3 py-3 text-meta font-semibold transition-colors duration-150 ' +
                     (on
                       ? 'border-teal text-white'
                       : 'border-transparent text-ink-muted hover:text-voidInk-primary')
@@ -184,7 +184,7 @@ export default function RoomShell({
                 >
                   {t.label}
                   {t.gate ? (
-                    <span className="ml-1.5 rounded-[3px] bg-flow-amber/[0.14] px-1 py-px font-mono text-[10px] font-bold uppercase tracking-[0.07em] text-flow-amber">
+                    <span className="ml-1.5 rounded-[3px] bg-flow-amber/[0.14] px-1 py-px font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-flow-amber">
                       {gateChip(t.gate)}
                     </span>
                   ) : null}

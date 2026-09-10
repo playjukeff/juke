@@ -91,7 +91,7 @@ function Chip({ label, on, onClick }) {
       onClick={onClick}
       aria-pressed={on}
       className={
-        'rounded-xl px-3.5 py-[7px] text-[13px] font-semibold transition-colors duration-150 ' +
+        'rounded-xl px-3.5 py-[7px] text-meta font-semibold transition-colors duration-150 ' +
         (on ? 'bg-flow-mintDark text-mint' : 'bg-flow-tile text-ink-muted hover:text-white')
       }
     >
@@ -139,13 +139,13 @@ function DecisionRow({ decision }) {
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
           You did
         </span>
-        <div className="truncate text-[13px] text-voidInk-body">{decision.did || '—'}</div>
+        <div className="truncate text-meta text-voidInk-body">{decision.did || '—'}</div>
       </div>
       <div className="min-w-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted lg:hidden">
           Reality
         </span>
-        <div className="truncate text-[13px] text-voidInk-body">{decision.reality || '—'}</div>
+        <div className="truncate text-meta text-voidInk-body">{decision.reality || '—'}</div>
       </div>
       <VerdictBadge verdict={decision.verdict} />
     </div>
@@ -175,7 +175,7 @@ function Notice({ title, body, action }) {
   return (
     <div className="rounded-[14px] border border-line-hairline bg-surface-card p-7 text-center">
       <div className="text-[15px] font-semibold text-white">{title}</div>
-      <p className="mx-auto mt-2 max-w-[52ch] text-[13px] leading-relaxed text-voidInk-body">{body}</p>
+      <p className="mx-auto mt-2 max-w-[52ch] text-meta leading-relaxed text-voidInk-body">{body}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   )
@@ -311,7 +311,7 @@ export default function HistoryScreen() {
             <button
               type="button"
               onClick={retry}
-              className="rounded-full border border-mint px-4 py-2 text-[13px] font-semibold text-mint"
+              className="rounded-full border border-mint px-4 py-2 text-meta font-semibold text-mint"
             >
               Try again
             </button>
@@ -337,7 +337,7 @@ export default function HistoryScreen() {
                 <SignUpButton mode="modal">
                   <button
                     type="button"
-                    className="rounded-full bg-teal px-4 py-2 text-[13px] font-bold text-obsidian"
+                    className="rounded-full bg-teal px-4 py-2 text-meta font-bold text-obsidian"
                   >
                     Create an account
                   </button>
@@ -407,14 +407,14 @@ export default function HistoryScreen() {
         {page.length ? (
           page.map((d) => <DecisionRow key={d.id} decision={d} />)
         ) : (
-          <div className="py-10 text-center text-[13px] text-ink-muted">
+          <div className="py-10 text-center text-meta text-ink-muted">
             No decisions match these filters.
           </div>
         )}
       </section>
 
       {filtered.length > page.length ? (
-        <div className="mt-4 flex items-center justify-between gap-3 text-[13px] text-voidInk-body">
+        <div className="mt-4 flex items-center justify-between gap-3 text-meta text-voidInk-body">
           <span>
             Showing {page.length} of {filtered.length}
           </span>

@@ -40,7 +40,7 @@ export default function MyLeagueDemo() {
   return (
     <div className="pb-10">
       <div className="mx-auto max-w-[1280px] px-5 pt-4 sm:px-10">
-        <div className="rounded-2xl border border-dashed border-flow-pillEdge px-4 py-3 text-[13px] leading-[1.5] text-voidInk-body">
+        <div className="rounded-2xl border border-dashed border-flow-pillEdge px-4 py-3 text-meta leading-[1.5] text-voidInk-body">
           <span className="font-semibold text-white">Demo league · sample data.</span>{' '}
           {data.leagueName}, {data.meta}. Everything here works — connect a real league to see your
           own.
@@ -132,7 +132,7 @@ export default function MyLeagueDemo() {
           {weekDecisions.length ? (
             <div className="mt-2.5 flex flex-col gap-2.5">
               {weekDecisions.map((d, i) => (
-                <div key={i} className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+                <div key={i} className="flex flex-wrap items-center justify-between gap-2 text-meta">
                   <span className="text-voidInk-primary">
                     {d.said} → {d.did}
                   </span>
@@ -147,7 +147,7 @@ export default function MyLeagueDemo() {
               ))}
             </div>
           ) : (
-            <p className="mt-2.5 text-[13px] text-ink-muted">Nothing graded for {weekLabel.toLowerCase()}.</p>
+            <p className="mt-2.5 text-meta text-ink-muted">Nothing graded for {weekLabel.toLowerCase()}.</p>
           )}
         </SampleCard>
       </div>

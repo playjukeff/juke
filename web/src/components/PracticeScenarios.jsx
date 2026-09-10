@@ -72,7 +72,7 @@ function ScenarioCard({ scenario, launching, disabled, onLaunch }) {
         {launching ? <span className="text-voidInk-muted">Starting…</span> : scenario.eyebrow}
       </span>
       <span className="text-[16px] font-bold leading-tight text-voidInk-primary">{scenario.title}</span>
-      <span className="text-[13px] leading-snug text-voidInk-muted">{sublineOf(scenario)}</span>
+      <span className="text-meta leading-snug text-voidInk-muted">{sublineOf(scenario)}</span>
     </button>
   )
 }
@@ -139,10 +139,10 @@ export default function PracticeScenarios({ engine, tick, onLaunch }) {
             12px/.14em: "YOUR MOCK DRAFTS" is eleven pixels at .11em two
             inches below this, and two labels doing the same job at two
             sizes is what makes a screen look assembled rather than designed. */}
-        <p className="font-plex text-[11px] font-bold uppercase tracking-[0.11em] text-voidInk-muted">
+        <p className="font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-voidInk-muted">
           Practice a scenario
         </p>
-        <p className="shrink-0 text-[13px] text-voidInk-muted">{data.rightLabel}</p>
+        <p className="shrink-0 text-meta text-voidInk-muted">{data.rightLabel}</p>
       </div>
 
       {/* One column under 480px, which is the handoff's own collapse point.
@@ -168,7 +168,7 @@ export default function PracticeScenarios({ engine, tick, onLaunch }) {
         </p>
       )}
 
-      <p className="mt-3.5 text-center text-[13px] text-voidInk-muted">
+      <p className="mt-3.5 text-center text-meta text-voidInk-muted">
         {data.derived || signedIn ? (
           data.footer
         ) : (

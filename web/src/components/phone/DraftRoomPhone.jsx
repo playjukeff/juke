@@ -154,7 +154,7 @@ export default function DraftRoomPhone({
                 type="button"
                 onClick={() => setTab(t.key)}
                 className={
-                  'flex-1 border-b-2 py-[9px] text-center font-body text-[13px] font-semibold transition-colors duration-150 ' +
+                  'flex-1 border-b-2 py-[9px] text-center font-body text-meta font-semibold transition-colors duration-150 ' +
                   (tab === t.key ? 'border-teal-400 text-teal-300' : 'border-transparent text-ink-muted')
                 }
               >

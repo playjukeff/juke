@@ -86,7 +86,7 @@ export function Bar({ value, max, sign = 'evidence', marker, index = 0, zeroAxis
             style={{ left: pct(marker.at, max) + '%', background: INK_MUTED }}
           />
           <span
-            className="pointer-events-none absolute -top-[15px] -translate-x-1/2 whitespace-nowrap font-plex text-[9.5px] text-ink-muted"
+            className="pointer-events-none absolute -top-[15px] -translate-x-1/2 whitespace-nowrap font-plex text-[10px] text-ink-muted"
             style={{ left: pct(marker.at, max) + '%' }}
           >
             {marker.label}
@@ -151,7 +151,7 @@ export default function BarRow({
       }
       style={{ '--i': index }}
     >
-      <span className="min-w-0 flex-[1_1_12rem] truncate text-[13px] text-ink">{label}</span>
+      <span className="min-w-0 flex-[1_1_12rem] truncate text-meta text-ink">{label}</span>
       <Bar
         value={value}
         max={max}
@@ -162,7 +162,7 @@ export default function BarRow({
         className="flex-[1_1_8rem]"
       />
       <span
-        className={'w-14 shrink-0 text-right font-plex text-[12.5px] tabular-nums ' + tone}
+        className={'w-14 shrink-0 text-right font-plex text-meta tabular-nums ' + tone}
       >
         {display !== undefined ? display : signed(value, sign)}
       </span>

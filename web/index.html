@@ -66,9 +66,11 @@
 
   <!-- Homepage v4 pass 1: Archivo and IBM Plex Mono moved off Google Fonts
        entirely — self-hosted from /fonts/, @font-face declared in
-       web/src/index.css. The display face and Inter stay here: they are
-       font-display (tailwind.config.js, and --font-display in style.css)
-       and the legacy pages' --font-body, shared with the whole Draft Room.
+       web/src/index.css. The display face stays here. Inter stays at 400
+       ONLY: index.css hands the React roots the body face now, so nothing
+       React-side renders Inter any more, and its one remaining consumer on
+       this page is shareCard.js drawing the share image at 400. The 500/
+       600/700 cuts and Gabarito 500 were loaded and used by no class.
        The two preconnects below earn their keep for this one request.
 
        Homepage cosmetic revision (design_handoff_homepage_cosmetic) §3
@@ -91,7 +93,7 @@
        extrabold and (the grade glyph) black. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Inter:wght@400&display=swap" rel="stylesheet">
   <!-- The two self-hosted faces: the JUKE wordmark in the nav (Archivo,
        every weight in one variable file) and the header ticker's "N players"
        badge (IBM Plex Mono 500 — font-medium in Ticker.jsx). preload warms

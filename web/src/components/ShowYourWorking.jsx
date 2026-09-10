@@ -300,7 +300,7 @@ function ProofRow({ label, active, value, note }) {
         >
           {label}
         </span>
-        <span className="text-[13.5px] font-semibold text-voidInk-primary">{value}</span>
+        <span className="text-[14px] font-semibold text-voidInk-primary">{value}</span>
       </div>
       <p className="mt-[3px] font-numeral tabular-nums text-[10.5px] font-medium text-voidInk-muted">{note}</p>
     </div>

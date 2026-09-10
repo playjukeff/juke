@@ -49,7 +49,7 @@ function PollBubble({ entry, onVote }) {
   const total = p.options.reduce((sum, o) => sum + o.count, 0)
   return (
     <div className="mt-1 w-[236px] rounded-[14px] border border-slate-rule bg-slate-sunk p-3">
-      <p className="text-[13px] font-semibold text-ink">{p.question}</p>
+      <p className="text-meta font-semibold text-ink">{p.question}</p>
       <div className="mt-2 flex flex-col gap-2">
         {p.options.map((o, i) => {
           const pct = total > 0 ? Math.round((o.count / total) * 100) : 0
@@ -361,7 +361,7 @@ export default function ChatTabPhone({ engine, onExpandSheet }) {
           </button>
           <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-rose-400" />
           <span className="min-w-0 flex-1 truncate font-plex text-xs text-ink-muted">Recording&hellip;</span>
-          <span className="shrink-0 font-plex text-[13px] tabular-nums text-ink">{formatDuration(recSecs)}</span>
+          <span className="shrink-0 font-plex text-meta tabular-nums text-ink">{formatDuration(recSecs)}</span>
           <button
             type="button"
             onClick={() => stopRecording(true)}
@@ -394,7 +394,7 @@ export default function ChatTabPhone({ engine, onExpandSheet }) {
                 type="button"
                 disabled={!connected}
                 onClick={() => setComposer((c) => (c === 'gif' ? 'none' : 'gif'))}
-                className={'flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[12px] font-plex text-[11px] font-bold disabled:opacity-40 ' + (composer === 'gif' ? 'bg-teal-500/[0.16] text-teal-300' : 'bg-slate-panel text-ink-muted')}
+                className={'flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[12px] font-plex text-[11px] font-semibold disabled:opacity-40 ' + (composer === 'gif' ? 'bg-teal-500/[0.16] text-teal-300' : 'bg-slate-panel text-ink-muted')}
               >
                 GIF
               </button>
@@ -515,7 +515,7 @@ export default function ChatTabPhone({ engine, onExpandSheet }) {
               type="button"
               onClick={submitPoll}
               disabled={!pollQuestion.trim() || pollChoices.filter((c) => c.trim()).length < 2}
-              className="font-plex text-[13px] font-bold uppercase tracking-[0.1em] text-teal-300 disabled:opacity-40"
+              className="font-plex text-meta font-semibold uppercase tracking-[0.1em] text-teal-300 disabled:opacity-40"
             >
               Create
             </button>

@@ -33,7 +33,7 @@ export default function RunNextCard({ eyebrow = 'Run this next', title, children
     >
       <p className="font-plex text-label uppercase text-accent-pink">{eyebrow}</p>
       <h3 className="mt-2 font-decision text-[17px] font-bold text-ink">{title}</h3>
-      {children ? <p className="mt-1.5 text-[12.5px] leading-[1.45] text-ink-soft">{children}</p> : null}
+      {children ? <p className="mt-1.5 text-meta leading-[1.45] text-ink-soft">{children}</p> : null}
       <Tag
         type={action.href ? undefined : 'button'}
         href={action.href}
@@ -42,7 +42,7 @@ export default function RunNextCard({ eyebrow = 'Run this next', title, children
         title={action.title}
         aria-disabled={action.disabled ? 'true' : undefined}
         className={
-          'mt-3.5 flex h-10 w-full items-center justify-center rounded-chip text-[13px] font-semibold ' +
+          'mt-3.5 flex h-10 w-full items-center justify-center rounded-chip text-meta font-semibold ' +
           'transition-transform duration-hover ' +
           (action.disabled
             ? 'pointer-events-none cursor-not-allowed bg-white/10 text-white/30'

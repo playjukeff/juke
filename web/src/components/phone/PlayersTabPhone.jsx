@@ -206,7 +206,7 @@ export default function PlayersTabPhone({
           return (
             <div key={p.name} className="border-b border-white/[0.05]">
               <button type="button" onClick={() => onSelectPlayer(p)} className="block w-full px-3 pt-[7px] text-left">
-                <p className="truncate text-[13px] font-semibold text-ink">{p.name}</p>
+                <p className="truncate text-meta font-semibold text-ink">{p.name}</p>
                 <p className={'truncate font-plex text-[10px] ' + (POS_BADGE[p.pos] ? POS_BADGE[p.pos].split(' ')[1] : 'text-ink-muted')}>
                   {p.pos} - {p.team} ({p.bye ?? '—'})
                 </p>

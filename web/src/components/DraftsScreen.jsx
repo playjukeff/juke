@@ -148,7 +148,7 @@ function DeviceNote() {
      are already syncing — the same rule the homepage's own "no account
      needed" line follows. */
   const note = (
-    <div className="mb-3.5 flex items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-[13px] text-voidInk-body">
+    <div className="mb-3.5 flex items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-meta text-voidInk-body">
       <span>Saved on this device only</span>
       {ready ? (
         <SignUpButton mode="modal">
@@ -235,7 +235,7 @@ export default function DraftsScreen() {
                     onClick={() => { setFilter(key); setShownCount(PAGE_SIZE) }}
                     aria-pressed={on}
                     className={
-                      'rounded-full border px-3.5 py-[7px] text-[13px] font-semibold transition-colors duration-150 ' +
+                      'rounded-full border px-3.5 py-[7px] text-meta font-semibold transition-colors duration-150 ' +
                       (on
                         ? 'border-mint bg-flow-mintDark text-mint'
                         : 'border-line-hairline text-voidInk-body hover:text-white')
@@ -290,7 +290,7 @@ export default function DraftsScreen() {
               <button
                 type="button"
                 onClick={() => setShownCount((n) => n + PAGE_SIZE)}
-                className="rounded-full border border-line-hairline px-4 py-2 text-[13px] font-semibold text-voidInk-body transition-colors duration-150 hover:border-mint hover:text-mint"
+                className="rounded-full border border-line-hairline px-4 py-2 text-meta font-semibold text-voidInk-body transition-colors duration-150 hover:border-mint hover:text-mint"
               >
                 Show {Math.min(PAGE_SIZE, shown.length - shownCount)} more
               </button>

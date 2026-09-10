@@ -51,7 +51,7 @@ const VARIANTS = {
   outline:
     'inline-flex items-center justify-center whitespace-nowrap rounded-full border border-flow-pillEdge px-5 py-3 text-[14px] font-semibold text-voidInk-primary transition-colors duration-150 hover:border-white/30',
   chip:
-    'hidden items-center gap-2 rounded-full border border-flow-pillEdge px-3 py-[7px] text-[13px] font-semibold text-voidInk-primary transition-colors duration-150 hover:border-teal/50 sm:inline-flex',
+    'hidden items-center gap-2 rounded-full border border-flow-pillEdge px-3 py-[7px] text-meta font-semibold text-voidInk-primary transition-colors duration-150 hover:border-teal/50 sm:inline-flex',
   row:
     'flex w-full items-center justify-between gap-3 rounded-[14px] border border-dashed border-flow-pillEdge px-4 py-3 text-left text-[14px] text-voidInk-primary transition-colors duration-150 hover:border-teal/50',
 }

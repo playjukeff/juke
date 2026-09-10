@@ -93,7 +93,7 @@ export default function DraftOrder({ engine, league, mySlot, started, onChange }
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-[42ch] flex-1 text-[13px] leading-snug text-ink-muted">{hint}</p>
+        <p className="max-w-[42ch] flex-1 text-meta leading-snug text-ink-muted">{hint}</p>
         {canOrder && (
           <button
             type="button"

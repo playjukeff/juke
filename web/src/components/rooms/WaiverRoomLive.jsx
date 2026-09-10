@@ -244,7 +244,7 @@ function NewsWire({ rows, engine }) {
     return (
       <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
         <Panel title="News wire">
-          <div className="py-10 text-center text-[13px] text-ink-muted">
+          <div className="py-10 text-center text-meta text-ink-muted">
             Nothing on the wire&rsquo;s top names right now.
           </div>
         </Panel>
@@ -456,7 +456,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
       <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-10">
         <div className="rounded-[14px] border border-line-hairline bg-surface-card p-6 text-center">
           <div className="text-[15px] font-semibold text-white">We could not read your league</div>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[13px] leading-relaxed text-voidInk-body">
+          <p className="mx-auto mt-2 max-w-[52ch] text-meta leading-relaxed text-voidInk-body">
             {reason === 'not-found'
               ? 'That league no longer answers. It may have been deleted, or made private.'
               : 'Nothing is wrong with your roster — this page just could not fetch it.'}
@@ -507,7 +507,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
      because "reconnect" is something a reader can actually do. */
   const noTeam = (
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
-      <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-[13px] text-ink-muted">
+      <div className="rounded-[14px] border border-line-hairline bg-surface-card p-8 text-center text-meta text-ink-muted">
         Reconnect this league to see this — Juke does not know which of the{' '}
         {snapshot.totalTeams} rosters is yours.
       </div>
@@ -540,7 +540,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               </div>
             ))
           ) : (
-            <div className="py-10 text-center text-[13px] text-ink-muted">
+            <div className="py-10 text-center text-meta text-ink-muted">
               Nothing on the wire beats what you already hold, at any position.
             </div>
           )}
@@ -559,7 +559,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               <TargetRow key={row.player.id} rank={i + 1} row={row} max={dropMax} index={i} />
             ))
           ) : (
-            <div className="py-10 text-center text-[13px] text-ink-muted">
+            <div className="py-10 text-center text-meta text-ink-muted">
               Nobody on your bench is rankable — which in most leagues means a bench of kickers,
               defenses and players with no projection, and those are not cut decisions Juke will
               make for you.
@@ -602,7 +602,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
                   </div>
                 ))
               ) : (
-                <div className="py-10 text-center text-[13px] text-ink-muted">
+                <div className="py-10 text-center text-meta text-ink-muted">
                   No rival has a hole the wire can fill this week.
                 </div>
               )}
@@ -615,14 +615,14 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
                     className="flex items-center gap-3 border-b border-line-hairline py-3 last:border-b-0"
                   >
                     <PosTile pos={d.pos} size={30} />
-                    <span className="flex-1 text-[13px] text-voidInk-body">
+                    <span className="flex-1 text-meta text-voidInk-body">
                       {d.count} {d.count === 1 ? 'rival needs' : 'rivals need'} a {d.pos}
                     </span>
                     <span className="font-mono text-[15px] font-semibold text-white">{d.count}</span>
                   </div>
                 ))
               ) : (
-                <div className="py-10 text-center text-[13px] text-ink-muted">Nobody is bidding.</div>
+                <div className="py-10 text-center text-meta text-ink-muted">Nobody is bidding.</div>
               )}
             </Panel>
           </div>
@@ -640,7 +640,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               <TargetRow key={row.player.id} rank={i + 1} row={row} max={wireMax} index={i} />
             ))
           ) : (
-            <div className="py-8 text-center text-[13px] text-ink-muted">
+            <div className="py-8 text-center text-meta text-ink-muted">
               Nobody on the wire is projected above replacement. In a league this deep that is
               the normal state, not an error.
             </div>
@@ -676,7 +676,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
             /* The true state of a deep league's wire in most weeks, and
                saying so is the product working rather than failing. The
                full board is still one press away for a bye-week fill. */
-            <div className="py-8 text-center text-[13px] text-ink-muted">
+            <div className="py-8 text-center text-meta text-ink-muted">
               Nobody on the wire is worth more than a replacement-level starter this week.
               That is the normal state of a {snapshot.totalTeams}-team league, not an error.
             </div>
@@ -744,7 +744,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
                   />
                 ))
               ) : (
-                <div className="py-8 text-center text-[13px] text-ink-muted">
+                <div className="py-8 text-center text-meta text-ink-muted">
                   Nothing on the wire beats what you already hold at any position.
                 </div>
               )
@@ -752,7 +752,7 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
               /* No ownerId on the connection, so there is no "your team" —
                  and pricing a claim against an arbitrary roster would be
                  worse than not pricing it. */
-              <div className="py-8 text-center text-[13px] text-ink-muted">
+              <div className="py-8 text-center text-meta text-ink-muted">
                 Reconnect this league to see which of your own positions a claim would improve.
               </div>
             )}

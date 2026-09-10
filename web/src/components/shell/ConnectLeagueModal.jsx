@@ -357,7 +357,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 saying it the moment ESPN shipped — the stale-copy failure
                 this project keeps finding, in the dialog whose whole job is
                 to be accurate about which platforms work. */}
-            <p className="mt-3.5 text-[13px] leading-[1.4] text-voidInk-body">
+            <p className="mt-3.5 text-meta leading-[1.4] text-voidInk-body">
               {LIVE_PLATFORMS.length === PLATFORMS.length
                 ? 'Juke reads all of these.'
                 : `${LIVE_PLATFORMS.map((p) => p.name).join(' and ')} ${
@@ -408,10 +408,10 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   className="mt-4 w-full rounded-xl border border-line-hairline bg-surface-page px-4 py-3 text-[16px] text-white outline-none placeholder:text-ink-muted focus:border-teal"
                 />
                 {notifyStatus === 'invalid' ? (
-                  <p className="mt-2 text-[13px] text-flow-rose">That doesn&apos;t look like an email address.</p>
+                  <p className="mt-2 text-meta text-flow-rose">That doesn&apos;t look like an email address.</p>
                 ) : null}
                 {notifyStatus === 'error' ? (
-                  <p className="mt-2 text-[13px] text-flow-rose">That didn&apos;t send. Try again in a moment.</p>
+                  <p className="mt-2 text-meta text-flow-rose">That didn&apos;t send. Try again in a moment.</p>
                 ) : null}
                 <button
                   type="submit"
@@ -528,7 +528,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             <button
               type="button"
               onClick={() => { setPlatform(null); setUsername(''); setStatus('platform') }}
-              className="-ml-1 mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-[13px] text-ink-muted transition-colors hover:text-white"
+              className="-ml-1 mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-meta text-ink-muted transition-colors hover:text-white"
             >
               <span aria-hidden="true">‹</span> Not {platform ? platform.name : 'Sleeper'}?
             </button>
@@ -536,7 +536,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             <p className="mt-1.5 text-[14px] leading-[1.5] text-voidInk-body">
               {isEspn ? (
                 <>
-                  The number in your league&apos;s own URL — <span className="font-mono text-[13px] text-white">
+                  The number in your league&apos;s own URL — <span className="font-mono text-meta text-white">
                   leagueId=</span> on fantasy.espn.com. The league has to be public for Juke to read
                   it, and nothing is ever written back.
                 </>
@@ -568,7 +568,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             />
 
             {status === 'not-found' ? (
-              <p className="mt-2 text-[13px] text-flow-rose">
+              <p className="mt-2 text-meta text-flow-rose">
                 {isEspn
                   ? 'No ESPN league with that ID. It is the number after leagueId= in the URL.'
                   : 'No Sleeper account with that username. Check the spelling — it is the username, not a display name.'}
@@ -577,13 +577,13 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             {/* The one failure with a fix the reader can carry out, so it
                 says what the fix is rather than "could not read it". */}
             {status === 'private' ? (
-              <p className="mt-2 text-[13px] text-flow-rose">
+              <p className="mt-2 text-meta text-flow-rose">
                 That league is private, so ESPN will not let Juke read it. In the ESPN app, open
                 League Settings and set visibility to public, then try again.
               </p>
             ) : null}
             {status === 'error' ? (
-              <p className="mt-2 text-[13px] text-flow-rose">
+              <p className="mt-2 text-meta text-flow-rose">
                 Could not reach {isEspn ? 'ESPN' : 'Sleeper'} just now. Try again in a moment.
               </p>
             ) : null}

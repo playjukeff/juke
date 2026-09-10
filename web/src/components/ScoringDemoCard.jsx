@@ -159,24 +159,24 @@ function RowCells({ row, grid, dense }) {
       <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-center text-[10px] font-bold ${POS_BADGE[player.pos] || 'bg-white/10 text-white/50'}`}>
         {player.pos}
       </span>
-      <span className={`min-w-0 truncate font-semibold text-voidInk-primary ${dense ? 'text-[13px]' : 'text-[14.5px]'}`}>
+      <span className={`min-w-0 truncate font-semibold text-voidInk-primary ${dense ? 'text-meta' : 'text-[15px]'}`}>
         {player.name}
       </span>
       {/* Proj is desktop-only — the mobile grid dropped its column (see
           MOBILE_ROW_GRID above), and a fifth cell in a four-column grid
           would wrap onto a phantom second row rather than error. */}
       {!dense && (
-        <span className="text-right font-numeral tabular-nums font-semibold text-voidInk-body text-[13px]">
+        <span className="text-right font-numeral tabular-nums font-semibold text-voidInk-body text-meta">
           {projPts != null ? Math.round(projPts) : '—'}
         </span>
       )}
       <span
-        className={`text-right font-numeral tabular-nums font-semibold ${dense ? 'text-[11px]' : 'text-[13px]'} ${emphasized ? 'text-teal-300' : 'text-voidInk-muted'}`}
+        className={`text-right font-numeral tabular-nums font-semibold ${dense ? 'text-[11px]' : 'text-meta'} ${emphasized ? 'text-teal-300' : 'text-voidInk-muted'}`}
       >
         {vorp >= 0 ? '+' : ''}
         {Math.round(vorp)}
       </span>
-      <span className={`text-right font-numeral tabular-nums font-semibold text-voidInk-muted ${dense ? 'text-[11px]' : 'text-[13px]'}`}>
+      <span className={`text-right font-numeral tabular-nums font-semibold text-voidInk-muted ${dense ? 'text-[11px]' : 'text-meta'}`}>
         {surv != null ? `${surv}%` : '—'}
       </span>
     </div>
@@ -230,7 +230,7 @@ export default function ScoringDemoCard() {
               key={opt.value}
               type="button"
               onClick={() => setPpr(opt.value)}
-              className={`flex h-11 items-center justify-center rounded-full px-2 text-[13px] font-semibold transition-all duration-200 ${
+              className={`flex h-11 items-center justify-center rounded-full px-2 text-meta font-semibold transition-all duration-200 ${
                 ppr === opt.value ? 'bg-teal-500 text-obsidian shadow-[0_0_12px_rgba(0,229,255,0.5)]' : 'text-white/50 hover:text-white'
               }`}
             >
@@ -254,7 +254,7 @@ export default function ScoringDemoCard() {
           ))}
         </div>
 
-        <p className="mt-4 text-[13.5px] leading-[1.5] text-voidInk-body">
+        <p className="mt-4 text-[14px] leading-[1.5] text-voidInk-body">
           {PPR_EXPLAIN[format]} Every ranking on Juke moves with your rules.
         </p>
       </div>
@@ -269,7 +269,7 @@ export default function ScoringDemoCard() {
                 key={opt.value}
                 type="button"
                 onClick={() => setPpr(opt.value)}
-                className={`rounded-full px-[13px] py-[6px] text-[12.5px] font-semibold transition-all duration-200 ${
+                className={`rounded-full px-[13px] py-[6px] text-meta font-semibold transition-all duration-200 ${
                   ppr === opt.value ? 'bg-teal-500 text-obsidian shadow-[0_0_12px_rgba(0,229,255,0.5)]' : 'text-white/50 hover:text-white'
                 }`}
               >

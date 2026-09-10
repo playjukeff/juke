@@ -98,7 +98,7 @@ export default function CockpitHeaderPhone({
               layout bug: a true number in a sentence that is false. */}
           <span
             className={
-              'font-plex text-[10px] font-bold uppercase tracking-[0.12em] ' +
+              'font-plex text-[10px] font-semibold uppercase tracking-[0.12em] ' +
               (over ? 'text-teal-300' : myTurn ? 'text-teal-300' : 'text-ink-muted')
             }
           >
@@ -199,12 +199,12 @@ export default function CockpitHeaderPhone({
           style={{ height: AUTOPICK_RIBBON_H }}
         >
           <span
-            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-teal-400/40 font-plex text-[7.5px] font-bold tracking-tight text-teal-300"
+            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-teal-400/40 font-plex text-[8px] font-semibold tracking-tight text-teal-300"
             aria-hidden="true"
           >
             AUTO
           </span>
-          <span className="min-w-0 flex-1 truncate font-body text-[13px] font-semibold text-ink">
+          <span className="min-w-0 flex-1 truncate font-body text-meta font-semibold text-ink">
             You are on auto-pick.
           </span>
           <button

@@ -102,7 +102,7 @@ export default function LeagueSwitcher() {
         aria-expanded={open}
         aria-haspopup="true"
         data-league-switcher
-        className="inline-flex items-center gap-2 rounded-full border border-flow-pillEdge px-3 py-[7px] text-[13px] font-semibold text-voidInk-primary transition-colors duration-150 hover:border-teal/50"
+        className="inline-flex items-center gap-2 rounded-full border border-flow-pillEdge px-3 py-[7px] text-meta font-semibold text-voidInk-primary transition-colors duration-150 hover:border-teal/50"
       >
         <span className={BADGE} style={{ background: '#00E5FF' }}>
           {active.mark}

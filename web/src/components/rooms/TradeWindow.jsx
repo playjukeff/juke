@@ -136,7 +136,7 @@ function Banner({ tone, children }) {
     <div
       className={
         'mb-5 rounded-[12px] border border-line-hairline bg-surface-card px-4 py-3 ' +
-        'text-[13px] leading-relaxed text-voidInk-body ' +
+        'text-meta leading-relaxed text-voidInk-body ' +
         (tone === 'cost' ? 'border-l-[3px] border-l-cost-deep' : '')
       }
       data-trade-window={tone}

@@ -54,14 +54,14 @@ export default function NotificationSettings({ onBack }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[env(safe-area-inset-bottom)] pt-5">
-        <p className="mb-4 font-plex text-[11px] font-bold uppercase tracking-[0.11em] text-ink-soft">
+        <p className="mb-4 font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-ink-soft">
           Draft notification settings
         </p>
 
         <div className="flex items-start justify-between gap-4 border-b border-slate-rule/50 py-4">
           <span className="min-w-0">
             <span className="block text-[17px] text-ink">Allow notifications</span>
-            <span className="mt-0.5 block text-[13px] leading-snug text-ink-muted">
+            <span className="mt-0.5 block text-meta leading-snug text-ink-muted">
               Tell me when I&rsquo;m on the clock
             </span>
           </span>
@@ -76,7 +76,7 @@ export default function NotificationSettings({ onBack }) {
         <div className="flex items-start justify-between gap-4 border-b border-slate-rule/50 py-4">
           <span className="min-w-0">
             <span className="block text-[17px] text-ink">Draft mentions</span>
-            <span className="mt-0.5 block text-[13px] leading-snug text-ink-muted">
+            <span className="mt-0.5 block text-meta leading-snug text-ink-muted">
               Someone says your name in the draft chat
             </span>
           </span>
@@ -92,7 +92,7 @@ export default function NotificationSettings({ onBack }) {
           />
         </div>
 
-        <p className="mt-5 max-w-[52ch] text-[13px] leading-relaxed text-ink-muted">{note}</p>
+        <p className="mt-5 max-w-[52ch] text-meta leading-relaxed text-ink-muted">{note}</p>
       </div>
     </div>
   )

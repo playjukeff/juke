@@ -78,7 +78,7 @@ export default function TradePreview() {
           {give.name.split(' ').slice(-1)[0]} + {sweetener.name.split(' ').slice(-1)[0]} for{' '}
           {get.name.split(' ').slice(-1)[0]} + 2026 3rd
         </div>
-        <p className="mb-3.5 mt-1.5 text-[13px] leading-[1.45] text-voidInk-body">
+        <p className="mb-3.5 mt-1.5 text-meta leading-[1.45] text-voidInk-body">
           Sarah is thin at {sweetener.pos}; {sweetener.name.split(' ').slice(-1)[0]} costs you
           nothing off your bench.
         </p>

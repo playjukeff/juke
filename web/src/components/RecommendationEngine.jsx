@@ -128,7 +128,7 @@ export default function RecommendationEngine({ engine, league, stats, roomActive
         </div>
         {info && (
           <div className="mt-3 flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
-            <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-white/70">{info.text}</p>
+            <p className="min-w-0 flex-1 text-[12px] leading-snug text-white/70">{info.text}</p>
             {/* Same room-lock fix as WhatToRunNext.jsx's identical banner —
                 see its own comment. */}
             <button

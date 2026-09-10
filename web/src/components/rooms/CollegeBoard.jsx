@@ -69,7 +69,7 @@ export default function CollegeBoard() {
           <p className="m-0 text-[15px] text-voidInk-body">
             No college board yet.
           </p>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[13px] leading-relaxed text-ink-muted">
+          <p className="mx-auto mt-2 max-w-[52ch] text-meta leading-relaxed text-ink-muted">
             This fills from College Football Data on the next nightly rebuild. Until then there is
             nothing here to show — which is a fact about the pipeline rather than about this year's
             class.
@@ -87,10 +87,10 @@ export default function CollegeBoard() {
   return (
     <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-10">
       <div className="mb-5 rounded-[12px] border border-flow-blue/30 bg-flow-blue/10 px-4 py-3">
-        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-flow-blue">
+        <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-flow-blue">
           Not drafted · not on any Juke board
         </div>
-        <p className="mt-1 max-w-[74ch] text-[13px] leading-relaxed text-voidInk-body">
+        <p className="mt-1 max-w-[74ch] text-meta leading-relaxed text-voidInk-body">
           Every player here is still in college and has never been drafted, so none of them can be
           queued or drafted in a mock. They arrive on the real board the season an NFL team takes
           one.

@@ -711,7 +711,7 @@ export default function DraftInsightsDashboard({
                 <div className="font-display text-4xl font-black leading-none text-[#B784E0] sm:text-5xl">
                   +{Math.round(missed.delta)}
                 </div>
-                <div className="mt-1.5 font-numeral text-[9.5px] font-semibold uppercase tracking-wide text-ink-muted">
+                <div className="mt-1.5 font-numeral text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
                   lineup points forgone
                 </div>
               </div>
@@ -776,7 +776,7 @@ export default function DraftInsightsDashboard({
                   Where each pick landed against the board's rank — right means he fell to {isMe ? 'you' : 'them'}
                 </p>
               </div>
-              <span className="shrink-0 font-numeral text-[9.5px] font-semibold uppercase tracking-wide text-ink-muted">Unit: picks</span>
+              <span className="shrink-0 font-numeral text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Unit: picks</span>
             </div>
             <div className="flex flex-col gap-1.5">
               {timeline.map((row, i) => (

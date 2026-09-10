@@ -135,7 +135,7 @@ export default function DraftRoomLoader({
       {(label || sub || error) && (
         <div className={screen ? 'flex flex-col items-center gap-1 text-center' : 'flex flex-col gap-1'}>
           <div className="text-[14px] font-medium text-[#e8eaf0]">{error || label}</div>
-          {!error && sub ? <div className="text-[12.5px] text-[#8b93a5]">{sub}</div> : null}
+          {!error && sub ? <div className="text-meta text-[#8b93a5]">{sub}</div> : null}
         </div>
       )}
     </div>

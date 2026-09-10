@@ -130,7 +130,7 @@ const RECENT_SHOWN = 5
 function StatusPill({ status }) {
   const live = status === 'PRE-DRAFT'
   return (
-    <span className={'font-plex text-[10px] font-bold uppercase tracking-[0.08em] ' + (live ? 'text-teal-300' : 'text-[#6E8CC4]')}>
+    <span className={'font-plex text-[10px] font-semibold uppercase tracking-[0.08em] ' + (live ? 'text-teal-300' : 'text-[#6E8CC4]')}>
       {status}
     </span>
   )
@@ -266,7 +266,7 @@ export default function DraftRoomEntry({
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.06 * i, type: 'spring', stiffness: 300, damping: 22 }}
-                className="flex h-[42px] w-[46px] items-end justify-start rounded-[10px] px-1.5 pb-1 font-plex text-[10px] font-bold"
+                className="flex h-[42px] w-[46px] items-end justify-start rounded-[10px] px-1.5 pb-1 font-plex text-[10px] font-semibold"
                 style={{ backgroundColor: POS_CHALK[pos], color: CELL_INK }}
               >
                 {pos}
@@ -284,7 +284,7 @@ export default function DraftRoomEntry({
               disabled={s.live}
               onClick={() => (s.live ? null : onSignupSport(s.label))}
               className={
-                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold ' +
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-meta font-semibold ' +
                 (s.live
                   ? 'border-teal-400/50 bg-teal-500/10 text-teal-300'
                   : 'border-line-hairline text-voidInk-muted')
@@ -349,7 +349,7 @@ export default function DraftRoomEntry({
             type="button"
             onClick={onOpenSettings}
             aria-label="Draft settings"
-            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] border border-line-hairline py-2.5 text-[13px] font-semibold text-voidInk-body active:bg-white/[0.04]"
+            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] border border-line-hairline py-2.5 text-meta font-semibold text-voidInk-body active:bg-white/[0.04]"
           >
             <Settings className="h-4 w-4" aria-hidden="true" />
             Draft settings
@@ -361,7 +361,7 @@ export default function DraftRoomEntry({
           <button
             type="button"
             onClick={onOpenAnalytics}
-            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] border border-line-hairline py-2.5 text-[13px] font-semibold text-voidInk-body active:bg-white/[0.04]"
+            className="flex flex-1 items-center justify-center gap-2 rounded-[14px] border border-line-hairline py-2.5 text-meta font-semibold text-voidInk-body active:bg-white/[0.04]"
           >
             <BarChart3 className="h-4 w-4" aria-hidden="true" />
             Your insights
@@ -394,7 +394,7 @@ export default function DraftRoomEntry({
           className="mt-2 flex w-full items-center gap-2.5 rounded-[14px] border border-dashed border-line-hairline px-3.5 py-3 text-left active:bg-white/[0.04]"
         >
           <Users className="h-4 w-4 shrink-0 text-teal-300" aria-hidden="true" />
-          <span className="min-w-0 flex-1 text-[13px] font-semibold text-voidInk-body">
+          <span className="min-w-0 flex-1 text-meta font-semibold text-voidInk-body">
             {roomActive ? 'Your draft room — invite or enter' : 'Draft with friends'}
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-white/35" aria-hidden="true" />
@@ -429,7 +429,7 @@ export default function DraftRoomEntry({
       <div>
         {/* lg:mt-0 — the 28px that separates this from the actions above it
             in one column is dead space beside them in two. */}
-        <p className="mb-3 mt-7 font-plex text-[11px] font-bold uppercase tracking-[0.11em] text-voidInk-muted lg:mt-0">
+        <p className="mb-3 mt-7 font-plex text-[11px] font-semibold uppercase tracking-[0.11em] text-voidInk-muted lg:mt-0">
           Your mock drafts
         </p>
 
@@ -503,7 +503,7 @@ export default function DraftRoomEntry({
                       the desktop table carries is a number that needs a
                       header to mean anything. */}
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] font-plex text-[11px] font-bold"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] font-plex text-[11px] font-semibold"
                     style={{
                       backgroundColor: entry.round1PickPos ? POS_CHALK[entry.round1PickPos] : 'rgba(255,255,255,0.06)',
                       color: entry.round1PickPos ? CELL_INK : 'rgba(255,255,255,0.35)',
@@ -565,7 +565,7 @@ export default function DraftRoomEntry({
           {history.length > RECENT_SHOWN && (
             <a
               href="#/drafts"
-              className="mt-3 flex items-center justify-center gap-1.5 rounded-[14px] border border-line-hairline py-2.5 text-[13px] font-semibold text-voidInk-body active:bg-white/[0.04]"
+              className="mt-3 flex items-center justify-center gap-1.5 rounded-[14px] border border-line-hairline py-2.5 text-meta font-semibold text-voidInk-body active:bg-white/[0.04]"
             >
               See all {history.length} drafts
               <ChevronRight className="h-4 w-4 shrink-0 text-white/35" aria-hidden="true" />

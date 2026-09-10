@@ -80,13 +80,13 @@ export default function PickQueueRail({
       </div>
       <div className="max-h-[132px] shrink-0 overflow-y-auto">
         {queuePlayers.length === 0 ? (
-          <p className="px-3 py-4 text-center text-[11.5px] text-ink-muted">No players in queue. Star a player to line one up.</p>
+          <p className="px-3 py-4 text-center text-[12px] text-ink-muted">No players in queue. Star a player to line one up.</p>
         ) : (
           queuePlayers.map((player, i) => (
             <div key={player.id || player.name} className="flex items-center gap-2 border-b border-slate-rule/35 px-3 py-1.5">
               <span className="w-[30px] shrink-0 font-plex text-[11px] text-ink-muted">{i + 1}</span>
               <span className="min-w-0 flex-1 truncate text-xs font-medium text-white/90">{player.name}</span>
-              <span className={'shrink-0 rounded px-1 py-px text-[8.5px] font-bold tracking-[0.02em] ' + (POS_BADGE[player.pos] || 'bg-white/10 text-white/50')}>
+              <span className={'shrink-0 rounded px-1 py-px text-[9px] font-bold tracking-[0.02em] ' + (POS_BADGE[player.pos] || 'bg-white/10 text-white/50')}>
                 {player.pos}
               </span>
               <button
@@ -153,7 +153,7 @@ export default function PickQueueRail({
           {limitChips.map((c) => (
             <span key={c.label} className="flex items-baseline justify-between gap-1 rounded bg-white/[0.03] px-1.5 py-1">
               <span className="font-plex text-[9px] font-semibold text-ink-soft">{c.label}</span>
-              <span className={'font-plex text-[9.5px] font-semibold ' + (c.have >= c.need ? 'text-emerald-300' : c.have > 0 ? 'text-ink' : 'text-ink-muted')}>
+              <span className={'font-plex text-[10px] font-semibold ' + (c.have >= c.need ? 'text-emerald-300' : c.have > 0 ? 'text-ink' : 'text-ink-muted')}>
                 {c.have}/{c.need}
               </span>
             </span>

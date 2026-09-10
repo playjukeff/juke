@@ -35,7 +35,7 @@ function Fork({ fork, max, i, onOpen }) {
           <p className="mt-[7px] font-display text-[17px] font-bold leading-[1.2] text-white sm:text-[19px]">
             {fork.title}
           </p>
-          <p className="mt-[5px] text-[13px] leading-[1.5] text-ink/80">{fork.note}</p>
+          <p className="mt-[5px] text-meta leading-[1.5] text-ink/80">{fork.note}</p>
         </div>
         <div className="shrink-0 text-right">
           <p
@@ -76,7 +76,7 @@ export default function ViewLeverage({ mock, onOpen }) {
   const max = Math.max(1, ...mock.forks.map((f) => Math.abs(f.winDelta)))
   return (
     <div>
-      <p className="max-w-[760px] text-[13.5px] leading-[1.55] text-ink/80">{mock.forkIntro}</p>
+      <p className="max-w-[760px] text-[14px] leading-[1.55] text-ink/80">{mock.forkIntro}</p>
       {mock.forks.length ? (
         <div className="mt-[18px] flex flex-col gap-2.5">
           {mock.forks.map((f, i) => (
@@ -88,7 +88,7 @@ export default function ViewLeverage({ mock, onOpen }) {
            here the absence is the finding, so it is said rather than drawn as
            nothing. A reader who took the top of the board every round has
            earned the sentence. */
-        <p className="mt-6 rounded-[14px] border border-white/[0.07] bg-slate px-[17px] py-[15px] text-[13.5px] leading-[1.5] text-ink-soft">
+        <p className="mt-6 rounded-[14px] border border-white/[0.07] bg-slate px-[17px] py-[15px] text-[14px] leading-[1.5] text-ink-soft">
           Nothing in this mock is worth relitigating. Pick another one from the bar chart on{' '}
           <span className="text-ink">What you left on the board</span> to audit a draft that was closer.
         </p>

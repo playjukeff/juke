@@ -116,10 +116,10 @@ function BoardTaste({ engine, tick }) {
           className="flex w-[112px] shrink-0 flex-col justify-between rounded-2xl px-3 py-2.5"
           style={{ backgroundColor: POS_CHALK[r.pos] || '#C9D1DA', color: CELL_INK }}
         >
-          <span className="font-plex text-[10px] font-bold tracking-tight opacity-70">
+          <span className="font-plex text-[10px] font-semibold tracking-tight opacity-70">
             {r.pos === 'DST' ? 'DEF' : r.pos} · {r.team}
           </span>
-          <span className="mt-2 truncate text-[13px] font-bold leading-tight">{r.name}</span>
+          <span className="mt-2 truncate text-meta font-bold leading-tight">{r.name}</span>
         </motion.div>
       ))}
     </div>
@@ -152,7 +152,7 @@ function GameRow({ icon, eyebrow, title, cta, href, onClick, locked, hero }) {
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={'block font-plex text-[10px] font-bold uppercase tracking-[0.1em] ' + (locked ? 'text-white/30' : 'text-teal-300/80')}>
+        <span className={'block font-plex text-[10px] font-semibold uppercase tracking-[0.1em] ' + (locked ? 'text-white/30' : 'text-teal-300/80')}>
           {eyebrow}
         </span>
         {/* 20px, not 21, and the CTA pill below is 11px rather than 12.
@@ -228,7 +228,7 @@ export default function HomePhone() {
         <span className="flex-1" />
         <a
           href="#/drafts"
-          className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 font-body text-[13px] font-bold text-[#0B0D12] transition-transform active:scale-95"
+          className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 font-body text-meta font-bold text-[#0B0D12] transition-transform active:scale-95"
         >
           <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
           Play
@@ -253,7 +253,7 @@ export default function HomePhone() {
               were two homepages and the phone's eyebrow was a <p> with an
               icon in it rather than a bare <span>. The property under test
               has nothing to do with the words. */}
-          <p data-hero-eyebrow className="flex items-center gap-1.5 font-display text-[13px] font-extrabold uppercase italic tracking-[0.06em] text-mint">
+          <p data-hero-eyebrow className="flex items-center gap-1.5 font-display text-meta font-extrabold uppercase italic tracking-[0.06em] text-mint">
             <Sparkles className="h-3.5 w-3.5 not-italic" aria-hidden="true" />
             Agility through analytics
           </p>
@@ -280,7 +280,7 @@ export default function HomePhone() {
             className="mt-6 flex items-center gap-3 rounded-[18px] border border-teal-400/30 bg-teal-500/[0.07] px-4 py-3.5 transition-transform active:scale-[0.985]"
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-plex text-[10px] font-bold uppercase tracking-[0.1em] text-teal-300">
+              <span className="block font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
                 In progress
               </span>
               <span className="mt-0.5 block truncate text-[15px] font-bold text-white">
@@ -366,13 +366,13 @@ export default function HomePhone() {
         {accountUiReady && (
           <SignedOut>
             <div className="mt-7 rounded-[18px] border border-line-hairline bg-surface-card px-3.5 py-4">
-              <p className="font-plex text-[10px] font-bold uppercase tracking-[0.1em] text-teal-300">
+              <p className="font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
                 Optional
               </p>
               <p className="mt-1 font-display text-[19px] font-bold leading-tight text-white">
                 Keep your drafts on every device
               </p>
-              <p className="mt-1 text-[13px] leading-snug text-voidInk-body">
+              <p className="mt-1 text-meta leading-snug text-voidInk-body">
                 An account saves the draft you have going and every report in your
                 locker, so they follow you from your phone to your desk. Mocks still
                 run fine without one.
@@ -426,7 +426,7 @@ export default function HomePhone() {
                       "Live", which is exactly the drift the shared
                       ROOM_TIER data was introduced to stop, surviving in the
                       half of the homepage that data never reached. */}
-                  <span className="font-plex text-[10px] font-bold uppercase tracking-[0.1em] text-teal-300">
+                  <span className="font-plex text-[10px] font-semibold uppercase tracking-[0.1em] text-teal-300">
                     Free Access · {liveRoom.season}
                   </span>
                 </span>
@@ -462,7 +462,7 @@ export default function HomePhone() {
                   <span className="mt-2.5 font-display text-[16px] font-bold leading-tight text-white/80">
                     {room.name.replace(/^The\s+/, '')}
                   </span>
-                  <span className="mt-1 flex items-center gap-1 font-plex text-[9.5px] font-bold uppercase tracking-[0.08em] text-voidInk-muted">
+                  <span className="mt-1 flex items-center gap-1 font-plex text-[10px] font-semibold uppercase tracking-[0.08em] text-voidInk-muted">
                     <Lock className="h-[10px] w-[10px]" aria-hidden="true" />
                     {room.season}
                   </span>
@@ -477,7 +477,7 @@ export default function HomePhone() {
             are derived — see dataFreshness.js on why a literal count would
             be stale within a day. */}
         {freshness && (
-          <p className="mt-7 text-center font-numeral text-[11.5px] tabular-nums text-voidInk-muted">
+          <p className="mt-7 text-center font-numeral text-[12px] tabular-nums text-voidInk-muted">
             {freshness}
           </p>
         )}

@@ -249,7 +249,7 @@ function Row({ entry, onAnalyze, onDeleteRequest, menuOpen, onToggleMenu }) {
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-semibold text-white">{entry.leagueType}</p>
-          <p className="mt-0.5 truncate font-plex text-[11.5px] text-white/50">
+          <p className="mt-0.5 truncate font-plex text-[12px] text-white/50">
             Seat {entry.seat} · snake{ago ? ` · ${ago}` : ''}
           </p>
         </div>
@@ -351,7 +351,7 @@ function StorageNote({ count, signedIn, syncStatus, earlyAccessRef }) {
     return (
       <div className="flex flex-wrap items-center gap-4 border-t border-amber-400/20 bg-amber-400/[0.04] px-5 py-[13px]">
         <CloudAlert className="h-[15px] w-[15px] shrink-0 text-amber-300" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-[13px] leading-snug text-white/80">
+        <p className="min-w-0 flex-1 text-meta leading-snug text-white/80">
           {say.what} &mdash; {these.toLowerCase()} {mocks} {are} in <b>this browser only</b> for now.{' '}
           {say.next}
         </p>
@@ -363,7 +363,7 @@ function StorageNote({ count, signedIn, syncStatus, earlyAccessRef }) {
     return (
       <div className="flex flex-wrap items-center gap-4 border-t border-teal-400/[0.15] bg-teal-400/[0.03] px-5 py-[13px]">
         <CloudCheck className="h-[15px] w-[15px] shrink-0 text-teal-300" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-[13px] leading-snug text-white/80">
+        <p className="min-w-0 flex-1 text-meta leading-snug text-white/80">
           {these} {mocks} {are} saved to <b>your account</b>. {one ? 'It follows' : 'They follow'} you to
           any browser you sign in on.
         </p>
@@ -374,7 +374,7 @@ function StorageNote({ count, signedIn, syncStatus, earlyAccessRef }) {
   return (
     <div className="flex flex-wrap items-center gap-4 border-t border-teal-400/[0.15] bg-teal-400/[0.03] px-5 py-[13px]">
       <HardDrive className="h-[15px] w-[15px] shrink-0 text-teal-300" aria-hidden="true" />
-      <p className="min-w-0 flex-1 text-[13px] leading-snug text-white/80">
+      <p className="min-w-0 flex-1 text-meta leading-snug text-white/80">
         {these} {mocks} {live} in <b>this browser only</b>. Clear your history and the
         locker and your tendencies go with {one ? 'it' : 'them'}.
       </p>

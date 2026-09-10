@@ -364,7 +364,7 @@ function MethodLink({ href, children }) {
          measured 18px high. The link sits under a proof pair with room
          beneath it, so a 44px target costs nothing here and is the one
          route from a claim to the working behind it. */
-      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[13px] text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
+      className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-meta text-teal underline-offset-4 transition-colors duration-150 hover:text-white hover:underline"
     >
       {children}
       <span aria-hidden="true">&rarr;</span>
@@ -387,7 +387,7 @@ function Skeleton({ lines = 4 }) {
 function Line({ label, value, accent }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-line-divider py-2.5 last:border-b-0">
-      <span className="text-[13px] leading-tight text-voidInk-body">{label}</span>
+      <span className="text-meta leading-tight text-voidInk-body">{label}</span>
       <span
         className={`shrink-0 font-mono text-[14px] tabular-nums ${accent ? 'text-gain' : 'text-white'}`}
       >
@@ -500,7 +500,7 @@ function PairRankReason() {
                   names and cannot express the size of the step between
                   two of them, which is the thing the right-hand cell
                   answers in points. */}
-              <p className="mt-5 max-w-[34ch] text-[14px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-5 max-w-[46ch] text-[14px] leading-[1.5] text-voidInk-muted">
                 That is the entire answer. It puts him first in a line and stops — it cannot tell
                 you how far ahead of second he is, or whether the gap down to fifth is worth a
                 round of your draft.
@@ -533,7 +533,7 @@ function PairRankReason() {
                   should be taken on trust, is the sharpest self-
                   contradiction the critique found. The three lines below
                   explain +145; none of them explained 100. */}
-              <p className="mt-2 text-[13px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-2 text-meta leading-[1.5] text-voidInk-muted">
                 100 is the most value on tonight&apos;s board. Every other score is a share of his.
               </p>
               <div className="mt-5">
@@ -549,7 +549,7 @@ function PairRankReason() {
                 choosing between when two names sit next to each other on a board.
               </p>
               {(d.stepToSecond !== null || d.stepToFifth !== null) && (
-                <p className="mt-3 text-[13px] leading-[1.5] text-voidInk-body">
+                <p className="mt-3 text-meta leading-[1.5] text-voidInk-body">
                   {d.stepToSecond !== null && (
                     <>
                       Second at his position is{' '}
@@ -713,7 +713,7 @@ function PairYourRules() {
             <br />
             table
           </span>
-          <p className="mt-5 max-w-[34ch] text-[14px] leading-[1.5] text-voidInk-muted">
+          <p className="mt-5 max-w-[46ch] text-[14px] leading-[1.5] text-voidInk-muted">
             Built for a league that is probably not yours. Every ranking downstream of it inherits
             assumptions you never agreed to, and none of them are shown to you.
           </p>
@@ -763,7 +763,7 @@ function PairYourRules() {
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   className="flex items-baseline gap-3 border-b border-line-divider py-2.5 last:border-b-0"
                 >
-                  <span className="w-5 shrink-0 font-mono text-[13px] tabular-nums text-voidInk-muted">
+                  <span className="w-5 shrink-0 font-mono text-meta tabular-nums text-voidInk-muted">
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[14px] text-white">{r.name}</span>
@@ -792,7 +792,7 @@ function PairYourRules() {
             </div>
           )}
 
-          <p className="mt-5 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+          <p className="mt-5 max-w-[46ch] text-meta leading-[1.5] text-voidInk-muted">
             Points over replacement, recomputed from raw stats under each rule set. The arrow is the
             move against standard scoring. Juke has 49 of these rules and every one of them is yours to
             change.
@@ -882,7 +882,7 @@ function PairGraded() {
             <li>Your roster, listed.</li>
             <li>A button.</li>
           </ul>
-          <p className="mt-5 max-w-[34ch] text-[14px] leading-[1.5] text-voidInk-muted">
+          <p className="mt-5 max-w-[46ch] text-[14px] leading-[1.5] text-voidInk-muted">
             You drafted for an hour and nothing told you whether it went well. The one question you
             came to answer is the one nobody answers.
           </p>
@@ -901,7 +901,7 @@ function PairGraded() {
                 <span className="font-display text-[44px] font-extrabold uppercase italic leading-none text-white sm:text-[52px]">
                   {d.grade}
                 </span>
-                <span className="font-mono text-[13px] tabular-nums text-voidInk-body">
+                <span className="font-mono text-meta tabular-nums text-voidInk-body">
                   {ordinal(d.rank)} of {d.teams}
                 </span>
               </div>
@@ -909,7 +909,7 @@ function PairGraded() {
                 {d.components.map((c) => (
                   <div key={c.key}>
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-[13px] text-voidInk-body">
+                      <span className="text-meta text-voidInk-body">
                         {c.label}
                         <span className="ml-2 font-mono text-[10px] tabular-nums text-voidInk-muted">
                           ×{c.weight}%
@@ -932,7 +932,7 @@ function PairGraded() {
                 ))}
               </div>
               <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-line-hairline pt-4">
-                <span className="text-[13px] text-voidInk-body">Weighted sum</span>
+                <span className="text-meta text-voidInk-body">Weighted sum</span>
                 <span className="shrink-0 font-mono text-[20px] tabular-nums text-evidence">
                   {d.composite}
                 </span>
@@ -949,12 +949,12 @@ function PairGraded() {
                   every number arrives with its working would be the page
                   contradicting its own thesis, two inches under a pair whose
                   whole point is that an ordinal cannot express distance. */}
-              <p className="mt-4 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-4 max-w-[46ch] text-meta leading-[1.5] text-voidInk-muted">
                 0 and 100 are this room&apos;s floor and ceiling on the first three, not a verdict —
                 roster construction is the one absolute score. A weight is how much a component
                 counts, not how much it separates the room.
               </p>
-              <p className="mt-3 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-3 max-w-[46ch] text-meta leading-[1.5] text-voidInk-muted">
                 A middle-of-the-table team from a simulated {d.teams}-team, {d.rounds}-round room,
                 every seat drafting to the same rule, graded the moment it ended — which is what
                 makes the middle team the honest one to show. The four add up to the number above,
@@ -1077,7 +1077,7 @@ function PairRecord() {
           <span className="block max-w-[12ch] font-display text-[30px] font-extrabold uppercase italic leading-[1.05] text-voidInk-muted sm:text-[36px]">
             Trust the projections
           </span>
-          <p className="mt-5 max-w-[34ch] text-[14px] leading-[1.5] text-voidInk-muted">
+          <p className="mt-5 max-w-[46ch] text-[14px] leading-[1.5] text-voidInk-muted">
             Every site says this, with equal confidence, and none of them will show you last year's.
             A forecast nobody grades is not a forecast.
           </p>
@@ -1127,13 +1127,13 @@ function PairRecord() {
                 <tbody>
                   {d.rows.map((r) => (
                     <tr key={r.year} className="border-b border-line-divider last:border-b-0">
-                      <td className="py-2.5 font-mono text-[13px] tabular-nums text-voidInk-body">
+                      <td className="py-2.5 font-mono text-meta tabular-nums text-voidInk-body">
                         {r.year}
                       </td>
-                      <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-white">
+                      <td className="py-2.5 text-right font-mono text-meta tabular-nums text-white">
                         {r.proj}
                       </td>
-                      <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-white">
+                      <td className="py-2.5 text-right font-mono text-meta tabular-nums text-white">
                         {r.act}
                       </td>
                       {/* `evidence`, not gain/cost, and the column header is
@@ -1156,17 +1156,17 @@ function PairRecord() {
                           the sign has to be written rather than coloured.
                           The sign stays, because which side he landed on
                           is genuinely informative; the verdict goes. */}
-                      <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-evidence">
+                      <td className="py-2.5 text-right font-mono text-meta tabular-nums text-evidence">
                         {r.diff >= 0 ? `+${r.diff}` : r.diff}
                       </td>
-                      <td className="py-2.5 text-right font-mono text-[13px] tabular-nums text-voidInk-muted">
+                      <td className="py-2.5 text-right font-mono text-meta tabular-nums text-voidInk-muted">
                         {r.games === null ? '—' : r.games}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className="mt-5 max-w-[46ch] text-[13px] leading-[1.5] text-voidInk-muted">
+              <p className="mt-5 max-w-[46ch] text-meta leading-[1.5] text-voidInk-muted">
                 Both columns scored under your rules, so this rescores when you change them. A
                 projection prices in the games a player might miss, so it runs light on anyone who
                 stays fit — which is why the games column is here and not decoration.
