@@ -16,6 +16,7 @@ import {
   CouldNotRead, KpiGrid, LeagueSwitcher, ResultChip, Verdict, pct, useDraftPhase, whenText,
 } from './parts.jsx'
 import LeagueDemo from './LeagueDemo.jsx'
+import { matchupHref } from './matchupData.js'
 import { CountText, LAYOUT_ROW, motion } from '../motion.jsx'
 
 /* #/v3/league — production's My League, reorganised around one question:
@@ -171,8 +172,9 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
             The matchup, the swap and the claim are on <a href="#/v3" className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">this week&apos;s call sheet</a>.
           </p>
         ) : (
-          <p className="mt-2 text-[15px] text-v3-ink2">{game ? (opp ? 'No score published for this week yet.' : 'A bye week — no game.') : `${platformFor(league.provider).name} publishes no schedule, so there is no result to show.`}</p>
+          <p className="mt-2 text-[15px] text-v3-ink2">{game ? (opp ? 'No score published for this week yet.' : 'A bye week — no game.') : `${platformFor(league.provider).name} publishes no season schedule on the snapshot; the matchup page reads its pairings a week at a time.`}</p>
         )}
+        <div className="mt-4"><GoLink href={matchupHref(n)}>{isNow ? 'This week’s matchup' : `Week ${n}’s matchup`}</GoLink></div>
       </div>
       <div>
         <Label>Calls logged{rows.length ? ` · ${[good && `${good} good`, bad && `${bad} bad`, pending && `${pending} not yet graded`].filter(Boolean).join(' · ')}` : ''}</Label>

@@ -8,12 +8,13 @@ import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
 import { gameInWeek } from '../../../lib/schedule.js'
 import { matchupRead, teamWeek } from '../../../lib/matchup.js'
-import { Delta, Fig, Label, PosTag, Sheet, ValueBar, cx } from '../ui.jsx'
+import { Delta, Fig, GoLink, Label, PosTag, Sheet, ValueBar, cx } from '../ui.jsx'
 import {
   CallHead, CouldNotRead, Empty, Loading, MarkedBar, NoTeam, Note, PlayerRow, Pts, SampleTag, SituationBand,
   StatusChip, Step, StepBars, Steps, playerHref, sampleBandItems, teamHref,
 } from './callKit.jsx'
 import { swappedRows } from './callData.js'
+import { matchupHref } from '../league/matchupData.js'
 
 /* The Lineup tool — production's Strategy Room, as the tool Now's lineup
    call opens.
@@ -327,6 +328,7 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
     return (
       <Sheet code={code} aside="No opponent">
         <p className="text-[15px] leading-[1.55] text-v3-ink2">{why}</p>
+        {!sample ? <div className="mt-4"><GoLink href={matchupHref(week)}>{!game && provider === 'sleeper' ? 'The pairing, on the matchup page' : 'Every game this week'}</GoLink></div> : null}
       </Sheet>
     )
   }
@@ -362,6 +364,7 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
           ? <>Each lineup swings about <Fig className="font-bold text-v3-ink">{Math.round(mineWeek.stdev)}</Fig> points a week. A scoring-strength estimate from two projected lineups — not a simulated week.</>
           : 'Both lineups need a projection for every starter before the odds can be priced.'}
       </p>
+      {!sample ? <div className="mt-4"><GoLink href={matchupHref(game.week)}>Both lineups, side by side</GoLink></div> : null}
     </Sheet>
   )
 }

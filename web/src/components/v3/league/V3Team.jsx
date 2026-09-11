@@ -8,10 +8,11 @@ import { myGames } from '../../../lib/schedule.js'
 import { oddsFor, SIMS } from '../../../lib/seasonSim.js'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import {
-  Delta, Fig, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, cx, ordinal,
+  Delta, Fig, GoLink, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, cx, ordinal,
 } from '../ui.jsx'
 import { findTeam, recordText, standing, teamHref, teamWeekRows, usePricing } from './leagueData.js'
 import { ConnectCall, CouldNotRead, InjuryChip, KpiGrid, ResultChip, pct } from './parts.jsx'
+import { matchupHref } from './matchupData.js'
 
 /* #/v3/league/team/<id> — any team in a connected league.
 
@@ -133,13 +134,14 @@ function RosterTable({ team, pricing, snapshot }) {
   )
 }
 
-function Schedule({ team, snapshot }) {
+function Schedule({ team, snapshot, mine }) {
   const games = myGames(snapshot.schedule, team.ownerId)
   const teams = snapshot.teams || []
   if (!games) {
     return (
       <Sheet code="Schedule" aside="Not published">
-        <p className="text-[15px] leading-[1.55] text-v3-ink2">{platformFor(snapshot.provider).name} does not publish a season schedule, so there is no fixture list to show.</p>
+        <p className="text-[15px] leading-[1.55] text-v3-ink2">{platformFor(snapshot.provider).name} does not publish a season schedule on the snapshot, so there is no fixture list here. It publishes each week's pairing on its own, and the matchup page reads them.</p>
+        <div className="mt-4"><GoLink href={matchupHref(snapshot.week, team, mine)}>{snapshot.week ? `Week ${snapshot.week}'s matchup, and every week` : 'The matchup page'}</GoLink></div>
       </Sheet>
     )
   }
@@ -151,7 +153,7 @@ function Schedule({ team, snapshot }) {
           const now = g.week === snapshot.week
           return (
             <li key={g.week} className={cx('grid min-h-[48px] grid-cols-[44px_28px_minmax(0,1fr)_auto] items-center gap-2 border-b border-v3-rule px-4 last:border-b-0 sm:px-5', now ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
-              <Fig className="text-[13px] text-v3-ink3">W{g.week}</Fig>
+              <a href={matchupHref(g.week, team, mine)} aria-label={`Week ${g.week} matchup`} className="inline-flex min-h-[44px] items-center font-figure text-[13px] text-v3-ink2 underline decoration-v3-rule underline-offset-4 hover:text-v3-ink hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">W{g.week}</a>
               <span className="text-[13px] text-v3-ink3">{opp ? (g.home ? 'vs' : 'at') : ''}</span>
               <span className="min-w-0 truncate text-[15px]">
                 {opp ? <a href={teamHref(opp)} className="font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
@@ -245,7 +247,7 @@ export default function V3Team({ teamId }) {
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <RosterTable team={team} pricing={pricing} snapshot={snapshot} />
         <div className="grid gap-4">
-          <Schedule team={team} snapshot={snapshot} />
+          <Schedule team={team} snapshot={snapshot} mine={(snapshot.teams || []).find((t) => league.ownerId && String(t.ownerId) === String(league.ownerId)) || null} />
           <Sheet band={false}>
             <Label>Every team in {snapshot.name}</Label>
             <ul className="mt-3 flex flex-wrap gap-2">

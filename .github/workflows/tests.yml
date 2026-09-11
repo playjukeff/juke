@@ -254,6 +254,11 @@ jobs:
       - name: A connected room prices under its own league
         run: node scripts/test_league_gap.mjs
 
+      # v3's matchup page pairs two lineups slot by slot. By row number, one
+      # empty slot put a defense across from a kicker. Dependency-free.
+      - name: A matchup pairs lineups by slot
+        run: node scripts/test_matchup_slots.mjs
+
       # A lineup's week as a mean and a spread — the two numbers the Strategy
       # Room's win probability takes.
       #

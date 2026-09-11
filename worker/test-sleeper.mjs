@@ -29,6 +29,7 @@
 import { createServer } from "node:http";
 import {
   lookupUser, leagueSnapshot, nflState, SLEEPER_API, sleeperLinePoints, projectionPath,
+  leagueMatchups, sleeperSeasonShape, sleeperCurrentWeek,
 } from "./sleeper.js";
 
 let pass = 0;
@@ -478,6 +479,169 @@ ROUTES = healthy();
   ok("a preseason week does not ask for a projection",
     !ASKED.some((p) => p.startsWith("/projections/")), ASKED);
   eq("and publishes none", pre.projections, null);
+}
+
+/* ---------- one week's matchups (/sleeper/matchups) ----------
+
+   Fixtures shaped from the real endpoint, read 11 September 2026 off two
+   public twelve-team leagues: a finished 2025 one (every week played,
+   playoff_week_start 15, six seeds) and an in-season 2026 one (week 1 in
+   progress, week 2 onward paired at 0.0, week 15 paired before any seed
+   exists). Trimmed to four rosters; every field name and every value shape
+   is the endpoint's own. */
+
+{
+  const LG = "999999999999999999";
+  const league = (over) => ({
+    league_id: LG, name: "Matchup League", season: "2026", status: "in_season", total_rosters: 4,
+    settings: { playoff_week_start: 15, playoff_teams: 6, playoff_round_type: 0 },
+    ...(over || {}),
+  });
+  const row = (rid, mid, pts, starters, sp, pp) => ({
+    roster_id: rid, matchup_id: mid, points: pts, custom_points: null,
+    starters, starters_points: sp, players_points: pp,
+  });
+  // A played week: two games, real points on every row.
+  const PLAYED = [
+    row(1, 1, 101.92, ["4046", "9221", "0"], [23.2, 11.3, 0], { "4046": 23.2, "9221": 11.3, "7564": 4.5 }),
+    row(2, 2, 103.08, ["6794", "8183"], [30.1, 12.0], { "6794": 30.1, "8183": 12.0 }),
+    row(3, 1, 89.92, ["5892", "6813"], [9.2, 11.6], { "5892": 9.2, "6813": 11.6, "4035": 2.1 }),
+    row(4, 2, 129.58, ["6904", "4984"], [22.9, 18.0], { "6904": 22.9, "4984": 18.0 }),
+  ];
+  // Not yet played: already paired, every number 0.0 -- which is not a score.
+  const UNPLAYED = PLAYED.map((r) => ({
+    ...r, points: 0, starters_points: r.starters.map(() => 0),
+    players_points: Object.fromEntries(Object.keys(r.players_points).map((k) => [k, 0])),
+  }));
+  const routes = (week, rows, state, lg) => ({
+    "/v1/state/nfl": { body: state || { week: 5, season: "2026", season_type: "regular" } },
+    ["/v1/league/" + LG]: { body: lg || league() },
+    ["/v1/league/" + LG + "/matchups/" + week]: { body: rows },
+  });
+
+  eq("the season's shape is read off the league and derived for the playoffs",
+    sleeperSeasonShape({ playoff_week_start: 15, playoff_teams: 6, playoff_round_type: 0 }),
+    { regularSeasonWeeks: 14, weeks: 17 });
+  eq("a two-week final adds one week", sleeperSeasonShape({ playoff_week_start: 15, playoff_teams: 6, playoff_round_type: 1 }).weeks, 18);
+  eq("two weeks a round doubles the rounds", sleeperSeasonShape({ playoff_week_start: 14, playoff_teams: 4, playoff_round_type: 2 }).weeks, 17);
+  eq("no playoff start is no shape, rather than a guessed one",
+    sleeperSeasonShape({}), { regularSeasonWeeks: null, weeks: null });
+
+  eq("a finished league has no current week", sleeperCurrentWeek(league({ status: "complete" }), { week: 1, season: "2026" }), Infinity);
+  eq("last season's league is over", sleeperCurrentWeek(league({ season: "2025" }), { week: 1, season: "2026", season_type: "regular" }), Infinity);
+  eq("the preseason has not started", sleeperCurrentWeek(league(), { week: 0, season: "2026", season_type: "pre" }), 0);
+  eq("in season it is Sleeper's own week", sleeperCurrentWeek(league(), { week: 5, season: "2026", season_type: "regular" }), 5);
+
+  ROUTES = routes(3, PLAYED);
+  ASKED = [];
+  const past = await leagueMatchups(LG, 3, BASE);
+  ok("a played week answers", past && past.view && !past.reason, past);
+  const pv = past.view;
+  eq("a week before the current one is final", pv.phase, "final");
+  eq("two pairs make two games", pv.games.length, 2);
+  eq("paired by matchup_id, each side keyed by roster",
+    pv.games.map((g) => g.teams.map((t) => t.rosterId)), [[1, 3], [2, 4]]);
+  eq("a side's points are Sleeper's own", pv.games[0].teams[0].points, 101.92);
+  eq("starters keep their slot order and their own points",
+    pv.games[0].teams[0].starters.slice(0, 2), [{ id: "4046", points: 23.2 }, { id: "9221", points: 11.3 }]);
+  eq("an empty slot stays a row with no player", pv.games[0].teams[0].starters[2], { id: null, points: null });
+  eq("the bench is everybody else who scored", pv.games[0].teams[0].bench, [{ id: "7564", points: 4.5 }]);
+  eq("regular season", pv.playoff, false);
+  eq("and the shape rides along", [pv.regularSeasonWeeks, pv.weeks], [14, 17]);
+  ok("the week is asked for by its own path", ASKED.some((p) => p === "/v1/league/" + LG + "/matchups/3"), ASKED);
+
+  ROUTES = routes(7, UNPLAYED);
+  const next = (await leagueMatchups(LG, 7, BASE)).view;
+  eq("a week after the current one is upcoming", next.phase, "upcoming");
+  eq("and is still paired", next.games.length, 2);
+  eq("but its 0.0 is not a score", next.games[0].teams[0].points, null);
+  ok("on any starter either", next.games[0].teams[0].starters.every((s) => s.points === null), next.games[0].teams[0].starters);
+
+  ROUTES = routes(5, PLAYED);
+  const now = (await leagueMatchups(LG, 5, BASE)).view;
+  eq("the current week is live, never final", now.phase, "live");
+  eq("and its partial points are published as they stand", now.games[0].teams[0].points, 101.92);
+
+  // Week 15 paired before any seed exists -- the in-season league does this.
+  ROUTES = routes(15, UNPLAYED);
+  const po = (await leagueMatchups(LG, 15, BASE)).view;
+  eq("a playoff week is flagged", po.playoff, true);
+  eq("an upcoming playoff week says the bracket is not set", po.bracketPending, true);
+  eq("and offers no opponent Sleeper has not decided", po.games.length, 0);
+
+  // A played playoff week: two rosters with matchup_id null (bye / out).
+  const PLAYOFF = [PLAYED[0], PLAYED[2], { ...PLAYED[1], matchup_id: null }, { ...PLAYED[3], matchup_id: null }];
+  ROUTES = routes(15, PLAYOFF, { week: 1, season: "2027", season_type: "regular" }, league({ status: "complete" }));
+  const done = (await leagueMatchups(LG, 15, BASE)).view;
+  eq("a played playoff week is final once the league is over", done.phase, "final");
+  eq("its games are the paired rosters", done.games.map((g) => g.matchupId), [1]);
+  eq("and the rest are named as having no game", done.noGame, [2, 4]);
+  eq("a finished league reports no current week", [done.currentWeek, done.seasonOver], [null, true]);
+
+  // A lone roster on a matchup_id is not a game (and not silently one side).
+  ROUTES = routes(3, [PLAYED[0], PLAYED[1], PLAYED[3]]);
+  const odd = (await leagueMatchups(LG, 3, BASE)).view;
+  eq("a pair of one is not a game", odd.games.map((g) => g.matchupId), [2]);
+  eq("its roster has no game", odd.noGame, [1]);
+
+  ROUTES = routes(2, []);
+  const empty = (await leagueMatchups(LG, 2, BASE)).view;
+  eq("an empty week is an answer: no pairings yet", [empty.games.length, empty.noGame.length], [0, 0]);
+
+  ROUTES = { ...routes(3, PLAYED), ["/v1/league/" + LG + "/matchups/3"]: { status: 500, body: "" } };
+  eq("a week Sleeper failed to answer is upstream, not an empty week",
+    await leagueMatchups(LG, 3, BASE), { view: null, reason: "upstream" });
+  ROUTES = { "/v1/state/nfl": { body: STATE } };
+  eq("an unknown league is not-found", (await leagueMatchups(LG, 3, BASE)).reason, "not-found");
+  ASKED = [];
+  eq("a week that cannot exist is refused", (await leagueMatchups(LG, 40, BASE)).reason, "bad-request");
+  eq("before any fetch", ASKED.length, 0);
+
+  /* ---- the route, through the real router ----
+
+     draft-room.js imports into Node (test-me-routes.mjs relies on it), so
+     the real handler runs here with `caches.default` stubbed as a Map. */
+  const store = new Map();
+  globalThis.caches = { default: {
+    match: async (req) => { const hit = store.get(req.url); return hit ? new Response(hit) : undefined; },
+    put: async (req, res) => { store.set(req.url, await res.text()); },
+  } };
+  const worker = (await import("./draft-room.js")).default;
+  const call = (qs, origin = "https://jukeff.com", method = "GET") => worker.fetch(
+    new Request("https://w.example/sleeper/matchups" + qs, { method, headers: origin ? { Origin: origin } : {} }),
+    { SLEEPER_BASE: BASE }, { waitUntil() {} });
+
+  ROUTES = routes(3, PLAYED);
+  ASKED = [];
+  const refused = await call("?league=" + LG + "&week=3", "https://evil.example");
+  eq("a foreign origin is refused", refused.status, 403);
+  eq("before anything is asked of Sleeper", ASKED.length, 0);
+  eq("with no Origin at all too", (await call("?league=" + LG + "&week=3", null)).status, 403);
+  eq("a malformed league id is a 400", (await call("?league=abc&week=3")).status, 400);
+  eq("so is a missing week", (await call("?league=" + LG)).status, 400);
+
+  const res = await call("?league=" + LG + "&week=3");
+  eq("a played week answers 200", res.status, 200);
+  eq("with the page's CORS", res.headers.get("access-control-allow-origin"), "https://jukeff.com");
+  const body = await res.json();
+  eq("and the week's view", [body.week, body.phase, body.games.length], [3, "final", 2]);
+  ASKED = [];
+  const again = await call("?league=" + LG + "&week=3");
+  eq("a second ask inside the window is the cache", ASKED.length, 0);
+  eq("and still carries CORS, put back per request", again.headers.get("access-control-allow-origin"), "https://jukeff.com");
+
+  ROUTES = { ...routes(4, PLAYED), ["/v1/league/" + LG + "/matchups/4"]: { status: 500, body: "" } };
+  eq("an upstream failure is a 503", (await call("?league=" + LG + "&week=4")).status, 503);
+  ROUTES = routes(4, PLAYED);
+  ASKED = [];
+  eq("and was not cached: the next ask reaches Sleeper", (await call("?league=" + LG + "&week=4")).status, 200);
+  ok("(it did)", ASKED.some((p) => p.endsWith("/matchups/4")), ASKED);
+
+  ROUTES = { "/v1/state/nfl": { body: STATE } };
+  eq("an unknown league is a 404 the page can read", (await call("?league=123456789012&week=3")).status, 404);
+
+  const pre = await call("?league=" + LG + "&week=3", "https://jukeff.com", "OPTIONS");
+  eq("the preflight names GET", pre.headers.get("access-control-allow-methods"), "GET");
 }
 
 /* ---------- the seam itself ---------- */

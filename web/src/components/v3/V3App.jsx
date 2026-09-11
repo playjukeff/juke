@@ -10,6 +10,7 @@ import { MotionRoot, SPRING, motion } from './motion.jsx'
 import Now from './now/Now.jsx'
 import V3League from './league/V3League.jsx'
 import V3Team from './league/V3Team.jsx'
+import V3Matchup from './league/V3Matchup.jsx'
 import V3DraftHome from './draft/V3DraftHome.jsx'
 import V3Live from './draft/V3Live.jsx'
 import V3Report from './draft/V3Report.jsx'
@@ -317,7 +318,7 @@ function NotFound() {
      #/rooms/strategy   → #/v3/calls/lineup
      #/rooms/waiver     → #/v3/calls/wire
      #/rooms/trade      → #/v3/calls/trade
-     #/my-league        → #/v3/league          (+ /team/<id>)
+     #/my-league        → #/v3/league          (+ /team/<id>, /matchup?week=N[&team=id])
      #/you              → #/v3/account
      #/rooms            → gone: the rooms are calls on Now and tools behind them
      /docs/*.html       → #/v3/method/<doc> */
@@ -326,6 +327,7 @@ function route(sub) {
   if (!a) return { page: <Now /> }
   if (a === 'calls' && b) return { page: <V3Call slug={b} /> }
   if (a === 'league' && b === 'team' && c) return { page: <V3Team teamId={c} /> }
+  if (a === 'league' && b === 'matchup') return { page: <V3Matchup /> }
   if (a === 'league') return { page: <V3League /> }
   if (a === 'players' && b === 'rookies') return { page: <V3Rookies /> }
   if (a === 'players' && b) return { page: <V3Player playerId={b} /> }

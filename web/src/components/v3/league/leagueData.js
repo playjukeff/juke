@@ -70,7 +70,10 @@ export function usePricing(snapshot) {
   // Priced under THIS league's scoring and shape, not the Draft Room's.
   const gapOfLeague = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
   const gapOf = ready ? gapOfLeague : null
-  return { ready, engine, byId, weekPts, week, cv, gapOf }
+  /* boardById is the nightly board with no live overlay: the matchup page
+     prices a week other than this one from it, where this week's live
+     designations and game locks are not an answer. */
+  return { ready, engine, byId, boardById, weekPts, week, cv, gapOf }
 }
 
 export function median(nums) {

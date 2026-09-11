@@ -13,6 +13,8 @@ import {
   ValueBar, cx, ordinal,
 } from '../ui.jsx'
 import { recordText, standing, teamHref, useWeekSheet } from '../league/leagueData.js'
+import { gameFor, matchupHref, sleeperWeekView } from '../league/matchupData.js'
+import { useSleeperWeeks } from '../league/useSleeperWeeks.js'
 import { CountText, CountUp } from '../motion.jsx'
 import {
   CouldNotRead, InjuryChip, ResultChip, WinBar, pct, useDraftPhase, useKickoff, whenText,
@@ -78,7 +80,7 @@ function SituationBand({ league, snapshot, sheet, rank, total }) {
 /* The matchup: both projected totals on one scale, and the probability with
    EVEN drawn. The framing sentence is the one production's own Strategy
    Room refuses to show this number without. */
-function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
+function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) {
   const { game, opponent, total, oppTotal, winProb, read, mineWeek, oppWeek, source } = sheet
   if (!game && hasSchedule) {
     return (
@@ -86,6 +88,24 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
         <p className="text-[15px] leading-[1.55] text-v3-ink2">
           Your league&apos;s schedule has no game for you{week ? ` in week ${week}` : ''} — you are out of the playoffs, or the week is past the last one scheduled. Your lineup is still priced below.
         </p>
+        <div className="mt-4"><GoLink href={matchupHref(week)}>Every game this week</GoLink></div>
+      </Sheet>
+    )
+  }
+  if (!game && sleeperGame && !sleeperGame.bye && sleeperGame.theirs.team) {
+    /* Sleeper's pairing for this week, off /sleeper/matchups (the same
+       shared request the matchup page makes). The opponent is named and
+       linked; both lineups priced side by side are on the matchup page,
+       which is the one place that prices them. */
+    const opp = sleeperGame.theirs.team
+    return (
+      <Sheet code={`The matchup · week ${week}`} aside={platform}>
+        <p className="text-[18px] leading-[1.45] text-v3-ink">
+          This week you play <a href={teamHref(opp)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a>
+          <span className="font-figure text-[15px] text-v3-ink2"> · {recordText(opp)}</span>.
+        </p>
+        <p className="mt-2 text-[14px] leading-[1.5] text-v3-ink2">Your lineup as set projects {sheet.total !== null ? <Fig className="font-bold text-v3-ink">{sheet.total.toFixed(1)}</Fig> : '—'}. {platform} publishes the pairing a week at a time; the matchup page prices both lineups and the win probability.</p>
+        <div className="mt-4"><GoLink href={matchupHref(week)}>Both lineups, side by side</GoLink></div>
       </Sheet>
     )
   }
@@ -93,9 +113,10 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
     return (
       <Sheet code={week ? `Week ${week}` : 'The matchup'} aside="No schedule">
         <p className="text-[15px] leading-[1.55] text-v3-ink2">
-          {platform} does not publish this league&apos;s season schedule, so there is no opponent to price the week against.
-          Your own lineup is still priced below.
+          {platform} does not publish this league&apos;s season schedule on the snapshot this card reads, so there is no opponent priced here.
+          It publishes the pairings a week at a time, and the matchup page reads them.
         </p>
+        <div className="mt-4"><GoLink href={matchupHref(week)}>{week ? `Open week ${week}'s matchup` : 'Open the matchup'}</GoLink></div>
       </Sheet>
     )
   }
@@ -103,6 +124,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
     return (
       <Sheet code={`Week ${game.week}`} aside="Bye">
         <p className="text-[15px] leading-[1.55] text-v3-ink2">You have no opponent in week {game.week}. Nothing is at stake in the matchup; the calls below still are.</p>
+        <div className="mt-4"><GoLink href={matchupHref(game.week)}>Every game this week</GoLink></div>
       </Sheet>
     )
   }
@@ -151,6 +173,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
         <p className="mt-2 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">
           {source === 'all' ? `${platform}'s projection for week ${week}` : source === 'some' ? `${platform}'s projection where it has one, Juke's for the rest` : hasRules ? "Juke's projection under your league's scoring" : "Juke's projection — your league's scoring could not be read, so default rules"}
         </p>
+        <div className="mt-4"><GoLink href={matchupHref(game.week)}>Both lineups, and every game this week</GoLink></div>
       </div>
     </Sheet>
   )
@@ -381,8 +404,8 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
             {next.map((g) => {
               const opp = teams.find((t) => String(t.ownerId) === String(g.opponentId))
               return (
-                <li key={g.week} className="flex min-h-[40px] items-center gap-3 border-b border-v3-rule text-[14px] last:border-b-0">
-                  <Fig className="w-10 shrink-0 text-v3-ink3">W{g.week}</Fig>
+                <li key={g.week} className="flex min-h-[44px] items-center gap-3 border-b border-v3-rule text-[14px] last:border-b-0">
+                  <a href={matchupHref(g.week)} aria-label={`Week ${g.week} matchup`} className="inline-flex min-h-[44px] w-12 shrink-0 items-center font-figure text-v3-ink2 underline decoration-v3-rule underline-offset-4 hover:text-v3-ink hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">W{g.week}</a>
                   <span className="text-v3-ink3">{g.home ? 'vs' : 'at'}</span>
                   {opp ? <a href={teamHref(opp)} className="min-w-0 truncate font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
                 </li>
@@ -475,6 +498,12 @@ export default function NowConnected() {
   const ready = status === 'ready' && !!snapshot
   const sheet = useWeekSheet(league, ready ? snapshot : null)
   const model = useLeagueModel(league, ready ? snapshot : null)
+  /* A Sleeper league has no schedule on the snapshot; its week's pairing
+     comes off /sleeper/matchups, shared with the matchup page. */
+  const sleeperOn = ready && league && league.provider !== 'espn' && !(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length) && Number(snapshot.week) > 0
+  const sw = useSleeperWeeks(sleeperOn ? league.leagueId : null, sleeperOn ? [Number(snapshot.week)] : [], sleeperOn ? Number(snapshot.week) : null)
+  const sleeperEntry = sleeperOn ? sw[Number(snapshot.week)] : null
+  const sleeperGame = sleeperEntry && sleeperEntry.view && sheet ? gameFor(sleeperWeekView(snapshot, sleeperEntry.view), sheet.mine) : null
   if (!league) return null
   const platform = platformFor(league.provider).name
 
@@ -533,7 +562,9 @@ export default function NowConnected() {
     ? 'Which team is yours?'
     : game && opponent
       ? `Week ${game.week} against ${opponent.teamName}.`
-      : week ? `Week ${week}.` : 'Your week.'
+      : sleeperGame && !sleeperGame.bye && sleeperGame.theirs.team
+        ? `Week ${week} against ${sleeperGame.theirs.team.teamName}.`
+        : week ? `Week ${week}.` : 'Your week.'
 
   const facts = []
   if (mine && total !== null) facts.push(`You project ${total.toFixed(1)} as set${sheet.oppTotal !== null && opponent ? `; ${opponent.teamName} projects ${sheet.oppTotal.toFixed(1)}` : ''}.`)
@@ -555,7 +586,7 @@ export default function NowConnected() {
           </p>
           {!mine ? <div className="mt-7"><QuietButton href="#/v3/account">Manage leagues</QuietButton></div> : null}
         </div>
-        {mine ? <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} /> : null}
+        {mine ? <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} sleeperGame={sleeperGame} /> : null}
       </div>
 
       {mine ? (
