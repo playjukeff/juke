@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-10 14:43 UTC
+Generated 2026-09-11 14:44 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -21,25 +21,25 @@ Vikings | DEF | MIN | no Tank01 id
 Eagles | DEF | PHI | no Tank01 id
 Patriots | DEF | NE | no Tank01 id
 Lions | DEF | DET | no Tank01 id
-Steelers | DEF | PIT | no Tank01 id
 Chargers | DEF | LAC | no Tank01 id
-Jaguars | DEF | JAX | no Tank01 id
-Bears | DEF | CHI | no Tank01 id
-Ravens | DEF | BAL | no Tank01 id
+Steelers | DEF | PIT | no Tank01 id
 Cowboys | DEF | DAL | no Tank01 id
-Falcons | DEF | ATL | no Tank01 id
+Bears | DEF | CHI | no Tank01 id
+Jaguars | DEF | JAX | no Tank01 id
+Ravens | DEF | BAL | no Tank01 id
 Bills | DEF | BUF | no Tank01 id
+Falcons | DEF | ATL | no Tank01 id
 Browns | DEF | CLE | no Tank01 id
+Buccaneers | DEF | TB | no Tank01 id
 Titans | DEF | TEN | no Tank01 id
 Giants | DEF | NYG | no Tank01 id
-Jets | DEF | NYJ | no Tank01 id
-Buccaneers | DEF | TB | no Tank01 id
 Alex Kessman | K | CAR | no Tank01 id
-Bengals | DEF | CIN | no Tank01 id
 Saints | DEF | NO | no Tank01 id
 Colts | DEF | IND | no Tank01 id
+Bengals | DEF | CIN | no Tank01 id
 Cardinals | DEF | ARI | no Tank01 id
 Raiders | DEF | LV | no Tank01 id
+Jets | DEF | NYJ | no Tank01 id
 Commanders | DEF | WAS | no Tank01 id
 Panthers | DEF | CAR | no Tank01 id
 Packers | DEF | GB | no Tank01 id
@@ -79,6 +79,7 @@ Read this section before adding a feed. It is the pipeline's own
 answer to what is missing, and everything in it is already arriving.
 
 adp_2qb
+adp_dd_ppr
 adp_dynasty
 adp_dynasty_2qb
 adp_dynasty_half_ppr
@@ -167,6 +168,7 @@ pass_ypa
 pass_ypc
 penalty
 penalty_yd
+pos_adp_dd_ppr
 pr_lng
 pr_ypa
 pts_idp
@@ -247,24 +249,24 @@ Vikings | DEF | MIN | no nflverse id
 Eagles | DEF | PHI | no nflverse id
 Patriots | DEF | NE | no nflverse id
 Lions | DEF | DET | no nflverse id
-Steelers | DEF | PIT | no nflverse id
 Chargers | DEF | LAC | no nflverse id
-Jaguars | DEF | JAX | no nflverse id
-Bears | DEF | CHI | no nflverse id
-Ravens | DEF | BAL | no nflverse id
+Steelers | DEF | PIT | no nflverse id
 Cowboys | DEF | DAL | no nflverse id
-Falcons | DEF | ATL | no nflverse id
+Bears | DEF | CHI | no nflverse id
+Jaguars | DEF | JAX | no nflverse id
+Ravens | DEF | BAL | no nflverse id
 Bills | DEF | BUF | no nflverse id
+Falcons | DEF | ATL | no nflverse id
 Browns | DEF | CLE | no nflverse id
+Buccaneers | DEF | TB | no nflverse id
 Titans | DEF | TEN | no nflverse id
 Giants | DEF | NYG | no nflverse id
-Jets | DEF | NYJ | no nflverse id
-Buccaneers | DEF | TB | no nflverse id
-Bengals | DEF | CIN | no nflverse id
 Saints | DEF | NO | no nflverse id
 Colts | DEF | IND | no nflverse id
+Bengals | DEF | CIN | no nflverse id
 Cardinals | DEF | ARI | no nflverse id
 Raiders | DEF | LV | no nflverse id
+Jets | DEF | NYJ | no nflverse id
 Commanders | DEF | WAS | no nflverse id
 Panthers | DEF | CAR | no nflverse id
 Packers | DEF | GB | no nflverse id
