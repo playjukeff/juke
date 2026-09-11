@@ -121,7 +121,7 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
           </label>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] gap-4">
           <div className="flex min-w-0 flex-col gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
               {a.parts.map((p) => <Band key={p.key} part={p} />)}

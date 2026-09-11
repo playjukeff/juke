@@ -114,7 +114,7 @@ function Components({ rep }) {
               </div>
               <div className="mt-1.5 flex items-center gap-3">
                 <ValueBar value={Math.max(0.5, Math.min(100, b.pct))} max={100} tone="neutral" className="h-2.5 min-w-0 flex-1" />
-                <Fig className="w-12 shrink-0 text-right text-[20px] font-bold text-v3-ink">{b.pct.toFixed(1)}</Fig>
+                <Fig className="w-14 shrink-0 text-right text-[20px] font-bold text-v3-ink">{b.pct.toFixed(1)}</Fig>
               </div>
             </li>
           )

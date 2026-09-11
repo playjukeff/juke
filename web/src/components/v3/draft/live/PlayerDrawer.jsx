@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { STAT_COLUMNS, lastsTone, statValue } from '../../../playerColumns.js'
 import { INJURY_META } from '../../../draftRoomPositions.js'
 import { readersFor } from '../../../v2/cockpit/cockpitData.js'
-import { useDialogFocus } from '../../../v2/draft/draftKit.jsx'
 import { Delta, Label, PosTag, cx } from '../../ui.jsx'
-import { DraftButton, FOCUS, Glyph, Headshot, InjuryTag } from '../kit.jsx'
+import { DraftButton, FOCUS, Glyph, Headshot, InjuryTag, useDialogFocus } from '../kit.jsx'
 import { DraftFit, Depth, GameLogs, News, OurRead, Projections, Usage } from './Research.jsx'
 
 /* A player, in depth, without leaving the pick.

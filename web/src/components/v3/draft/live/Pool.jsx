@@ -51,6 +51,9 @@ function Cell({ col, raw }) {
 
 function FilterBar({ board, f, set, counts, total, priorYear, phone }) {
   const teams = useMemo(() => teamsOnBoard(board), [board.length])
+  // A phone folds the three selects and the drafted switch behind one button
+  // on the search row: a mid-pick screen spends its height on players.
+  const [open, setOpen] = useState(false)
   // 16px on a phone: iOS zooms any field smaller than that on focus.
   const sel = cx('h-10 rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[14px]', FOCUS)
   const narrowed = f.team !== 'ALL' || f.tenure !== 'all' || f.season !== 'projected' || f.showDrafted
@@ -86,19 +89,17 @@ function FilterBar({ board, f, set, counts, total, priorYear, phone }) {
         <label className="relative min-w-0 flex-1 basis-[180px]">
           <span className="sr-only">Search players</span>
           <Glyph name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-v3-ink3" />
-          <input type="search" value={f.search} onChange={(e) => set({ search: e.target.value })} placeholder="Search players" className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet pl-9 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 sm:text-[14px]', FOCUS)} />
+          <input id="v3-pool-search" type="search" value={f.search} onChange={(e) => set({ search: e.target.value })} placeholder="Search players" className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet pl-9 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 sm:text-[14px]', FOCUS)} />
         </label>
         {!phone && extras}
-      </div>
-      {phone && (
-        <details className="group rounded-[4px] border border-v3-rule bg-v3-sheet [&_summary::-webkit-details-marker]:hidden">
-          <summary className={cx('flex min-h-[44px] cursor-pointer list-none items-center justify-between px-3 font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink', FOCUS)}>
+        {phone && (
+          <button type="button" aria-expanded={open} aria-controls="v3-pool-filters" onClick={() => setOpen((o) => !o)} className={cx('inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[4px] border px-3 font-figure text-[12px] font-semibold uppercase tracking-[0.08em]', FOCUS, open || narrowed ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink')}>
             Filters{narrowed ? ' · on' : ''}
-            <Glyph name="chevDown" className="h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-          </summary>
-          <div className="grid grid-cols-1 gap-2 px-3 pb-3">{extras}</div>
-        </details>
-      )}
+            <Glyph name="chevDown" className={cx('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
+          </button>
+        )}
+      </div>
+      {phone && open && <div id="v3-pool-filters" className="grid grid-cols-1 gap-2 rounded-[4px] border border-v3-rule bg-v3-sheet p-3">{extras}</div>}
       <div className="flex items-center gap-2">
         <div role="group" aria-label="Position" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:thin]">
           {POS_FILTERS.map((pos) => {
@@ -212,7 +213,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
   if (phone) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-v3-rule bg-v3-paper px-3 py-3">
+        <div className="shrink-0 border-b border-v3-rule bg-v3-paper px-3 py-2.5">
           <FilterBar board={board} f={f} set={set} counts={counts} total={players.length} priorYear={readers.priorYear} phone />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto bg-v3-sheet">

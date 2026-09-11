@@ -1,52 +1,13 @@
 import { DE } from '../../../v2/cockpit/cockpitData.js'
-import { Delta, Label, PosTag, Sheet, cx } from '../../ui.jsx'
+import { Label, PosTag, Sheet, cx } from '../../ui.jsx'
 import { DraftButton, FOCUS, Glyph, Headshot, InjuryTag, StarButton } from '../kit.jsx'
 
-/* The blocks you check between picks — Juke's pick, your roster, your queue,
-   your next picks and what just happened. Every name comes off
+/* The blocks you check between picks — your roster, your queue, your next
+   picks and what just happened. (Juke's pick is the Call, in Call.jsx.) Every name comes off
    engine.picks() and engine.teamLabel(), every seat off
    engine.seatedLineup() (the function that already decides who fills the
    FLEX in draft order), every "who Juke would take" off suggestions('ALL'),
    never the position chip — a filter is a lens, never a decision. */
-
-/* The call, at the head of the pool: Juke's pick with its reason printed
-   beside it. When it is your turn its Draft button is the view's one cobalt
-   action; when it is not, it says what Juke would take now. */
-export function JukesPick({ engine, header, canDraft, draftReason, onDraft, onOpen, nextOverall, phone }) {
-  if (header.over) return null
-  const top = engine.suggestions('ALL')[0]
-  if (!top) return null
-  const vorp = engine.replacementGap(top)
-  const survival = engine.survivalProbability(top, nextOverall)
-  const juke = engine.overallScore(top)
-  return (
-    <section aria-label="Juke's pick" className="shrink-0 border-b border-v3-rule bg-v3-sheet">
-      <div className="flex min-h-[32px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
-        <span className="font-figure text-[11px] font-bold uppercase tracking-[0.14em]">{header.myTurn ? `The call · pick ${header.code}` : 'Juke would take'}</span>
-        <span className="truncate font-figure text-[11px] uppercase tracking-[0.1em] text-v3-bandInk">Value · need · risk</span>
-      </div>
-      <div className={cx('flex items-center gap-3', phone ? 'px-3 py-2.5' : 'px-4 py-3')}>
-        <button type="button" onClick={() => onOpen(top)} className={cx('flex min-w-0 flex-1 items-center gap-3 rounded-[4px] text-left', FOCUS)}>
-          <Headshot src={engine.photoUrl(top)} name={top.name} size={phone ? 36 : 40} />
-          <span className="min-w-0">
-            <span className="flex items-center gap-2">
-              <span className="truncate text-[16px] font-extrabold tracking-[-0.01em] text-v3-ink">{top.name}</span>
-              <PosTag pos={top.pos} />
-              <InjuryTag code={top.inj} />
-            </span>
-            <span className="mt-0.5 block truncate font-figure text-[12px] tabular-nums text-v3-ink2">
-              <Delta value={vorp} /> over replacement{juke != null ? ` · Juke ${Math.round(juke)}` : ''}
-              {survival != null && nextOverall ? ` · ${Math.round(survival * 100)}% still there at pick ${nextOverall}` : ''}
-            </span>
-          </span>
-        </button>
-        {header.myTurn && (
-          <DraftButton rank="call" size={phone ? 'md' : 'lg'} disabled={!canDraft} reason={draftReason} onClick={() => onDraft(top)} label={phone ? 'Draft' : `Draft ${top.name.split(' ').slice(-1)[0]}`} />
-        )}
-      </div>
-    </section>
-  )
-}
 
 export function RosterPanel({ engine, slot, onSlot, roster, counts, onOpen }) {
   const league = engine.league()

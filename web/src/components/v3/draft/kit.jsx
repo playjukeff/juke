@@ -1,6 +1,52 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { INJURY_META } from '../../draftRoomPositions.js'
 import { Label, cx } from '../ui.jsx'
+
+/* Focus for the live room's dialogs — the menu, the Call sheet, the player
+   drawer — which can stack: a phone opens a player FROM the Call sheet.
+
+   v2's useDialogFocus answers Esc with stopPropagation() on a window
+   listener, which stops nothing registered on the same window, so one Esc
+   closed every open dialog at once. Here the dialogs form a stack and only
+   the one on top handles Esc and the Tab trap; the one beneath takes over
+   when it closes, and focus goes back to whatever opened each. */
+const dialogStack = []
+export function useDialogFocus(open, onClose, panelRef, initialRef) {
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    if (!open) return undefined
+    const me = {}
+    dialogStack.push(me)
+    const opener = document.activeElement
+    const t = setTimeout(() => {
+      const el = (initialRef && initialRef.current) || panelRef.current
+      if (el && el.focus) el.focus()
+    }, 0)
+    const onKey = (e) => {
+      if (dialogStack[dialogStack.length - 1] !== me) return
+      if (e.key === 'Escape') { e.preventDefault(); close.current(); return }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const f = [...panelRef.current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+        .filter((n) => n.offsetParent !== null)
+      if (!f.length) return
+      const first = f[0]
+      const last = f[f.length - 1]
+      if (!panelRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); return }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('keydown', onKey)
+      const i = dialogStack.indexOf(me)
+      if (i >= 0) dialogStack.splice(i, 1)
+      if (opener && opener.focus && document.contains(opener)) requestAnimationFrame(() => opener.focus())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+}
 
 /* The draft area's own small parts, in the call-sheet idiom. Presentation
    only — every figure any of the four draft pages prints is asked of
@@ -35,6 +81,12 @@ const PATHS = {
   plus: 'M12 5.5v13M5.5 12h13',
   minus: 'M5.5 12h13',
   chevDown: 'M6 9.5l6 6 6-6',
+  chevUp: 'M6 14.5l6-6 6 6',
+  chevRight: 'M9.5 6l6 6-6 6',
+  undo: 'M9 14.5L4.5 10 9 5.5M4.5 10h9.5a5.5 5.5 0 010 11H11',
+  bell: 'M6.5 16.5V11a5.5 5.5 0 0111 0v5.5l1.5 1.5h-14zM10 20.5a2 2 0 004 0',
+  keys: 'M3.5 7h17v10h-17zM7 10.5h.01M10.5 10.5h.01M14 10.5h.01M17.5 10.5h.01M8 14h8',
+  sliders: 'M5 20v-6.5M5 9.5V4M12 20v-8.5M12 7.5V4M19 20v-4.5M19 11.5V4M3 13.5h4M10 7.5h4M17 15.5h4',
   alert: 'M12 4l9 16H3zM12 10v4.5M12 17.5v.2',
   flag: 'M5.5 21V4M5.5 4.5h11l-2 4 2 4h-11',
   external: 'M13.5 4.5H19.5V10.5M19.5 4.5l-8 8M17 14v5H5V7h5',
@@ -211,19 +263,23 @@ export function StarButton({ on, onClick, name, className = 'h-10 w-10' }) {
 /* The Draft button, in its two ranks. `call` is cobalt — the one the view is
    asking for. `row` is ink outline. Disabled carries its reason in a title
    and in the accessible name, rather than as a grey nobody reads. */
-export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'md', label = 'Draft', className = '' }) {
+export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'md', label = 'Draft', who = '', className = '', ...rest }) {
   const dims = size === 'sm' ? 'min-h-[36px] px-3 text-[13px]' : size === 'lg' ? 'min-h-[48px] px-5 text-[15px]' : 'min-h-[40px] px-4 text-[14px]'
   const live = rank === 'call'
     ? 'bg-v3-call text-v3-onCall hover:bg-v3-callDeep'
     : 'border border-v3-ink bg-v3-sheet text-v3-ink hover:bg-v3-band hover:text-white'
+  // `who` names the player when the visible label cannot (a phone's "Draft"),
+  // so a screen reader hears whom the button drafts, not just the verb.
+  const spoken = `${label}${who && !label.includes(who) ? ` ${who}` : ''}`
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={disabled ? reason : undefined}
-      aria-label={disabled && reason ? `${label} — ${reason}` : undefined}
+      aria-label={disabled && reason ? `${spoken} — ${reason}` : who ? spoken : undefined}
       className={cx('inline-flex shrink-0 items-center justify-center rounded-[4px] font-semibold transition-colors', dims, FOCUS, disabled ? 'cursor-not-allowed border border-v3-rule bg-v3-well text-v3-ink3' : live, className)}
+      {...rest}
     >
       {label}
     </button>
