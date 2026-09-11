@@ -1,6 +1,8 @@
 import { DE } from '../../../v2/cockpit/cockpitData.js'
 import { Label, PosTag, Sheet, cx } from '../../ui.jsx'
 import { DraftButton, FOCUS, Glyph, Headshot, InjuryTag, StarButton } from '../kit.jsx'
+import { useRef } from 'react'
+import { DUR, EASE, useCalm, useFlip } from '../../motion.jsx'
 
 /* The blocks you check between picks — your roster, your queue, your next
    picks and what just happened. (Juke's pick is the Call, in Call.jsx.) Every name comes off
@@ -94,21 +96,31 @@ export function QueuePanel({ engine, board, canDraft, onDraft, onOpen, draftReas
   )
 }
 
+/* The newest pick arrives at the top and the rest slide down to make room
+   for it (useFlip, keyed on the overall pick) — the feed reads as a feed,
+   not a list redrawn. Picks already there when it mounted do not arrive. */
+const FEED_ENTER = {
+  keyframes: [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'translateY(0px)' }],
+  options: { duration: DUR.item, ease: EASE.out },
+}
 export function PicksFeed({ engine, sniped, onOpen, limit = 16 }) {
   const de = DE()
+  const calm = useCalm()
   const picks = engine.picks() || []
+  const list = useRef(null)
+  useFlip(list, { limit: 16, disabled: calm, enter: FEED_ENTER })
   const league = engine.league()
   const mySlot = engine.mySlot()
   const recent = picks.slice(-limit).reverse()
   return (
     <Sheet code="Recent picks" aside={`${picks.length} of ${league.teams * league.rounds}`} bodyClass="p-2">
       {!recent.length ? <p className="p-2 text-[13px] text-v3-ink2">No picks yet.</p> : (
-        <ol className="space-y-0.5">
+        <ol ref={list} className="space-y-0.5">
           {recent.map((p) => {
             const mine = p.slot === mySlot
             const snipe = sniped && sniped.has(p.overall)
             return (
-              <li key={p.overall}>
+              <li key={p.overall} data-flip={p.overall}>
                 <button type="button" onClick={() => onOpen(p.player)} className={cx('relative flex min-h-[44px] w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left hover:bg-v3-paper', FOCUS, snipe && 'bg-v3-warnWash')}>
                   {mine && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-v3-ink" aria-hidden="true" />}
                   <span className="w-10 shrink-0 font-figure text-[11px] font-bold tabular-nums text-v3-ink3">{de ? de.pickCode(p.overall, league) : p.overall}</span>

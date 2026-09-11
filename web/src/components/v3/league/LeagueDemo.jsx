@@ -3,6 +3,7 @@ import { buildDemoData } from '../../myleague/demoData.js'
 import { LINE as PLATFORM_LINE } from '../../shell/leaguePlatforms.js'
 import { Headline, Icon, Label, PosTag, Sheet, Skeleton, ValueBar, cx, useEngineData } from '../ui.jsx'
 import { ConnectCall, KpiGrid, SampleTag, Verdict } from './parts.jsx'
+import { LIFT } from '../motion.jsx'
 
 /* League before a real one is connected — guest and Free alike.
 
@@ -152,7 +153,7 @@ export default function LeagueDemo() {
           {data.secondary.length ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {data.secondary.map((it) => (
-                <a key={it.title} href={SLUG_TO[it.slug] || '#/v3'} className="group block rounded-[6px] border border-v3-rule bg-v3-sheet p-4 transition-colors hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+                <a key={it.title} href={SLUG_TO[it.slug] || '#/v3'} className={cx('group block rounded-[6px] border border-v3-rule bg-v3-sheet p-4 hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', LIFT)}>
                   <span className="flex items-center justify-between gap-2"><Label>{it.room}</Label><SampleTag /></span>
                   <span className="mt-2 block text-[15px] font-semibold leading-snug text-v3-ink">{it.title}</span>
                   <span className="mt-2"><Dots c={it.confidence} /></span>

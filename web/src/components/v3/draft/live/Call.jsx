@@ -2,6 +2,8 @@ import { DE, whatItCosts, reasonFor } from '../../../v2/cockpit/cockpitData.js'
 import { useClockTick } from '../../../v2/cockpit/useCockpit.js'
 import { Delta, Label, PosTag, cx } from '../../ui.jsx'
 import { DraftButton, FOCUS, Glyph, Headshot, InjuryTag, StarButton, Switch } from '../kit.jsx'
+import { useEffect, useRef } from 'react'
+import { DUR, EASE, cancelAll, motion, playOn, useCalm } from '../../motion.jsx'
 
 /* The Call — the one object this room is built around.
 
@@ -76,9 +78,11 @@ export function ClockDrain({ engine, className = '' }) {
   if (!info.started || info.over || !info.myTurn || !length) return <div className={cx('h-[3px]', className)} aria-hidden="true" />
   const left = Math.max(0, Math.min(1, engine.timeLeft() / length))
   const caution = !!info.urgent || !!engine.paused()
+  // Drains on transform, not width: the one thing in the room that moves
+  // every second stays on the compositor. Linear, because it is time.
   return (
-    <div className={cx('h-[3px] bg-v3-well', className)} aria-hidden="true">
-      <div className={cx('h-full transition-[width] duration-1000 ease-linear motion-reduce:transition-none', caution ? 'bg-v3-warn' : 'bg-v3-ink')} style={{ width: `${left * 100}%` }} />
+    <div className={cx('h-[3px] overflow-hidden bg-v3-well', className)} aria-hidden="true">
+      <div className={cx('h-full w-full origin-left transition-transform duration-1000 ease-linear motion-reduce:transition-none', caution ? 'bg-v3-warn' : 'bg-v3-ink')} style={{ transform: `scaleX(${left})` }} />
     </div>
   )
 }
@@ -168,10 +172,50 @@ function Alternate({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, 
 
 /* The card itself. `compact` for the narrower rail at lg; the phone's sheet
    gets the full one. */
+/* When the call changes hands — your turn arriving, or a new player becoming
+   Juke's pick — the card MOVES rather than repainting: the whole section
+   gives a small spring on your turn, and the lead player deals in from
+   below. Only after mount, never on arrival, and never on anything the
+   Draft button needs: it is the same button, live throughout, and there is
+   never a second one (no exit to overlap it, so `c` and Enter can only
+   ever find the current call). */
+function useCallMotion(myTurn, leadKey) {
+  const box = useRef(null)
+  const lead = useRef(null)
+  const mounted = useRef(false)
+  const calm = useCalm()
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return undefined }
+    if (calm || !myTurn || !box.current) return undefined
+    // A spring's shape as keyframes (one small overshoot), on native Web
+    // Animations so nothing is left on the card when it settles — a
+    // transform left on this section would trap the player drawer.
+    const c = playOn(box.current, [
+      { transform: 'translateY(-6px)', easing: 'cubic-bezier(0.22,1,0.36,1)' },
+      { transform: 'translateY(1px)', offset: 0.62, easing: 'ease-in-out' },
+      { transform: 'translateY(0px)' },
+    ], { duration: 0.42, ease: 'linear' })
+    return () => cancelAll([c])
+  }, [myTurn, calm])
+  // The lead re-deals in place — same elements, so a keyboard reader's
+  // focus on the card survives a CPU pick changing who Juke would take.
+  const leadMounted = useRef(false)
+  useEffect(() => {
+    if (!leadMounted.current) { leadMounted.current = true; return undefined }
+    const el = lead.current
+    if (calm || !el) return undefined
+    const c = playOn(el, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0px)' }], { duration: DUR.item, ease: EASE.out })
+    return () => cancelAll([c])
+  }, [leadKey, calm])
+  return { box, lead }
+}
+
 export function CallCard({ engine, decide, header, canDraft, draftReason, onDraft, onOpen, nextOverall, autopick, compact = false }) {
   const de = DE()
   const league = engine.league()
   const myTurn = !!header.myTurn
+  const leadKey = `${myTurn ? 'on' : 'wait'}:${(decide.candidates || [])[0] ? decide.candidates[0].player.name : ''}`
+  const { box, lead } = useCallMotion(myTurn, leadKey)
   const cands = decide.candidates || []
   const queued = new Set(engine.queue() || [])
   const gap = header.rightLabel === 'Your turn in' ? Number(header.rightValue) : null
@@ -182,7 +226,7 @@ export function CallCard({ engine, decide, header, canDraft, draftReason, onDraf
     : gap != null && Number.isFinite(gap) ? `${autopick ? 'autopick · ' : ''}in ${gap} ${gap === 1 ? 'pick' : 'picks'}` : ''
 
   return (
-    <section aria-label="The call" data-call={myTurn ? 'on-clock' : 'waiting'} className="overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet">
+    <section ref={box} aria-label="The call" data-call={myTurn ? 'on-clock' : 'waiting'} className="overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet">
       <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
         <span className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{band}</span>
         {aside && <span className="shrink-0 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-bandInk">{aside}</span>}
@@ -192,7 +236,9 @@ export function CallCard({ engine, decide, header, canDraft, draftReason, onDraf
         <p className="p-4 text-[14px] text-v3-ink2">Nothing left on the board worth ranking.</p>
       ) : (
         <>
-          <Lead engine={engine} c={cands[0]} myTurn={myTurn} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpen={onOpen} queued={queued.has(cands[0].player.name)} nextOverall={nextOverall} counts={decide.counts} compact={compact} />
+          <div ref={lead}>
+            <Lead engine={engine} c={cands[0]} myTurn={myTurn} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpen={onOpen} queued={queued.has(cands[0].player.name)} nextOverall={nextOverall} counts={decide.counts} compact={compact} />
+          </div>
           {cands.length > 1 && (
             <ul aria-label="Alternatives">
               {cands.slice(1).map((c) => (
@@ -301,6 +347,9 @@ export function RoomRead({ engine, decide, phone }) {
    it. Pressing the player opens the whole card as a sheet. */
 export function CallDock({ engine, decide, header, canDraft, draftReason, onDraft, onOpenCall, autopick, onAutopick, nextOverall }) {
   const de = DE()
+  const calm = useCalm()
+  const dockMounted = useRef(false)
+  useEffect(() => { dockMounted.current = true }, [])
   const myTurn = !!header.myTurn
   const lead = (decide.candidates || [])[0]
   const gap = header.rightLabel === 'Your turn in' ? Number(header.rightValue) : null
@@ -353,10 +402,16 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
     )
   }
 
+  // The dock's three states (autopick, your pick, waiting) deal in from
+  // below as they change — the dock sits at the bottom edge, so that is the
+  // edge it arrives from.
+  const state = autopick ? 'auto' : myTurn && lead ? 'on' : 'wait'
   return (
-    <div data-dock className="shrink-0 border-t border-v3-rule bg-v3-sheet" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div data-dock className="shrink-0 overflow-hidden border-t border-v3-rule bg-v3-sheet" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <ClockDrain engine={engine} />
-      {body}
+      <motion.div key={state} initial={dockMounted.current && !calm ? { opacity: 0, y: 14 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.item, ease: EASE.out }}>
+        {body}
+      </motion.div>
     </div>
   )
 }

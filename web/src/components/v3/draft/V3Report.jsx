@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { drawShareCard, canvasToBlob } from '../../../shareCard.js'
 import { missedSentence, readFrozenReport, readLiveReport, shareDataOf } from '../../v2/cockpit/reportData.js'
 import { useDraftVersion, useEngine } from '../../v2/cockpit/useCockpit.js'
 import { CallButton, Delta, Fig, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, ValueBar, cx, ordinal } from '../ui.jsx'
 import { LAUNCH_HASH, RECORD_HASH } from './flow.js'
 import { FOCUS, Glyph } from './kit.jsx'
+import { CountUp, DUR, EASE, cancelAll, playOn, useEntrance } from '../motion.jsx'
 
 /* The report, at #/v3/draft/report (optional ?id=<historyId>).
 
@@ -114,7 +115,7 @@ function Components({ rep }) {
               </div>
               <div className="mt-1.5 flex items-center gap-3">
                 <ValueBar value={Math.max(0.5, Math.min(100, b.pct))} max={100} tone="neutral" className="h-2.5 min-w-0 flex-1" />
-                <Fig className="w-14 shrink-0 text-right text-[20px] font-bold text-v3-ink">{b.pct.toFixed(1)}</Fig>
+                <CountUp value={b.pct} format={(v) => v.toFixed(1)} className="w-14 shrink-0 text-right font-figure text-[20px] font-bold tabular-nums text-v3-ink" />
               </div>
             </li>
           )
@@ -123,7 +124,7 @@ function Components({ rep }) {
       <div className="mt-4 rounded-[4px] bg-v3-paper px-3.5 py-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <Label>Weighted sum</Label>
-          <Fig className="text-[18px] font-bold text-v3-ink">{rep.scored.total.toFixed(1)}</Fig>
+          <CountUp value={rep.scored.total} format={(v) => v.toFixed(1)} className="font-figure text-[18px] font-bold tabular-nums text-v3-ink" />
         </div>
         <p className="mt-1 break-words font-figure text-[12px] tabular-nums text-v3-ink2">
           {bars.map((b) => (b.pct * b.weight).toFixed(1)).join(' + ')} = {rep.scored.total.toFixed(1)}
@@ -196,7 +197,7 @@ function Standings({ rep, onPick }) {
           )
           const cls = cx('flex min-h-[44px] w-full items-center gap-3 rounded-[4px] px-2 text-left', on ? 'bg-v3-band' : '')
           return (
-            <li key={t.slot}>
+            <li key={t.slot} data-rise="">
               {onPick
                 ? <button type="button" onClick={() => onPick(t.slot)} aria-current={on ? 'true' : undefined} className={cx(cls, FOCUS, !on && 'hover:bg-v3-paper')}>{inner}</button>
                 : <div className={cls}>{inner}</div>}
@@ -205,6 +206,60 @@ function Standings({ rep, onPick }) {
         })}
       </ol>
     </Sheet>
+  )
+}
+
+/* The one set piece v3 allows itself: the letter landing, with where it
+   finished. Sleeper's CHOPPED slams in after the list has had its say;
+   here the letter lands first — heavy, from a little above, with the one
+   overshoot on the site — and its finishing position slides in beside it,
+   because the letter IS the finishing position and the two are one fact.
+   Never beside a score out of a hundred; the figures under it count up on
+   their own (CountUp), and the four parts fill as they are scrolled to.
+
+   It plays when the report is arrived at — the draft just ended, or it was
+   opened from the record — and never on a cold load, where the letter is
+   simply there.
+
+   Its own component, not a hook in V3Report: the entrance is decided once,
+   at mount, and V3Report's first render is usually an early return (the
+   engine or the board not in hand yet), so a hook up there measured an
+   element that did not exist and settled on "rest" for good. This mounts
+   with the letter. */
+function GradeFace({ grade, rank, teams }) {
+  const gradeBox = useRef(null)
+  const letterRef = useRef(null)
+  const finishRef = useRef(null)
+  const phase = useEntrance(gradeBox)
+  useLayoutEffect(() => {
+    if (phase !== 'play') return undefined
+    const letter = letterRef.current
+    const finish = finishRef.current
+    if (!letter || !finish) return undefined
+    // The landing spring (SPRING.land's shape: one overshoot, then a small
+    // recoil) written as keyframes, on native Web Animations: fill
+    // 'backwards' holds each first frame through its delay and nothing is
+    // left on the letter when it lands.
+    const running = [
+      playOn(letter, [{ opacity: 0 }, { opacity: 1 }], { duration: 0.16, ease: 'linear' }),
+      playOn(letter, [
+        { transform: 'translateY(-10px) scale(1.34)', easing: 'cubic-bezier(0.33,0,0.2,1)' },
+        { transform: 'translateY(1px) scale(0.965)', offset: 0.5, easing: 'cubic-bezier(0.4,0,0.4,1)' },
+        { transform: 'translateY(0px) scale(1.008)', offset: 0.78, easing: 'ease-in-out' },
+        { transform: 'translateY(0px) scale(1)' },
+      ], { duration: 0.6, ease: 'linear' }),
+      playOn(finish, [{ opacity: 0, transform: 'translateX(-14px)' }, { opacity: 1, transform: 'translateX(0px)' }], { duration: DUR.land, ease: EASE.out, delay: 0.28 }),
+    ]
+    return () => cancelAll(running)
+  }, [phase])
+  return (
+    <div ref={gradeBox} className="flex flex-wrap items-end gap-x-5 gap-y-3">
+      <span ref={letterRef} className="inline-block origin-bottom-left font-sheet text-[132px] font-black leading-[0.78] tracking-[-0.05em] text-v3-ink" aria-label={`Grade ${grade}`}>{grade}</span>
+      <span ref={finishRef} className="inline-block pb-2">
+        <Fig className="block whitespace-nowrap text-[24px] font-bold text-v3-ink">{ordinal(rank)} of {teams}</Fig>
+        <Label className="mt-1 block whitespace-nowrap text-[11px]">finish in this room</Label>
+      </span>
+    </div>
   )
 }
 
@@ -297,28 +352,22 @@ export default function V3Report() {
         }
       />
 
-      <Sheet code="The grade" aside={`${rep.teams} teams · ${rep.isMe ? 'your seat' : rep.teamName}`} bodyClass="p-0">
+      <Sheet code="The grade" aside={`${rep.teams} teams · ${rep.isMe ? 'your seat' : rep.teamName}`} bodyClass="p-0" rise={false}>
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <div className="border-b border-v3-rule p-5 sm:p-6 lg:border-b-0 lg:border-r">
-            <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-              <span className="font-sheet text-[132px] font-black leading-[0.78] tracking-[-0.05em] text-v3-ink" aria-label={`Grade ${rep.grade}`}>{rep.grade}</span>
-              <span className="pb-2">
-                <Fig className="block whitespace-nowrap text-[24px] font-bold text-v3-ink">{ordinal(rep.rank)} of {rep.teams}</Fig>
-                <Label className="mt-1 block whitespace-nowrap text-[11px]">finish in this room</Label>
-              </span>
-            </div>
+            <GradeFace grade={rep.grade} rank={rep.rank} teams={rep.teams} />
             <p className="mt-4 text-[14px] leading-[1.5] text-v3-ink2">The letter is the finishing position in this room. It is not a score out of a hundred, and none is printed beside it.</p>
           </div>
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <dl className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <div className="rounded-[4px] bg-v3-paper p-3">
                 <dt><Label className="text-[11px]">Net ADP value</Label></dt>
-                <dd className="mt-1 text-[28px] leading-none"><Delta value={rep.value} /></dd>
+                <dd className="mt-1 text-[28px] leading-none"><Delta value={rep.value} count /></dd>
                 <dd className="mt-1 text-[12px] text-v3-ink3">picks, K and D/ST aside</dd>
               </div>
               <div className="rounded-[4px] bg-v3-paper p-3">
                 <dt><Label className="text-[11px]">Projected win %</Label></dt>
-                <dd className="mt-1 font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink">{typeof rep.winPct === 'number' ? `${Math.round(rep.winPct * 100)}%` : '—'}</dd>
+                <dd className="mt-1 font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink"><CountUp value={typeof rep.winPct === 'number' ? rep.winPct * 100 : null} format={(v) => `${Math.round(v)}%`} /></dd>
                 <dd className="mt-1 text-[12px] text-v3-ink3">vs this room, an estimate</dd>
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-2">
@@ -344,7 +393,7 @@ export default function V3Report() {
           <p className="min-w-0 flex-1 basis-[320px] text-[16px] leading-[1.6] text-v3-ink">{missedSentence(rep)}</p>
           {rep.missed && (
             <div className="shrink-0 text-right">
-              <span className="block text-[52px] leading-none"><Delta value={-Math.round(rep.missed.delta)} /></span>
+              <span className="block text-[52px] leading-none"><Delta value={-Math.round(rep.missed.delta)} count /></span>
               <Label className="text-[11px]">starting lineup points</Label>
             </div>
           )}

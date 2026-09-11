@@ -1,6 +1,8 @@
+import { useRef } from 'react'
 import { POS_CHALK, CELL_INK } from '../draftRoomPositions.js'
 import { useV2Data } from '../v2/v2ui.jsx'
 import { THEME_CHOICES, useV3Theme } from './theme.js'
+import { BarFill, CountUp, PRESS, StreamText, useReveal } from './motion.jsx'
 
 /* Juke v3 — "Call Sheet". The shared parts every v3 page is built from.
 
@@ -63,7 +65,7 @@ export function Fig({ children, className = '' }) {
 /* A signed value, coloured by direction and never by whether it is good for
    the reader — that is the caller's job via `tone`, because "up" and "good"
    point opposite ways for points against. A dash for a missing value. */
-export function Delta({ value, digits = 0, unit = '', tone, className = '' }) {
+export function Delta({ value, digits = 0, unit = '', tone, className = '', count = false }) {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return <span className={cx('font-figure text-v3-ink3', className)}>—</span>
   }
@@ -72,9 +74,11 @@ export function Delta({ value, digits = 0, unit = '', tone, className = '' }) {
   const t = tone || (rounded > 0 ? 'gain' : rounded < 0 ? 'cost' : 'even')
   const color = t === 'gain' ? 'text-v3-gain' : t === 'cost' ? 'text-v3-cost' : 'text-v3-ink'
   const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : ''
+  // `count`: the magnitude ticks up under its FINAL sign and colour — the
+  // direction is the fact, and it is never shown flipping on the way.
   return (
     <span className={cx('font-figure font-semibold tabular-nums', color, className)}>
-      {sign}{Math.abs(rounded).toFixed(digits)}{unit && <span className="ml-0.5 font-medium">{unit}</span>}
+      {sign}{count ? <CountUp value={Math.abs(rounded)} format={(v) => v.toFixed(digits)} /> : Math.abs(rounded).toFixed(digits)}{unit && <span className="ml-0.5 font-medium">{unit}</span>}
     </span>
   )
 }
@@ -97,9 +101,15 @@ export function PosTag({ pos, className = '' }) {
    `code` is the band's left text (what situation this block is), `aside` the
    right. A sheet without a band is allowed — `band={false}` — for the plain
    white panels a page needs between the called blocks. */
-export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', ...rest }) {
+export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', rise = true, ...rest }) {
+  // A Sheet below the fold rises as it enters, once (motion.jsx useReveal);
+  // one in view on a cold load is simply there. `rise={false}` for a Sheet
+  // that is re-mounted as a control changes, where a rise would read as a
+  // reload rather than an arrival.
+  const ref = useRef(null)
+  useReveal(ref, { disabled: !rise })
   return (
-    <Tag className={cx('overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet', className)} {...rest}>
+    <Tag ref={ref} className={cx('overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet', className)} {...rest}>
       {band && (code || aside) && (
         <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
           <span className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{code}</span>
@@ -111,7 +121,7 @@ export function Sheet({ code, aside, band = true, children, className = '', body
   )
 }
 
-const BTN = 'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px] px-5 text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call focus-visible:ring-offset-2 focus-visible:ring-offset-v3-paper disabled:cursor-not-allowed disabled:opacity-100'
+const BTN = 'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px] px-5 text-[15px] font-semibold ' + PRESS + ' focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call focus-visible:ring-offset-2 focus-visible:ring-offset-v3-paper disabled:cursor-not-allowed disabled:opacity-100'
 
 /* The one primary action of a view. Cobalt, with its own ink: white in
    light (7.4:1) and near-black in dark (7.1:1). */
@@ -186,13 +196,18 @@ export function Headline({ children, size = 'page', as: Tag = 'h1', className = 
 
 /* The page opening every v3 page shares: a label, a headline, a lede, and an
    optional right-hand slot for the page's own action. */
+/* The lede is written in live when it is a short plain sentence (motion.jsx
+   StreamText: under ~25 words and no figures), and rises as a block when it
+   is longer — never on a cold load, where it is simply there. A lede that IS
+   data (a record, a rank, the arithmetic of a call) carries digits and so is
+   never streamed. */
 export function PageHead({ label, title, lede, action }) {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-[760px]">
         {label && <Label>{label}</Label>}
         <Headline className="mt-2">{title}</Headline>
-        {lede && <p className="mt-4 max-w-[62ch] text-[17px] leading-[1.55] text-v3-ink2">{lede}</p>}
+        {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[17px] leading-[1.55] text-v3-ink2" />}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>
@@ -220,10 +235,12 @@ export function ValueBar({ value, max, zero = false, tone, className = '' }) {
   const style = zero
     ? value >= 0 ? { left: '50%', width: `${pct}%` } : { right: '50%', width: `${pct}%` }
     : { left: 0, width: `${pct}%` }
+  // The fill grows from the axis it is measured from, on transform only, in
+  // step with the figure beside it (motion.jsx BarFill).
   return (
     <div className={cx('relative h-2 overflow-hidden rounded-full bg-v3-well', className)}>
       {zero && <span className="absolute inset-y-0 left-1/2 w-px bg-v3-ink3" aria-hidden="true" />}
-      <span className={cx('absolute inset-y-0 rounded-full', fill)} style={style} />
+      <BarFill width={pct} origin={zero && value < 0 ? 'right' : 'left'} className={cx('absolute inset-y-0 rounded-full', fill)} style={style} />
     </div>
   )
 }

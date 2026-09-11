@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { STAT_COLUMNS, STAT_GROUPS, MOBILE_SORTS, lastsTone, statValue } from '../../../playerColumns.js'
 import { POS_FILTERS, SORT_DEFAULT_DIR, filterAndSort, readersFor, teamsOnBoard, tierAverages, withDividers } from '../../../v2/cockpit/cockpitData.js'
 import { Delta, Label, PosTag, cx } from '../../ui.jsx'
 import { DeepTag, DraftButton, FOCUS, Glyph, Headshot, InjuryTag, StarButton, Switch } from '../kit.jsx'
+import { useCalm, useFlip } from '../../motion.jsx'
+
+/* How many rows from the top slide to their new place when the pool
+   changes — a drafted player leaving, a sort, a filter. Only the rows a
+   reader can see are worth the measuring: past the first screenful a row
+   simply moves, and a pick stays cheap at four times CPU throttling. */
+const MOVING_ROWS = 24
 
 /* The player pool: every player still on the board, filtered, sorted and
    draftable. The columns are playerColumns.js's — the one union list the
@@ -162,7 +169,13 @@ function Divider({ row }) {
 
 export default function Pool({ engine, version, f, set, sort, canDraft, draftReason, onDraft, onOpen, nextOverall, phone }) {
   const board = engine.board() || []
+  const calm = useCalm()
   const [shown, setShown] = useState(PAGE)
+  // Rows slide up as a pick takes a player out of the list — the first
+  // MOVING_ROWS of them, by hand (useFlip), because this list re-renders on
+  // every pick and a motion component per row was a cost on every one.
+  const listRef = useRef(null)
+  useFlip(listRef, { limit: MOVING_ROWS, disabled: calm })
   const filterKey = JSON.stringify(f)
   useEffect(() => { setShown(PAGE) }, [filterKey])
 
@@ -218,14 +231,14 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto bg-v3-sheet">
           {empty}
-          <ul>
+          <ul ref={listRef}>
             {visible.map((row) => {
-              if (row.type !== 'player') return <li key={row.key}><Divider row={row} /></li>
+              if (row.type !== 'player') return <li key={row.key} data-flip={row.key}><Divider row={row} /></li>
               const p = row.player
               const by = p.drafted ? takenBy(p) : null
               const stats = ['pts', 'vorp', 'juke', 'lasts'].map((k) => ({ c: COL[k], raw: statValue(COL[k], p, readers) }))
               return (
-                <li key={row.key} className="border-b border-v3-rule px-3 py-2.5">
+                <li key={row.key} data-flip={row.key} className="border-b border-v3-rule bg-v3-sheet px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <StarButton on={queued.has(p.name)} onClick={() => engine.queueToggle(p.name)} name={p.name} className="h-11 w-9" />
                     <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 flex-1 items-center gap-2.5 rounded-[4px] text-left', FOCUS)}>
@@ -298,15 +311,15 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
             </tr>
             <tr>{cols.map((c) => th(c))}</tr>
           </thead>
-          <tbody>
+          <tbody ref={listRef}>
             {visible.map((row) => {
               if (row.type !== 'player') {
-                return <tr key={row.key}><td colSpan={cols.length + 1} className="p-0"><div className="sticky left-0 w-[min(680px,100%)]"><Divider row={row} /></div></td></tr>
+                return <tr key={row.key} data-flip={row.key}><td colSpan={cols.length + 1} className="p-0"><div className="sticky left-0 w-[min(680px,100%)]"><Divider row={row} /></div></td></tr>
               }
               const p = row.player
               const by = p.drafted ? takenBy(p) : null
               return (
-                <tr key={row.key} className="group">
+                <tr key={row.key} data-flip={row.key} className="group bg-v3-sheet">
                   <td className="sticky left-0 z-[1] border-b border-v3-rule bg-v3-sheet px-2 py-1.5 group-hover:bg-v3-paper">
                     <div className="flex w-[320px] items-center gap-2">
                       <StarButton on={queued.has(p.name)} onClick={() => engine.queueToggle(p.name)} name={p.name} />

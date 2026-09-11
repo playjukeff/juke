@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { POS_CHALK, CELL_INK, CELL_SUB } from '../../../draftRoomPositions.js'
 import { DE } from '../../../v2/cockpit/cockpitData.js'
 import { cx } from '../../ui.jsx'
 import { FOCUS, Glyph } from '../kit.jsx'
+import { SPRING, motion, playOn, useCalm } from '../../motion.jsx'
 
 /* The board: one column per seat, one row per round, every pick where the
    snake put it, in the product's position chalk with CELL_INK on it.
@@ -19,7 +20,16 @@ import { FOCUS, Glyph } from '../kit.jsx'
 
    The board follows the pick on the clock and stops the moment a person
    scrolls it — wheel, touch-drag or a key, never the `scroll` event, which a
-   smooth programmatic scroll fires in a stream. The button re-arms it. */
+   smooth programmatic scroll fires in a stream. The button re-arms it.
+
+   ---- The motion, all of it after the fact ----
+
+   The live pick's ring is one element that WALKS to the next cell (a shared
+   layoutId), so the eye follows the clock round the snake the way Sleeper's
+   clock chip crosses its grid — rather than one ring blinking out and
+   another on. A pick that lands while you watch arrives with a small spring;
+   the picks already on the board when it mounted are simply there. Neither
+   touches a control: the cell is a button from its first frame. */
 
 export default function Board({ engine, version, onOpen, phone }) {
   const de = DE()
@@ -31,6 +41,28 @@ export default function Board({ engine, version, onOpen, phone }) {
   const mySlot = engine.mySlot()
   const over = picks.length >= league.teams * league.rounds
   const liveOverall = over ? null : picks.length + 1
+  const calm = useCalm()
+  // Picks on the board when it mounted do not "land"; only later ones do.
+  // The landing is played on the cell after the commit (native Web
+  // Animations) rather than by making all 140 cells motion components: the
+  // board re-renders on every pick, and a motion component per cell was a
+  // cost on every one of them.
+  const landedBefore = useRef(picks.length)
+  const grid = useRef(null)
+  useLayoutEffect(() => {
+    const from = landedBefore.current
+    landedBefore.current = picks.length
+    if (calm || picks.length <= from || !grid.current) return
+    for (let o = from + 1; o <= picks.length; o++) {
+      const el = grid.current.querySelector(`[data-overall="${o}"]`)
+      // SPRING.land's shape — one small overshoot — as keyframes.
+      if (el) playOn(el, [
+        { opacity: 0.35, transform: 'scale(0.84)', easing: 'cubic-bezier(0.33,0,0.2,1)' },
+        { opacity: 1, transform: 'scale(1.03)', offset: 0.55, easing: 'ease-in-out' },
+        { opacity: 1, transform: 'scale(1)' },
+      ], { duration: 0.42, ease: 'linear' })
+    }
+  }, [picks.length, calm])
 
   useEffect(() => {
     const el = scroller.current
@@ -69,7 +101,7 @@ export default function Board({ engine, version, onOpen, phone }) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={scroller} tabIndex={0} aria-label="Draft board" className={cx('min-h-0 flex-1 overflow-auto bg-v3-sheet', FOCUS)}>
-        <table className="border-separate border-spacing-0 bg-v3-sheet">
+        <table ref={grid} className="border-separate border-spacing-0 bg-v3-sheet">
           <thead className="sticky top-0 z-10">
             <tr>
               <th scope="col" className="sticky left-0 z-20 w-[46px] border-b border-r border-v3-rule bg-v3-sheet font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink3">Rd</th>
@@ -114,6 +146,7 @@ export default function Board({ engine, version, onOpen, phone }) {
                         <td key={s} style={style} className={base}>
                           <button
                             type="button"
+                            data-overall={overall}
                             onClick={() => onOpen(pick.player)}
                             title={`${code} · ${pick.player.name}`}
                             className={cx('flex h-full w-full flex-col justify-between overflow-hidden rounded-[4px] px-2 py-1 text-left hover:shadow-[inset_0_0_0_2px_rgba(22,32,46,0.4)]', FOCUS)}
@@ -130,7 +163,15 @@ export default function Board({ engine, version, onOpen, phone }) {
                     }
                     return (
                       <td key={s} style={style} className={base} ref={live ? liveRef : undefined}>
-                        <div aria-current={live ? 'step' : undefined} className={cx('flex h-full flex-col justify-between rounded-[4px] px-2 py-1', live ? 'bg-v3-sheet shadow-[inset_0_0_0_2px_rgb(var(--v3-ink))]' : 'border border-dashed border-v3-rule')}>
+                        {live && (
+                          <motion.span
+                            layoutId="v3-live-ring"
+                            transition={calm ? { duration: 0 } : SPRING.layout}
+                            className="pointer-events-none absolute inset-1 z-[1] rounded-[4px] shadow-[inset_0_0_0_2px_rgb(var(--v3-ink))]"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div aria-current={live ? 'step' : undefined} className={cx('flex h-full flex-col justify-between rounded-[4px] px-2 py-1', live ? 'bg-v3-sheet' : 'border border-dashed border-v3-rule')}>
                           <span className="flex items-center justify-between font-figure text-[11px] tabular-nums">
                             <span className={live ? 'font-bold text-v3-ink' : 'text-v3-ink3'}>{code}</span>
                             <span className="text-v3-ink3" aria-hidden="true">{lastOfRound ? '↓' : forward ? '→' : '←'}</span>

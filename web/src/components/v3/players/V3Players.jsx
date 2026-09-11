@@ -6,6 +6,7 @@ import {
 } from './playerData.js'
 import { Chips, DeepTag, InjuryTag, PlayerFace, RookieTag, SelectField, ViewTabs } from './parts.jsx'
 import { useBoardKey } from './useBoardKey.js'
+import { LAYOUT_ROW, motion } from '../motion.jsx'
 
 /* Players — the index. Production has no player index at all: a player is
    reachable only as a sheet inside the Draft Room, which means only during
@@ -156,10 +157,11 @@ function Table({ rows, sort, onSort, deepAt }) {
             return (
               <Fragment key={r.id}>
               {deepAt === i ? <DeepDivider asRow /> : null}
-              <tr
+              <motion.tr
+                {...LAYOUT_ROW}
                 data-player-row={r.id}
                 onClick={(e) => { if (!e.target.closest('a,button')) window.location.hash = href.slice(1) }}
-                className="cursor-pointer border-b border-v3-rule transition-colors duration-100 last:border-b-0 hover:bg-v3-paper"
+                className="cursor-pointer border-b border-v3-rule bg-v3-sheet [&>td]:bg-inherit transition-colors duration-100 last:border-b-0 hover:bg-v3-paper"
               >
                 <td className="px-3 py-2 align-middle"><Fig className="text-[13px] text-v3-ink3">{i + 1}</Fig></td>
                 <td className="min-w-0 px-2 py-2 align-middle">
@@ -174,7 +176,7 @@ function Table({ rows, sort, onSort, deepAt }) {
                 {COLS.map((c) => (
                   <td key={c.key} className="px-2 py-2 pr-4 text-right align-middle"><Cell col={c.key} row={r} /></td>
                 ))}
-              </tr>
+              </motion.tr>
               </Fragment>
             )
           })}
@@ -185,7 +187,13 @@ function Table({ rows, sort, onSort, deepAt }) {
 }
 
 /* The phone's own list: not the table squeezed, a row per player with the
-   one figure the list is sorted by standing at its right edge. */
+   one figure the list is sorted by standing at its right edge.
+
+   Both lists re-order with their rows sliding to their new places
+   (motion.jsx LAYOUT_ROW) when the sort or a filter changes — the index
+   tells you who moved, not just who is where. Position only, keyed on the
+   player, near-critically damped: a ranked table that bounces reads as
+   sloppy. */
 function PhoneList({ rows, sort, deepAt }) {
   const shown = sort.key === 'name' || sort.key === 'inj' ? 'pts' : sort.key
   const label = SORTS[shown].label
@@ -203,7 +211,7 @@ function PhoneList({ rows, sort, deepAt }) {
         return (
           <Fragment key={r.id}>
           {deepAt === i ? <DeepDivider /> : null}
-          <li className="border-b border-v3-rule last:border-b-0">
+          <motion.li {...LAYOUT_ROW} className="border-b border-v3-rule bg-v3-sheet last:border-b-0">
             <a href={href} data-player-row={r.id} className="flex min-h-[64px] items-center gap-3 px-4 py-2.5 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call">
               <PlayerFace photo={r.photo} initials={r.initials} pos={r.pos} size={40} />
               <span className="min-w-0 flex-1">
@@ -218,7 +226,7 @@ function PhoneList({ rows, sort, deepAt }) {
                 <span className="mt-1 block font-figure text-[11px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{label}</span>
               </span>
             </a>
-          </li>
+          </motion.li>
           </Fragment>
         )
       })}

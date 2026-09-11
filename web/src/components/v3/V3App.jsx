@@ -6,6 +6,7 @@ import { useSignedIn } from '../../hooks/useAuthState.js'
 import { countdownParts } from '../../lib/countdown.js'
 import { Icon, Label, Headline, CallButton, QuietButton, cx } from './ui.jsx'
 import { THEME_CHOICES, mountTheme, useV3Theme } from './theme.js'
+import { MotionRoot, SPRING, motion } from './motion.jsx'
 import Now from './now/Now.jsx'
 import V3League from './league/V3League.jsx'
 import V3Team from './league/V3Team.jsx'
@@ -221,7 +222,9 @@ function TopBar({ current }) {
                 )}
               >
                 {n.label}
-                {on && <span className="absolute inset-x-3 bottom-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
+                {/* One mark, and it travels to where you went rather than
+                    blinking out in one place and on in another. */}
+                {on && <motion.span layoutId="v3-nav-mark" transition={SPRING.layout} className="absolute inset-x-3 bottom-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
               </a>
             )
           })}
@@ -252,7 +255,7 @@ function TabBar({ current }) {
               aria-current={on ? 'page' : undefined}
               className={cx('relative flex min-h-[58px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold', on ? 'text-v3-ink' : 'text-v3-ink3')}
             >
-              {on && <span className="absolute inset-x-4 top-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
+              {on && <motion.span layoutId="v3-tab-mark" transition={SPRING.layout} className="absolute inset-x-4 top-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
               <Icon name={n.icon} className="h-[22px] w-[22px]" />
               {n.label}
             </a>
@@ -346,18 +349,22 @@ export default function V3App({ sub = '' }) {
   const current = clean.split('/')[0]
   const { page, bare } = route(clean)
   useEffect(() => { window.scrollTo(0, 0) }, [clean])
+  // MotionRoot: Framer's reducedMotion="user" for everything declarative
+  // under it; the imperative primitives in motion.jsx ask on their own.
   return (
-    <div className="min-h-screen overflow-x-clip bg-v3-paper font-sheet text-v3-ink antialiased">
-      {bare ? (
-        <main>{page}</main>
-      ) : (
-        <>
-          <TopBar current={current} />
-          <main className="mx-auto max-w-[1320px] px-4 pb-24 pt-8 sm:px-8 sm:pt-12 md:pb-0">{page}</main>
-          <Footer />
-          <TabBar current={current} />
-        </>
-      )}
-    </div>
+    <MotionRoot>
+      <div className="min-h-screen overflow-x-clip bg-v3-paper font-sheet text-v3-ink antialiased">
+        {bare ? (
+          <main>{page}</main>
+        ) : (
+          <>
+            <TopBar current={current} />
+            <main className="mx-auto max-w-[1320px] px-4 pb-24 pt-8 sm:px-8 sm:pt-12 md:pb-0">{page}</main>
+            <Footer />
+            <TabBar current={current} />
+          </>
+        )}
+      </div>
+    </MotionRoot>
   )
 }

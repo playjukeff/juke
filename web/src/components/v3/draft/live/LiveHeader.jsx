@@ -3,6 +3,8 @@ import { DE } from '../../../v2/cockpit/cockpitData.js'
 import { Label, PosTag, cx } from '../../ui.jsx'
 import { LAUNCH_HASH } from '../flow.js'
 import { FOCUS, Glyph, Switch, fmtClock } from '../kit.jsx'
+import { DUR, EASE, PRESS, motion, useCalm, useFlip } from '../../motion.jsx'
+import { useRef } from 'react'
 
 /* The top of the room: what pick it is, whose, how long is left, and the
    controls that change what happens next.
@@ -75,10 +77,32 @@ function CtrlButton({ label, onClick, pressed, children, className = '', ...rest
       aria-pressed={pressed}
       onClick={onClick}
       {...rest}
-      className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] border transition-colors', FOCUS, pressed ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink hover:border-v3-ink3', className)}
+      className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] border', PRESS, FOCUS, pressed ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink hover:border-v3-ink3', className)}
     >
       {children}
     </button>
+  )
+}
+
+/* The 3px rule across the top of the bar. When whose-turn-it-is changes it
+   DRAWS across, left to right, rather than simply changing colour — the
+   state change moves, and the resting bar stays still. */
+function StateRule({ rule }) {
+  const calm = useCalm()
+  const first = useRef(rule)
+  const everMoved = useRef(false)
+  if (rule !== first.current) everMoved.current = true
+  const moved = everMoved.current
+  return (
+    <motion.span
+      key={rule}
+      initial={moved && !calm ? { scaleX: 0 } : false}
+      animate={{ scaleX: 1 }}
+      transition={{ duration: DUR.enter, ease: EASE.out }}
+      style={{ originX: 0 }}
+      className={cx('absolute inset-x-0 top-0 h-[3px]', rule)}
+      aria-hidden="true"
+    />
   )
 }
 
@@ -94,7 +118,7 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
   if (phone) {
     return (
       <header className="relative z-20 shrink-0 border-b border-v3-rule bg-v3-sheet" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <span className={cx('absolute inset-x-0 top-0 h-[3px]', rule)} aria-hidden="true" />
+        <StateRule rule={rule} />
         <div className="flex h-[60px] items-center gap-2 px-2">
           <a href={LAUNCH_HASH} aria-label="Leave the draft — it stays saved" className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] text-v3-ink hover:bg-v3-well', FOCUS)}>
             <Glyph name="back" className="h-5 w-5" />
@@ -115,7 +139,7 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
 
   return (
     <header className="relative z-20 shrink-0 border-b border-v3-rule bg-v3-sheet">
-      <span className={cx('absolute inset-x-0 top-0 h-[3px]', rule)} aria-hidden="true" />
+      <StateRule rule={rule} />
       <div className="flex h-[68px] items-center gap-4 px-4 xl:gap-6 xl:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
@@ -160,8 +184,18 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
 /* The ribbon: the situation band. The last few picks, the one on the clock,
    the next few — each cell's code from DraftEngine.pickCode(), each owner
    from teamLabel(). White on the ink band; your chairs are underlined. */
+/* The ribbon ADVANCES: each cell is keyed on its overall pick, so when a
+   pick lands the strip slides one cell left (a layout move) instead of every
+   cell repainting in place, and the cell arriving at the right edge fades
+   in. The window is the same thirteen picks either way. By hand (useFlip on
+   the x axis), not a motion component per cell: this re-renders on every
+   pick. */
+const RIBBON_ENTER = { keyframes: [{ opacity: 0 }, { opacity: 1 }], options: { duration: DUR.micro, ease: 'linear' } }
 export function PickRibbon({ engine, header }) {
   const de = DE()
+  const calm = useCalm()
+  const strip = useRef(null)
+  useFlip(strip, { axis: 'x', limit: 16, disabled: calm, enter: RIBBON_ENTER })
   if (!de || header.over) return null
   const league = engine.league()
   const picks = engine.picks() || []
@@ -175,9 +209,14 @@ export function PickRibbon({ engine, header }) {
     cells.push({ o, made, slot, code: de.pickCode(o, league), mine: slot === mySlot, current: o === header.overall })
   }
   return (
-    <div className="flex h-[50px] shrink-0 items-stretch overflow-x-auto bg-v3-band text-white [scrollbar-width:none]" aria-label="Pick order">
+    <div ref={strip} className="flex h-[50px] shrink-0 items-stretch overflow-x-auto bg-v3-band text-white [scrollbar-width:none]" aria-label="Pick order">
       {cells.map((c) => (
-        <div key={c.o} aria-current={c.current ? 'step' : undefined} className={cx('relative flex min-w-[132px] shrink-0 flex-col justify-center border-r border-v3-bandSoft px-3', c.current && 'bg-v3-bandSoft')}>
+        <div
+          key={c.o}
+          data-flip={c.o}
+          aria-current={c.current ? 'step' : undefined}
+          className={cx('relative flex min-w-[132px] shrink-0 flex-col justify-center border-r border-v3-bandSoft px-3', c.current && 'bg-v3-bandSoft')}
+        >
           {c.mine && <span className="absolute inset-x-3 bottom-0 h-[3px] bg-white" aria-hidden="true" />}
           <span className="flex items-center gap-1.5 font-figure text-[11px] font-bold tabular-nums tracking-[0.08em]">
             <span className={c.current ? 'text-white' : 'text-v3-bandInk'}>{c.code}</span>

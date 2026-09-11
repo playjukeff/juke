@@ -6,6 +6,7 @@ import {
   DepthSheet, FitSheet, JukeSheet, LogsSheet, NewsSheet, ProjectionSheet, ProspectSheet, RecordSheet, SeasonsSheet, UsageSheet,
 } from './PlayerSections.jsx'
 import { useBoardKey, useHeaderTick } from './useBoardKey.js'
+import { CountUp } from '../motion.jsx'
 
 /* One player, as a page — #/v3/players/<sleeperId>, and a defense's id is
    its club (SEA). Production's player sheet is an overlay inside the Draft
@@ -74,10 +75,13 @@ function Header({ d, fit, engine }) {
         <dl className="grid grid-cols-3 gap-x-6 gap-y-4 rounded-[6px] border border-v3-rule bg-v3-sheet p-4 sm:grid-cols-5 lg:min-w-[520px]">
           <FigCell label="Board" sub="by ADP">{p.overall ? `#${p.overall}` : '—'}</FigCell>
           <FigCell label="ADP" sub={p.deep ? 'no real draft' : `${posWord(p.pos)}${p.posRank} by market`}>{typeof p.adp === 'number' ? p.adp.toFixed(1) : '—'}</FigCell>
-          <FigCell label="Proj pts" sub={d.scoring}>{p.projPts === null || p.projPts === undefined ? '—' : Math.round(p.projPts)}</FigCell>
-          <FigCell label="Over repl." sub={r.unranked ? 'not rated' : r.replacementRank ? `vs ${r.replacementRank}` : null}><Delta value={r.gap} className="text-[22px]" /></FigCell>
+          {/* The three figures Juke adds tick up to themselves when the page is
+              arrived at. A dash (a kicker's withheld score, a missing
+              projection) is drawn as a dash and never counts. */}
+          <FigCell label="Proj pts" sub={d.scoring}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
+          <FigCell label="Over repl." sub={r.unranked ? 'not rated' : r.replacementRank ? `vs ${r.replacementRank}` : null}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
           <FigCell label="Juke score" sub={r.unranked ? 'not rated' : r.label || null}>
-            <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}>{r.score === null || r.score === undefined ? '—' : r.score}</span>
+            <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}><CountUp value={typeof r.score === 'number' ? r.score : null} /></span>
           </FigCell>
         </dl>
       </div>

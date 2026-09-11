@@ -14,6 +14,7 @@ import Analysis from './live/Analysis.jsx'
 import PlayerDrawer from './live/PlayerDrawer.jsx'
 import { CallCard, CallDock, Forecast, RoomRead } from './live/Call.jsx'
 import { NextPicks, PicksFeed, QueuePanel, RosterPanel } from './live/Rails.jsx'
+import { Still } from '../motion.jsx'
 
 /* The live draft, at #/v3/draft/live.
 
@@ -136,7 +137,16 @@ function Segments({ items, value, onChange, label, className = '' }) {
   )
 }
 
+/* The room is a Still subtree: no Sheet rises as a rail tab is switched and
+   no figure counts up while a clock runs. Its motion is the after-the-fact
+   kind, drawn by the parts themselves — the ring walking the board, a pick
+   landing, the ribbon advancing, the Call re-dealing — and none of it
+   holds a pick: every control is live from its first frame. */
 export default function V3Live() {
+  return <Still><V3LiveRoom /></Still>
+}
+
+function V3LiveRoom() {
   const engine = useEngine()
   const version = useDraftVersion(engine)
   const desktop = useMinWidth(1024)

@@ -13,6 +13,7 @@ import {
   ValueBar, cx, ordinal,
 } from '../ui.jsx'
 import { recordText, standing, teamHref, useWeekSheet } from '../league/leagueData.js'
+import { CountText, CountUp } from '../motion.jsx'
 import {
   CouldNotRead, InjuryChip, ResultChip, WinBar, pct, useDraftPhase, useKickoff, whenText,
 } from '../league/parts.jsx'
@@ -121,7 +122,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
               <span className="truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
             )}
             <ValueBar value={r.value} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-            <Fig className="text-right text-[18px] font-bold text-v3-ink">{r.value === null ? '—' : r.value.toFixed(1)}</Fig>
+            <CountUp value={r.value} format={(v) => v.toFixed(1)} className="text-right font-figure text-[18px] font-bold tabular-nums text-v3-ink" />
           </div>
         ))}
       </div>
@@ -137,7 +138,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule }) {
             <div className="flex items-baseline justify-between gap-3">
               <Label>Win probability</Label>
               <span className={cx('font-figure text-[26px] font-bold tabular-nums', read === 'favoured' ? 'text-v3-gain' : read === 'behind' ? 'text-v3-cost' : 'text-v3-ink')}>
-                {pct(winProb)} {word ? <span className="text-[14px] font-semibold uppercase tracking-[0.08em]">{word}</span> : null}
+                <CountText text={pct(winProb)} /> {word ? <span className="text-[14px] font-semibold uppercase tracking-[0.08em]">{word}</span> : null}
               </span>
             </div>
             <WinBar p={winProb} read={read} className="mt-1" />
@@ -366,7 +367,7 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
           </div>
           <div className="rounded-[6px] bg-v3-paper p-3">
             <dt><Label className="text-[11px]">Playoff odds</Label></dt>
-            <dd className="mt-0.5 font-figure text-[20px] font-bold text-v3-ink">{mine && typeof mine.playoffs === 'number' ? pct(mine.playoffs) : '—'}</dd>
+            <dd className="mt-0.5 font-figure text-[20px] font-bold tabular-nums text-v3-ink"><CountText text={mine && typeof mine.playoffs === 'number' ? pct(mine.playoffs) : '—'} /></dd>
             <dd className="text-[12px] text-v3-ink3">{mine && typeof mine.playoffs === 'number' ? '10,000 seasons' : st.played ? 'Not simulable here' : 'After week one'}</dd>
           </div>
         </dl>

@@ -8,6 +8,7 @@ import { countdownParts, draftPhase } from '../../../lib/countdown.js'
 import { useLeagueFresh, useTierFresh } from '../../v2/stores.js'
 import { verdictFor } from '../../ledger/verdicts.js'
 import { CallButton, Icon, Label, QuietButton, Sheet, cx } from '../ui.jsx'
+import { BarFill, CountText, Reveal } from '../motion.jsx'
 
 /* Pieces the connected Now, League and team pages share. v3 primitives
    that ui.jsx does not carry live here (the brief's rule: a missing
@@ -145,7 +146,7 @@ export function WinBar({ p, read, className = '' }) {
     <div className={cx('relative pt-4', className)}>
       <span className="absolute left-1/2 top-0 -translate-x-1/2 font-figure text-[11px] uppercase tracking-[0.1em] text-v3-ink3">even</span>
       <div className="relative h-3 overflow-hidden rounded-full bg-v3-well" role="img" aria-label={`Win probability ${pct(p)}`}>
-        <span className={cx('absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 motion-reduce:transition-none', fill)} style={{ width: `${Math.max(0, Math.min(1, p || 0)) * 100}%` }} />
+        <BarFill width={Math.max(0, Math.min(1, p || 0)) * 100} className={cx('absolute inset-y-0 left-0 rounded-full', fill)} style={{ width: `${Math.max(0, Math.min(1, p || 0)) * 100}%` }} />
         <span className="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 bg-v3-ink" aria-hidden="true" />
       </div>
     </div>
@@ -153,10 +154,15 @@ export function WinBar({ p, read, className = '' }) {
 }
 
 /* Four numbers in one ruled grid: the cells share hairlines rather than
-   each drawing a card, so the strip reads as one reading of the season. */
+   each drawing a card, so the strip reads as one reading of the season.
+   A figure that is one number ("80%", "820.0", "$100") ticks up to itself
+   on first view (motion.jsx CountText); a record, an ordinal or a word is
+   drawn as it is. The strip rises as one piece — its cells are divided by
+   the grid's own ground, which a per-cell stagger would show as grey
+   tiles on the way in. */
 export function KpiGrid({ items }) {
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[6px] border border-v3-rule bg-v3-rule lg:grid-cols-4">
+    <Reveal className="grid grid-cols-2 gap-px overflow-hidden rounded-[6px] border border-v3-rule bg-v3-rule lg:grid-cols-4">
       {items.map((k) => (
         <div key={k.label} className="min-w-0 bg-v3-sheet p-3.5 sm:p-5">
           <div className="flex items-center justify-between gap-2">
@@ -164,14 +170,14 @@ export function KpiGrid({ items }) {
             {k.tag}
           </div>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
-            <span className="font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink sm:text-[34px]">{k.value}</span>
+            <CountText text={k.value} className="font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink sm:text-[34px]" />
             {k.delta}
           </div>
           {k.children}
           {k.note ? <p className="mt-2 text-[13px] leading-[1.45] text-v3-ink2">{k.note}</p> : null}
         </div>
       ))}
-    </div>
+    </Reveal>
   )
 }
 

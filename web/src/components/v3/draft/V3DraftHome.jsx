@@ -9,6 +9,7 @@ import { CallButton, GoLink, Headline, Icon, Label, PageHead, PosTag, QuietButto
 import { FRIENDS_HASH, INSIGHTS_HASH, RECORD_HASH, begin, resume, setupProblem, startScenario } from './flow.js'
 import { FOCUS, Glyph, Problem } from './kit.jsx'
 import SettingsDrawer from './SettingsDrawer.jsx'
+import { CountText, LIFT, StreamText } from '../motion.jsx'
 
 /* Draft — v3's launcher for a mock draft.
 
@@ -204,9 +205,10 @@ function Scenarios({ engine, ready, tick, roomActive }) {
             key={s.id}
             type="button"
             data-practice-scenario={s.id}
+            data-rise=""
             disabled={!!launching || roomActive}
             onClick={() => launch(s)}
-            className={cx('group flex min-h-[112px] flex-col gap-1 rounded-[4px] border border-v3-rule bg-v3-sheet p-4 text-left transition-colors hover:border-v3-ink disabled:cursor-not-allowed disabled:bg-v3-paper', FOCUS)}
+            className={cx('group flex min-h-[112px] flex-col gap-1 rounded-[4px] border border-v3-rule bg-v3-sheet p-4 text-left hover:border-v3-ink disabled:cursor-not-allowed disabled:bg-v3-paper', LIFT, FOCUS)}
           >
             <Label className="text-[11px]">{launching === s.id ? 'Starting…' : s.eyebrow}</Label>
             <span className="text-[18px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">{s.title}</span>
@@ -249,7 +251,7 @@ function Recent({ history, inProgress, onDelete }) {
         <>
           <ul className="divide-y divide-v3-rule">
             {history.slice(0, RECENT).map((e) => (
-              <li key={e.id} className="flex items-center gap-1 pr-2">
+              <li key={e.id} data-rise="" className="flex items-center gap-1 pr-2">
                 <a href={`#/v3/draft/report?id=${encodeURIComponent(e.id)}`} className={cx('grid min-w-0 flex-1 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-v3-paper sm:px-5', FOCUS)}>
                   <span className="font-sheet text-[28px] font-black leading-none tracking-[-0.03em] text-v3-ink">{e.grade || '—'}</span>
                   <span className="min-w-0">
@@ -304,10 +306,10 @@ function InsightsTeaser({ engine, ready }) {
       {!report ? <Skeleton lines={2} /> : kpi ? (
         <>
           <div className="flex items-baseline gap-2">
-            <span className="font-figure text-[40px] font-bold leading-none tabular-nums text-v3-ink">{kpi.value}</span>
+            <CountText text={kpi.value} className="font-figure text-[40px] font-bold leading-none tabular-nums text-v3-ink" />
             {kpi.delta && <span className="font-figure text-[13px] text-v3-ink2">{kpi.delta}</span>}
           </div>
-          <p className="mt-1.5 text-[14px] leading-[1.5] text-v3-ink2">Points of starter value you leave on the board per draft.</p>
+          <StreamText as="p" text="Points of starter value you leave on the board per draft." className="mt-1.5 text-[14px] leading-[1.5] text-v3-ink2" />
         </>
       ) : (
         <>

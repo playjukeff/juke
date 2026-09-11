@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { INJURY_META } from '../../draftRoomPositions.js'
 import { Label, cx } from '../ui.jsx'
+import { PRESS, SPRING, motion } from '../motion.jsx'
 
 /* Focus for the live room's dialogs — the menu, the Call sheet, the player
    drawer — which can stack: a phone opens a player FROM the Call sheet.
@@ -154,7 +155,14 @@ export function Switch({ checked, onChange, label, disabled, hideLabel = false, 
     >
       {!hideLabel && <span className="font-figure text-[12px] font-semibold uppercase tracking-[0.1em]">{label}</span>}
       <span className={cx('relative h-[24px] w-[42px] shrink-0 rounded-full border transition-colors', checked ? 'border-v3-band bg-v3-band' : 'border-v3-rule bg-v3-well')} aria-hidden="true">
-        <span className={cx('absolute top-[3px] h-4 w-4 rounded-full transition-[left] duration-150 motion-reduce:transition-none', checked ? 'left-[21px] bg-white' : 'left-[3px] bg-v3-ink3')} />
+        {/* The knob springs across on transform (motion.jsx SPRING.toggle);
+            reduced motion puts it straight there. */}
+        <motion.span
+          initial={false}
+          animate={{ x: checked ? 18 : 0 }}
+          transition={SPRING.toggle}
+          className={cx('absolute left-[3px] top-[3px] h-4 w-4 rounded-full', checked ? 'bg-white' : 'bg-v3-ink3')}
+        />
       </span>
     </button>
   )
@@ -278,7 +286,7 @@ export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'm
       disabled={disabled}
       title={disabled ? reason : undefined}
       aria-label={disabled && reason ? `${spoken} — ${reason}` : who ? spoken : undefined}
-      className={cx('inline-flex shrink-0 items-center justify-center rounded-[4px] font-semibold transition-colors', dims, FOCUS, disabled ? 'cursor-not-allowed border border-v3-rule bg-v3-well text-v3-ink3' : live, className)}
+      className={cx('inline-flex shrink-0 items-center justify-center rounded-[4px] font-semibold', PRESS, dims, FOCUS, disabled ? 'cursor-not-allowed border border-v3-rule bg-v3-well text-v3-ink3' : live, className)}
       {...rest}
     >
       {label}

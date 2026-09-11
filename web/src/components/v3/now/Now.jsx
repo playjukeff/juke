@@ -6,6 +6,8 @@ import {
   CallButton, Delta, Fig, GoLink, Headline, Icon, Label, PosTag, QuietButton, Seg, Sheet, Skeleton,
   ValueBar, cx, ordinal, useEngineData,
 } from '../ui.jsx'
+import { CountUp, StreamText } from '../motion.jsx'
+import SampleBoard from '../draft/SampleBoard.jsx'
 import NowConnected from './NowConnected.jsx'
 
 /* Now — the first of v3's five places.
@@ -30,14 +32,23 @@ function SituationBand({ s }) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-[6px] bg-v3-band px-4 py-2.5 font-figure text-[13px] text-v3-bandInk">
       <span className="font-bold uppercase tracking-[0.14em] text-white">Tonight&apos;s board</span>
-      <span><Fig className="font-bold text-white">{s.players}</Fig> players priced</span>
+      <span><CountUp value={s.players} className="font-figure font-bold tabular-nums text-white" /> players priced</span>
       {s.refreshed && <span>refreshed {s.refreshed}</span>}
       {s.scoring && <span>your mock is set to <span className="text-white">{s.scoring}</span></span>}
     </div>
   )
 }
 
-/* One side of the call: who, what the market and the points say about him. */
+/* The decimals a figure already carries, so a count lands on the same text
+   the figure would have printed at rest. */
+function decimals(v) {
+  const t = String(v)
+  return t.includes('.') ? t.split('.')[1].length : 0
+}
+
+/* One side of the call: who, what the market and the points say about him.
+   Change the position or the scoring and the figures tick from the last
+   player's to the new one's — the lede's "watch it move", taken literally. */
 function Side({ tag, p, winner, verdictLabel }) {
   return (
     <div className={cx('flex flex-col gap-3 rounded-[6px] border p-4', winner ? 'border-v3-ink bg-v3-sheet shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))]' : 'border-v3-rule bg-v3-paper')}>
@@ -57,9 +68,9 @@ function Side({ tag, p, winner, verdictLabel }) {
         </div>
       </div>
       <dl className="grid grid-cols-3 gap-2 border-t border-v3-rule pt-3">
-        <div><dt><Label className="text-[11px]">ADP</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink">{p.adp}</dd></div>
-        <div><dt><Label className="text-[11px]">Proj pts</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink">{p.pts}</dd></div>
-        <div><dt><Label className="text-[11px]">Over repl.</Label></dt><dd className="mt-0.5 text-[18px]"><Delta value={p.vorp} /></dd></div>
+        <div><dt><Label className="text-[11px]">ADP</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.adp === 'number' ? p.adp : null} format={(v) => v.toFixed(decimals(p.adp))} /></dd></div>
+        <div><dt><Label className="text-[11px]">Proj pts</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.pts === 'number' ? p.pts : null} format={(v) => v.toFixed(decimals(p.pts))} /></dd></div>
+        <div><dt><Label className="text-[11px]">Over repl.</Label></dt><dd className="mt-0.5 text-[18px]"><Delta value={p.vorp} count /></dd></div>
       </dl>
     </div>
   )
@@ -148,14 +159,14 @@ function Arithmetic({ call, posWord }) {
             <div>
               <div className="text-[15px] font-bold text-v3-ink">{row.what} <span className="font-normal text-v3-ink2">— {row.sub}</span></div>
               {row.same ? (
-                <div className="mt-1 font-figure text-[14px] text-v3-ink2"><Fig className="font-bold text-v3-ink">{j.replacement}</Fig> pts, the same line for both</div>
+                <div className="mt-1 font-figure text-[14px] text-v3-ink2"><CountUp value={typeof j.replacement === 'number' ? j.replacement : null} format={(v) => v.toFixed(decimals(j.replacement))} className="font-bold tabular-nums text-v3-ink" /> pts, the same line for both</div>
               ) : (
                 <div className="mt-2 grid gap-1.5">
                   {[{ p: m, v: row.a }, { p: j, v: row.b }].map((x) => (
                     <div key={x.p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,9rem)_1fr_3.5rem]">
                       <span className="truncate text-[13px] text-v3-ink2">{x.p.name}</span>
                       <ValueBar value={x.v} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                      <Fig className="text-right text-[14px] font-bold text-v3-ink">{x.v}</Fig>
+                      <CountUp value={typeof x.v === 'number' ? x.v : null} format={(v) => v.toFixed(decimals(x.v))} className="text-right font-figure text-[14px] font-bold tabular-nums text-v3-ink" />
                     </div>
                   ))}
                 </div>
@@ -168,7 +179,7 @@ function Arithmetic({ call, posWord }) {
           <div>
             <div className="text-[15px] font-bold text-v3-ink">The gap over that line is the call</div>
             <div className="mt-1 font-figure text-[14px] text-v3-ink2">
-              {j.name.split(' ').slice(-1)[0]} <Delta value={j.vorp} /> · {m.name.split(' ').slice(-1)[0]} <Delta value={m.vorp} /> · difference <Delta value={call.gap} />
+              {j.name.split(' ').slice(-1)[0]} <Delta value={j.vorp} count /> · {m.name.split(' ').slice(-1)[0]} <Delta value={m.vorp} count /> · difference <Delta value={call.gap} count />
             </div>
           </div>
         </li>
@@ -182,7 +193,8 @@ function DraftBlock() {
   return (
     <Sheet code="Draft" aside="Free · no account" className="flex flex-col">
       <Headline as="h3" size="block">Run a mock against tonight&apos;s board</Headline>
-      <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">Nine CPU managers drafting off real ADP. Graded the moment the last pick lands, and saved on this device.</p>
+      <StreamText as="p" text="Nine CPU managers drafting off real ADP. Graded the moment the last pick lands, and saved on this device." className="mt-2 text-[15px] leading-[1.55] text-v3-ink2" />
+      <SampleBoard className="mt-4" />
       {shape ? (
         <dl className="mt-4 grid grid-cols-4 gap-2 rounded-[6px] bg-v3-paper p-3">
           {[['Teams', shape.teams], ['Rounds', shape.rounds], ['Seat', shape.seat ? ordinal(shape.seat) : '—'], ['Scoring', shape.format]].map(([k, v]) => (
@@ -211,7 +223,7 @@ function LeagueBlock() {
       <Headline as="h3" size="block">Connect it and Now becomes your week</Headline>
       <ul className="mt-3 grid gap-2">
         {items.map(([icon, text]) => (
-          <li key={icon} className="flex items-start gap-3 text-[15px] leading-[1.45] text-v3-ink2">
+          <li key={icon} data-rise="" className="flex items-start gap-3 text-[15px] leading-[1.45] text-v3-ink2">
             <Icon name={icon} className="mt-0.5 h-5 w-5 shrink-0 text-v3-ink" />{text}
           </li>
         ))}
@@ -230,10 +242,10 @@ function RecordBlock() {
     <Sheet code="Record" aside="On this device" className="flex flex-col">
       <Headline as="h3" size="block">Every draft you run, graded</Headline>
       {!locker ? <div className="mt-4"><Skeleton lines={3} /></div> : locker.count === 0 ? (
-        <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">Nothing here yet. Your first mock lands here with a letter, where it finished in its room, and the four parts that add up to it.</p>
+        <StreamText as="p" text="Nothing here yet. Your first mock lands here with a letter, where it finished in its room, and the four parts that add up to it." className="mt-2 text-[15px] leading-[1.55] text-v3-ink2" />
       ) : (
         <dl className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Drafts</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{locker.count}</dd></div>
+          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Drafts</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold tabular-nums text-v3-ink"><CountUp value={locker.count} /></dd></div>
           <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Best finish</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{locker.best ? `${locker.best.grade} · ${locker.best.projectedRank}` : '—'}</dd></div>
         </dl>
       )}

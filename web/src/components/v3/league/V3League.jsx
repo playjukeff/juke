@@ -16,6 +16,7 @@ import {
   CouldNotRead, KpiGrid, LeagueSwitcher, ResultChip, Verdict, pct, useDraftPhase, whenText,
 } from './parts.jsx'
 import LeagueDemo from './LeagueDemo.jsx'
+import { CountText, LAYOUT_ROW, motion } from '../motion.jsx'
 
 /* #/v3/league — production's My League, reorganised around one question:
    where is this season going, and how did it get here.
@@ -240,6 +241,15 @@ function Standings({ snapshot, ownerId, odds }) {
   const st = standing(snapshot, ownerId)
   const cut = st.played && snapshot.playoffTeams && snapshot.playoffTeams < st.table.length ? snapshot.playoffTeams : null
   const hasOdds = !!(odds && odds.playoffTeams)
+  /* Which teams moved more than one place since the last reading: those are
+     the story, so they slide ABOVE the rows they pass (the others only step
+     aside by one). Read from the previous render's order. */
+  const lastOrder = useRef(null)
+  const rowKey = (t, i) => t.rosterId ?? t.ownerId ?? i
+  const prev = lastOrder.current
+  const jumped = new Set()
+  if (prev) st.table.forEach((t, i) => { const was = prev.get(rowKey(t, i)); if (was !== undefined && Math.abs(was - i) > 1) jumped.add(rowKey(t, i)) })
+  useEffect(() => { lastOrder.current = new Map(st.table.map((t, i) => [rowKey(t, i), i])) })
   return (
     <Sheet code="Standings" aside="Wins, then points for" bodyClass="p-0">
       <div className="overflow-x-auto">
@@ -255,7 +265,12 @@ function Standings({ snapshot, ownerId, odds }) {
             </tr>
           </thead>
           <tbody>
-            {st.table.map((t, i) => {
+            {/* flatMap, not map: each team's row and the playoff line are
+                siblings in ONE keyed list. Returned as a nested array, React
+                keyed every row by its index in the table, so a team that
+                moved was a new row — nothing to slide, and every cell in it
+                re-mounted. */}
+            {st.table.flatMap((t, i) => {
               const you = ownerId && String(t.ownerId) === String(ownerId)
               const o = hasOdds ? oddsFor(odds, t.ownerId) : null
               const p = o ? o.playoffs : null
@@ -271,7 +286,12 @@ function Standings({ snapshot, ownerId, odds }) {
                     </td>
                   </tr>
                 ) : null,
-                <tr key={t.rosterId ?? t.ownerId ?? i} className={cx('border-b border-v3-rule last:border-b-0', you ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
+                /* A team that moves in the table slides to its new place
+                   rather than the rows swapping under the reader's eye —
+                   the table is a ranking, and a rank is where you are
+                   relative to everybody else. Keyed on the roster, so the
+                   row is the team and not the slot. */
+                <motion.tr {...LAYOUT_ROW} key={rowKey(t, i)} data-team-row={rowKey(t, i)} className={cx('border-b border-v3-rule last:border-b-0 [&>td]:bg-inherit', you ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : 'bg-v3-sheet', jumped.has(rowKey(t, i)) && 'relative z-[2]')}>
                   <td className="border-0 py-3 pl-3 pr-0 font-figure text-[14px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
                   <td className="border-0 max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
@@ -287,11 +307,11 @@ function Standings({ snapshot, ownerId, odds }) {
                     <td className="border-0 py-3 pl-1 pr-3 sm:pl-2 sm:pr-5">
                       <span className="flex items-center justify-end gap-2">
                         <ValueBar value={p} max={1} tone="neutral" className="hidden w-[96px] sm:block" />
-                        <Fig className="text-right text-[14px] font-bold text-v3-ink">{pct(p)}</Fig>
+                        <CountText text={pct(p)} className="text-right font-figure text-[14px] font-bold tabular-nums text-v3-ink" />
                       </span>
                     </td>
                   ) : null}
-                </tr>,
+                </motion.tr>,
               ]
             })}
           </tbody>
