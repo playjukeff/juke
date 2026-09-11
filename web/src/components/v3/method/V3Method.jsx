@@ -155,6 +155,10 @@ const PROSE = [
   '[&_td]:border-b [&_td]:border-v3-rule [&_td]:px-4 [&_td]:py-3 [&_td]:align-top [&_th]:border-b [&_th]:border-v3-rule [&_th]:bg-v3-paper [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-v3-ink3 [&_tr:last-child_td]:border-b-0',
   '[&_.k]:whitespace-nowrap [&_.k]:font-semibold [&_.k]:text-v3-ink [&_.n]:text-right [&_.n]:font-figure [&_.n]:tabular-nums [&_.n]:text-v3-ink [&_.gap]:font-semibold [&_.gap]:text-v3-ink',
   '[&_.mark]:font-semibold [&_.mark]:text-v3-ink',
+  // style.css colours .method with production's --ink-light, which is the
+  // DARK theme's grey whatever v3 is showing: 2.4:1 on the light paper. The
+  // colour has to be v3's own, in both themes.
+  '[&_.method]:text-v3-ink3',
 ].join(' ')
 
 /* The contents: sticky beside the prose on a desk, a collapsible bar that

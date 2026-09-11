@@ -207,7 +207,7 @@ export default function V3Live() {
 
   const toast = notice && (
     <div role="status" className="pointer-events-none fixed inset-x-0 bottom-20 z-[70] flex justify-center px-4 lg:bottom-6">
-      <span className="rounded-[6px] border border-v3-warn/40 bg-v3-warnWash px-4 py-2.5 text-[14px] font-semibold text-v3-warn shadow-[0_8px_24px_-12px_rgba(12,20,34,0.35)]">{notice}</span>
+      <span className="rounded-[6px] border border-v3-warn/40 bg-v3-warnWash px-4 py-2.5 text-[14px] font-semibold text-v3-warn shadow-[0_8px_24px_-12px_rgb(var(--v3-shade)/0.35)]">{notice}</span>
     </div>
   )
 

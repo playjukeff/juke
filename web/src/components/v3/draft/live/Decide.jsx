@@ -31,7 +31,7 @@ function Card({ c, lead, engine, canDraft, draftReason, onDraft, onOpen, queued,
   const does = c.fit && c.fit.startsNow ? `Fills your ${ordinal(c.fit.have + 1)} ${p.pos} slot.` : `Bench depth at ${p.pos}.`
   const costs = whatItCosts(engine, p, counts, nextOverall)
   return (
-    <Sheet as="article" code={c.label} aside={lead ? 'the call' : ''} className={cx('flex min-w-0 flex-col', lead && 'border-v3-ink shadow-[inset_0_0_0_1px_#0C1422]')} bodyClass="flex flex-1 flex-col p-4">
+    <Sheet as="article" code={c.label} aside={lead ? 'the call' : ''} className={cx('flex min-w-0 flex-col', lead && 'border-v3-ink shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))]')} bodyClass="flex flex-1 flex-col p-4">
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 items-center gap-3 rounded-[4px] text-left', FOCUS)}>
           <Headshot src={engine.photoUrl(p)} name={p.name} size={44} />

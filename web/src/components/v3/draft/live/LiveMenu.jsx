@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useDialogFocus } from '../../../v2/draft/draftKit.jsx'
-import { Label, cx } from '../../ui.jsx'
+import { Label, ThemeChoice, cx } from '../../ui.jsx'
 import { LAUNCH_HASH } from '../flow.js'
 import { FOCUS, Glyph } from '../kit.jsx'
 
@@ -18,7 +18,10 @@ import { FOCUS, Glyph } from '../kit.jsx'
      discarding.
    - The classic Draft Room, for the three things v3 does not redraw mid-draft:
      chat (a room's), notifications, and the settings screen.
-   - Delete this draft: engine.restart(), the destructive one, two presses. */
+   - Delete this draft: engine.restart(), the destructive one, two presses.
+   - The theme. This screen is bare — no top bar — so the switch the rest of
+     v3 keeps behind the sun or moon lives here instead. It changes nothing
+     about the draft, which is why it is its own row and not a menu item. */
 
 export default function LiveMenu({ engine, header, onClose, soundOn, onSound, phone }) {
   const panel = useRef(null)
@@ -58,7 +61,7 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, ph
 
   return (
     <div className="fixed inset-0 z-[85]" role="presentation">
-      <div className="absolute inset-0 bg-v3-band/30" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-v3-shade/30" onClick={onClose} aria-hidden="true" />
       <div
         ref={panel}
         role="dialog"
@@ -66,8 +69,8 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, ph
         aria-label="Draft menu"
         tabIndex={-1}
         className={phone
-          ? 'absolute inset-x-0 bottom-0 overflow-hidden rounded-t-[6px] bg-v3-sheet shadow-[0_-12px_32px_-12px_rgba(12,20,34,0.3)]'
-          : 'absolute right-4 top-[84px] w-[360px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgba(12,20,34,0.3)]'}
+          ? 'absolute inset-x-0 bottom-0 overflow-hidden rounded-t-[6px] bg-v3-sheet shadow-[0_-12px_32px_-12px_rgb(var(--v3-shade)/0.3)]'
+          : 'absolute right-4 top-[84px] w-[360px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.3)]'}
         style={phone ? { paddingBottom: 'calc(8px + env(safe-area-inset-bottom))' } : undefined}
       >
         <div className="flex min-h-[40px] items-center justify-between gap-3 bg-v3-band pl-4 pr-1 text-white">
@@ -96,6 +99,10 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, ph
             )
           })}
         </ul>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-v3-rule px-4 py-3">
+          <Label>Theme</Label>
+          <ThemeChoice />
+        </div>
         <p className="border-t border-v3-rule px-4 py-2.5"><Label className="text-[11px]">Settings are fixed once a draft starts</Label></p>
       </div>
     </div>

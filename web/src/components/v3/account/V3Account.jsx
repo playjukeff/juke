@@ -8,7 +8,7 @@ import { useSignedIn } from '../../../hooks/useAuthState.js'
 import { draftPhase } from '../../../lib/countdown.js'
 import { leagueCap, tierLabel } from '../../../lib/tiers.js'
 import { useLeagueFresh, useTierFresh } from '../../v2/stores.js'
-import { CallButton, GoLink, Headline, Icon, Label, PageHead, QuietButton, Sheet, Skeleton, ValueBar, cx, ordinal } from '../ui.jsx'
+import { CallButton, GoLink, Headline, Icon, Label, PageHead, QuietButton, Sheet, Skeleton, ThemeChoice, ValueBar, cx, ordinal } from '../ui.jsx'
 import { lockerStats, useLocker, useSyncStatus } from '../record/recordKit.js'
 import { ArmedButton, DraftsWhere, Stat, XIcon } from '../record/recordParts.jsx'
 
@@ -285,6 +285,20 @@ function Links({ signOut }) {
   )
 }
 
+/* Light, dark, or whatever the device is set to. Kept in this browser
+   rather than on the account — it is how this screen looks, not a fact
+   about you, and the aside says so rather than implying it follows you. */
+function Appearance() {
+  return (
+    <Sheet code="Appearance" aside="This browser">
+      <ThemeChoice />
+      <p className="mt-3 text-[14px] leading-[1.5] text-v3-ink2">
+        System follows your device's own setting, so a phone that goes dark at night takes the sheet with it. The same switch sits behind the sun or moon in the top bar.
+      </p>
+    </Sheet>
+  )
+}
+
 /* Clerk's own user — mounted only when a provider exists. */
 function ClerkName() {
   const { user } = useUser()
@@ -319,6 +333,7 @@ function SignedInAccount({ ready }) {
         </div>
         <div className="grid min-w-0 gap-6">
           <Plan />
+          <Appearance />
           <Links signOut={ready ? <SignOut /> : null} />
         </div>
       </div>
@@ -368,6 +383,7 @@ function GuestAccount({ ready }) {
           <Locker signedIn={false} />
         </div>
         <div className="grid min-w-0 gap-6">
+          <Appearance />
           <Links />
         </div>
       </div>

@@ -54,7 +54,7 @@ export default function PlayerDrawer({ engine, player, onClose, canDraft, draftR
   return (
     <div className="fixed inset-0 z-[80]" role="presentation">
       <style>{'@keyframes v3pd{from{transform:translateX(32px);opacity:.4}to{transform:none;opacity:1}}@keyframes v3ps{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}'}</style>
-      <div className="absolute inset-0 bg-v3-band/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-v3-shade/40" onClick={onClose} aria-hidden="true" />
       <div
         ref={panel}
         role="dialog"
@@ -63,7 +63,7 @@ export default function PlayerDrawer({ engine, player, onClose, canDraft, draftR
         tabIndex={-1}
         className={phone
           ? 'absolute inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-[6px] bg-v3-sheet motion-safe:animate-[v3ps_200ms_ease-out]'
-          : 'absolute inset-y-0 right-0 flex w-[min(660px,100vw)] flex-col overflow-hidden bg-v3-sheet shadow-[-24px_0_48px_-24px_rgba(12,20,34,0.35)] motion-safe:animate-[v3pd_200ms_ease-out]'}
+          : 'absolute inset-y-0 right-0 flex w-[min(660px,100vw)] flex-col overflow-hidden bg-v3-sheet shadow-[-24px_0_48px_-24px_rgb(var(--v3-shade)/0.35)] motion-safe:animate-[v3pd_200ms_ease-out]'}
         style={phone ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
       >
         <div className="flex min-h-[40px] shrink-0 items-center justify-between gap-3 bg-v3-band pl-4 pr-1 text-white">

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import JukeLogo from '../juke-logo/JukeLogo.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
 import { countdownParts } from '../../lib/countdown.js'
 import { Icon, Label, Headline, CallButton, QuietButton, cx } from './ui.jsx'
+import { THEME_CHOICES, mountTheme, useV3Theme } from './theme.js'
 import Now from './now/Now.jsx'
 import V3League from './league/V3League.jsx'
 import V3Team from './league/V3Team.jsx'
@@ -128,7 +129,7 @@ function Compare() {
       <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 rounded-[6px] border border-v3-rule px-3 text-[13px] font-semibold text-v3-ink2 hover:text-v3-ink [&::-webkit-details-marker]:hidden">
         Compare <Icon name="arrow" className="h-3.5 w-3.5 rotate-90" />
       </summary>
-      <div className="absolute right-0 z-50 mt-2 w-[220px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgba(12,20,34,0.25)]">
+      <div className="absolute right-0 z-50 mt-2 w-[220px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.25)]">
         <a href="#/" className="flex min-h-[44px] items-center justify-between px-4 text-[14px] text-v3-ink hover:bg-v3-paper">Production <Icon name="arrow" className="h-4 w-4 text-v3-ink3" /></a>
         <a href="#/v2" className="flex min-h-[44px] items-center justify-between border-t border-v3-rule px-4 text-[14px] text-v3-ink hover:bg-v3-paper">v2 · Telemetry <Icon name="arrow" className="h-4 w-4 text-v3-ink3" /></a>
       </div>
@@ -136,11 +137,75 @@ function Compare() {
   )
 }
 
+/* The theme, from the top bar, on every screen and at every width. An icon
+   rather than a labelled Seg because the bar is full on a phone; the icon is
+   the theme you are LOOKING at (a moon at night whichever way you got
+   there), and the menu under it says which of the three you chose. The
+   Account page and the live draft's menu carry the same choice with its
+   words showing (ThemeChoice), all three over one store. */
+const THEME_ICON = { light: 'sun', dark: 'moon', system: 'device' }
+function ThemeMenu() {
+  const { choice, resolved, setChoice } = useV3Theme()
+  const [open, setOpen] = useState(false)
+  const box = useRef(null)
+  const trigger = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const away = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') { setOpen(false); if (trigger.current) trigger.current.focus() } }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc) }
+  }, [open])
+  const named = THEME_CHOICES.find((c) => c.value === choice)
+  const spoken = choice === 'system' ? `Theme: System, ${resolved} now` : `Theme: ${named ? named.label : choice}`
+  return (
+    <div ref={box} className="relative">
+      <button
+        ref={trigger}
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={spoken}
+        title={spoken}
+        onClick={() => setOpen((o) => !o)}
+        className="grid h-11 w-11 place-items-center rounded-[6px] text-v3-ink2 transition-colors hover:bg-v3-well hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+      >
+        <Icon name={resolved === 'dark' ? 'moon' : 'sun'} className="h-5 w-5" />
+      </button>
+      {open && (
+        <div role="group" aria-label="Theme" className="absolute right-0 z-50 mt-2 w-[240px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.35)]">
+          <div className="border-b border-v3-rule px-4 py-2.5"><Label>Theme</Label></div>
+          {THEME_CHOICES.map((c) => {
+            const on = c.value === choice
+            return (
+              <button
+                key={c.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => { setChoice(c.value); setOpen(false); if (trigger.current) trigger.current.focus() }}
+                className={cx('flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none', on && 'bg-v3-paper')}
+              >
+                <Icon name={THEME_ICON[c.value]} className="h-5 w-5 shrink-0 text-v3-ink2" />
+                <span className="min-w-0 flex-1">
+                  <span className={cx('block text-[14px] text-v3-ink', on ? 'font-bold' : 'font-medium')}>{c.label}</span>
+                  {c.value === 'system' && <span className="block text-[12px] text-v3-ink3">Follows your device · {resolved} now</span>}
+                </span>
+                {on && <Icon name="check" className="h-4 w-4 shrink-0 text-v3-ink" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TopBar({ current }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
-        <a href="#/v3" aria-label="Juke v3, Now" className="shrink-0"><JukeLogo size={18} onLight color="#0C1422" /></a>
+        <a href="#/v3" aria-label="Juke v3, Now" className="shrink-0"><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
         <span className="rounded-[4px] bg-v3-callWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-call">v3</span>
         <nav aria-label="Primary" className="ml-6 hidden h-full items-stretch gap-1 md:flex">
           {NAV.map((n) => {
@@ -161,9 +226,10 @@ function TopBar({ current }) {
             )
           })}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <Kickoff />
           <Compare />
+          <ThemeMenu />
           <Account />
         </div>
       </div>
@@ -202,7 +268,7 @@ function Footer() {
     <footer className="mt-24 border-t border-v3-rule bg-v3-sheet">
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <JukeLogo size={16} onLight color="#0C1422" />
+          <JukeLogo size={16} onLight color="rgb(var(--v3-ink))" />
           <p className="mt-3 max-w-[46ch] text-[14px] leading-[1.6] text-v3-ink2">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere. Connecting a league is read-only; Juke never edits it.
           </p>
@@ -273,6 +339,9 @@ function route(sub) {
 
 export default function V3App({ sub = '' }) {
   useSheetFaces()
+  // Before paint, so the first v3 frame is already in the chosen theme; and
+  // undone on the way out, so production and v2 never see the attribute.
+  useLayoutEffect(() => mountTheme(), [])
   const clean = (sub || '').split('?')[0]
   const current = clean.split('/')[0]
   const { page, bare } = route(clean)

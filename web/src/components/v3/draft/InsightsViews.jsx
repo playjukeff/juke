@@ -237,7 +237,7 @@ export function ViewField({ report, hover, onHover, onOpen }) {
 // 04 — what these mocks can prove
 function cellClass(n) {
   if (n === 0) return 'border-dashed border-v3-rule bg-v3-sheet text-v3-ink3'
-  if (n >= 3) return 'border-v3-ink2 bg-v3-ink2 text-white'
+  if (n >= 3) return 'border-v3-ink2 bg-v3-ink2 text-v3-sheet'
   return 'border-v3-rule bg-v3-well text-v3-ink'
 }
 

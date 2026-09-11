@@ -263,14 +263,14 @@ export default function SettingsDrawer({ open, engine, onClose, onChange }) {
   return (
     <div className="fixed inset-0 z-[80]" role="presentation">
       <style>{'@keyframes v3drawer{from{transform:translateX(32px);opacity:.4}to{transform:none;opacity:1}}'}</style>
-      <div className="absolute inset-0 bg-v3-band/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-v3-shade/40" onClick={onClose} aria-hidden="true" />
       <aside
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="v3-settings-title"
         tabIndex={-1}
-        className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col bg-v3-sheet shadow-[-24px_0_48px_-24px_rgba(12,20,34,0.35)] focus:outline-none motion-safe:animate-[v3drawer_200ms_ease-out]"
+        className="absolute inset-y-0 right-0 flex w-full max-w-[560px] flex-col bg-v3-sheet shadow-[-24px_0_48px_-24px_rgb(var(--v3-shade)/0.35)] focus:outline-none motion-safe:animate-[v3drawer_200ms_ease-out]"
       >
         <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-5 pt-[env(safe-area-inset-top)] text-white">
           <span className="font-figure text-[12px] font-bold uppercase tracking-[0.14em]">Draft settings</span>

@@ -128,7 +128,7 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
           <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
             <Glyph name="back" className="h-4 w-4" /> Leave
           </a>
-          <span className="hidden shrink-0 xl:block"><JukeLogo size={16} onLight color="#0C1422" /></span>
+          <span className="hidden shrink-0 xl:block"><JukeLogo size={16} onLight color="rgb(var(--v3-ink))" /></span>
           <div className="min-w-0">
             <Label className="block">The Draft Room · v3</Label>
             <span className="block truncate font-figure text-[13px] text-v3-ink2">{header.leagueSummary}</span>

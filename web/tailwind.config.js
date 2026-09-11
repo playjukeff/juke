@@ -39,26 +39,37 @@ export default {
         // White on call is 7.4 and white on band 18.4. `call` is the one
         // action colour and is never a value; gain/cost/warn are values and
         // never actions.
+        //
+        // Two themes, one set of names. The values live in index.css as RGB
+        // channels (light on :root, dark under html[data-v3-theme="dark"]),
+        // so a class like bg-v3-sheet/95 still takes its alpha. The band is
+        // dark in BOTH themes, which is what lets white stay legal on it.
+        // `onCall` is the ink on a call button: white in light, near-black
+        // in dark, because dark mode's cobalt is too light to carry white.
         v3: {
-          paper: '#F2F4F7',
-          sheet: '#FFFFFF',
-          well: '#E8ECF1',
-          rule: '#D5DBE3',
-          band: '#0C1422',
-          bandSoft: '#1A2436',
-          bandInk: '#9AA7B8',
-          ink: '#0C1422',
-          ink2: '#394556',
-          ink3: '#556274',
-          call: '#1F3FE0',
-          callDeep: '#1731B8',
-          callWash: '#E6EBFD',
-          gain: '#0A7338',
-          gainWash: '#E3F3E9',
-          cost: '#B8261B',
-          costWash: '#FBE7E5',
-          warn: '#8A5300',
-          warnWash: '#FBF0DC',
+          paper: 'rgb(var(--v3-paper) / <alpha-value>)',
+          sheet: 'rgb(var(--v3-sheet) / <alpha-value>)',
+          well: 'rgb(var(--v3-well) / <alpha-value>)',
+          rule: 'rgb(var(--v3-rule) / <alpha-value>)',
+          band: 'rgb(var(--v3-band) / <alpha-value>)',
+          bandSoft: 'rgb(var(--v3-band-soft) / <alpha-value>)',
+          bandInk: 'rgb(var(--v3-band-ink) / <alpha-value>)',
+          ink: 'rgb(var(--v3-ink) / <alpha-value>)',
+          ink2: 'rgb(var(--v3-ink2) / <alpha-value>)',
+          ink3: 'rgb(var(--v3-ink3) / <alpha-value>)',
+          call: 'rgb(var(--v3-call) / <alpha-value>)',
+          callDeep: 'rgb(var(--v3-call-deep) / <alpha-value>)',
+          callWash: 'rgb(var(--v3-call-wash) / <alpha-value>)',
+          onCall: 'rgb(var(--v3-on-call) / <alpha-value>)',
+          gain: 'rgb(var(--v3-gain) / <alpha-value>)',
+          gainWash: 'rgb(var(--v3-gain-wash) / <alpha-value>)',
+          cost: 'rgb(var(--v3-cost) / <alpha-value>)',
+          costWash: 'rgb(var(--v3-cost-wash) / <alpha-value>)',
+          warn: 'rgb(var(--v3-warn) / <alpha-value>)',
+          warnWash: 'rgb(var(--v3-warn-wash) / <alpha-value>)',
+          // What a shadow or a scrim is cast in: the ink in light, black at
+          // night. Never text.
+          shade: 'rgb(var(--v3-shade) / <alpha-value>)',
         },
         obsidian: '#0B0E14',
         charcoal: '#151923',

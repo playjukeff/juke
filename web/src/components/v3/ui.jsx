@@ -1,5 +1,6 @@
 import { POS_CHALK, CELL_INK } from '../draftRoomPositions.js'
 import { useV2Data } from '../v2/v2ui.jsx'
+import { THEME_CHOICES, useV3Theme } from './theme.js'
 
 /* Juke v3 — "Call Sheet". The shared parts every v3 page is built from.
 
@@ -14,9 +15,16 @@ import { useV2Data } from '../v2/v2ui.jsx'
 
      call  (#1F3FE0)  do this. The primary action of a view, and nothing else.
      ink   (#0C1422)  chosen. A selected tab, segment or row — state, not action.
+
      gain / cost      a value's direction. Never a button, never a heading.
      chalk            a position. The product's own POS_CHALK, the one hue
                       reference every screen reads, with CELL_INK on it.
+
+   Those are the light values. Every colour is a --v3-* variable (index.css)
+   with a dark value beside it, so no component names a hex: a class names
+   the job and the theme picks the value. The two rules a new component has
+   to keep: white text only on the band (dark in both themes), and a call
+   button's text is text-v3-onCall, never white.
 
    Production spends teal on actions; v2 spent volt on actions AND on good
    numbers. v3 separates all four, so a colour on this page can only mean
@@ -105,9 +113,10 @@ export function Sheet({ code, aside, band = true, children, className = '', body
 
 const BTN = 'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px] px-5 text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call focus-visible:ring-offset-2 focus-visible:ring-offset-v3-paper disabled:cursor-not-allowed disabled:opacity-100'
 
-/* The one primary action of a view. Cobalt, white text (7.4:1). */
+/* The one primary action of a view. Cobalt, with its own ink: white in
+   light (7.4:1) and near-black in dark (7.1:1). */
 export function CallButton({ href, onClick, children, className = '', disabled = false, ...rest }) {
-  const cls = cx(BTN, disabled ? 'bg-v3-well text-v3-ink3' : 'bg-v3-call text-white hover:bg-v3-callDeep', className)
+  const cls = cx(BTN, disabled ? 'bg-v3-well text-v3-ink3' : 'bg-v3-call text-v3-onCall hover:bg-v3-callDeep', className)
   if (href && !disabled) return <a href={href} className={cls} {...rest}>{children}</a>
   return <button type="button" onClick={onClick} disabled={disabled} className={cls} {...rest}>{children}</button>
 }
@@ -153,6 +162,15 @@ export function Seg({ label, options, value, onChange, className = '' }) {
       })}
     </div>
   )
+}
+
+/* Light, dark or the device's own setting, as a Seg. For the places with
+   room to label a control: the Account page and the live draft's menu. The
+   top bar carries the compact version (ThemeMenu in V3App), and all three
+   read and write one store, so changing it anywhere changes it everywhere. */
+export function ThemeChoice({ className = '' }) {
+  const { choice, setChoice } = useV3Theme()
+  return <Seg label="Theme" options={THEME_CHOICES} value={choice} onChange={setChoice} className={className} />
 }
 
 /* A headline. Sentence case, upright, heavy — the opposite of both earlier
@@ -212,7 +230,10 @@ export function ValueBar({ value, max, zero = false, tone, className = '' }) {
 
 /* Stroke icons, 1.6 stroke, currentColor. Never an emoji. */
 const PATHS = {
-  now: 'M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 100 8 4 4 0 000-8z',
+  sun: 'M12 16a4 4 0 100-8 4 4 0 000 8zM12 2.5v2M12 19.5v2M4.6 4.6L6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4',
+  moon: 'M20.5 14.2A8.5 8.5 0 119.8 3.5a6.6 6.6 0 0010.7 10.7z',
+  device: 'M3.5 5h17v11h-17zM8.5 20.5h7M12 16v4.5',
+  now:'M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 100 8 4 4 0 000-8z',
   league: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM7 6H4a3 3 0 003 3M17 6h3a3 3 0 01-3 3',
   players: 'M9 11a4 4 0 100-8 4 4 0 000 8zM2 21a7 7 0 0114 0M16 3.5a4 4 0 010 7M22 21a7 7 0 00-4-6.3',
   draft: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',

@@ -150,7 +150,7 @@ function Schedule({ team, snapshot }) {
           const opp = g.opponentId ? teams.find((t) => String(t.ownerId) === String(g.opponentId)) : null
           const now = g.week === snapshot.week
           return (
-            <li key={g.week} className={cx('grid min-h-[48px] grid-cols-[44px_28px_minmax(0,1fr)_auto] items-center gap-2 border-b border-v3-rule px-4 last:border-b-0 sm:px-5', now ? 'bg-v3-paper shadow-[inset_3px_0_0_#0C1422]' : '')}>
+            <li key={g.week} className={cx('grid min-h-[48px] grid-cols-[44px_28px_minmax(0,1fr)_auto] items-center gap-2 border-b border-v3-rule px-4 last:border-b-0 sm:px-5', now ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
               <Fig className="text-[13px] text-v3-ink3">W{g.week}</Fig>
               <span className="text-[13px] text-v3-ink3">{opp ? (g.home ? 'vs' : 'at') : ''}</span>
               <span className="min-w-0 truncate text-[15px]">

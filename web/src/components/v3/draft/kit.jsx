@@ -214,7 +214,7 @@ export function StarButton({ on, onClick, name, className = 'h-10 w-10' }) {
 export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'md', label = 'Draft', className = '' }) {
   const dims = size === 'sm' ? 'min-h-[36px] px-3 text-[13px]' : size === 'lg' ? 'min-h-[48px] px-5 text-[15px]' : 'min-h-[40px] px-4 text-[14px]'
   const live = rank === 'call'
-    ? 'bg-v3-call text-white hover:bg-v3-callDeep'
+    ? 'bg-v3-call text-v3-onCall hover:bg-v3-callDeep'
     : 'border border-v3-ink bg-v3-sheet text-v3-ink hover:bg-v3-band hover:text-white'
   return (
     <button

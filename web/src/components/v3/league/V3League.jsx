@@ -92,7 +92,7 @@ function WeekStrip({ weeks, selected, onSelect }) {
           const cls = cx(
             'flex min-h-[52px] min-w-[48px] flex-col items-center justify-center gap-1 rounded-[4px] px-2 font-figure text-[12px] font-semibold uppercase tracking-[0.06em] transition-colors',
             on ? 'bg-v3-band text-white' : w.disabled ? 'text-v3-ink3' : 'text-v3-ink hover:bg-v3-paper',
-            w.now && !on ? 'shadow-[inset_0_-3px_0_#0C1422]' : '',
+            w.now && !on ? 'shadow-[inset_0_-3px_0_rgb(var(--v3-ink))]' : '',
           )
           const inner = (
             <>
@@ -271,7 +271,7 @@ function Standings({ snapshot, ownerId, odds }) {
                     </td>
                   </tr>
                 ) : null,
-                <tr key={t.rosterId ?? t.ownerId ?? i} className={cx('border-b border-v3-rule last:border-b-0', you ? 'bg-v3-paper shadow-[inset_3px_0_0_#0C1422]' : '')}>
+                <tr key={t.rosterId ?? t.ownerId ?? i} className={cx('border-b border-v3-rule last:border-b-0', you ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
                   <td className="border-0 py-3 pl-3 pr-0 font-figure text-[14px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
                   <td className="border-0 max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
@@ -444,7 +444,7 @@ function DraftReport({ league, snapshot, ready }) {
             {seats.map((s) => {
               const team = findTeam(snapshot, s.teamId)
               return (
-                <tr key={s.teamId} className={cx('border-t border-v3-rule', s.mine ? 'bg-v3-paper shadow-[inset_3px_0_0_#0C1422]' : '')}>
+                <tr key={s.teamId} className={cx('border-t border-v3-rule', s.mine ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
                   <td className="border-0 max-w-0 px-4 py-2.5 sm:px-5">
                     {team ? <a href={teamHref(team)} className="block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span className="block truncate text-[14px] font-semibold text-v3-ink">{s.name}</span>}
                   </td>

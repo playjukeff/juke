@@ -40,7 +40,7 @@ function SituationBand({ s }) {
 /* One side of the call: who, what the market and the points say about him. */
 function Side({ tag, p, winner, verdictLabel }) {
   return (
-    <div className={cx('flex flex-col gap-3 rounded-[6px] border p-4', winner ? 'border-v3-ink bg-v3-sheet shadow-[inset_0_0_0_1px_#0C1422]' : 'border-v3-rule bg-v3-paper')}>
+    <div className={cx('flex flex-col gap-3 rounded-[6px] border p-4', winner ? 'border-v3-ink bg-v3-sheet shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))]' : 'border-v3-rule bg-v3-paper')}>
       <div className="flex items-center justify-between gap-2">
         <Label>{tag}</Label>
         {winner && <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{verdictLabel}</span>}
