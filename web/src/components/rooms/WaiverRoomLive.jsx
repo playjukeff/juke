@@ -9,6 +9,7 @@ import BarRow, { Bar } from '../decision/Bar.jsx'
 import StakeCard from '../decision/StakeCard.jsx'
 import RunNextCard from '../decision/RunNextCard.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../lib/leagueGap.js'
 import { platformFor } from '../shell/leaguePlatforms.js'
 
 /* The Waiver Room, with a real league behind it.
@@ -294,7 +295,8 @@ export default function WaiverRoomLive({ league, snapshot, status, reason, tab }
   useJukeTick(engine)
 
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
 
   /* `board.length` is in the deps and `board` is not, deliberately.
 

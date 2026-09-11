@@ -146,6 +146,28 @@ check("a position already held better than anything available is not a gap", () 
   );
 });
 
+/* Found by the 10 September 2026 audit: the gap compared the best free
+ * agent against the BEST player held, so a claim that would replace a
+ * below-replacement starter read as a downgrade and was never offered. */
+check("a claim is measured against the weakest STARTER it would replace", () => {
+  const board = [P("r1", "RB", 220, "Stud"), P("r2", "RB", 100, "Weak Starter"), P("fa", "RB", 150, "Free Back")];
+  const ids = new Map(board.map((p) => [p.id, p]));
+  const team = { players: ["r1", "r2"], starters: ["r1", "r2"] };
+  const snap = { teams: [team] };
+  const rb = rosterGaps(team, ids, freeAgents(board, snap, gapOf), gapOf).find((g) => g.pos === "RB");
+  assert.ok(rb, "a +30 back over a -20 starter is a real claim");
+  assert.equal(rb.held, -20, "measured against the man he replaces");
+  assert.equal(rb.improvement, 50);
+});
+
+check("a benched player is not the one a claim replaces", () => {
+  const board = [P("r1", "RB", 220), P("bn", "RB", 60), P("fa", "RB", 150)];
+  const ids = new Map(board.map((p) => [p.id, p]));
+  const team = { players: ["r1", "bn"], starters: ["r1"] };
+  const gaps = rosterGaps(team, ids, freeAgents(board, { teams: [team] }, gapOf), gapOf);
+  assert.equal(gaps.some((g) => g.pos === "RB"), false, "the only starting back is +100, the free one +30");
+});
+
 check("gaps come back widest first", () => {
   const gaps = rosterGaps(SNAPSHOT.teams[0], byId, freeAgents(BOARD, SNAPSHOT, gapOf), gapOf);
   const by = gaps.map((g) => g.improvement);

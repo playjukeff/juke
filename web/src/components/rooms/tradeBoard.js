@@ -111,17 +111,28 @@ export function rosterTotal(team, byId, gapOf) {
  * false and the room says it cannot call this one, which is the same
  * refusal the Juke score makes rather than printing a number it does not
  * believe. */
+/*
+ * ---- A player below replacement is worth nothing in a trade, not less ----
+ *
+ * Each player counts at max(0, value). A back projected 25 points under
+ * replacement is a player his manager can swap for a free agent at no
+ * cost, so sending him away is not worth +25 and receiving him does not
+ * cost 25 — both sides can drop him for the waiver-level player tomorrow.
+ * Counting the negative is what let a trade look like a win for giving
+ * away a body nobody would start, found by an audit on 10 September 2026.
+ * The per-player value shown on a roster keeps its sign; only the swing
+ * floors, because only the swing is a claim about what a trade is worth. */
 export function tradeSwing(give, get, gapOf) {
   const out = { give: 0, get: 0, you: 0, them: 0, priced: true }
   for (const player of give || []) {
     const v = valueOf(player, gapOf)
     if (v === null) { out.priced = false; continue }
-    out.give += v
+    out.give += Math.max(0, v)
   }
   for (const player of get || []) {
     const v = valueOf(player, gapOf)
     if (v === null) { out.priced = false; continue }
-    out.get += v
+    out.get += Math.max(0, v)
   }
   out.you = out.get - out.give
   out.them = out.give - out.get

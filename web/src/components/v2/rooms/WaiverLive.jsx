@@ -4,6 +4,7 @@ import {
 } from '../../rooms/waiverBoard.js'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../../lib/leagueGap.js'
 import { Arrow, Kicker, VoltButton } from '../v2ui.jsx'
 import {
   Bar, BarRow, CouldNotRead, Empty, Footnote, KpiStrip, Loading, NoTeam, Panel, PlayerLine,
@@ -130,7 +131,7 @@ export default function WaiverLive({ league, snapshot, status, reason, tab, setT
   useJukeTick(engine)
 
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
 
   // board.length, never board: the array is mutated in place, so only its
   // length moves when players.js lands — see CLAUDE.md on memo keys.

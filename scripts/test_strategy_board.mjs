@@ -339,6 +339,29 @@ check("and a bye beneath the league's number, never above it", () => {
   assert.equal(score({ id: "b", projPts: 9, bye: 7 }), 0, "the fallback still zeroes a bye");
 });
 
+/* ---- a player ruled out, the bye's argument one step on ----
+ *
+ * An OUT starter leaves the slot as empty as a bye does. Found by the
+ * 10 September 2026 audit: the fallback kept him at full projection, so
+ * the total, the win probability and the season odds counted points
+ * nobody would score. Questionable is "we do not know" and stays scored. */
+check("an OUT starter scores nothing under Juke's fallback", () => {
+  for (const code of ["O", "IR", "PUP", "SUS", "DNR"]) {
+    assert.equal(weekScorer(byeBase, 7)({ bye: 11, projPts: 14, inj: code }), 0, code);
+  }
+});
+
+check("a questionable one is still scored", () => {
+  assert.equal(weekScorer(byeBase, 7)({ bye: 11, projPts: 14, inj: "Q" }), 14);
+});
+
+check("and the league's own number is never overridden by it", () => {
+  const snap = { week: 3, rules: {}, projections: { week: 3, points: { a: 6.5 } } };
+  const score = leagueWeekPts(engine, snap);
+  assert.equal(score({ id: "a", projPts: 9, inj: "O" }), 6.5, "the platform's answer stands");
+  assert.equal(score({ id: "b", projPts: 9, inj: "O" }), 0, "the fallback zeroes him");
+});
+
 check("projectionSource says whose numbers a lineup carries", () => {
   const rows = [{ player: { id: "a" } }, { player: { id: "b" } }];
   assert.equal(projectionSource(rows, { week: 1, points: { a: 1, b: 2 } }, 1), "all");

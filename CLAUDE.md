@@ -10826,6 +10826,83 @@ same gap `league-connect.spec.mjs` and `rail-nav.spec.mjs` already record.
 What is verified is the translation (offline suite), the live read of a real
 league, and the build.
 
+## The engine audit of 10 September 2026
+
+A statistician's pass over everything that produces a number: the projection
+source, replacement level, the Juke score, weekly variance and win
+probability, the season simulator, draft advice and the CPU room, the grade,
+and the in-season rooms. Measured against the 480-player board of that
+morning with the real engine; the scripts and raw outputs are not in the
+repository. Seven changes shipped, each measured or plainly a bug; eleven
+more are recorded below as the owner's to decide, because they move numbers
+people already see.
+
+### What shipped
+
+- **`pass_fd`, `rush_fd` and `rec_fd` joined `FORMULAIC_PROJECTION_KEYS`.**
+  On a projection each is its own yards divided by ten: 185/185, 805/805
+  and 861/861 season and past-season rows, and 564 of 564 in a fetched
+  weekly file. The real rate is about 0.042 / 0.048 / 0.041 a yard, so the
+  formula forecast 2.0–2.4 times the first downs players record, in every
+  league that pays for them. Default rules score first downs at zero.
+- **Season projections drop two defence placeholders**: `blk_kick` is exactly
+  1 on every one of 32 current and 96 past defence rows, and `pts_allow_0`
+  exactly 1 on all 96 past ones. **Season blocks only** — the weekly file's
+  `blk_kick` is a real fractional forecast (0.04–0.08), and its
+  points-allowed tiers are the weekly defence projection. `safe` stays: it
+  is 1 on 73 of 96, so not a constant. Both directions are tested.
+- **The season-value rooms price under the connected league.** Waiver,
+  Trade, the rooms-grid stakes and v3's wire, trade and league pages all
+  priced with `replacementGap()` — the Draft Room's scoring and team count.
+  `replacementGapUnder()` prices under the league's own rules, lineup and
+  team count through `gradeProjections(rules, shape)`, and
+  `web/src/lib/leagueGap.js` is the one builder all eight callers use.
+  Checked: under the Draft Room's own shape it equals `replacementGap()` on
+  all 415 priced players; a 12-team full-PPR league moves a receiver from
+  +82.7 to +124.9. No lineup on the snapshot falls back to the old function.
+  The Prospect Room stays on the Draft Room's table, deliberately.
+- **`rosterGaps()` compares a free agent with the weakest STARTER he would
+  replace**, not the best player held. RB1 +100, RB2 starting at −20 and a
+  +30 back on the wire read −70 and was never offered; it is +50.
+- **`tradeSwing()` counts each player at `max(0, value)`.** Giving away a
+  player 25 under replacement was scored as a +25 gain.
+- **`weekScorer()` zeroes an OUT/IR/PUP/SUS/DNR starter** in Juke's fallback,
+  as it already zeroed a bye. Questionable stays scored; the platform's own
+  number still sits above it and is never overridden.
+- **`survivalProbability()` is conditioned on the player still being there
+  now**: P(lasts to next | available at now). Against the CPU room a player
+  given 2% lasted 37% of the time; Brier 0.142 → 0.127. It answers **null**
+  three spreads past his ADP, where both tails are below normalCdf's
+  precision and the market model has nothing to say.
+- **Weekly CV uses the sample variance**, n−1.
+
+### What is the owner's to decide, and why each is not simply shipped
+
+Every one of these moves a number on production `#/` as well as v3 — the
+engine is shared, and nothing may be written twice.
+
+| # | Change | Measured effect |
+|---|---|---|
+| 8 | Inflate team spread in `teamWeeklyStats`/`teamWeek` by k ≈ 1.4 | Win prob is overconfident: predicted .80 won .72, .93 won .78 over 30k matchups from real 2024–25 weeks; k fit on 2024 still improves 2025 |
+| 9 | Season-sim per-season team shock, τ₀ ≈ 8 pts/wk | Predicted 84% playoff odds realised 69% in 300 simulated leagues |
+| 10 | Remove the `scoringIsStock()` gate | The rejection was measured 23 Aug under the rank-places grade; re-run under the points grade, forcing the multiplier on wins 40/40 paired rooms, +53 season pts vs par |
+| 11 | CPU jitter 0.8 → 2.45, open-slot 0.80 → 0.95, one backup QB | CPU pick spread is 0.37× the market's; TE 12 and QB 8 picks early; 10 QBs by pick 140 vs 19 |
+| 12 | Grade weights 70/0/20/10, byes as points lost | Value carries a negative partial coefficient; bye penalty r .14 with points byes cost; rank agreement .52 → .65 |
+| 13 | Availability-adjusted replacement rank, derived FLEX share | +21–29 season pts to a value drafter; FLEX is WR 90–100% in PPR against a hard-coded 55% |
+| 14 | First downs = measured ratio × projected yards | Conflicts with "the pipeline records facts"; a 1,200-yard WR at 0.5/first down is over-projected ~35 pts today |
+| 15–16 | Exact CPU-simulated survival; K/DST at 0 in grade starter strength | — |
+
+**Items 10, 12 and 13 are judged inside the engine's own projection world**
+— there is no historical ADP to test against real outcomes — so they show
+internal consistency, not proven real-world payoff. Item 17, archiving the
+weekly projections beside actuals, is what would let 8 and 9 be calibrated
+on this project's own data rather than on synthetic matchups.
+
+**Confirmed and to be left alone:** Sleeper's projection as the base (no
+blend beats it out of sample; every bootstrap CI crosses zero), K/DST
+withholding, par averaging, the platform projection passthrough,
+`normalCdf`, the season sim's seeding and refusals, `absorbableSize`.
+
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
 A content audit on 2 September 2026 found the same defect in eight places,

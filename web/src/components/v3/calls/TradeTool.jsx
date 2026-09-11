@@ -6,6 +6,7 @@ import { tradeWindow, msUntilDeadline } from '../../../lib/tradeDeadline.js'
 import { countdownParts } from '../../../lib/countdown.js'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../../lib/leagueGap.js'
 import { useTierFresh } from '../../v2/stores.js'
 import { CallButton, Fig, Icon, Label, PosTag, QuietButton, Seg, Sheet, ValueBar, cx } from '../ui.jsx'
 import {
@@ -121,7 +122,8 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
   useJukeTick(engine)
   const { tier } = useTierFresh()
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
   const byId = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -5,6 +5,7 @@ import {
 import { TABS as WAIVER_TABS } from '../../rooms/WaiverRoomLive.jsx'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../../lib/leagueGap.js'
 import { useTierFresh } from '../../v2/stores.js'
 import { Fig, GoLink, Icon, Label, PosTag, Seg, Sheet, ValueBar } from '../ui.jsx'
 import {
@@ -135,7 +136,8 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
   useJukeTick(engine)
   const { tier } = useTierFresh()
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
 
   // board.length, never board: mutated in place, only its length moves when
   // players.js lands — CLAUDE.md's memo-key rule.

@@ -532,11 +532,32 @@ def reconcile(row):
 # `projected_keys` is derived from what the projection actually carries, so
 # dropping the value here is what takes rec_40p out of PROJECTED_KEYS -- no
 # second list to keep in step.
-FORMULAIC_PROJECTION_KEYS = ("rec_40p",)
+FORMULAIC_PROJECTION_KEYS = ("rec_40p", "pass_fd", "rush_fd", "rec_fd")
+
+# The three first-down keys joined it on 10 September 2026, found by the
+# same ratio sweep. On a projection each is its own yards divided by ten --
+# pass_fd 185/185, rush_fd 805/805 and rec_fd 861/861 across the season and
+# past-season blocks, and 564 of 564 in a fetched weekly file -- where the
+# real rate is about 0.042 a passing yard, 0.048 a rushing yard and 0.041 a
+# receiving yard (fit 2022-24, checked on 2025). So the formula forecasts
+# 2.0 to 2.4 times the first downs a player records, and a league that pays
+# for them priced every back and receiver on a number nobody forecast.
+# Default rules score first downs at zero, so the default board is untouched.
+
+# A season projection's defence line carries two values that are not
+# forecasts at all: blk_kick is exactly 1 for every one of the 32 current
+# defences and all 96 past ones, and pts_allow_0 is exactly 1 on all 96 past
+# ones -- one blocked kick and one shutout a season, for every team, every
+# year. Five points of placeholder under default scoring, on a number
+# projectionRecord() then graded. Season blocks only: the WEEKLY file's
+# blk_kick is a real fractional forecast (0.04 to 0.08), and its
+# points-allowed tiers are what the weekly defence projection is made of.
+SEASON_PLACEHOLDER_KEYS = ("blk_kick", "pts_allow_0")
 
 
-def forecast_only(block):
-    """A projection block with the formulaic keys taken out.
+def forecast_only(block, season=True):
+    """A projection block with the formulaic keys taken out, and for a
+    season block the placeholder defence keys too.
 
     Takes the SHORT keys, because it runs on compact()'s output rather than
     on a raw feed row.
@@ -546,6 +567,9 @@ def forecast_only(block):
     out = dict(block)
     for key in FORMULAIC_PROJECTION_KEYS:
         out.pop(STAT_FIELDS[key], None)
+    if season:
+        for key in SEASON_PLACEHOLDER_KEYS:
+            out.pop(STAT_FIELDS[key], None)
     return out
 
 
@@ -2612,7 +2636,7 @@ def main():
         # about. A stale block is worse than none -- see app.js.
         week_line = week_projections.get(player_id)
         if week_line:
-            block = forecast_only(compact(week_line))
+            block = forecast_only(compact(week_line), season=False)
             if block:
                 record["wp"] = block
 

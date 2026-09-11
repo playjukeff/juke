@@ -11,6 +11,7 @@ import { gameInWeek, myGames } from '../../../lib/schedule.js'
 import { matchupRead, teamWeek } from '../../../lib/matchup.js'
 import { tradeWindow } from '../../../lib/tradeDeadline.js'
 import { ordered, hasPlayed } from '../../../lib/standings.js'
+import { leagueGapOf } from '../../../lib/leagueGap.js'
 
 /* The connected-league readings v3's Now, League and team pages draw.
 
@@ -66,7 +67,9 @@ export function usePricing(snapshot) {
     () => (ready && engine && engine.weeklyCV ? engine.weeklyCV(rules) : null),
     [engine, rules, ready]
   )
-  const gapOf = ready && engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOfLeague = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
+  const gapOf = ready ? gapOfLeague : null
   return { ready, engine, byId, weekPts, week, cv, gapOf }
 }
 

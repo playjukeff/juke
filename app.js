@@ -3335,7 +3335,24 @@ function survivalProbability(player, atOverall) {
   if (typeof player.td !== "number" || player.td < MIN_ADP_SAMPLE) return null;
   const overall = atOverall === undefined ? nextPickFor(state.mySlot) : atOverall;
   if (overall === null || overall === undefined) return null;
-  return 1 - normalCdf((overall - player.adp) / player.sd);
+  /* Conditioned on his still being here NOW. The question on screen is
+     asked about a player who has not been taken, and the unconditional
+     tail ignores that: measured 10 September 2026 against the CPU room, a
+     player given 2% to last lasted 37% of the time, and the conditional
+     form took the Brier score from 0.142 to 0.127. Nothing new is
+     modelled -- it is the same normal draw, asked the right question.
+
+     And null, not a number, for a player already three spreads past his
+     ADP. Both tails are then tiny, normalCdf's absolute error (1.5e-7) is
+     no longer small beside them, and the market model has nothing honest
+     to say about why he is still on the board. */
+  const now = state.picks.length + 1;
+  if (overall <= now) return 1;
+  const zNow = (now - player.adp) / player.sd;
+  if (zNow > 3) return null;
+  const here = 1 - normalCdf(zNow);
+  const then = 1 - normalCdf((overall - player.adp) / player.sd);
+  return Math.max(0, Math.min(1, then / here));
 }
 
 /* Starters-worth of talent left at a position — undrafted players whose
@@ -4006,6 +4023,55 @@ function replacementGap(player) {
   // a position we will not rank has no gap to report either.
   if (UNRANKED_POSITIONS.indexOf(player.pos) >= 0) return null;
   return player.projPts - (REPLACEMENT_PTS[player.pos] || 0);
+}
+
+/* The same figure for a CONNECTED league: its own scoring and its own roster
+   shape, rather than this session's Draft Room.
+
+   The Waiver and Trade rooms priced every claim and every trade with
+   replacementGap(), which reads league.rules and REPLACEMENT_PTS -- the mock
+   draft's table and the mock draft's team count. Found by the audit of
+   10 September 2026: a 12-team full-PPR league was being told what a player
+   is worth over a 10-team half-PPR replacement. The lineup room had been
+   moved onto the league's rules a week earlier (projPerGameUnder); the
+   season-value rooms had not.
+
+   Built on gradeProjections(), which already prices the board under an
+   arbitrary rules table for a connected league's own draft report, handed
+   the league's shape so replacementRank() draws the line where THAT league
+   runs out of starters. Nothing is written down twice, and nothing a
+   running draft reads (projPts, REPLACEMENT_PTS) is touched.
+
+   Falls back to replacementGap() when the league sends no lineup -- an older
+   worker -- because the Draft Room's shape is then the best answer there is,
+   and a room that went blank would be worse. Same refusal for K and DST. */
+let LEAGUE_GAP_CACHE = null;
+function leagueGapTable(rawRules, lineupIn, teams) {
+  const rules = rulesFromLeague(rawRules) || league.rules;
+  const shape = Object.assign({}, league, {
+    teams: teams,
+    starters: Object.assign({}, lineupIn.starters),
+    flex: lineupIn.flex || 0,
+    superflex: lineupIn.superflex || 0,
+    bench: lineupIn.bench || 0,
+  });
+  const key = board.length + "|" + teams + "|" +
+    Object.keys(DEFAULT_RULES).map(function (k) { return rules[k]; }).join(",") + "|" +
+    JSON.stringify([shape.starters, shape.flex, shape.superflex]);
+  if (LEAGUE_GAP_CACHE && LEAGUE_GAP_CACHE.key === key) return LEAGUE_GAP_CACHE.value;
+  const value = gradeProjections(rules, shape);
+  LEAGUE_GAP_CACHE = { key: key, value: value };
+  return value;
+}
+
+function replacementGapUnder(player, rawRules, lineupIn, teams) {
+  if (!player) return null;
+  if (!lineupIn || !lineupIn.starters || !(teams > 0)) return replacementGap(player);
+  if (UNRANKED_POSITIONS.indexOf(player.pos) >= 0) return null;
+  const t = leagueGapTable(rawRules, lineupIn, teams);
+  const pts = t.proj[player.id];
+  if (pts === null || pts === undefined) return null;
+  return pts - (t.replacement[player.pos] || 0);
 }
 
 /* Points above replacement for the whole board, under an arbitrary scoring
@@ -4692,7 +4758,7 @@ function withGrading(ctx, fn) {
 
    Side-effect-free: touches no player's projPts and not REPLACEMENT_PTS,
    both of which the scoring editor owns. */
-function gradeProjections(rules) {
+function gradeProjections(rules, shape) {
   const proj = {};
   const byPos = {};
   board.forEach(function (p) {
@@ -4706,9 +4772,10 @@ function gradeProjections(rules) {
   POSITIONS.forEach(function (pos) {
     const list = (byPos[pos] || []).sort(function (a, b) { return b - a; });
     if (!list.length) { replacement[pos] = 0; return; }
-    // replacementRank() reads gradedLeague(), so this has to run INSIDE the
-    // context it is being computed for.
-    const cut = Math.min(replacementRank(pos), list.length) - 1;
+    // replacementRank() reads gradedLeague() unless handed a shape, so a
+    // grading caller runs this INSIDE the context it is computed for and a
+    // pricing caller (replacementGapUnder) passes the league it prices.
+    const cut = Math.min(replacementRank(pos, shape), list.length) - 1;
     replacement[pos] = cut >= 0 ? list[cut] : list[list.length - 1];
   });
   return { proj: proj, replacement: replacement };
@@ -8272,7 +8339,11 @@ function positionWeeklyCVUnder(leagueRules) {
       const pts = weeks.map(score);
       const mean = pts.reduce((a, b) => a + b, 0) / pts.length;
       if (mean <= 0) return; // a coefficient of variation is meaningless around zero
-      const variance = pts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pts.length;
+      // Sample variance, n-1: these are a handful of weeks standing in for a
+      // player's spread, and dividing by n understates it by (n-1)/n -- a
+      // few percent at 10-17 weeks, in the direction the audit of
+      // 10 September 2026 found the whole model already leaning.
+      const variance = pts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (pts.length - 1);
       const row = sums[player.pos] || { sum: 0, n: 0 };
       row.sum += Math.sqrt(variance) / mean;
       row.n += 1;
@@ -12790,6 +12861,11 @@ window.JukeEngine = {
      order for those two no better than chance, and a targets list that
      ranked them would be selling a number the app itself withholds. */
   replacementGap: replacementGap,
+  /* replacementGap() under a connected league's own scoring and roster
+     shape -- see its comment. The season-value rooms call it through
+     lib/leagueGap.js; guarded like every entry that reads board data. */
+  replacementGapUnder: (player, rules, lineup, teams) =>
+    (dataReady() ? replacementGapUnder(player, rules, lineup, teams) : null),
   /* A player's projection PER GAME, as a number.
 
      The Strategy Room asks a weekly question — start him or him, this

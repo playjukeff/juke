@@ -4,6 +4,7 @@ import { rosterTotal, rosterValues, tradeSwing, valueBoard } from '../../rooms/t
 import { tradeWindow, msUntilDeadline } from '../../../lib/tradeDeadline.js'
 import { countdownParts } from '../../../lib/countdown.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../../lib/leagueGap.js'
 import { Kicker, PosChip } from '../v2ui.jsx'
 import {
   BarRow, CouldNotRead, Empty, Footnote, Loading, NoTeam, Panel, PosSquare, TierGate, signedNum,
@@ -115,7 +116,7 @@ export default function TradeLive({ league, snapshot, status, reason, tab, onRet
   useJukeTick(engine)
 
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
   const byId = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps

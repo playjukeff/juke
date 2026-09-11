@@ -42,12 +42,24 @@
  *
  * `week` may be null -- a snapshot taken before the season starts has no
  * week -- and then nobody is on bye rather than everybody being compared
- * against a week that does not exist. Same rule injuryWatch() follows. */
+ * against a week that does not exist. Same rule injuryWatch() follows.
+ *
+ * ---- And a player ruled out scores nothing either ----
+ *
+ * The same argument, one step on: an OUT, IR, PUP, SUSpended or DNR
+ * starter leaves the slot as empty as a bye does, and scoring him at his
+ * full average let the projected total, the win probability and the
+ * season odds all count points nobody will score -- found by an audit on
+ * 10 September 2026. Questionable is NOT zeroed: that is "we do not know",
+ * and the room already lists him under Might not play. This wraps only
+ * Juke's own fallback; the league's own number sits above it in
+ * leagueWeekPts() and is never overridden. */
 export function weekScorer(base, week) {
   if (typeof base !== 'function') return base
   return (player) => {
     if (!player) return null
     if (week && player.bye && player.bye === week) return 0
+    if (injurySeverity(player.inj) === 'out') return 0
     return base(player)
   }
 }

@@ -246,6 +246,14 @@ jobs:
       - name: What a room has at stake
         run: node scripts/test_room_stakes.mjs
 
+      # Which league a connected room prices players under: the league's own
+      # scoring, lineup and team count, and the Draft Room's only when the
+      # snapshot has no lineup. The audit of 10 September 2026 found the
+      # Waiver and Trade rooms pricing a 12-team full-PPR league as a
+      # 10-team half-PPR mock.
+      - name: A connected room prices under its own league
+        run: node scripts/test_league_gap.mjs
+
       # A lineup's week as a mean and a spread — the two numbers the Strategy
       # Room's win probability takes.
       #
