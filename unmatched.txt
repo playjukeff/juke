@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-11 14:44 UTC
+Generated 2026-09-12 13:49 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -23,28 +23,28 @@ Patriots | DEF | NE | no Tank01 id
 Lions | DEF | DET | no Tank01 id
 Chargers | DEF | LAC | no Tank01 id
 Steelers | DEF | PIT | no Tank01 id
-Cowboys | DEF | DAL | no Tank01 id
-Bears | DEF | CHI | no Tank01 id
 Jaguars | DEF | JAX | no Tank01 id
-Ravens | DEF | BAL | no Tank01 id
 Bills | DEF | BUF | no Tank01 id
 Falcons | DEF | ATL | no Tank01 id
-Browns | DEF | CLE | no Tank01 id
-Buccaneers | DEF | TB | no Tank01 id
-Titans | DEF | TEN | no Tank01 id
+Ravens | DEF | BAL | no Tank01 id
 Giants | DEF | NYG | no Tank01 id
+Titans | DEF | TEN | no Tank01 id
+Browns | DEF | CLE | no Tank01 id
 Alex Kessman | K | CAR | no Tank01 id
 Saints | DEF | NO | no Tank01 id
-Colts | DEF | IND | no Tank01 id
 Bengals | DEF | CIN | no Tank01 id
+Colts | DEF | IND | no Tank01 id
 Cardinals | DEF | ARI | no Tank01 id
 Raiders | DEF | LV | no Tank01 id
 Jets | DEF | NYJ | no Tank01 id
+Cowboys | DEF | DAL | no Tank01 id
 Commanders | DEF | WAS | no Tank01 id
+Buccaneers | DEF | TB | no Tank01 id
 Panthers | DEF | CAR | no Tank01 id
 Packers | DEF | GB | no Tank01 id
 Dolphins | DEF | MIA | no Tank01 id
 49ers | DEF | SF | no Tank01 id
+Bears | DEF | CHI | no Tank01 id
 Chiefs | DEF | KC | no Tank01 id
 Ben Roethlisberger | QB | PIT | no Tank01 id
 Eric Ebron | TE | PIT | no Tank01 id
@@ -251,27 +251,27 @@ Patriots | DEF | NE | no nflverse id
 Lions | DEF | DET | no nflverse id
 Chargers | DEF | LAC | no nflverse id
 Steelers | DEF | PIT | no nflverse id
-Cowboys | DEF | DAL | no nflverse id
-Bears | DEF | CHI | no nflverse id
 Jaguars | DEF | JAX | no nflverse id
-Ravens | DEF | BAL | no nflverse id
 Bills | DEF | BUF | no nflverse id
 Falcons | DEF | ATL | no nflverse id
-Browns | DEF | CLE | no nflverse id
-Buccaneers | DEF | TB | no nflverse id
-Titans | DEF | TEN | no nflverse id
+Ravens | DEF | BAL | no nflverse id
 Giants | DEF | NYG | no nflverse id
+Titans | DEF | TEN | no nflverse id
+Browns | DEF | CLE | no nflverse id
 Saints | DEF | NO | no nflverse id
-Colts | DEF | IND | no nflverse id
 Bengals | DEF | CIN | no nflverse id
+Colts | DEF | IND | no nflverse id
 Cardinals | DEF | ARI | no nflverse id
 Raiders | DEF | LV | no nflverse id
 Jets | DEF | NYJ | no nflverse id
+Cowboys | DEF | DAL | no nflverse id
 Commanders | DEF | WAS | no nflverse id
+Buccaneers | DEF | TB | no nflverse id
 Panthers | DEF | CAR | no nflverse id
 Packers | DEF | GB | no nflverse id
 Dolphins | DEF | MIA | no nflverse id
 49ers | DEF | SF | no nflverse id
+Bears | DEF | CHI | no nflverse id
 Chiefs | DEF | KC | no nflverse id
 Michael Warren | RB | DET | no nflverse id
 Qadir Ismail | WR | CHI | no nflverse id
@@ -301,12 +301,12 @@ season    compared  disagree    rate
 2020           798        15    1.9%
 2021           988        14    1.4%
 2022          1265        40    3.2%
-2023          1571        12    0.8%
-2024          1936         7    0.4%
-2025          2304         5    0.2%
+2023          1574        12    0.8%
+2024          1940         7    0.4%
+2025          2303         5    0.2%
 
 stat  compared   agree   agree%
-cfd       905     843    93.1%
+cfd       904     842    93.1%
 ct        713     713   100.0%
 cy        966     962    99.6%
 f19        17      17   100.0%
@@ -323,11 +323,11 @@ pfd       262     225    85.9%
 pi        224     224   100.0%
 pt        241     240    99.6%
 py        281     278    98.9%
-ra        837     832    99.4%
+ra        839     834    99.4%
 rc        961     959    99.8%
-rfd       693     635    91.6%
-rt        470     470   100.0%
-ry        825     818    99.2%
+rfd       695     637    91.7%
+rt        471     471   100.0%
+ry        827     820    99.2%
 tg        978     964    98.6%
 xp        131     130    99.2%
 xpx        94      94   100.0%
