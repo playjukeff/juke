@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { buildDemoData } from '../../myleague/demoData.js'
 import { LINE as PLATFORM_LINE } from '../../shell/leaguePlatforms.js'
-import { Headline, Icon, Label, PosTag, Sheet, Skeleton, ValueBar, cx, useEngineData } from '../ui.jsx'
+import { Headline, Icon, Label, PosTag, Sheet, Skeleton, ValueBar, cx, useEngineData , TOUCH } from '../ui.jsx'
 import { ConnectCall, KpiGrid, SampleTag, Verdict } from './parts.jsx'
 import { LIFT } from '../motion.jsx'
 
@@ -171,7 +171,7 @@ export default function LeagueDemo() {
                 {data.habit.gain ? <span className="text-v3-gain">{data.habit.gain}</span> : null}
               </p>
               <p className="mt-3 text-[15px] leading-[1.55] text-v3-ink2">{data.habit.body}</p>
-              <a href={toV3(data.habit.action.href)} className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">
+              <a href={toV3(data.habit.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
                 Open the lineup tool <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
             </Sheet>
@@ -180,7 +180,7 @@ export default function LeagueDemo() {
             <Sheet code="Run this next" aside="Sample">
               <Headline as="h3" size="block">{data.runNext.title}</Headline>
               <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">{data.runNext.body}</p>
-              <a href={toV3(data.runNext.action.href)} className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">
+              <a href={toV3(data.runNext.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
                 Set up a mock <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
             </Sheet>

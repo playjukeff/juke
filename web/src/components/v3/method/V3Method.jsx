@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CallButton, Headline, Icon, Label, QuietButton, Skeleton, cx } from '../ui.jsx'
+import { CallButton, Headline, Icon, Label, QuietButton, Skeleton, cx, TOUCH } from '../ui.jsx'
 import { XIcon } from '../record/recordParts.jsx'
 import { hashQuery, replaceQuery, scrollPageTo } from '../record/recordKit.js'
 
@@ -122,6 +122,7 @@ function DocSwitch({ current }) {
           href={`#/v3/method/${k}`}
           aria-current={k === current ? 'page' : undefined}
           className={cx(
+            TOUCH,
             'inline-flex min-h-[38px] shrink-0 items-center rounded-[4px] px-3 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
             k === current ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
           )}

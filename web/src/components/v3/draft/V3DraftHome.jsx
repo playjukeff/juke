@@ -5,7 +5,7 @@ import { useSignedIn } from '../../../hooks/useAuthState.js'
 import { useLeagueFresh } from '../../v2/stores.js'
 import { scenariosFor, sublineOf } from '../../practiceScenarios.js'
 import { safe, shortAgo, useDraftEngine, useTwoTap } from '../../v2/draft/draftKit.jsx'
-import { CallButton, GoLink, Headline, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, ValueBar, cx, ordinal } from '../ui.jsx'
+import { CallButton, GoLink, Headline, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, ValueBar, cx, ordinal , HIT } from '../ui.jsx'
 import { FRIENDS_HASH, INSIGHTS_HASH, RECORD_HASH, begin, resume, setupProblem, startScenario } from './flow.js'
 import { FOCUS, Glyph, Problem } from './kit.jsx'
 import SettingsDrawer from './SettingsDrawer.jsx'
@@ -226,9 +226,9 @@ function Scenarios({ engine, ready, tick, roomActive }) {
           <>
             {accountsReady ? (
               <SignInButton mode="modal">
-                <button type="button" className={cx('font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', FOCUS)}>Sign in</button>
+                <button type="button" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', FOCUS)}>Sign in</button>
               </SignInButton>
-            ) : <a href="#/v3/account" className="font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4">Sign in</a>}
+            ) : <a href="#/v3/account" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4')}>Sign in</a>}
             {' to save results and get scenarios built from your drafts.'}
           </>
         )}

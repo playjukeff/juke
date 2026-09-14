@@ -139,10 +139,27 @@ export function QuietButton({ href, onClick, children, className = '', ...rest }
 }
 
 /* An inline text link that goes somewhere. Ink with an underline, so it is
-   never mistaken for the cobalt action. */
+   never mistaken for the cobalt action.
+
+   TOUCH is the 44px floor, and it only applies to a coarse pointer: this
+   link is a 21px line of type, which is a fine mouse target and half a
+   finger. Growing it for everybody would put 23px of dead space under every
+   inline link on the page, so the rule is scoped the way style.css already
+   scopes its 16px field rule -- a floor under the design on the devices that
+   need it, and nothing at all on a desktop. */
+export const TOUCH = '[@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]'
+
+/* HIT is TOUCH for a link inside a row, where the control cannot grow: a
+   player's name sits on one line with his club on the next, so a 44px
+   minimum would push the two apart and change the table. This leaves the
+   type where it is and gives the finger a 44px-tall box over it, drawn by a
+   pseudo-element so it costs no layout. Horizontally it is the link's own
+   width, so it never reaches the row's other controls. */
+export const HIT = "relative [@media(pointer:coarse)]:after:absolute [@media(pointer:coarse)]:after:inset-x-0 [@media(pointer:coarse)]:after:top-1/2 [@media(pointer:coarse)]:after:h-[44px] [@media(pointer:coarse)]:after:min-w-[44px] [@media(pointer:coarse)]:after:-translate-y-1/2 [@media(pointer:coarse)]:after:content-['']"
+
 export function GoLink({ href, children, className = '' }) {
   return (
-    <a href={href} className={cx('inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', className)}>
+    <a href={href} className={cx(TOUCH, 'inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', className)}>
       {children} <Icon name="arrow" className="h-3.5 w-3.5" />
     </a>
   )
@@ -162,6 +179,7 @@ export function Seg({ label, options, value, onChange, className = '' }) {
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cx(
+              TOUCH,
               'min-h-[34px] rounded-[4px] px-3 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
               on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
             )}

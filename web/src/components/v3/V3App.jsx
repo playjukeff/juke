@@ -4,7 +4,7 @@ import JukeLogo from '../juke-logo/JukeLogo.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
 import { countdownParts } from '../../lib/countdown.js'
-import { Icon, Label, Headline, CallButton, QuietButton, cx } from './ui.jsx'
+import { Icon, Label, Headline, CallButton, QuietButton, cx, TOUCH } from './ui.jsx'
 import { THEME_CHOICES, mountTheme, useV3Theme } from './theme.js'
 import { MotionRoot, SPRING, motion } from './motion.jsx'
 import Now from './now/Now.jsx'
@@ -107,18 +107,18 @@ function Account() {
       <>
         <SignedOut>
           <SignInButton mode="modal">
-            <button type="button" className="min-h-[40px] rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well">Log in</button>
+            <button type="button" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Log in</button>
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <a href="#/v3/account" className="min-h-[40px] rounded-[6px] px-3 py-2 text-[14px] font-semibold text-v3-ink hover:bg-v3-well">Account</a>
+          <a href="#/v3/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
           <UserButton />
         </SignedIn>
       </>
     )
   }
   return (
-    <a href="#/v3/account" aria-label="Account" className="inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well">
+    <a href="#/v3/account" aria-label="Account" className={cx(TOUCH, 'inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>
       <Icon name="account" className="h-5 w-5" />
       <span className="hidden sm:inline">{signedIn ? 'Account' : 'Log in'}</span>
     </a>
@@ -128,7 +128,7 @@ function Account() {
 function Compare() {
   return (
     <details className="relative hidden sm:block">
-      <summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 rounded-[6px] border border-v3-rule px-3 text-[13px] font-semibold text-v3-ink2 hover:text-v3-ink [&::-webkit-details-marker]:hidden">
+      <summary className={cx(TOUCH, 'flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 rounded-[6px] border border-v3-rule px-3 text-[13px] font-semibold text-v3-ink2 hover:text-v3-ink [&::-webkit-details-marker]:hidden')}>
         Compare <Icon name="arrow" className="h-3.5 w-3.5 rotate-90" />
       </summary>
       <div className="absolute right-0 z-50 mt-2 w-[220px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.25)]">
@@ -207,7 +207,7 @@ function TopBar({ current }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
-        <a href="#/v3" aria-label="Juke v3, Now" className="shrink-0"><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
+        <a href="#/v3" aria-label="Juke v3, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
         <span className="rounded-[4px] bg-v3-callWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-call">v3</span>
         <nav aria-label="Primary" className="ml-6 hidden h-full items-stretch gap-1 md:flex">
           {NAV.map((n) => {
@@ -279,14 +279,14 @@ function Footer() {
         </div>
         <div className="grid content-start gap-2 text-[14px]">
           <Label>Method</Label>
-          <a className="text-v3-ink hover:underline" href="#/v3/method/how-it-works">How Juke calls it</a>
-          <a className="text-v3-ink hover:underline" href="#/v3/method/how-it-works?s=s06">The draft grade</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/how-it-works">How Juke calls it</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/how-it-works?s=s06">The draft grade</a>
         </div>
         <div className="grid content-start gap-2 text-[14px]">
           <Label>The small print</Label>
-          <a className="text-v3-ink hover:underline" href="#/v3/method/privacy">Privacy</a>
-          <a className="text-v3-ink hover:underline" href="#/v3/method/terms">Terms</a>
-          <a className="text-v3-ink hover:underline" href="#/v3/account">Account and leagues</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/privacy">Privacy</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/terms">Terms</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/account">Account and leagues</a>
         </div>
       </div>
     </footer>

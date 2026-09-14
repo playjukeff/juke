@@ -11,7 +11,7 @@ import { sampleLeague } from '../calls/callData.js'
 import {
   Fig, GoLink, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, cx, ordinal,
   useEngineData,
-} from '../ui.jsx'
+ HIT} from '../ui.jsx'
 import { CountUp } from '../motion.jsx'
 import { findTeam, recordText, standing, teamHref, usePricing } from './leagueData.js'
 import { ConnectCall, CouldNotRead, InjuryChip, SampleTag, WinBar, pct } from './parts.jsx'
@@ -197,7 +197,7 @@ function NameCell({ row, align, week, isCurrent }) {
         {p ? <PosTag pos={p.pos} className="hidden sm:inline-flex" /> : null}
         <span className="min-w-0">
           {p ? (
-            <a href={`#/v3/players/${encodeURIComponent(String(p.id))}`} className="block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]">
+            <a href={`#/v3/players/${encodeURIComponent(String(p.id))}`} className={cx(HIT, 'block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]')}>
               <span className="sm:hidden">{shortName(p)}</span><span className="hidden sm:inline">{p.name}</span>
             </a>
           ) : (
