@@ -170,7 +170,26 @@ function NowGuest({ season, post = false }) {
             {post ? 'The season is over, and next year’s draft is the one decision left. ' : ''}A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <CallButton href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
+            {/* data-hero-cta: the guest homepage's primary door, and the one
+                control journey.spec walks to a finished draft through.
+                sonar.spec hit-tests it too - it is the only way to tell an
+                overlay that has really gone from one that is merely
+                transparent.
+
+                The marker lived on six production files and every one of
+                them is retired, so it arrived at the cutover pointing at
+                nothing: the same "replacing a page orphans every attribute
+                only the old one carried" failure data-hero-eyebrow had, on
+                the control instead of the label.
+
+                Only NowGuest carries it, deliberately. NowSeason's own door
+                is ConnectWayIn ("Connect your league"), which is the right
+                primary for a reader mid-season and is NOT a way into a
+                draft - marking it would hand journey.spec a button that can
+                never reach the screen it is walking to. If that flow ever
+                needs to survive an in-season board, the answer is a draft
+                door on NowSeason, not this attribute on a connect button. */}
+            <CallButton data-hero-cta href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
             <QuietButton href="#/players">Browse every player</QuietButton>
           </div>
           <p className="mt-4 font-figure text-[13px] text-v3-ink3">No account needed · runs in your browser</p>
