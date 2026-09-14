@@ -35,7 +35,12 @@
 import { test, expect } from "@playwright/test";
 import { openApp, SITE, LOCAL_SITE } from "./helpers.mjs";
 
-const LEAGUE = { leagueId: "lg1", name: "Dynasty Degens", season: "2026", totalTeams: 12 };
+/* ownerId, because v3's connected homepage has to know WHICH roster is
+   yours: NowConnected matches league.ownerId against the snapshot's
+   teams[].ownerId, and without it the page renders "Which team is yours?
+   ... reconnect the league" - a real state, but not the connected one
+   these tests are about. */
+const LEAGUE = { leagueId: "lg1", name: "Dynasty Degens", season: "2026", totalTeams: 12, ownerId: "me" };
 
 /* Signed in, with or without a league. Installed before any page script so
    the first render already sees it — a stub applied afterwards would let the
@@ -47,6 +52,33 @@ function stubAccount(page, leagues) {
     const install = () => {
       const L = window.Live || (window.Live = {});
       L.listLeagues = () => Promise.resolve({ ok: true, leagues: rows.slice() });
+      /* The snapshot too, because v3's connected homepage is NowConnected
+         and it reads one. With only listLeagues stubbed the page renders
+         "We could not read your league" - an error screen with no <h1> -
+         and every test here timed out waiting for one. */
+      L.leagueSnapshot = (leagueId) => Promise.resolve({
+        ok: true,
+        snapshot: {
+          leagueId,
+          name: (rows[0] && rows[0].name) || "Dynasty Degens",
+          provider: "sleeper",
+          season: "2026",
+          week: 3,
+          totalTeams: (rows[0] && rows[0].totalTeams) || 12,
+          teams: [
+            { ownerId: "me", name: "Your Team", wins: 2, losses: 1, ties: 0, pointsFor: 300, pointsAgainst: 280, players: [], starters: [] },
+            { ownerId: "them", name: "Gridiron Gang", wins: 1, losses: 2, ties: 0, pointsFor: 280, pointsAgainst: 300, players: [], starters: [] },
+          ],
+          status: "in_season",
+          rules: {},
+          draftAt: null,
+          draftStatus: "complete",
+          schedule: null,
+          tradeDeadline: { at: null, week: null, disabled: false },
+          waiver: { type: "faab", budget: 100, minimumBid: 0, resetsOrder: false, hours: 24 },
+          waiverBudget: 100,
+        },
+      });
     };
     install();
     // live.js defines its own window.Live when it lands and would replace the
@@ -132,14 +164,21 @@ test.describe("a connected league", () => {
     // something DISAPPEARING, and a bug that hid these from everybody would
     // pass all of them.
     expect(body).toContain("Connect your league");
-    expect(body).toContain("The rest unlock when you connect a league");
-    /* Two, not one. Draft has always been open to everybody; Prospect
-       joined it, because its content is the board rather than a roster and
-       there is nothing for a league to unlock. The rooms a LEAGUE opens is
-       a narrower question than the rooms a reader can walk into, and this
-       count is the second one — which is why roomIsOpen() replaced the
-       exported slug list that could only answer the first. */
-    expect(body).toMatch(/5 ROOMS · 2 OPEN/);
+
+    /* Two assertions retired with the screen they were about.
+
+       This used to check "The rest unlock when you connect a league" and a
+       "5 ROOMS · 2 OPEN" count, both of them RoomsLobby.jsx's - a grid of
+       six rooms with padlocks on the ones a league opens. v3 has no rooms
+       lobby and no padlocks: it has five PLACES, and the in-season tools
+       are calls a reader opens rather than rooms they visit and find
+       locked. Asserting an unlock count here would be asserting a model
+       the product no longer has.
+
+       What survives is the half the original report was actually about -
+       the guest is asked - and it is the control for the next test, where
+       every assertion is about that ask DISAPPEARING. A bug that hid the
+       ask from everybody would pass that test and fail this one. */
 
     await page.close();
   });
@@ -150,62 +189,41 @@ test.describe("a connected league", () => {
     await stubAccount(page, [LEAGUE]);
     await page.goto(`${SITE}/index.html#/`);
     await page.waitForSelector("#view-home h1");
-    // The lobby reads the league through useLeague(), which resolves a tick
-    // after mount — wait for the answer rather than for a duration. "Your
-    // league is in" is SubCopy()'s own connected-state text, so waiting on
-    // it is waiting on the same settle every assertion below depends on.
-    await page.waitForFunction(
-      () => document.getElementById("view-home").innerText.includes("Your league is in"),
-      null,
-      { timeout: 15000 },
-    );
+    /* Settle on the league's own NAME appearing, which is what says the
+       connected homepage has resolved. This waited for "Your league is in",
+       SubCopy()'s connected-state line in RoomsLobby.jsx - a retired,
+       unreachable file - so it could never fire. Case-insensitively,
+       because the chip is uppercased in CSS and innerText returns what is
+       painted. */
+    await page.waitForFunction(named("Dynasty Degens"), null, { timeout: 15000 });
 
     const body = await text(page);
 
     /* Every one of these was still on the screen after a successful connect,
        and each is a different component that had no way to hear about it.
        Confirmed red without the shared league state: all four fail. */
-    expect(body, "the unlock bar is gone").not.toContain("Connect your league");
-    expect(body, "and so is the promise it made").not.toContain(
-      "The rest unlock when you connect a league",
-    );
-    /* The lobby does not NAME the league — the header chip that does is
-       inside <SignedIn> and so absent from a keyless build (see this file's
-       own note). What it says instead is that the league is in, which is
-       the same fact in the copy this screen owns. */
-    expect(body, "and the blurb says the league is in").toContain("Your league is in");
-    /* And it does not still call those three a sample. This line was wrong
-       on the deployed site for as long as the assertion above was red, and
-       for the same reason — the copy promising "these three still show a
-       sample week until they are built" outlived the three being built. */
-    expect(body, "the connected copy does not call the live rooms samples").not.toContain(
-      "sample week until they are built",
-    );
-    /* All five, and this assertion was STANDING RED before the Prospect
-       Room went anywhere near it.
+    /* THE ASSERTION THIS FILE EXISTS FOR, and the one the report named:
+       "even after getting a confirmation that it connected successfully,
+       the Connect messaging is still there throughout the website". */
+    expect(body, "the ask is gone").not.toContain("Connect your league");
+    /* And it names the league instead, which is the other half of the
+       same fact. The old version asserted "Your league is in" here and
+       explained that the lobby could not name the league because the
+       header chip was inside <SignedIn> and absent from a keyless build.
+       v3's connected homepage names it in the body - see the probe output
+       in this change - so the stronger claim is available and is what is
+       made.
 
-       It read `1 OPEN`, with a comment explaining that connecting a league
-       opens nothing else in this grid — true while Waiver, Trade and
-       Strategy were locked previews. They got real connected bodies in the
-       phases that followed and nobody came back to this line, so it has
-       been failing since. Prospect's own run is what surfaced it, the same
-       way it surfaced rail-nav's stale #/drafts.
+       ---- Three assertions retired with RoomsLobby.jsx ----
 
-       Two of the five are open to everybody (Draft, Prospect) and three
-       are what the league buys, which is the number this screen exists to
-       move. The guest test above pins the other end at 2; the pair of them
-       together is what says connecting is worth something. */
-    expect(body, "a league opens the three rooms that read a roster").toMatch(
-      /5 ROOMS · 5 OPEN/,
-    );
-
-    /* League itself no longer appears in this grid at all — not locked, not
-       open, just gone (it is #/my-league now). The old "no longer previewed"
-       check named League Room's own retired hook text; asserting its
-       absence here would be checking something that structurally cannot
-       happen any more, so the meaningful version of this guard is that the
-       room name itself is gone from the grid. */
-    expect(body, "and League Room is not one of the cards any more").not.toContain("League Room");
+       "sample week until they are built", "5 ROOMS · 5 OPEN", and "League
+       Room is not one of the cards" were all about a grid of rooms with
+       padlocks on it. v3 has five places and no padlocks, so an unlock
+       count has nothing to count. They are named here rather than quietly
+       dropped: the requirement they carried - connecting is worth
+       something, visibly - is now carried by the pair of tests above,
+       which say the ask is present for a guest and gone for a member. */
+    expect(body.toLowerCase(), "and it names the league").toContain("dynasty degens");
 
     await page.close();
   });
@@ -217,16 +235,30 @@ test.describe("a connected league", () => {
     await page.goto(`${SITE}/index.html#/`);
     await page.waitForSelector("#view-home h1");
     await page.waitForFunction(
-      () => document.getElementById("view-home").innerText.includes("Dynasty Degens"),
+      () => document.getElementById("view-home").innerText.toLowerCase().includes("dynasty degens"),
       null,
       { timeout: 15000 },
     );
 
     const body = await text(page);
-    // The hero's second card. It read "BRING YOUR LEAGUE / Connect" with a
-    // list of four platforms under it, whether or not one was connected.
-    expect(body).toContain("YOUR LEAGUE");
-    expect(body).toContain("Connected · read-only");
+    /* v3's league chip: the name, then what Juke may do with it.
+
+       This asserted "YOUR LEAGUE" and "Connected · read-only" - the
+       production hero's second card, which read "BRING YOUR LEAGUE /
+       Connect" with four platforms under it whether or not one was
+       connected, and that card is gone. v3 states the same two facts in
+       the chip above the call sheet: the league's own name, and
+       "League · read-only".
+
+       The read-only half is worth keeping on its own terms. It is the
+       promise the connect integration was built under - Juke only ever
+       READS a league - and CLAUDE.md records it being settled deliberately
+       against a handoff that offered to write a lineup back. A screen that
+       stopped saying it would be quietly widening what the product claims
+       to do. */
+    expect(body.toLowerCase(), "the league is named").toContain("dynasty degens");
+    expect(body.toLowerCase(), "and the read-only promise is still made")
+      .toContain("read-only");
 
     await page.close();
   });
@@ -262,6 +294,28 @@ function stubSwitchable(page, rows) {
     const install = () => {
       const L = window.Live || (window.Live = {});
       L.listLeagues = () => Promise.resolve({ ok: true, leagues: order.slice() });
+      /* The snapshot, for stubAccount's reason: v3's connected homepage
+         reads one, and without it the page is an error screen with no <h1>.
+         Keyed off whichever league is currently at the head, so a switch
+         changes what the page can draw as well as what it lists. */
+      L.leagueSnapshot = (leagueId) => {
+        const lg = order.find((l) => l.leagueId === leagueId) || order[0] || {};
+        return Promise.resolve({
+          ok: true,
+          snapshot: {
+            leagueId, name: lg.name, provider: lg.provider, season: "2026", week: 3,
+            totalTeams: lg.totalTeams || 12, status: "in_season", rules: {},
+            teams: [
+              { ownerId: lg.ownerId || "me", name: "Your Team", wins: 2, losses: 1, ties: 0, pointsFor: 300, pointsAgainst: 280, players: [], starters: [] },
+              { ownerId: "them", name: "Gridiron Gang", wins: 1, losses: 2, ties: 0, pointsFor: 280, pointsAgainst: 300, players: [], starters: [] },
+            ],
+            draftAt: null, draftStatus: "complete", schedule: null,
+            tradeDeadline: { at: null, week: null, disabled: false },
+            waiver: { type: "faab", budget: 100, minimumBid: 0, resetsOrder: false, hours: 24 },
+            waiverBudget: 100,
+          },
+        });
+      };
       L.selectLeague = (token, leagueId, provider) => {
         const hit = order.find((l) => l.leagueId === leagueId && l.provider === provider);
         if (!hit) return Promise.resolve({ ok: false, reason: "not-connected", leagues: [] });
@@ -284,8 +338,12 @@ const ESPN_LG = {
 };
 
 const home = (page) => page.goto(SITE + "/index.html#/");
+/* Case-insensitive, because every one of these names is title case in the
+   source and UPPERCASED in CSS - innerText returns what is painted. That
+   trap has now broken a hero-eyebrow check, a "Randomize" check, a /nan/i
+   sweep, a "Win probability" probe and this file. */
 const named = (name) => () =>
-  document.getElementById("view-home").innerText.includes(name);
+  document.getElementById("view-home").innerText.toLowerCase().includes(name.toLowerCase());
 
 test.describe("more than one connected league", () => {
   test("the app draws the head of the list", async ({ context }) => {
@@ -465,7 +523,7 @@ test.describe("My League when the read fails", () => {
     await page.waitForFunction(
       () => {
         const t = document.getElementById("view-home").innerText;
-        return /Demo league/.test(t) || /Couldn.t load your league/.test(t);
+        return /League · sample/i.test(t) || /Could not load your leagues/i.test(t);
       },
       null,
       { timeout: 15000 },
@@ -476,10 +534,17 @@ test.describe("My League when the read fails", () => {
     /* The assertion the screenshot is about. The demo is the correct screen
        for somebody with no league and a false statement to somebody with
        one, and nothing else on the page distinguishes the two. */
-    expect(shown, "the guest demo must not stand in for a failed read")
-      .not.toContain("Demo league");
+    /* v3 renamed both sides of this and kept both claims. Production's
+       banner read "Demo league · sample data" and its error "Couldn't load
+       your league"; V3League labels the demo "League · sample" and the
+       failure "Could not load your leagues". The requirement is untouched
+       and is the one the screenshot was about: the sample is the correct
+       screen for somebody with NO league and a false statement to somebody
+       who has one, and nothing else on the page tells those two apart. */
+    expect(shown, "the sample must not stand in for a failed read")
+      .not.toMatch(/League · sample/i);
 
-    expect(shown, "it says what happened").toMatch(/Couldn.t load your league/);
+    expect(shown, "it says what happened").toMatch(/Could not load your leagues/i);
 
     /* Retry rather than Connect, deliberately: offering Connect to somebody
        who already has a league has them reconnect one they never
@@ -490,3 +555,4 @@ test.describe("My League when the read fails", () => {
     await page.close();
   });
 });
+
