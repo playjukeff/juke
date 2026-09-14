@@ -34,7 +34,7 @@ import { openApp, startSoloDraft } from "./helpers.mjs";
 function sweepOverflow() {
   const slack = window.devicePixelRatio > 1 ? 2 : 1;
   const leaks = [];
-  document.querySelectorAll("#draftroom-root *").forEach((el) => {
+  document.querySelectorAll("#view-home *").forEach((el) => {
     const b = el.getBoundingClientRect();
     if (!b.width || !b.height) return;
     if (el.scrollWidth <= el.clientWidth + slack) return;
@@ -73,17 +73,19 @@ for (const width of [1024, 1440]) {
     await page.evaluate((fn) => { window.__sweep = new Function("return (" + fn + ")()"); },
       sweepOverflow.toString());
 
+    /* Pool / Board / Grade, which is what the cockpit's views are called
+       since the cutover — they were Players / Board / Decide / Analysis.
+       Found through the tablist rather than by matching a label, because
+       each tab's accessible name carries its own keyboard shortcut ("Pool
+       p"), so an exact-match on the word finds nothing while the cockpit
+       sits there rendered. Same trap, and the same answer, as the shared
+       openBoardView() helper. */
     const found = {};
-    for (const label of ["Players", "Board", "Decide", "Analysis"]) {
-      const clicked = await page.evaluate((l) => {
-        const root = document.getElementById("draftroom-root");
-        const btn = [...root.querySelectorAll("button")]
-          .find((b) => b.textContent.trim() === l && b.getBoundingClientRect().height > 0);
-        if (!btn) return false;
-        btn.click();
-        return true;
-      }, label);
-      expect(clicked, `the ${label} tab is reachable at ${width}`).toBe(true);
+    const tabs = await page.getByRole("tab").all();
+    expect(tabs.length, `the cockpit draws its views at ${width}`).toBeGreaterThan(2);
+    for (const tab of tabs) {
+      const label = (await tab.textContent()).trim();
+      await tab.click();
       await page.waitForTimeout(400);
       found[label] = await page.evaluate(() => window.__sweep());
     }
@@ -91,37 +93,53 @@ for (const width of [1024, 1440]) {
       expect(leaks, `${label} at ${width}: overflows that can neither scroll nor ellipsise`).toEqual([]);
     }
 
-    /* And the reader-visible half of it, asserted directly rather than left to
-       the generic condition above.
-     *
-     * The cockpit bar is `1fr auto 1fr` with the pick pill dead-centre, so the
-     * left cell is capped at (bar - pill)/2 however much the right cell leaves
-     * unused. When the left block outgrows that cap nothing clips it — the tab
-     * nav simply paints over the pill, which is the one thing on the bar that
-     * says whose turn it is. Measured at 96px of overlap on Decide at 1024.
-     *
-     * Decide is the tab to ask on: hidePill empties the centre column on
-     * Players and Board, so those two never showed it and a single-tab check
-     * would have reported the bar clean. */
-    await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
-      [...root.querySelectorAll("button")]
-        .find((b) => b.textContent.trim() === "Decide" && b.getBoundingClientRect().height > 0).click();
-    });
-    await page.waitForTimeout(400);
+    /* And the reader-visible half of it, asserted directly rather than
+       left to the generic condition above.
+
+       ---- What this measured, and why the subject is gone ----
+
+       Production's cockpit bar was a `1fr auto 1fr` grid with the pick
+       pill dead-centre, so the left cell could never exceed (bar - pill)/2
+       however much the right cell left unused. When the left block outgrew
+       that cap nothing clipped it — the tab nav simply painted over the
+       pill, which is the one thing on the bar saying whose turn it is.
+       Measured at 96px of overlap at 1024.
+
+       v3's header is a flex ROW, and LiveHeader.jsx's own comment says it
+       is a row BECAUSE of that bug. So the grid this test was written
+       against is retired by design rather than by drift, and the tab nav
+       is not in the header at all any more.
+
+       What survives is the contract that replaced it, stated in the same
+       comment: "the left block shrinks and truncates, the pick block never
+       does". That is the same reader-visible property the old assertion
+       protected — the thing that says whose turn it is stays whole — so it
+       is what is asserted here, at both widths, against the two blocks
+       themselves rather than against a nav that has moved. */
     const bar = await page.evaluate(() => {
-      const el = [...document.querySelectorAll("#draftroom-root header, #draftroom-root div")]
-        .find((d) => /h-\[62px\]/.test(d.className) && d.getBoundingClientRect().height > 40);
-      if (!el || el.children.length < 2) return null;
-      const nav = el.children[0].querySelector("nav");
-      const pill = el.children[1].getBoundingClientRect();
-      return { navRight: nav ? Math.round(nav.getBoundingClientRect().right) : null,
-               pillLeft: Math.round(pill.left) };
+      const row = [...document.querySelectorAll("#view-home div")]
+        .find((d) => /h-\[68px\]/.test(String(d.className)) && d.getBoundingClientRect().height > 40);
+      if (!row || row.children.length < 2) return null;
+      const left = row.children[0].getBoundingClientRect();
+      const pick = row.children[row.children.length - 1];
+      const r = pick.getBoundingClientRect();
+      return {
+        leftRight: Math.round(left.right),
+        pickLeft: Math.round(r.left),
+        /* The pick block carries `shrink-0`, so "never truncates" is a
+           claim about its own content fitting rather than about where it
+           sits. Both are read, because a block can sit clear of its
+           neighbour and still have its own text cut. */
+        pickClipped: pick.scrollWidth > pick.clientWidth + 1,
+        says: (pick.innerText || "").replace(/\s+/g, " ").trim().slice(0, 40)
+      };
     });
-    expect(bar, `the cockpit bar renders at ${width}`).not.toBeNull();
-    expect(bar.navRight, "the bar draws its tab nav").not.toBeNull();
-    expect(bar.navRight, `the tab nav does not paint over the pick pill at ${width}`)
-      .toBeLessThanOrEqual(bar.pillLeft);
+
+    expect(bar, `the draft header renders at ${width}`).not.toBeNull();
+    expect(bar.leftRight, `the league block does not run into the pick block at ${width}`)
+      .toBeLessThanOrEqual(bar.pickLeft);
+    expect(bar.pickClipped, `and the pick block is not truncated at ${width}`).toBe(false);
+    expect(bar.says.length, "the pick block says something").toBeGreaterThan(0);
 
     await context.close();
   });

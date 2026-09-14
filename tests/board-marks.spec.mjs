@@ -38,7 +38,7 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp, awaitBoard } from "./helpers.mjs";
+import { openApp, awaitBoard, openBoardView } from "./helpers.mjs";
 
 async function draftInto(page, picks) {
   // The board first -- this presses #startBtn through evaluate(), which a
@@ -57,7 +57,12 @@ async function draftInto(page, picks) {
     stopSim();
     for (let i = 0; i < n; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
     render();
-    location.hash = "#/draft";
+    /* #/draft/live, not #/draft. The cutover made the bare address the
+       LAUNCHER and put the cockpit behind /live, so this was navigating
+       away from the draft it had just built — and the failure landed on
+       the Board tab press a moment later, which reads as a missing tab
+       rather than as a fixture that left the screen. */
+    location.hash = "#/draft/live";
   }, picks);
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
 
@@ -77,17 +82,12 @@ async function draftInto(page, picks) {
   //
   // :visible, not just the text filter: MobileDraftTabBar.jsx mounts its
   // own always-in-DOM "Board" button (lg:hidden, not unmounted) beside
-  // DraftCockpitHeader's desktop tab nav (hidden md:flex) — same label,
-  // two controls for two widths. Playwright's default viewport is well
-  // above both breakpoints, so exactly one is actually visible; without
-  // this the locator resolves two elements and .click() throws in strict
-  // mode before a single one of this file's own assertions ever runs.
-  await page.locator('#draftroom-root button:visible').filter({ hasText: /^Board$/ }).click();
-  await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
-    return root && [...root.querySelectorAll("div")].some(
-      (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-  }, null, { timeout: 20000 });
+  /* openBoardView() rather than a label click inside #draftroom-root,
+     which is empty on every address since the cutover — see its own note
+     in helpers.mjs. board-card.spec.mjs opens the same view the same way,
+     and the two files agreeing about what a cell IS is what lets their
+     assertions be read against each other. */
+  await openBoardView(page);
 }
 
 /* Relative luminance and WCAG contrast, on the rgb()/rgba() strings the
@@ -109,19 +109,46 @@ const CONTRAST = `
     const A = lum(a), B = lum(b);
     return (Math.max(A,B) + 0.05) / (Math.min(A,B) + 0.05);
   }
-  function grid() {
-    const root = document.getElementById("draftroom-root");
-    return [...root.querySelectorAll("div")].find(function (d) {
-      return getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols");
-    });
+  /* The board's own scroller, which carries its ground, and the cells.
+
+     Both used to be found by hunting for a div with display:grid and a
+     --cols property, then for a class fragment of the cell's border. v3's
+     board is a real table, so a cell is a td element - a structural fact
+     than something a walker infers from styling, and one that cannot go
+     stale the next time a border colour moves. */
+  function boardEl() {
+    return document.querySelector('[aria-label="Draft board"]');
   }
-  /* The cells, which are grandchildren rather than children: each round is a
-     display:contents wrapper, so grid().children is the header row plus
-     fourteen wrappers - 25 elements, none of them a cell. Written that way
-     first and every assertion in this file came back 0, which reads as the
-     feature being missing rather than the selector being wrong. */
   function cells() {
-    return [...grid().querySelectorAll('[class*="border-slate-rule/70"]')];
+    return [...boardEl().querySelectorAll("tbody td")];
+  }
+  function isFilled(td) {
+    return !!td.querySelector("button[data-overall]");
+  }
+  /* Your own column, by the ground it is painted on rather than by a class.
+
+     The legacy board marked it with a cyan hairline rail and this file
+     measured that rail's box-shadow. v3 paints the whole cell instead, so
+     there is no shadow to read — and matching the Tailwind class that does
+     it would be asserting what the mark LOOKS LIKE this month, which is
+     the thing CLAUDE.md says to anchor away from.
+
+     So: the ordinary cell ground is whatever most cells in a row share,
+     and yours is the one that differs. That is the property the mark
+     exists to create, it needs no second copy of which seat is yours, and
+     it survives the mark being restyled as long as it stays a mark. */
+  function mineCells() {
+    const rows = [...boardEl().querySelectorAll("tbody tr")];
+    const out = [];
+    rows.forEach(function (tr) {
+      const tds = [...tr.querySelectorAll("td")];
+      const bgs = tds.map(function (td) { return getComputedStyle(td).backgroundColor; });
+      const tally = {};
+      bgs.forEach(function (b) { tally[b] = (tally[b] || 0) + 1; });
+      const common = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a]; })[0];
+      tds.forEach(function (td, i) { if (bgs[i] !== common) out.push(td); });
+    });
+    return out;
   }
 `;
 
@@ -135,9 +162,8 @@ test.describe("what the board marks", () => {
        a snake board is read for. */
     const r = await page.evaluate((c) => {
       eval(c);
-      const all = cells();
-      const ringed = all.filter((e) => /0, 229, 255/.test(getComputedStyle(e).boxShadow));
-      const filled = ringed.filter((e) => e.querySelector("p.truncate")).length;
+      const ringed = mineCells();
+      const filled = ringed.filter(isFilled).length;
       return { ringed: ringed.length, filled, empty: ringed.length - filled,
                rounds: league.rounds, mySlot: JukeEngine.mySlot(),
                allInOneColumn: new Set(ringed.map((e) => Math.round(e.getBoundingClientRect().left))).size };
@@ -156,8 +182,15 @@ test.describe("what the board marks", () => {
 
       const read = () => page.evaluate((c) => {
         eval(c);
+        /* aria-current="step", which is what the live cell actually
+           claims, rather than the teal border class it used to be found
+           by. The attribute is the better anchor twice over: it is what a
+           screen reader is told, and it cannot drift when the ring is
+           restyled — v3 draws the ring as an inset shadow on a sibling
+           span, so a class match would now find the wrong element or
+           none. */
         const live = cells().map((e, i) => ({ e, i }))
-          .filter(({ e }) => e.querySelector('[class*="border-teal-400"]'));
+          .filter(({ e }) => e.querySelector('[aria-current="step"]'));
         return { count: live.length, index: live.length ? live[0].i : -1,
                  says: live.length ? live[0].e.textContent.replace(/\s+/g, " ").trim() : "" };
       }, CONTRAST);
@@ -177,12 +210,33 @@ test.describe("what the board marks", () => {
       expect(after.index, "and it moved").not.toBe(before.index);
     });
 
-  test("the seat bracket is drawn on the board's own ground, and clears its bar there",
+  test("your own column is legible as yours, on both grounds it touches",
     async ({ browser }) => {
       const context = await browser.newContext();
       const page = await openApp(context, "#/draft");
       await draftInto(page, 60);
 
+      /* ---- What this replaced, and why it could not be translated ----
+
+         This measured a cyan hairline rail: its box-shadow width, and that
+         the rail and the card never shared a pixel of x. The reasoning was
+         specific and good — the moment the bracket moved onto a chalk fill
+         it would be #00E5FF on a pastel and the mark would be gone — and
+         it is moot here, because v3 does not draw a rail. It paints your
+         column's cells with their own ground and gives the column header
+         the band.
+
+         So the GEOMETRY assertion retires with the rail that needed it,
+         and the LEGIBILITY one does not: a mark nobody can distinguish
+         from an ordinary cell is the same failure the rail's own note was
+         about, arriving through a different mark. That is what is asserted
+         here, on both grounds the column touches.
+
+         It is not a contrast ratio. These are two adjacent surfaces rather
+         than text on a ground, so 4.5:1 is the wrong bar — the same call
+         the board's own gold ring records, and the reason the header's
+         white LABEL is measured separately below at the bar that does
+         apply to it. */
       const r = await page.evaluate((c) => {
         eval(c);
         /* Transitions off before any colour is read: a pane that is not
@@ -192,90 +246,63 @@ test.describe("what the board marks", () => {
         kill.textContent = "* { transition: none !important }";
         document.head.appendChild(kill);
 
-        const boardBg = parse(getComputedStyle(grid().parentElement).backgroundColor).slice(0, 3);
-        const bracketed = cells().filter((e) => /0, 229, 255/.test(getComputedStyle(e).boxShadow));
+        const boardBg = parse(getComputedStyle(boardEl()).backgroundColor).slice(0, 3);
+        const mine = mineCells();
 
-        /* The load-bearing geometry. The shadow is 1px at lg+ and 2px below
-           it, inset from the wrapper's own edges, and the card lives inside
-           a 3px padding — so the rail and the card must not share a single
-           pixel of x. Measured rather than assumed, because this is the
-           whole reason one cyan value is enough on a board whose cells are
-           now light: the moment the bracket moves onto a chalk fill it is
-           #00E5FF on a pastel and the mark is gone.
+        /* One row's worth of evidence: my cell against a neighbour in the
+           same row, so the comparison is between two cells drawn at the
+           same moment under the same theme rather than against a constant
+           written down here. */
+        const row = mine.length ? mine[0].parentElement : null;
+        const neighbour = row
+          ? [...row.querySelectorAll("td")].find((td) => !mine.includes(td))
+          : null;
+        const mineBg = mine.length ? over(parse(getComputedStyle(mine[0]).backgroundColor), boardBg) : null;
+        const otherBg = neighbour ? over(parse(getComputedStyle(neighbour).backgroundColor), boardBg) : null;
+        /* Distance in plain rgb rather than a ratio: two grounds a step
+           apart can share a luminance and still read as different colours,
+           and it is difference rather than contrast that a reader is using
+           to find their column. */
+        const apart = mineBg && otherBg
+          ? Math.round(Math.sqrt([0, 1, 2].reduce((t, i) => t + Math.pow(mineBg[i] - otherBg[i], 2), 0)))
+          : null;
 
-           Reported as an overlap count, not a boolean, so a failure says how
-           many cells were wrong rather than only that one was. */
-        let overlaps = 0, gap = 99, measured = 0;
-        bracketed.forEach((cell) => {
-          const card = cell.querySelector('[class*="rounded-"]');
-          if (!card) return;                       // an empty round, nothing to clear
-          const cw = parseFloat(getComputedStyle(cell).boxShadow.match(/(-?[\d.]+)px 0px 0px 0px inset/)[1]);
-          const railRight = cell.getBoundingClientRect().left + Math.abs(cw);
-          const cardLeft = card.getBoundingClientRect().left;
-          measured++;
-          if (cardLeft < railRight) overlaps++;
-          gap = Math.min(gap, cardLeft - railRight);
+        /* The header for the same column, which is the other ground the
+           mark touches. It carries a real label rather than a colour alone
+           — "You" — so the bar here IS 4.5:1, on the text. */
+        const heads = [...boardEl().querySelectorAll("thead th")];
+        /* Matched on the header's own first line rather than on its whole
+           textContent: the cell stacks "You" directly above "Your team",
+           so the concatenation reads "YouYour team" and a word-boundary
+           match for "you" finds nothing. It reported the header as absent
+           on a board that was drawing it. */
+        const myHead = heads.find((th) => {
+          const first = th.querySelector("span");
+          return first && /^you$/i.test(first.textContent.trim());
         });
+        let headText = null, headRatio = null;
+        if (myHead) {
+          headText = myHead.textContent.replace(/\s+/g, " ").trim();
+          const hb = over(parse(getComputedStyle(myHead).backgroundColor), boardBg);
+          const label = myHead.querySelector("span");
+          headRatio = label ? Math.round(ratio(over(parse(getComputedStyle(label).color), hb), hb) * 100) / 100 : null;
+        }
 
-        // And what it is actually drawn against, on both grounds it touches:
-        // the board itself, and the sticky column header at the top of the
-        // same column.
-        const head = [...grid().querySelectorAll('[class*="sticky top-0"]')]
-          .find((e) => /0, 229, 255/.test(getComputedStyle(e).boxShadow));
-        const cyan = [0, 229, 255];
-        const onBoard = ratio(cyan, boardBg);
-        const onHead = head ? ratio(cyan, over(parse(getComputedStyle(head).backgroundColor), boardBg)) : null;
-
-        return {
-          bracketed: bracketed.length, measured, overlaps,
-          gap: Math.round(gap * 100) / 100,
-          headBracketed: !!head,
-          onBoard: Math.round(onBoard * 100) / 100,
-          onHead: onHead == null ? null : Math.round(onHead * 100) / 100,
-        };
+        return { mine: mine.length, rounds: league.rounds, apart, headText, headRatio,
+                 oneColumn: new Set(mine.map((e) => Math.round(e.getBoundingClientRect().left))).size };
       }, CONTRAST);
 
-      expect(r.measured, "there were filled cells in the column to measure").toBeGreaterThan(5);
-      expect(r.overlaps, "the bracket never touches a card").toBe(0);
-      expect(r.gap, "and it clears it by the card's own margin").toBeGreaterThan(0);
-
-      /* The bracket starts at the header, not under it. A rail beginning at
-         round 1 reads as a marked block of picks; one that includes the
-         header reads as a marked column, which is the thing being marked. */
-      expect(r.headBracketed, "the column header is bracketed too").toBe(true);
-
-      // Marks, not type: 1.4.11's 3:1 is the right bar here, and the only
-      // place in this project where the lower one applies.
-      expect(r.onBoard, "cyan on the board's ground").toBeGreaterThanOrEqual(3);
-      expect(r.onHead, "cyan on the column header").toBeGreaterThanOrEqual(3);
-
-      /* The precondition the single value rests on. A light ground under the
-         bracket would put cyan somewhere near the chalk fills it is supposed
-         to be distinguishable from — so if this ever stops being true, the
-         mark has to be re-derived and this is the line that says so. */
-      const dark = await page.evaluate((c) => {
-        eval(c);
-        document.documentElement.setAttribute("data-theme", "light");
-        const bg = parse(getComputedStyle(grid().parentElement).backgroundColor);
-        return lum(bg);
-      }, CONTRAST);
-      expect(dark, "the board's ground is dark whatever the theme says").toBeLessThan(0.05);
+      expect(r.mine, "a marked cell in every round").toBe(r.rounds);
+      expect(r.oneColumn, "all of them in one column").toBe(1);
+      /* 12 is the just-noticeable bar this project already uses for a mark
+         that is not carrying text — the same figure the team accents are
+         held to against the card. Below it the column is technically
+         painted and practically invisible, which is the failure the rail's
+         1.06-on-a-chalk-fill measurement was about. */
+      expect(r.apart, "your ground is visibly not an ordinary cell's").toBeGreaterThanOrEqual(12);
+      expect(r.headText, "and the column header says whose it is").toMatch(/you/i);
+      expect(r.headRatio, "legibly").toBeGreaterThanOrEqual(4.5);
     });
-
-  /* Two tests used to live here: "the roster strip counts what each team
-     holds" and "a count is white on its own solid". Both asserted on the
-     header's own per-team position-count chips (span[title] matching
-     "N POS"), and that row is gone — not broken, removed on purpose. A
-     design review read it as an unlabelled row of coloured digits, and
-     the Cockpit handoff this room was rebuilt from says the header should
-     carry a name, "not a name crushed over four count chips," in the
-     first place. DraftBoardGrid.jsx's header is a 30px avatar and a name
-     now; what a team holds moved to the Roster panel, a different screen
-     with a different shape, which is not what either of these two tests
-     checked. Testing a screen that no longer exists is not a safety net,
-     it is a permanently red light — deleted rather than left to fail
-     forever, the same reasoning CLAUDE.md gives for deleting dead code
-     instead of stubbing it out. */
 
   test("the number in the corner is the pick that cell really is", async ({ context }) => {
     const page = await openApp(context, "#/draft");
@@ -288,7 +315,7 @@ test.describe("what the board marks", () => {
     const r = await page.evaluate((c) => {
       eval(c);
       const teams = league.teams;
-      const empties = cells().filter((e) => !e.querySelector("p.truncate"));
+      const empties = cells().filter((td) => !isFilled(td));
       const bad = [];
       let checked = 0;
       empties.forEach((cell) => {

@@ -126,40 +126,67 @@ test.describe("deep-bench players carry no real ADP, and say so", () => {
     expect(r.prob, "so no fabricated survival odds").toBeNull();
   });
 
-  test("the Players table marks a deep-bench player, once a draft reaches one", async ({ browser }) => {
+  test("the Players index marks where real ADP ends, and tags what is past it",
+    async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft");
+    const page = await openApp(context, "#/players");
     test.skip(!(await hasDeepBench(page)),
       "no deep-bench players on this board yet -- needs a data pipeline run");
 
-    // A deep league, so the visible list actually reaches past real ADP —
-    // the default ten-team, fourteen-round league never gets there.
-    await page.evaluate((p) => window.JukeEngine.setLeague(p), { teams: 12, rounds: 20, bench: 11 });
-    await page.waitForTimeout(500);
-    await startSoloDraft(page);
-    await page.waitForTimeout(2000);
+    /* ---- Why this reads #/players rather than a draft's own pool ----
 
-    /* textContent, not innerText and not a text-matching locator. Both of
-       those approximate what a sighted user sees right now, which for a
-       several-hundred-row table with no windowing (PlayerQueueSidebar.jsx
-       explains why not) reported this badge and divider missing — for
-       text provably in the DOM the whole time, confirmed by re-querying
-       the identical page with textContent and finding player names run
-       correctly from real ADP down through the deep tail. Chromium's
-       innerText does not promise to include text outside a long scrolled
-       container's current layout viewport the way textContent does, and a
-       locator's own text matching hit the identical gap. Query the DOM
-       directly instead of asking what's "visible". */
-    const r = await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
+       It used to open a deliberately deep league (12 teams, 20 rounds,
+       bench 11) so that the draft room's visible list would reach past
+       real ADP at all, then read the divider out of #draftroom-root. Both
+       halves moved: that container is empty since the cutover, and v3's
+       cockpit Pool pages its list ("Show N more") rather than rendering
+       every row, so the divider sits below the cap however deep the league
+       is.
+
+       But the divider is a fact about the BOARD, not about a draft — no
+       real draft has taken these players, whoever is drafting — so the
+       Players index is where it can be asserted without a league shaped
+       specially to reach it. Same divider, same DeepTag, and no draft to
+       start.
+
+       It still pages, which is the point of walking rather than reading
+       once: the walk IS the reader's path to it. */
+    const r = await page.evaluate(async () => {
+      const root = document.getElementById("view-home");
+      const seen = () => root.textContent.includes("Real ADP ends here");
+      const moreBtn = () => [...root.querySelectorAll("button")]
+        .find((b) => /show \d+ more/i.test(b.textContent || ""));
+
+      /* Bounded, and the bound is stated rather than a round number: the
+         board is a few hundred rows and the control adds fifty at a time,
+         so anything past this is a list that is not growing. A while(true)
+         here would hang the run rather than fail it. */
+      let presses = 0;
+      while (!seen() && presses < 30) {
+        const b = moreBtn();
+        if (!b) break;
+        b.click();
+        presses++;
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      /* textContent, not innerText and not a text locator. Both approximate
+         what a sighted user sees right now, and for a several-hundred-row
+         list with no windowing that reported this divider missing for text
+         provably in the DOM. Chromium's innerText does not promise to
+         include text outside a long scrolled container's layout viewport
+         the way textContent does. */
       return {
-        hasDivider: root.textContent.includes("Real ADP ends here"),
-        badgeCount: [...root.querySelectorAll("span")].filter((s) => s.textContent === "Deep").length,
+        presses,
+        hasDivider: seen(),
+        badgeCount: [...root.querySelectorAll("span")]
+          .filter((s) => s.textContent.trim() === "Deep").length,
+        deepOnBoard: (window.JukeEngine.board() || []).filter((p) => p.deep).length
       };
     });
 
+    expect(r.deepOnBoard, "the board carries deep-bench players at all").toBeGreaterThan(0);
     expect(r.hasDivider, "the deep-board divider renders in board order").toBe(true);
-    expect(r.badgeCount, "at least one per-row confidence badge renders").toBeGreaterThan(0);
+    expect(r.badgeCount, "and every row past it carries the Deep tag").toBeGreaterThan(0);
 
     await context.close();
   });

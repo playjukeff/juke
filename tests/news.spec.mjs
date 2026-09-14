@@ -53,25 +53,26 @@ async function start(page) {
        directly and never had to care. */
     window.JukeEngine.startDraft({ mySlot: 0, clockLength: 90 });
     render();
-    location.hash = "#/draft";
+    /* #/draft/live, not #/draft. The cutover made the bare address the
+       LAUNCHER and put the cockpit behind /live, so this navigated away
+       from the draft it had just started — and the failure landed on the
+       drawer never opening, which reads as a broken sheet rather than as a
+       fixture that left the screen. */
+    location.hash = "#/draft/live";
   });
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
 
-  /* Decide, not Board, is the tab a draft lands on since the Cockpit rebuild
-     - three recommendation cards and a roster rail, no search field and no
-     player row carrying a name in text a naive click can find. The player
-     list openSheet() below needs, search input included, lives on Board.
-     Every test in this file opens a sheet by name straight after start(), so
-     landing there once here is simpler than repeating the click in each one.
+  /* Pool, which is where the player rows are — and it is the view a draft
+     lands on, so there is nothing to press. The old code clicked its way to
+     "Board" because production's cockpit landed on Decide, whose cards
+     carry no player row a click can find; v3's Board is the draft GRID and
+     has no rows to open a sheet from either, so landing where the list
+     already is replaces that click rather than translating it.
 
-     :visible, not just the text filter: MobileDraftTabBar.jsx (mobile shell)
-     carries its own "Board" button, lg:hidden rather than absent, so at this
-     suite's desktop viewport there are two real "Board" buttons in the DOM
-     at once and an unqualified filter is a strict-mode violation - Playwright
-     refusing to guess which one a bare click meant. */
-  await page.locator("#draftroom-root button:visible").filter({ hasText: /^Board$/ }).click();
+     Waiting on the search field rather than on a row: it is the one thing
+     on this view that is there before any player has been priced. */
   await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     return root && root.querySelector("input");
   }, null, { timeout: 20000 });
 }
@@ -102,33 +103,45 @@ async function crosswalk(page, name, theirId = "T-TEST-1") {
    The drawer is one element reused for everybody, which is the reason half
    the assertions in this file exist. */
 async function openSheet(page, name) {
+  /* The row's own name button, which is what calls onOpen() — not the
+     row. v3's pool rows are table rows carrying a star, a name button and
+     a draft button, so clicking the `tr` hits nothing and the drawer never
+     opens; the failure then lands on the wait below and reads as a missing
+     drawer rather than as a click on the wrong element.
+
+     Matched on the surname, because the row draws the short form
+     ("J. Gibbs") while the caller passes the full name. */
   await page.evaluate((n) => {
-    const root = document.getElementById("draftroom-root");
-    const row = [...root.querySelectorAll('[class*="cursor-pointer"]')]
-      .find((r) => (r.textContent || "").includes(n));
-    if (row) row.click();
+    const root = document.getElementById("view-home");
+    const surname = n.split(" ").pop();
+    const btn = [...root.querySelectorAll("button")]
+      .find((b) => (b.textContent || "").includes(surname) && b.closest("tr"));
+    if (btn) btn.click();
   }, name);
-  await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
-    return [...root.querySelectorAll("button")].some((b) => b.textContent.trim() === "Latest News");
-  }, null, { timeout: 10000 });
+  /* role=dialog, which is what the drawer IS — the old wait looked for a
+     button labelled "Latest News", and v3 renders that as a real tab with
+     a lowercase n. Waiting on the dialog rather than on one of its tabs
+     also means this still works if the tab strip is ever reordered. */
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
 }
 
 async function openNewsTab(page) {
-  await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
-    [...root.querySelectorAll("button")].find((b) => b.textContent.trim() === "Latest News").click();
-  });
+  // "Latest news", a real role=tab inside the drawer. Case-insensitively,
+  // because the label is title case in the source and this project has now
+  // been caught four times by a case-sensitive match on a rendered string.
+  await page.getByRole("tab", { name: /^latest news$/i }).click();
   await page.waitForTimeout(400);
 }
 
 /* Everything the news panel drew, read off the drawer. */
-const PANEL = `(() => {
-  const root = document.getElementById("draftroom-root");
-  const panel = [...root.querySelectorAll(".overflow-y-auto")]
-    .find((e) => e.querySelector("a[target=_blank]") || /headlines/i.test(e.innerText));
-  return panel || null;
-})()`;
+/* The news panel, scoped to the drawer's own tabpanel.
+
+   This used to find the first .overflow-y-auto holding a link, and that
+   selector had already drifted once — it resolved to the whole player
+   sheet, so a count of images inside it reported the player's own headshot
+   as markup built from the hostile payload. The tabpanel is what the
+   drawer says the panel IS, so there is nothing left to resolve to. */
+const PANEL = `document.querySelector('[role="dialog"] [role="tabpanel"]')`;
 
 test.describe("latest news", () => {
   test("with no provider key the sheet is complete and says so plainly",
@@ -170,14 +183,16 @@ test.describe("latest news", () => {
          the link count means exactly what it did. What changes is that the
          message is looked for where the component puts it. */
       const r = await page.evaluate(() => {
-        const root = document.getElementById("draftroom-root");
+        /* The drawer, which is what "the sheet" means in this file — it was
+           #draftroom-root, which is empty on every address now. */
+        const root = document.querySelector('[role="dialog"]');
         return {
           links: root.querySelectorAll("a[target=_blank]").length,
           says: root.innerText,
           // The rest of the sheet is untouched: this is a section that fails
           // by having nothing to say, not by taking the page with it.
           ourReadStillThere: [...root.querySelectorAll("button")]
-            .some((b) => b.textContent.trim() === "Our Read"),
+            .some((b) => b.textContent.trim() === "Our read"),
         };
       });
 
@@ -329,7 +344,9 @@ test.describe("latest news", () => {
 
       const r = await page.evaluate((src) => {
         const panel = eval(src);
-        const root = document.getElementById("draftroom-root");
+        /* The drawer, which is what "the sheet" means in this file — it was
+           #draftroom-root, which is empty on every address now. */
+        const root = document.querySelector('[role="dialog"]');
         return {
           asked: window.__pending.length,
           text: panel ? panel.innerText : "",
@@ -437,18 +454,20 @@ test.describe("latest news", () => {
 
     const r = await page.evaluate((src) => {
       const panel = eval(src);
-      const root = document.getElementById("draftroom-root");
+      /* The drawer, which is what "the sheet" means in this file — it was
+           #draftroom-root, which is empty on every address now. */
+        const root = document.querySelector('[role="dialog"]');
       return {
         links: panel ? panel.querySelectorAll("a[target=_blank]").length : 0,
         unhandled: window.__unhandled,
         tabs: [...root.querySelectorAll("button")].map((b) => b.textContent.trim())
-          .filter((t) => ["Our Read", "Projections", "Latest News"].includes(t)),
+          .filter((t) => ["Our read", "Projections", "Latest news"].includes(t)),
       };
     }, PANEL);
 
     expect(r.links, "no headlines").toBe(0);
     expect(r.unhandled, "and no unhandled rejection on an otherwise fine page").toBe(0);
     expect(r.tabs, "the sheet is unharmed and still complete")
-      .toEqual(expect.arrayContaining(["Our Read", "Projections", "Latest News"]));
+      .toEqual(expect.arrayContaining(["Our read", "Projections", "Latest news"]));
   });
 });

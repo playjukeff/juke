@@ -553,3 +553,70 @@ export function median(values) {
 export function perSeat(picks) {
   return picks.reduce(function (o, p) { o[p.slot] = (o[p.slot] || 0) + 1; return o; }, {});
 }
+
+/* ---- The live board, v3's own ----
+
+   Two spec files read this markup (board-card, board-marks) and both used
+   to carry their own copy of "find the grid inside #draftroom-root". That
+   container is empty on every address since the cutover, so both were
+   waiting on an element nobody renders and reporting it as a click that
+   timed out — which reads as a broken app rather than as a scope pointed
+   at a screen that no longer exists.
+
+   One copy here, because the two files agreeing about what a cell IS is
+   the whole reason their assertions can be compared.
+
+   The shape changed as well as the address, and it changed for the
+   better: the legacy board was nested divs found by hunting for
+   `display: grid` with a `--cols` custom property set, and v3's is a real
+   `<table>` with `<th scope=col|row>` — so a row, a column and a header
+   are structural facts now rather than something a walker has to infer. */
+
+/* Open the Board view of a live draft, and wait for the table.
+
+   Matched on role and accessible name rather than on a label, because the
+   tab's name carries its own keyboard shortcut ("Board b") — an anchored
+   /^Board$/ matches nothing while the cockpit sits there rendered, which
+   is this project's case-and-exact-match trap in its fourth costume. The
+   regex is deliberately unanchored at the end for that reason.
+
+   `getByRole` also settles the two-controls-one-label problem the old
+   helper needed `:visible` for: the phone rail and the desktop nav both
+   draw a Board control, and only one of them is in the accessibility
+   tree at a given width. */
+export async function openBoardView(page) {
+  await page.getByRole("tab", { name: /^Board/ }).click();
+  const board = page.locator('[aria-label="Draft board"] table');
+  await board.waitFor({ state: "visible", timeout: 20000 });
+  return board;
+}
+
+/* Every FILLED cell, as an array of handles.
+
+   A filled cell is a button carrying data-overall — which is the single
+   biggest improvement on what this replaces. The old collector walked up
+   from each player name to the nearest rounded box, because a cell had
+   nothing on it that said "I am a cell": written the obvious way first it
+   counted every card three or four times, and 30 picks reported 138
+   cards. Here the attribute IS the identity, so there is nothing to infer
+   and nothing to miscount.
+
+   Empty cells deliberately do not carry it. They are a different thing
+   with different contents — see emptyCells() — and collapsing the two is
+   how an assertion about a filled card ends up passing on a dashed
+   placeholder. */
+export function filledCells(page) {
+  return page.locator('[aria-label="Draft board"] button[data-overall]');
+}
+
+/* Every UNDRAFTED cell.
+
+   These are what carry the direction arrow and the overall number, so
+   most of what board-marks asserts lives here rather than on the cards.
+   Selected by the absence of the button rather than by a class: a `td`
+   with no `button[data-overall]` inside it is undrafted by construction,
+   whatever it is styled like this month. */
+export async function emptyCells(page) {
+  return page.$$eval('[aria-label="Draft board"] tbody td', (tds) =>
+    tds.filter((td) => !td.querySelector("button[data-overall]")).length);
+}
