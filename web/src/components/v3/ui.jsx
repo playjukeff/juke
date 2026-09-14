@@ -48,9 +48,14 @@ export function cx(...parts) {
 
 /* A small uppercase label in the figure face. The page's quietest type,
    never lighter than ink3 (5.2:1 on the darkest ground). */
-export function Label({ children, className = '', as: Tag = 'span' }) {
+/* Rest props are forwarded, so a caller can put an id or a data-* on a
+   Label without wrapping it in a second element. That is what
+   data-hero-eyebrow needs on both Now heroes: an attribute says what an
+   element IS, and the alternative here was a wrapper span that exists only
+   to carry one. */
+export function Label({ children, className = '', as: Tag = 'span', ...rest }) {
   return (
-    <Tag className={cx('font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink3', className)}>
+    <Tag {...rest} className={cx('font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink3', className)}>
       {children}
     </Tag>
   )
