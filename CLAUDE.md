@@ -6851,15 +6851,24 @@ that has nothing to do with the box they are in.
 answer the same question with the CSS that is here. Reach for it only when
 something genuinely needs to change more than a wrap.
 
-`tests/bar-rows.spec.mjs` holds it open, at 375 and 1440, across the two
+`tests/bar-rows.spec.mjs` held it open, at 375 and 1440, across the two
 rooms that draw one. **Confirmed red at BOTH widths** with the grid put
 back, naming the label it lost — which is the whole point of running it at
 1440 as well: a guard written only at phone width would have gone green on
-the defect that had actually shipped. It asserts the property (no label
+the defect that had actually shipped. It asserted the property (no label
 truncated, every row still draws a bar) rather than the layout, so the
-one-line and the wrapped arrangement both satisfy it, and it asserts the
+one-line and the wrapped arrangement both satisfied it, and it asserted the
 ROW COUNT first, because every other assertion in it is about something not
 being wrong and a selector matching nothing would satisfy all of them.
+
+**Past tense because the spec is gone**: `Bar`/`BarRow` went unreachable
+when `main.jsx` dropped its two portals, and nothing under
+`web/src/components/v3` ever imported either. The row-count assertion is
+what reported that honestly — `seen = 0` rather than a silent green — and
+it is the reason this file's own retirement was a decision somebody made
+rather than something nobody noticed. The wrap reasoning above still
+governs any future row that has to seat a label, a bar and a numeral in a
+narrow box; what no longer exists is the component it was measured on.
 
 It skips against production for `league-connect.spec.mjs`'s reason and
 carries the same instruction: **verify a skip in both directions or it is a
@@ -11633,21 +11642,31 @@ their subject is not the board.**
   — and `V3Record.jsx` is a different screen from `HistoryScreen.jsx`,
   which is what every selector in it still describes. Seven assertions, all
   about a ledger's filters and room pills.
-- **`bar-rows.spec.mjs`** has no v3 surface at all. It guards `<BarRow>`'s
-  wrap — the fix for a label truncated at 1440 as well as at 375 — and
-  **nothing under `web/src/components/v3` imports `Bar` or `BarRow`**,
-  which was checked rather than assumed. Its own control assertion is what
-  reports this (`the sweep found bar rows to check`, seen = 0), and that
-  control is the reason the file fails honestly instead of passing empty.
-  It is the best argument in this whole pass for writing one.
+- ~~**`bar-rows.spec.mjs`** has no v3 surface at all~~ — **retired with the
+  subtree, on the owner's call.** It guarded `<BarRow>`'s wrap, the fix for
+  a label truncated at 1440 as well as at 375, and **nothing under
+  `web/src/components/v3` imports `Bar` or `BarRow`** — checked rather than
+  assumed, twice.
 
-  **It should retire with the `RoomPage` subtree rather than on its own.**
-  `Bar` is still *reachable* — `check_dead_components.mjs` says so — because
-  `DraftRoom`/`RoomPage` are still imported by `main.jsx` through
-  `DeferredPortals` even though they render on no address. Reachable and
-  unrenderable is exactly the state that section already flags as the next
-  obvious thing and deliberately out of scope here; this spec is a second
-  witness to it.
+  This entry said it "should retire with the `RoomPage` subtree rather than
+  on its own", and that is exactly what happened: `main.jsx` dropped its two
+  portals, `DraftRoom`/`RoomPage` and the 58 files behind them went
+  unreachable, and this spec went with them in the same pass.
+
+  **Its control assertion is the thing to keep from it.** `the sweep found
+  bar rows to check` (seen = 0) is what made the file fail honestly rather
+  than pass empty — a spec pointed at a component nothing renders otherwise
+  reports zero and goes green, which is the vacuity trap this project has
+  shipped three times. It is the best argument in this whole pass for
+  writing such a control, and the reason a suite could be trusted to say
+  what the cutover had actually left behind.
+
+  **What covers the requirement now.** Nothing renders a bar row, so there
+  is nothing to guard; and `no-sideways-leak.spec.mjs` sweeps the same
+  condition — wider than its box, can neither scroll nor ellipsise nor clip
+  — at both 1440 and 375, across every route v3 actually draws. Its own
+  comment cites `<BarRow>` as the reason it runs at the wide width too, and
+  that reasoning outlives the component.
 
 **The tier chip has no home and is named rather than dropped.** A guest was
 told their plan in the room's bar; v3 has no bar and its tier handling moved
