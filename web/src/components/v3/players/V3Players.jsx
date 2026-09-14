@@ -5,9 +5,10 @@ import {
   FORMATS, FORMAT_LABEL, MODE_LABEL, MODE_SORT, POSITIONS, SORTS, filterRows, liveFormat, posWord, readIndex,
   scoringName, seasonModes, sortRows, weightNote,
 } from './playerData.js'
-import { Chips, DeepTag, InjuryTag, PlayerFace, RookieTag, SelectField, ViewTabs } from './parts.jsx'
+import { Chips, DeepTag, InjuryTag, LiveTag, PlayerFace, RookieTag, SelectField, ViewTabs } from './parts.jsx'
 import { useBoardKey } from './useBoardKey.js'
 import { LAYOUT_ROW, motion } from '../motion.jsx'
+import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
 
 /* Players — the index. Production has no player index at all: a player is
    reachable only as a sheet inside the Draft Room, which means only during
@@ -180,7 +181,7 @@ function DeepDivider({ asRow, span = 9 }) {
   return <li className="border-y-2 border-v3-ink bg-v3-well px-4 py-2.5">{text}</li>
 }
 
-function RowTags({ row, moved = false }) {
+function RowTags({ row, moved = false, live }) {
   return (
     <>
       <PosTag pos={row.pos} />
@@ -196,6 +197,9 @@ function RowTags({ row, moved = false }) {
           <span className="text-v3-ink3">pl</span>
         </span>
       )}
+      {/* From your connected league only, and display-only: it feeds none
+          of the three columns beside it, which stay nightly-sourced. */}
+      <LiveTag points={live} />
       {row.tenure === 'rookie' && <RookieTag />}
       {row.deep && <DeepTag />}
     </>
@@ -207,7 +211,7 @@ function RowTags({ row, moved = false }) {
    radius on the table). Every one is overridden on the table itself rather
    than trusted to lose — CLAUDE.md, "a bare element selector in style.css
    reaches into React". */
-function Table({ rows, cols, sort, onSort, deepAt }) {
+function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
   return (
     <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[900px] table-fixed border-collapse bg-v3-sheet border-0 [&_th]:border-0 [&_th]:bg-v3-sheet [&_td]:border-0">
@@ -246,7 +250,7 @@ function Table({ rows, cols, sort, onSort, deepAt }) {
                     <PlayerFace photo={r.photo} initials={r.initials} pos={r.pos} size={32} />
                     <div className="min-w-0">
                       <a href={href} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{r.name}</a>
-                      <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden"><RowTags row={r} /></div>
+                      <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden"><RowTags row={r} live={liveById ? liveById.get(r.id) : undefined} /></div>
                     </div>
                   </div>
                 </td>
@@ -271,7 +275,7 @@ function Table({ rows, cols, sort, onSort, deepAt }) {
    tells you who moved, not just who is where. Position only, keyed on the
    player, near-critically damped: a ranked table that bounces reads as
    sloppy. */
-function PhoneList({ rows, cols, sort, mode, deepAt }) {
+function PhoneList({ rows, cols, sort, mode, deepAt, liveById }) {
   // The figure at the right edge is whatever the list is sorted by, when
   // that is one of this mode's own metrics. Sorted by name or by status
   // there is no such figure, so the mode's headline number stands there
@@ -293,7 +297,7 @@ function PhoneList({ rows, cols, sort, mode, deepAt }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
                 <span className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
-                  <RowTags row={r} moved={mode === 'ros' && shown !== 'delta'} />
+                  <RowTags row={r} moved={mode === 'ros' && shown !== 'delta'} live={liveById ? liveById.get(r.id) : undefined} />
                   {r.inj && <InjuryTag code={r.inj} />}
                 </span>
               </span>
@@ -329,6 +333,29 @@ export default function V3Players() {
   const fmt = format || live
   const data = useMemo(() => (key && engine ? readIndex(engine, fmt) : null), [key, fmt, engine])
   const situation = useMemo(() => (key && engine ? readSituation(engine) : null), [key, engine])
+
+  /* A connected league's own rostered players, already scored today — a
+     week-scoped fact laid over rows already computed here, never fed back
+     into readIndex()'s pts/vorp/juke or into any of the three columns
+     above: those stay nightly-sourced, exactly as the mode note under the
+     controls promises. Both hooks are safe to call unconditionally — they
+     read window.JukeAuth/the league store rather than a Clerk hook, so
+     this page needs no <SignedIn> wrapper to ask. */
+  const { status: leagueStatus, league: connectedLeague } = useLeagueFresh()
+  const leagueOpen = leagueStatus === 'connected' && !!connectedLeague
+  const snap = useSnapshotFresh(leagueOpen ? connectedLeague.leagueId : null, leagueOpen ? connectedLeague.provider : null)
+  const liveById = useMemo(() => {
+    const actuals = snap.snapshot && snap.snapshot.actuals
+    const players = actuals && actuals.players
+    if (!players || typeof players !== 'object') return null
+    const out = new Map()
+    for (const id of Object.keys(players)) {
+      const v = players[id]
+      if (v && typeof v.points === 'number' && Number.isFinite(v.points)) out.set(id, v.points)
+    }
+    return out.size ? out : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snap.snapshot])
 
   // Which orders exist is the season clock's answer, not a remembered one:
   // a mode saved in September must not survive into February, when there is
@@ -542,8 +569,8 @@ export default function V3Players() {
           </div>
         ) : (
           <>
-            <Table rows={page} cols={cols} sort={sort} onSort={onSort} deepAt={deepLine} />
-            <PhoneList rows={page} cols={cols} sort={sort} mode={mode} deepAt={deepLine} />
+            <Table rows={page} cols={cols} sort={sort} onSort={onSort} deepAt={deepLine} liveById={liveById} />
+            <PhoneList rows={page} cols={cols} sort={sort} mode={mode} deepAt={deepLine} liveById={liveById} />
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-v3-rule px-4 py-4 sm:px-5">
               <p className="font-figure text-[13px] text-v3-ink2">
                 Showing <Fig className="font-bold text-v3-ink">{page.length}</Fig> of <Fig className="font-bold text-v3-ink">{sorted.length}</Fig>

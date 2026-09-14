@@ -56,7 +56,19 @@ const MIN_STARTERS = 5
  * Answers null rather than a partial sum whenever a starter has no
  * projection, which is `projectedTotal()`'s own rule one file over: a total
  * that quietly omitted a player reads as a lineup worth less than it is,
- * and this one is about to be compared against another. */
+ * and this one is about to be compared against another.
+ *
+ * ---- A player who has already scored has no variance left ----
+ *
+ * `row.player.actualPts` is patched on by `withLiveActuals()` in
+ * strategyBoard.js, the same way `withLiveStatus()` already patches
+ * `locked`/`inj` — a fact laid over the board, never a second parameter
+ * threaded through every caller. Checked FIRST, before either refusal
+ * below: an already-scored row must never be nulled just because Juke's
+ * own projection or the CV table has nothing for that position, since
+ * neither refusal is about him any more. His actual is a known number, so
+ * he contributes it to the mean and nothing to the variance — a game
+ * already played has no spread left to measure. */
 export function teamWeek(rows, cv) {
   if (!Array.isArray(rows) || !cv) return null
 
@@ -66,6 +78,12 @@ export function teamWeek(rows, cv) {
 
   for (const row of rows) {
     if (!row || !row.player) return null
+    const actual = row.player.actualPts
+    if (typeof actual === 'number' && Number.isFinite(actual)) {
+      mean += actual
+      counted += 1
+      continue
+    }
     if (row.projPts === null || row.projPts === undefined) return null
     const spread = cv[row.player.pos]
     if (spread === null || spread === undefined) return null

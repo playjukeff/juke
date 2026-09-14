@@ -75,6 +75,23 @@ export function RookieTag({ className = '' }) {
   )
 }
 
+/* What he has already scored today, in your connected league — a fact
+   about the clock, not a value with a direction, so it takes a neutral
+   chip rather than gain/cost. Nothing else on this row (proj pts, ROS pts,
+   season pts) is this number; it exists only while his game is being
+   played and says nothing about any of the three columns beside it. */
+export function LiveTag({ points, className = '' }) {
+  if (typeof points !== 'number' || !Number.isFinite(points)) return null
+  return (
+    <span
+      title="Already scored in your connected league, as of the last refresh"
+      className={cx('inline-flex h-[22px] shrink-0 items-center gap-1 rounded-[4px] bg-v3-well px-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink2', className)}
+    >
+      Live {points.toFixed(1)}
+    </span>
+  )
+}
+
 /* The two views of the Players place. Links rather than buttons, because
    each is an address; ink marks the one you are on. */
 export function ViewTabs({ current }) {

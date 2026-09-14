@@ -419,11 +419,21 @@ ROUTES = healthy();
     // A finished game in ANOTHER week locks nobody this week.
     { week: 2, status: "complete", home: "KC", away: "DEN" },
   ];
+  /* The matchups feed's own words: every rostered player gets a number
+     during a live week, whether or not HIS OWN game has started. 4046's
+     club (KC) is still pre_game, so his 0.0 here is Sleeper reporting
+     nothing has happened yet -- not a score. 6794's club (MIN) is already
+     under way, so his number is real. */
+  const MATCHUPS = [
+    { roster_id: 1, matchup_id: 1, points: 0, starters: ["4046"], starters_points: [0], players_points: { "4046": 0 } },
+    { roster_id: 2, matchup_id: 1, points: 22.4, starters: ["6794"], starters_points: [22.4], players_points: { "6794": 22.4 } },
+  ];
   const routes = () => ({
     ...healthy(),
     "/v1/league/111222333444555666": { body: league },
     [projectionPath("2026", 3)]: { body: FEED },
     "/schedule/nfl/regular/2026": { body: SCHEDULE },
+    "/v1/league/111222333444555666/matchups/3": { body: MATCHUPS },
   });
 
   ROUTES = routes();
@@ -441,6 +451,20 @@ ROUTES = healthy();
     s.status.players["4046"], { locked: false, inj: "Q" });
   eq("and a game under way locks its players", s.status.players["6794"], { locked: true, inj: "O" });
   ok("status is stamped with when it was read", typeof s.status.at === "number" && s.status.week === 3);
+
+  /* ---- what each rostered player has ALREADY scored ----
+
+     This is the check that targets the bug a naive "merge every row from a
+     live/final week" implementation would ship: the matchups feed reports
+     a real number for BOTH players above, but only one of them has played. */
+  eq("only the player whose own club has kicked off gets an actual",
+    Object.keys(s.actuals.players), ["6794"]);
+  eq("with Sleeper's own points, never a Juke recomputation",
+    s.actuals.players["6794"], { points: 22.4 });
+  eq("stamped with the week and Sleeper's name",
+    [s.actuals.week, s.actuals.source, typeof s.actuals.at], [3, "sleeper", "number"]);
+  ok("and the player whose game has not started is absent, not zero",
+    !("4046" in s.actuals.players), s.actuals.players);
 
   // A healthy player is "" -- a real answer -- and an unreadable word leaves
   // the board's value alone rather than pretending to know.
@@ -480,6 +504,28 @@ ROUTES = healthy();
   ok("a preseason week does not ask for a projection",
     !ASKED.some((p) => p.startsWith("/projections/")), ASKED);
   eq("and publishes none", pre.projections, null);
+  eq("nor an actual line", pre.actuals, null);
+  ok("and does not ask the matchups endpoint for one either",
+    !ASKED.some((p) => p.includes("/matchups/")), ASKED);
+}
+
+{
+  // The matchups fetch failing is a value like every other feed here — no
+  // actuals, and the projection and status it rides beside are untouched.
+  const SCORING = { rec: 1, pass_yd: 0.04, pass_td: 4 };
+  const league = { ...LEAGUE, scoring_settings: SCORING };
+  const FEED = [{ player_id: "4046", team: "KC", stats: { pass_yd: 250 }, player: {} }];
+  const routes = () => ({
+    ...healthy(),
+    "/v1/league/111222333444555666": { body: league },
+    [projectionPath("2026", 3)]: { body: FEED },
+    "/v1/league/111222333444555666/matchups/3": { status: 500, body: "" },
+  });
+  ROUTES = routes();
+  const s = await leagueSnapshot("111222333444555666", BASE);
+  eq("an unreachable matchups feed still answers the league", s.name, "Juke Fantasy Football");
+  eq("with no actual line", s.actuals, null);
+  ok("but the projection it rides beside is untouched", !!s.projections);
 }
 
 /* ---------- one week's matchups (/sleeper/matchups) ----------

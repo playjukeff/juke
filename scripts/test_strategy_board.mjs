@@ -14,7 +14,7 @@ import path from "node:path";
 
 const {
   lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
-  platformScorer, leagueWeekPts, projectionSource, withLiveStatus,
+  platformScorer, leagueWeekPts, projectionSource, withLiveStatus, withLiveActuals,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
 let failures = 0;
@@ -185,6 +185,27 @@ check("an empty lineup is null, not zero", () => {
     projectedTotal({ starters: [], players: [] }, byId, weekPts), null,
     "nothing set is a different fact from set and worth nothing"
   );
+});
+
+check("an already-scored starter counts his actual, not his projection", () => {
+  const ids = new Map([
+    ["a", { id: "a", pos: "QB", projPts: 20, actualPts: 24.6 }],
+    ["b", { id: "b", pos: "RB", projPts: 12 }],
+  ]);
+  assert.equal(
+    projectedTotal({ starters: ["a", "b"], players: [] }, ids, weekPts), 36.6,
+    "the same branch teamWeek() takes: an actual replaces a projection in the sum"
+  );
+});
+
+check("an already-scored starter with no projection at all is not nulled", () => {
+  // Otherwise a real, known score would be thrown away by the very rule
+  // that exists to catch a MISSING number.
+  const ids = new Map([
+    ["a", { id: "a", pos: "QB", projPts: null, actualPts: 24.6 }],
+    ["b", { id: "b", pos: "RB", projPts: 12 }],
+  ]);
+  assert.equal(projectedTotal({ starters: ["a", "b"], players: [] }, ids, weekPts), 36.6);
 });
 
 check("injury codes split into out and questionable, and nothing else", () => {
@@ -467,6 +488,40 @@ check("a swap never involves a locked player, on either side", () => {
   const starterLocked = withLiveStatus(byId, { week: 6, players: { s2: { locked: true } } }, 6);
   const b = bestSwaps(TEAM, starterLocked, weekPts, 6).map((x) => x.sit.id);
   assert.ok(!b.includes("s2"), "a starter whose game started cannot go out: " + b);
+});
+
+/* ---------- the board's players with what they have ALREADY scored ----------
+
+   withLiveActuals()'s own contract, following withLiveStatus() field for
+   field: a copy, never a mutation (the board's rows are the Draft Room's
+   too); a stale week is refused; a player the platform said nothing about
+   is left exactly as the board had him. */
+
+check("an already-scored player's actual is laid over the board, on a copy", () => {
+  const live = withLiveActuals(byId, { week: 6, players: { s2: { points: 22.4 } } }, 6);
+  assert.equal(live.get("s2").actualPts, 22.4);
+  assert.equal(byId.get("s2").actualPts, undefined, "the board row itself is untouched -- it is the Draft Room's too");
+  assert.equal(live.get("s1"), byId.get("s1"), "a player the platform said nothing about is the board's own row");
+});
+
+check("a status stamped for another week is not about this one", () => {
+  const actuals = { week: 5, players: { s2: { points: 22.4 } } };
+  assert.equal(withLiveActuals(byId, actuals, 6), byId);
+  assert.equal(withLiveActuals(byId, null, 6), byId);
+});
+
+check("a non-finite or missing points value is ignored rather than stored", () => {
+  const live = withLiveActuals(byId, { week: 6, players: { s2: { points: "12" }, s3: {} } }, 6);
+  assert.equal(live.get("s2").actualPts, undefined);
+  assert.equal(live.get("s3").actualPts, undefined);
+});
+
+check("chained with the live status overlay, a row carries both facts at once", () => {
+  const withStatus = withLiveStatus(byId, { week: 6, players: { s2: { inj: "O", locked: true } } }, 6);
+  const withBoth = withLiveActuals(withStatus, { week: 6, players: { s2: { points: 22.4 } } }, 6);
+  assert.equal(withBoth.get("s2").inj, "O");
+  assert.equal(withBoth.get("s2").locked, true);
+  assert.equal(withBoth.get("s2").actualPts, 22.4);
 });
 
 console.log(failures ? `\n${failures} FAILED` : "\nOK — the strategy board");

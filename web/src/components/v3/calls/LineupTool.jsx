@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { myTeam } from '../../rooms/waiverBoard.js'
 import {
   bestSwaps, benchRows, injurySeverity, injuryWatch, leagueWeekPts, lineupRows,
-  projectedTotal, projectionSource, withLiveStatus,
+  projectedTotal, projectionSource, withLiveActuals, withLiveStatus,
 } from '../../rooms/strategyBoard.js'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
@@ -53,7 +53,10 @@ function useLineupModel(league, snapshot) {
   )
   const mine = myTeam(snapshot, league)
   const week = snapshot ? snapshot.week : null
-  const byId = useMemo(() => withLiveStatus(boardById, snapshot && snapshot.status, week), [boardById, snapshot, week])
+  const byId = useMemo(
+    () => withLiveActuals(withLiveStatus(boardById, snapshot && snapshot.status, week), snapshot && snapshot.actuals, week),
+    [boardById, snapshot, week]
+  )
   const leagueRules = snapshot && snapshot.rules ? snapshot.rules : null
   const weekPts = useMemo(() => leagueWeekPts(engine, snapshot), [engine, snapshot])
 
@@ -84,18 +87,41 @@ function useLineupModel(league, snapshot) {
   }, [best, lineup, weekPts, cv, oppWeek, engine])
   const hurt = useMemo(() => injuryWatch(mine, byId, week), [mine, byId, week])
 
-  return { engine, board, mine, week, lineup, bench, swaps, best, total, game, opponent, oppTotal, mineWeek, oppWeek, winProb, winAfter, hurt }
+  return { engine, board, mine, week, lineup, bench, swaps, best, total, game, opponent, oppLineup, oppTotal, mineWeek, oppWeek, winProb, winAfter, hurt }
 }
 
 function noteFor(row, platformName) {
   if (!row.player) return 'Not on Juke’s board, so he cannot be priced'
   const p = row.player
-  return [p.team || 'FA', p.bye ? `bye ${p.bye}` : null, p.locked ? 'locked — his game has started' : null].filter(Boolean).join(' · ')
+  // A locked player with no actual yet just started — the platform's own
+  // score for him has not landed. Locked AND scored is the fact worth
+  // saying, so it replaces the bare "locked" note rather than sitting
+  // beside it.
+  const playedNote = typeof p.actualPts === 'number'
+    ? `already scored: ${p.actualPts.toFixed(1)}`
+    : p.locked ? 'locked — his game has started' : null
+  return [p.team || 'FA', p.bye ? `bye ${p.bye}` : null, playedNote].filter(Boolean).join(' · ')
+}
+
+// The figure a row shows: what he has already scored once his game has
+// kicked off, else the projection exactly as before.
+function pointsFor(row) {
+  const actual = row.player && row.player.actualPts
+  return typeof actual === 'number' ? actual : row.projPts
+}
+
+// A small, neutral chip — not a gain or a cost, a fact about the clock.
+function LiveMark() {
+  return (
+    <span className="rounded-[4px] bg-v3-well px-1.5 py-0.5 font-figure text-[10px] font-bold uppercase tracking-[0.1em] text-v3-ink2">
+      Live
+    </span>
+  )
 }
 
 export default function LineupTool({ league, snapshot, status, reason, onRetry, sample = false, sampleInfo = null, action = null }) {
   const m = useLineupModel(league, snapshot)
-  const { board, mine, week, lineup, bench, swaps, best, total, game, opponent, oppTotal, mineWeek, oppWeek, winProb, winAfter, hurt } = m
+  const { board, mine, week, lineup, bench, swaps, best, total, game, opponent, oppLineup, oppTotal, mineWeek, oppWeek, winProb, winAfter, hurt } = m
 
   const platformName = sample ? 'Juke' : platformFor(league && league.provider).name
   const label = sample ? 'Sample call · the lineup' : `Now · the lineup call${league && league.name ? ` · ${league.name}` : ''}`
@@ -131,6 +157,14 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
   const hurtStarters = hurt.filter((r) => r.starting).length
   const benchSorted = bench.slice().sort((a, b) => (b.projPts || 0) - (a.projPts || 0))
   const benchBest = benchSorted.length && benchSorted[0].projPts !== null ? benchSorted[0].projPts : null
+  // How much of the total below is already-scored rather than projected —
+  // said out loud so a blended number never reads as a plain projection it
+  // no longer is.
+  const scoredCount = lineup.filter((r) => r.player && typeof r.player.actualPts === 'number').length
+  const oppScoredCount = (oppLineup || []).filter((r) => r.player && typeof r.player.actualPts === 'number').length
+  const liveCoverageLine = scoredCount
+    ? ` ${scoredCount} of ${lineup.length} starter${lineup.length === 1 ? '' : 's'} ${scoredCount === 1 ? 'has' : 'have'} already played — ${scoredCount === 1 ? 'that is his' : 'those are their'} actual points, not a projection.`
+    : ''
   const statusAt = snapshot.status && Number(snapshot.status.week) === Number(week) ? snapshot.status.at : null
   const liveNote = statusAt
     ? `Designations from ${platformName}, as of ${new Date(statusAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Anybody whose game has kicked off is left off — he has no decision left in him.`
@@ -223,6 +257,8 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
           readTone={readTone}
           mineWeek={mineWeek}
           oppWeek={oppWeek}
+          scoredCount={scoredCount}
+          oppScoredCount={oppScoredCount}
           provider={league && league.provider}
         />
       </div>
@@ -230,7 +266,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
       {/* ---- The working ---- */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="grid gap-6">
-          <Sheet code="Your lineup, as set" aside={total === null ? 'not all projected' : `${total.toFixed(1)} ${sample ? 'pts / gm' : 'proj'}`} bodyClass="px-4 pb-4 pt-1 sm:px-5">
+          <Sheet code="Your lineup, as set" aside={total === null ? 'not all projected' : `${total.toFixed(1)} ${sample ? 'pts / gm' : scoredCount ? 'so far' : 'proj'}`} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             {lineup.length ? (
               <ul>
                 {lineup.map((row) => (
@@ -243,24 +279,35 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     meta={noteFor(row, platformName)}
                     right={
                       <span className="flex items-center gap-3">
+                        {row.player && typeof row.player.actualPts === 'number' ? <LiveMark /> : null}
                         {row.player && row.player.inj ? (
                           <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase', injurySeverity(row.player.inj) === 'out' ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>{row.player.inj}</span>
                         ) : null}
-                        <Pts value={row.projPts} />
+                        <Pts value={pointsFor(row)} />
                       </span>
                     }
                   />
                 ))}
               </ul>
             ) : <Empty>No lineup is set for this week yet.</Empty>}
-            <Note>{sourceLine}</Note>
+            <Note>{sourceLine}{liveCoverageLine}</Note>
           </Sheet>
 
           <Sheet code="Bench" aside={benchBest !== null ? `best ${benchBest.toFixed(1)}` : `${bench.length} players`} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             {benchSorted.length ? (
               <ul>
                 {benchSorted.map((row) => (
-                  <PlayerRow key={row.id} player={row.player} meta={noteFor(row, platformName)} right={<Pts value={row.projPts} />} />
+                  <PlayerRow
+                    key={row.id}
+                    player={row.player}
+                    meta={noteFor(row, platformName)}
+                    right={
+                      <span className="flex items-center gap-3">
+                        {row.player && typeof row.player.actualPts === 'number' ? <LiveMark /> : null}
+                        <Pts value={pointsFor(row)} />
+                      </span>
+                    }
+                  />
                 ))}
               </ul>
             ) : <Empty>Nobody on the bench.</Empty>}
@@ -313,7 +360,7 @@ function signedText(n) {
 /* Who you play and how likely the lineup as set is to be enough.
    The bar's reference is EVEN — 50% by construction, and the only mark on
    these pages not measured from anything. */
-function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, winProb, readTone, mineWeek, oppWeek, provider }) {
+function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, winProb, readTone, mineWeek, oppWeek, scoredCount = 0, oppScoredCount = 0, provider }) {
   const oppLink = opponent && teamHref(opponent) && !sample
     ? <a href={teamHref(opponent)} className="font-bold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{opponent.teamName}</a>
     : opponent ? <span className="font-bold text-v3-ink">{opponent.teamName}</span> : null
@@ -361,7 +408,14 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
       </dl>
       <p className="mt-4 text-[13px] leading-[1.55] text-v3-ink2">
         {pct !== null && mineWeek
-          ? <>Each lineup swings about <Fig className="font-bold text-v3-ink">{Math.round(mineWeek.stdev)}</Fig> points a week. A scoring-strength estimate from two projected lineups — not a simulated week.</>
+          ? (
+            <>
+              Each lineup swings about <Fig className="font-bold text-v3-ink">{Math.round(mineWeek.stdev)}</Fig> points a week
+              {scoredCount || oppScoredCount
+                ? <>, narrowing as games are played — <Fig className="font-bold text-v3-ink">{scoredCount}</Fig> of yours and <Fig className="font-bold text-v3-ink">{oppScoredCount}</Fig> of theirs have already scored.</>
+                : '. A scoring-strength estimate from two projected lineups — not a simulated week.'}
+            </>
+          )
           : 'Both lineups need a projection for every starter before the odds can be priced.'}
       </p>
       {!sample ? <div className="mt-4"><GoLink href={matchupHref(game.week)}>Both lineups, side by side</GoLink></div> : null}

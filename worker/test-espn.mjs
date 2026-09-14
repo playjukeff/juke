@@ -20,7 +20,7 @@
  * one — see CLAUDE.md's ESPN section for the measurement.
  */
 
-import { leagueSnapshot, lookupLeague, normalise, weekProjection } from "./espn.js";
+import { leagueSnapshot, lookupLeague, normalise, weekActual, weekProjection } from "./espn.js";
 
 let failures = 0;
 function check(what, got, want) {
@@ -513,14 +513,35 @@ check("a projected zero is a zero, not a missing number",
       weekProjection({ stats: [{ seasonId: 2026, statSourceId: 1, statSplitTypeId: 1,
                                  scoringPeriodId: 1, appliedTotal: 0 }] }, 2026, 1), 0);
 
+console.log("\n--- and the actual line beside it, which weekProjection() skips ---");
+check("the week's actual is the one row that already happened, this week, this season",
+      weekActual({ stats: STATS }, 2026, 1), 31.2);
+check("a projected line is never read as an actual",
+      weekActual({ stats: STATS.filter((s) => s.statSourceId === 1) }, 2026, 1), null);
+check("the season total is never read as a week",
+      weekActual({ stats: [STATS[0]] }, 2026, 1), null);
+check("another week answers nothing rather than a neighbour",
+      weekActual({ stats: STATS }, 2026, 2), null);
+check("no week, no actual", weekActual({ stats: STATS }, 2026, null), null);
+check("a scored zero is a zero, not a missing number",
+      weekActual({ stats: [{ seasonId: 2026, statSourceId: 0, statSplitTypeId: 1,
+                             scoringPeriodId: 1, appliedTotal: 0 }] }, 2026, 1), 0);
+
 {
-  const wk = (pts) => ({ stats: [{ seasonId: 2026, statSourceId: 1, statSplitTypeId: 1,
-                                   scoringPeriodId: 1, appliedTotal: pts }] });
+  // A second, optional actual row alongside the projected one -- undefined
+  // means his game has not kicked off, exactly as ESPN's own payload would
+  // simply have no statSourceId 0 row for him yet.
+  const wk = (pts, actualPts) => ({ stats: [
+    { seasonId: 2026, statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: pts },
+    ...(actualPts === undefined ? [] : [{ seasonId: 2026, statSourceId: 0, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: actualPts }]),
+  ] });
   const IN_SEASON = JSON.parse(JSON.stringify(LEAGUE));
   IN_SEASON.scoringPeriodId = 1;
   const pts = [21.9143, 8.5, 3.1, 0, 17.25, 6.4];
+  // Only the first player's game has kicked off.
+  const actuals = [24.0, undefined, undefined, undefined, undefined, undefined];
   IN_SEASON.teams.flatMap((t) => t.roster.entries).forEach((e, i) =>
-    Object.assign(e.playerPoolEntry.player, wk(pts[i])));
+    Object.assign(e.playerPoolEntry.player, wk(pts[i], actuals[i])));
   await withFetch(200, IN_SEASON, async () => {
     const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
     const p = snapshot.projections;
@@ -531,12 +552,21 @@ check("a projected zero is a zero, not a missing number",
           [21.9143, 8.5, 3.1, 0, 17.25]);
     check("and nothing for a player the crosswalk could not name",
           Object.keys(p.points).length, 5);
+
+    const a = snapshot.actuals;
+    check("the actual line is stamped with the same week",
+          [a && a.week, a && a.source, typeof (a && a.at)], [1, "espn", "number"]);
+    check("and carries only the one player whose game has kicked off",
+          a.players, { "11628": { points: 24.0 } });
+    check("built independently of the projection, so the two never overwrite each other",
+          p.points["11628"], 21.9143);
   });
 }
 await withFetch(200, LEAGUE, async () => {
   const { snapshot } = await leagueSnapshot("777", "2026", "https://stub.invalid", resolve);
   check("before the season there is no week, so no projection to stamp",
         snapshot.projections, null);
+  check("nor an actual line", snapshot.actuals, null);
 });
 
 console.log("\n--- each rostered player's live status ---");
