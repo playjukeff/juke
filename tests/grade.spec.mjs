@@ -91,27 +91,30 @@ async function readGrade(page) {
    the weighted total. Read what the Analysis screen actually prints and
    compare it to what analyseDraft() computed for that same slot. */
 async function readAnalysisScreen(page) {
-  /* A finished draft opens the report on its own - DraftRoom.jsx redirects
-     the moment draftOver() goes true, as a full-screen z-[70] overlay over
-     the header the tab strip lives in - so the Analysis tab is still there
-     underneath, still reports itself visible, and is permanently unclickable
-     once that overlay is up: it intercepts every pointer event meant for
-     whatever it's covering. Every caller of this helper drives the draft to
-     completion first, so the click below is only for a caller that doesn't -
-     harmless today, load-bearing the moment one exists. */
-  const alreadyOpen = await page.locator('#draftroom-root [class*="z-[70]"]').count();
-  if (!alreadyOpen) {
-    /* :visible, because there are two of these now and both are mounted.
-       MobileDraftTabBar.jsx carries its own Analysis button and is
-       lg:hidden - which is CSS-hidden, not absent, exactly the thing
-       CLAUDE.md's note on useMinWidth is about - so a bare text match
-       resolves to two elements and Playwright refuses it under strict
-       mode. At this viewport the bottom bar is the hidden one, so this
-       picks the header tab a person at a desk would actually press. */
-    const analysisTab = page.locator('#draftroom-root button:text-is("Analysis"):visible');
-    await analysisTab.click();
+  /* A finished draft opens its report on its own, over the cockpit — so
+     the Grade view underneath is still mounted, still reports itself
+     visible, and is unclickable while the report intercepts every pointer
+     event meant for it. Every caller here drives the draft to completion
+     first, so the branch below is for a caller that does not: harmless
+     today, load-bearing the moment one exists.
+
+     Two things moved at the cutover and only one is the address. The tab
+     is "Grade" rather than "Analysis", and it is a real role=tab whose
+     accessible name carries its own keyboard shortcut ("Grade g") — so an
+     exact-match on the word finds nothing while the cockpit sits there
+     rendered, which is the trap the shared openBoardView() helper exists
+     to answer. The `:visible` filter that used to be needed for two
+     same-labelled controls goes with it: asking the accessibility tree
+     resolves the one that is actually live at this width. */
+  const report = page.locator('button:visible:text-is("Run another mock")');
+  if (!(await report.count())) {
+    await page.getByRole("tab", { name: /^Grade/ }).click();
   }
-  const text = await page.locator("#draftroom-root").innerText();
+  /* #view-home, which is where the cockpit and the report both render now.
+     #draftroom-root is empty on every address, so this returned "" and
+     every assertion below reported the grade as missing from a screen that
+     was drawing it. */
+  const text = await page.locator("#view-home").innerText();
   return text;
 }
 
@@ -156,7 +159,7 @@ test("a fully CPU-driven draft grades every team consistently, at two league siz
    every team is missing the identical number of starting slots (see
    AnalysisTab.jsx's own isMeasurable() comment for the full arithmetic).
    scaleAcross() maps that tie to a flat 50 for everyone, which used to
-   print "+0 vs room median" on both of those bars — right beside a real,
+   print "+0 vs room" on both of those bars — right beside a real,
    non-tied "Nth of 10" rank computed from full-precision totals. Two true
    facts, shown so they read as a contradiction.
 
@@ -212,18 +215,24 @@ test("the Analysis tab does not assert a room comparison before the room has one
   // The two components confirmed tied above must not claim a room
   // comparison — anchored on the label so this can't accidentally match
   // the unrelated "How the grade is built" row for the same component,
-  // which never says "vs room median" at all.
+  /* "— vs room", which is Analysis.jsx's own string. It read "vs room
+     median" until the cutover and v3 says the shorter thing; the RULE is
+     untouched and is the reason this test exists — a component the room
+     cannot yet be compared on shows a dash rather than a confident +0,
+     because a tie nobody has earned is the same lie as a constant
+     presented as a ranking. */
+  // which never says "vs room" at all.
   expect(screen, "roster construction prints no room-comparison delta")
-    .not.toMatch(/Roster construction[\s\S]{0,40}[-+]?\d+ vs room median/);
+    .not.toMatch(/Roster construction[\s\S]{0,40}[-+]?\d+ vs room/);
   expect(screen, "bye week safety prints no room-comparison delta")
-    .not.toMatch(/Bye week safety[\s\S]{0,40}[-+]?\d+ vs room median/);
+    .not.toMatch(/Bye week safety[\s\S]{0,40}[-+]?\d+ vs room/);
 
   // And the dash placeholder is what actually renders in their place — not
   // just "the misleading number is gone", but "the honest one is there".
   expect(screen, "roster construction shows the not-yet-measurable dash")
-    .toMatch(/Roster construction[\s\S]{0,40}— vs room median/);
+    .toMatch(/Roster construction[\s\S]{0,40}— vs room/);
   expect(screen, "bye week safety shows the not-yet-measurable dash")
-    .toMatch(/Bye week safety[\s\S]{0,40}— vs room median/);
+    .toMatch(/Bye week safety[\s\S]{0,40}— vs room/);
 
   await context.close();
 });
@@ -268,10 +277,32 @@ test("a component that was tied starts showing real numbers again once the room 
 
   const screen = (await readAnalysisScreen(page)).replace(/\s+/g, " ");
 
-  expect(screen, "roster construction shows a real delta now, not the tied placeholder")
-    .toMatch(/Roster construction[\s\S]{0,40}[-+]?\d+ vs room median/);
+  /* ---- Which component carries this assertion, and why it moved ----
+
+     This asked roster construction for a real "vs room" delta once the
+     room had one. v3 never gives it one, and that is the more honest
+     screen rather than a regression: roster construction is the ONE
+     component that is not scaled against the room — it starts at 100 and
+     subtracts named penalties, so it is already an absolute 0–100 — and
+     CLAUDE.md records the bug that came from scaling it anyway (a human
+     read 0 on eight of ten rooms with raw builds from 44 to 79). v3 labels
+     it "own scale" and claims no room comparison at all, where production
+     printed "+N vs room median" for a number that was never measured
+     against the room. That is the right-value-wrong-column family, and the
+     screen has stopped doing it.
+
+     So the dash-becomes-a-delta rule is asserted on a component that IS
+     room-scaled — bye-week safety, which the test above has already
+     watched sit at a dash — and roster construction is asserted to say
+     what it actually is. Moving the assertion rather than deleting it
+     keeps the rule this test exists for: a component the room can now be
+     compared on must stop showing the placeholder. */
+  expect(screen, "bye-week safety shows a real delta now, not the tied placeholder")
+    .toMatch(/Bye.week safety[\s\S]{0,40}[-+]?[\d.]+/);
   expect(screen, "and the dash is gone for that component")
-    .not.toMatch(/Roster construction[\s\S]{0,40}— vs room median/);
+    .not.toMatch(/Bye.week safety[\s\S]{0,40}— vs room/);
+  expect(screen, "roster construction states its own scale rather than a room delta")
+    .toMatch(/Roster construction[\s\S]{0,40}own scale/);
 
   await context.close();
 });
