@@ -95,11 +95,16 @@ const screen = (page) => page.locator("#view-home");
 async function openHistory(context, opts) {
   await stubLedger(context, opts);
   const page = await openApp(context, "#/record");
-  await page.waitForFunction(
-    () => /Juke said/.test(document.getElementById("view-home").innerText),
-    null,
-    { timeout: 20000 }
-  );
+  /* The Calls sheet itself, which every state renders.
+     This waited for "Juke said", and that string is a per-ROW label: it
+     lives in STEPS (a `hidden lg:grid` header row, so not in innerText at
+     this width anyway) and in CallRow's own first cell. Neither exists
+     unless the ledger has rows to draw - so the wait held for the happy
+     path and timed out for all four of the states this file is actually
+     about: unreachable, signed out, empty, and filtered-to-nothing.
+     Waiting on a row is waiting for the one outcome the file does not
+     need to test. The sheet is what says the screen arrived. */
+  await page.waitForSelector('[aria-label="Calls"]', { timeout: 20000 });
   return page;
 }
 
@@ -135,8 +140,13 @@ test.describe("the decision ledger", () => {
     /* The assertion this file most exists for. "No decisions recorded yet"
        here would be the screen telling somebody their season is unrecorded
        because a fetch failed — and they would have no way to know. */
-    expect(body, "it says it could not read them").toContain("could not reach your history");
-    expect(body, "and never claims the record is empty").not.toContain("No decisions recorded yet");
+    /* v3 renamed the noun: a recorded decision is a CALL, so "your history"
+       is "your calls" and "No decisions recorded yet" is "No calls recorded
+       yet". The requirement is untouched and is the one this file most
+       exists for - an unreachable worker must never render as an empty
+       record, because the reader has no way to tell those apart. */
+    expect(body, "it says it could not read them").toContain("could not reach your calls");
+    expect(body, "and never claims the record is empty").not.toContain("No calls recorded yet");
     expect(body, "nothing was lost, and it says so").toContain("Nothing has been lost");
 
     await expect(page.getByRole("button", { name: /try again/i })).toBeVisible();
@@ -150,7 +160,7 @@ test.describe("the decision ledger", () => {
     });
     const body = await screen(page).innerText();
 
-    expect(body).toContain("Your record starts when you connect a league");
+    expect(body).toContain("Your calls start when you connect a league");
     /* A sample ledger is the one thing this screen may not draw: once
        somebody signs in, a demonstration and their own history sit in the
        same layout with nothing to tell them apart. */
@@ -165,9 +175,9 @@ test.describe("the decision ledger", () => {
     const page = await openHistory(context, { answer: { ok: true, decisions: [] } });
     const body = await screen(page).innerText();
 
-    expect(body).toContain("No decisions recorded yet");
+    expect(body).toContain("No calls recorded yet");
     expect(body, "which is not the same sentence as a failed read").not.toContain(
-      "could not reach your history"
+      "could not reach your calls"
     );
     await page.close();
   });
@@ -197,10 +207,17 @@ test.describe("the decision ledger", () => {
        and Strategy — and crucially NOT Prospect or Draft, which write
        nothing: a pill that filters to nothing is the dead-control failure,
        and the handoff's own hardcoded six would offer five of them. */
-    for (const name of ["All rooms", "Waiver", "Trade", "Strategy"]) {
-      await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+    /* Scoped to the Room group rather than the page. v3 draws each filter as
+       a Seg - a role=group with an aria-label and real buttons inside - and
+       all three groups carry their own "All", so an unscoped name match is
+       three elements and a strict-mode violation. The reset option is "All"
+       here rather than "All rooms"; the group's label is what says which
+       All it is. Same lesson as the draft cockpit's tablist. */
+    const roomFilter = page.getByRole("group", { name: "Room" });
+    for (const name of ["All", "Waiver", "Trade", "Strategy"]) {
+      await expect(roomFilter.getByRole("button", { name, exact: true })).toBeVisible();
     }
-    await expect(page.getByRole("button", { name: "Prospect", exact: true })).toHaveCount(0);
+    await expect(roomFilter.getByRole("button", { name: "Prospect", exact: true })).toHaveCount(0);
 
     await page.close();
   });
@@ -210,19 +227,25 @@ test.describe("the decision ledger", () => {
     const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
     const rowsNow = () => screen(page).innerText();
 
-    await page.getByRole("button", { name: "Waiver", exact: true }).click();
+    /* Each group addressed by its own aria-label, for the reason above: all
+       three carry an "All", so `.first()` was picking whichever happened to
+       render first rather than the one the step means. Naming the group
+       says which filter is being reset and cannot drift if they reorder. */
+    const group = (name) => page.getByRole("group", { name });
+
+    await group("Room").getByRole("button", { name: "Waiver", exact: true }).click();
     let body = await rowsNow();
     expect(body, "room filter keeps its own room").toContain("Add Jaylen Warren");
     expect(body, "and drops the others").not.toContain("Start Chuba Hubbard");
 
-    await page.getByRole("button", { name: "All rooms", exact: true }).click();
-    await page.getByRole("button", { name: "Bad call", exact: true }).click();
+    await group("Room").getByRole("button", { name: "All", exact: true }).click();
+    await group("Outcome").getByRole("button", { name: "Bad call", exact: true }).click();
     body = await rowsNow();
     expect(body, "outcome filter keeps the bad call").toContain("Start Chuba Hubbard");
     expect(body, "and drops the good one").not.toContain("Add Jaylen Warren");
 
-    await page.getByRole("button", { name: "All", exact: true }).first().click();
-    await page.getByRole("button", { name: "High ≥75", exact: true }).click();
+    await group("Outcome").getByRole("button", { name: "All", exact: true }).click();
+    await group("Confidence").getByRole("button", { name: "High ≥75", exact: true }).click();
     body = await rowsNow();
     expect(body, "confidence filter keeps 84%").toContain("Add Jaylen Warren");
     expect(body, "and drops 68%").not.toContain("Start Chuba Hubbard");
