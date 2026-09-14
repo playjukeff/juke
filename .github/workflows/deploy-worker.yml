@@ -193,6 +193,14 @@ jobs:
       # The ESPN adapter end to end against a stub -- the crosswalk, the
       # league's own weekly projection and each player's live status -- and
       # the injury vocabulary both adapters share with the nightly board.
+      # The Sleeper adapter, and the half of its suite tests.yml cannot
+      # reach: the matchups route runs through the real router, which
+      # imports standardwebhooks, and that workflow installs nothing.
+      # It skips there, loudly, and runs here -- so 'passed, 0 failed'
+      # with no skip line is the shape to expect from this step.
+      - name: Verify the Sleeper adapter and its routes
+        run: node worker/test-sleeper.mjs
+
       - name: Verify the ESPN adapter
         run: node worker/test-espn.mjs
       - name: Verify the live injury vocabulary

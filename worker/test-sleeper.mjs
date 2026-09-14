@@ -34,6 +34,7 @@ import {
 
 let pass = 0;
 const failures = [];
+let skipped = null;
 
 function ok(what, cond, detail) {
   if (cond) {
@@ -606,7 +607,19 @@ ROUTES = healthy();
     match: async (req) => { const hit = store.get(req.url); return hit ? new Response(hit) : undefined; },
     put: async (req, res) => { store.set(req.url, await res.text()); },
   } };
-  const worker = (await import("./draft-room.js")).default;
+  /* draft-room.js imports `standardwebhooks`, and tests.yml installs
+     nothing on purpose -- every step in that workflow is dependency-free.
+     So the router half runs where the dependency is: deploy-worker.yml
+     runs this same file after `npm ci --prefix worker`. Here it says out
+     loud that it did not run, rather than passing quietly on checks
+     nobody made. */
+  let worker = null;
+  try { worker = (await import("./draft-room.js")).default; }
+  catch (e) {
+    if (e.code !== "ERR_MODULE_NOT_FOUND") throw e;
+    skipped = "the route through the real router -- worker deps are not installed here; deploy-worker.yml runs it";
+  }
+  if (worker) {
   const call = (qs, origin = "https://jukeff.com", method = "GET") => worker.fetch(
     new Request("https://w.example/sleeper/matchups" + qs, { method, headers: origin ? { Origin: origin } : {} }),
     { SLEEPER_BASE: BASE }, { waitUntil() {} });
@@ -642,6 +655,7 @@ ROUTES = healthy();
 
   const pre = await call("?league=" + LG + "&week=3", "https://jukeff.com", "OPTIONS");
   eq("the preflight names GET", pre.headers.get("access-control-allow-methods"), "GET");
+  }
 }
 
 /* ---------- the seam itself ---------- */
@@ -655,7 +669,8 @@ ROUTES = healthy();
 
 server.close();
 
-console.log(`\n${pass} passed, ${failures.length} failed`);
+if (skipped) console.log("\nSKIPPED: " + skipped);
+console.log(`\n${pass} passed, ${failures.length} failed${skipped ? ", 1 section skipped" : ""}`);
 if (failures.length) {
   failures.forEach((f) => console.log("  FAIL " + f));
   process.exit(1);
