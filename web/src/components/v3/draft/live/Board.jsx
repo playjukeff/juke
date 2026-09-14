@@ -155,7 +155,7 @@ export default function Board({ engine, version, onOpen, phone }) {
                             <span className="block truncate text-[13px] font-bold leading-tight">{engine.shortName(pick.player)}</span>
                             <span className="flex items-center justify-between gap-1 font-figure text-[11px] leading-none" style={{ color: CELL_SUB }}>
                               <span className="truncate font-bold">{pick.player.pos === 'DST' ? 'D/ST' : pick.player.pos} · {pick.player.team || 'FA'}</span>
-                              <span className="shrink-0 tabular-nums">{code}</span>
+                              <span data-pick-code className="shrink-0 tabular-nums">{code}</span>
                             </span>
                           </button>
                         </td>
@@ -173,7 +173,7 @@ export default function Board({ engine, version, onOpen, phone }) {
                         )}
                         <div aria-current={live ? 'step' : undefined} className={cx('flex h-full flex-col justify-between rounded-[4px] px-2 py-1', live ? 'bg-v3-sheet' : 'border border-dashed border-v3-rule')}>
                           <span className="flex items-center justify-between font-figure text-[11px] tabular-nums">
-                            <span className={live ? 'font-bold text-v3-ink' : 'text-v3-ink3'}>{code}</span>
+                            <span data-pick-code className={live ? 'font-bold text-v3-ink' : 'text-v3-ink3'}>{code}</span>
                             <span className="text-v3-ink3" aria-hidden="true">{lastOfRound ? '↓' : forward ? '→' : '←'}</span>
                           </span>
                           {live

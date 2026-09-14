@@ -39,7 +39,7 @@
 */
 
 import { test, expect } from "@playwright/test";
-import { openApp, awaitBoard } from "./helpers.mjs";
+import { openApp, awaitBoard, openBoardView } from "./helpers.mjs";
 
 /* Through the bridge rather than through the setup screen's DOM. The legacy
    version had to open three <details>, write a <select> and click #startBtn;
@@ -67,45 +67,52 @@ async function draftInto(page, picks, teams = 10) {
     stopSim();
     for (let i = 0; i < n; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
     render();
-    location.hash = "#/draft";
+    /* #/draft/live, not #/draft. The cutover made the bare address the
+       LAUNCHER and put the cockpit behind /live, so this was navigating
+       away from the draft it had just built — and the failure landed on
+       the Board tab press a moment later, which reads as a missing tab
+       rather than as a fixture that left the screen. */
+    location.hash = "#/draft/live";
   }, { n: picks, t: teams });
 
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
-  // Board, not the default tab any more — Decide is, since the Cockpit
-  // rebuild — so every card test in this file needs the click before the
-  // grid it waits for next will ever exist to wait for.
-  //
-  // :visible, not just the text filter: MobileDraftTabBar.jsx mounts its
-  // own always-in-DOM "Board" button (lg:hidden, not unmounted) beside
-  // DraftCockpitHeader's desktop tab nav (hidden md:flex) — same label,
-  // two controls for two widths. Playwright's default viewport is well
-  // above both breakpoints, so exactly one is actually visible; without
-  // this the locator resolves two elements and .click() throws in strict
-  // mode before a single one of this file's own assertions ever runs.
-  await page.locator('#draftroom-root button:visible').filter({ hasText: /^Board$/ }).click();
-  // The grid is React's, so wait for it rather than for the engine.
-  await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
-    return root && [...root.querySelectorAll("div")].some(
-      (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-  }, null, { timeout: 20000 });
+  /* Board is not the default view, so every card test here needs the tab
+     press before the table it waits for exists to be waited for.
+
+     Both halves of that moved at the cutover and only one of them is the
+     address. The click matched a label inside #draftroom-root, which is
+     empty on every route now — so the locator resolved nothing, waited its
+     full timeout and reported a click that timed out, which reads as a
+     broken app rather than as a scope pointed at a screen nobody renders.
+
+     openBoardView() is in helpers.mjs because board-marks.spec.mjs needs
+     exactly the same two steps, and the two files agreeing about what a
+     cell IS is what makes their assertions comparable. It also settles the
+     two-controls-one-label problem the `:visible` filter above was for,
+     by asking the accessibility tree instead of the DOM. */
+  await openBoardView(page);
 }
 
 /* Every filled card on the board.
 
-   Taken from the names outward, not by filtering divs that contain one:
-   written that way first and every card counted three or four times, because
-   a cell wrapper contains the name too, and so does its parent. 30 picks
-   reported 138 cards. Walking up from each name to the nearest rounded box
-   lands on the card itself, once. */
-const FILLED = `(() => {
-  const root = document.getElementById("draftroom-root");
-  const grid = [...root.querySelectorAll("div")].find(
-    (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-  return [...grid.querySelectorAll("p.truncate")]
-    .map((n) => n.closest('[class*="rounded-lg"]'))
-    .filter(Boolean);
-})()`;
+   This used to walk outward from each player name to the nearest rounded
+   box, because the legacy cell carried nothing saying "I am a cell" —
+   written the obvious way first, every card counted three or four times
+   and 30 picks reported 138 cards.
+
+   v3's filled cell is a button carrying data-overall, so the attribute IS
+   the identity and there is nothing left to infer or to miscount. Empty
+   cells deliberately do not carry it: they hold a pick code, a direction
+   and an overall number rather than a player, and collapsing the two is
+   how an assertion about a card passes on a dashed placeholder. */
+const FILLED = `[...document.querySelectorAll('[aria-label="Draft board"] button[data-overall]')]`;
+
+/* Every UNDRAFTED cell, which is where the direction arrow lives. Selected
+   by the absence of that button rather than by a class: a td with no
+   filled card inside it is undrafted by construction, whatever it happens
+   to be styled like this month. */
+const EMPTY = `[...document.querySelectorAll('[aria-label="Draft board"] tbody td')]
+  .filter((td) => !td.querySelector("button[data-overall]"))`;
 
 test.describe("the draft board card", () => {
   test("every line clears 4.5:1 on its own cell, opacity composited",
@@ -135,24 +142,23 @@ test.describe("the draft board card", () => {
           return [0, 1, 2].map((i) => c[i] * a + under[i] * (1 - a));
         };
 
-        /* The board's own ground. The cards are opaque chalk fills now, so
+        /* The board's own ground. The cards are opaque chalk fills, so
            over() folds this away for every one of them — it is kept
            because a card that ever goes translucent again has to be
-           composited against something real rather than against white,
-           and because the empty-cell measurements below share it. Read off
-           the grid's own scroll parent rather than matched by a hex class:
-           that selector named #0B0E14 and the app moved to slate long ago,
-           so it had been silently falling through to document.body. */
-        const grid = [...document.getElementById("draftroom-root").querySelectorAll("div")].find(
-          (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-        const board = parse(getComputedStyle(grid.parentElement).backgroundColor).slice(0, 3);
+           composited against something real rather than against white.
+           Read off the scroller that carries the board rather than matched
+           by a hex class: an earlier version named #0B0E14, the app moved
+           to slate, and it had been silently falling through to
+           document.body ever since. */
+        const scroller = document.querySelector('[aria-label="Draft board"]');
+        const board = parse(getComputedStyle(scroller).backgroundColor).slice(0, 3);
 
         const fails = [];
         let checked = 0, worst = 99;
         eval(filledSrc).forEach((card) => {
           // A cell's background is rgba over the board, so composite first.
           const bg = over(parse(getComputedStyle(card).backgroundColor), board);
-          card.querySelectorAll("span, p").forEach((el) => {
+          card.querySelectorAll("span").forEach((el) => {
             if (!el.textContent.trim()) return;
             const cs = getComputedStyle(el);
             let fg = over(parse(cs.color), bg);
@@ -204,58 +210,110 @@ test.describe("the draft board card", () => {
       if (r.suffix) expect(r.suffix.short).not.toMatch(/(Jr\.|Sr\.|II|III|IV)$/);
 
       // And the board is drawing that short form, not the full name.
+      /* The name is the card's FIRST line. It was `p.truncate`, which the
+         legacy cell used; v3 draws spans, and the name is the one the
+         position/club/code line sits under. Taken by position rather than
+         by class for that reason — a class is what an element looks like
+         and the order is what it IS. */
       const drawn = await page.evaluate((src) =>
-        eval(src).map((c) => c.querySelector("p.truncate").textContent.trim()).slice(0, 12), FILLED);
+        eval(src).map((c) => c.querySelector("span").textContent.trim()).slice(0, 12), FILLED);
       expect(drawn.every((n) => n.length > 0), "every card carries a name").toBe(true);
       expect(drawn.some((n) => /^[A-Z]\. /.test(n)), "and it is the initialled form").toBe(true);
     });
 
-  test("the arrow turns down on the last pick of every round", async ({ context }) => {
+  test("the arrow points the way its round runs, on every cell still to play",
+    async ({ context }) => {
     const page = await openApp(context, "#/draft");
     await draftInto(page, 40);
 
-    /* The turn is the one thing the pick numbers do not tell you on sight, and
-       it is why the ends of the room pick twice in a row. Down on the last
-       pick of a round; along the way its round runs otherwise.
+    /* The turn is the one thing the pick numbers do not tell you on sight,
+       and it is why the ends of the room pick twice in a row.
 
-       Read off the transform rather than the character. The board draws one
-       glyph rotated three ways, because a down arrow and a right arrow are
-       different characters and a face draws the vertical one far heavier —
-       measured at 2.5x the ink. So "which way does this point" is a matrix,
-       not a string.
+       ---- What changed, and what did not ----
 
-       Scoped to cells, not the whole root: the Cockpit header row draws a
-       30px avatar carrying the team's own initial, also aria-hidden (the
-       visible team name beside it already says the same thing, so the
-       initial is decorative) and — for a club like "Bone-Thugs-N-Montgomery"
-       — also exactly one character. An unscoped query counts that as a
-       141st arrow pointing nowhere. border-slate-rule/70 is a real board
-       cell's own border colour, one shade lighter than the header's plain
-       border-slate-rule, so it reaches only the fourteen rounds and never the
-       row above them. */
-    const r = await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
-      const grid = [...root.querySelectorAll("div")].find(
-        (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-      const arrows = [...grid.querySelectorAll('[class*="border-slate-rule/70"] span[aria-hidden="true"]')]
-        .filter((s) => s.textContent.trim().length === 1);
-      const dirOf = (a) => {
-        const t = getComputedStyle(a).transform;
-        return /matrix\(0, 1, -1, 0/.test(t) ? "down"
-          : /matrix\(-1, 0, 0, -1/.test(t) ? "left" : "right";
+       This asserted "an arrow on every cell, drafted or not", and the rule
+       behind that sentence was a fix: the legacy board drew the arrow on
+       DRAFTED cells only, so the snake was legible over the half of the
+       board that had already happened and not over the half still to be
+       played. That is backwards — the turn matters BEFORE the picks land.
+
+       v3 draws it on the undrafted cells and not on the cards, which is
+       that same rule followed to its end rather than a regression from it:
+       the arrow is now exactly where the question is asked and nowhere it
+       has already been answered. A filled cell spends its room on the
+       player instead, which is the "every true fact added to a cell with
+       room in it costs some of that" call the hero shot already records.
+
+       So the assertion moves to the cells that still have a turn to state,
+       and the count is derived from how far the draft has got rather than
+       from rounds x teams — which is what makes it a property rather than
+       an arithmetic identity restated.
+
+       ---- And it is three characters now, deliberately ----
+
+       The legacy board drew ONE glyph rotated three ways, because a face
+       draws a vertical arrow far heavier than a horizontal one — measured
+       at 2.5x the ink — so "which way does this point" was a matrix rather
+       than a string, and a test reading the character would have found one
+       glyph everywhere. v3 draws the three real characters, so the
+       assertion reads them; the old "one glyph, rotated" line is retired
+       rather than translated, because it describes a workaround this board
+       does not need. */
+    const r = await page.evaluate((emptySrc) => {
+      const cells = eval(emptySrc);
+      const rows = [];
+      cells.forEach((td) => {
+        const code = td.querySelector("[data-pick-code]");
+        const arrow = [...td.querySelectorAll('span[aria-hidden="true"]')]
+          .map((x) => x.textContent.trim()).filter((t) => "\u2193\u2192\u2190".includes(t) && t)[0];
+        if (!code) return;
+        /* The second half of a pick code is the PICK IN ROUND, not the
+           seat - "6.10" is the tenth pick of round six, whichever chair
+           that is. Read as a seat it inverts the ends of every reversed
+           round, which is the seat-versus-pick-number confusion pickCode()
+           itself was written to end. */
+        const [round, pickNo] = code.textContent.trim().split(".").map(Number);
+        rows.push({ round, pickNo, arrow });
+      });
+      /* What each cell SHOULD say, from the engine rather than from a
+         second copy of the mirror — the same discipline the pick-code test
+         below already follows. reversedRound() is exported precisely so a
+         caller never re-derives `round % 2 === 0`, which is right for a
+         plain snake and wrong for the two other orders this league can
+         run. */
+      const want = (round, pickNo) =>
+        pickNo === league.teams ? "\u2193"
+          : DraftEngine.reversedRound(round, league) ? "\u2190" : "\u2192";
+      const wrong = rows.filter((c) => c.arrow !== want(c.round, c.pickNo))
+        .slice(0, 5)
+        .map((c) => ({ code: c.round + "." + c.pickNo, drew: c.arrow, want: want(c.round, c.pickNo) }));
+      return {
+        total: rows.length,
+        missing: rows.filter((c) => !c.arrow).length,
+        down: rows.filter((c) => c.arrow === "\u2193").length,
+        wrong,
+        undrafted: league.teams * league.rounds - JukeEngine.picks().length,
+        /* One per round whose LAST pick has not been made. The last pick of
+           round r is overall r x teams, so this needs no second walk of the
+           board and no reference to the snake at all. */
+        downExpected: Array.from({ length: league.rounds }, (_, i) => i + 1)
+          .filter((round) => round * league.teams > JukeEngine.picks().length).length,
+        glyphs: [...new Set(rows.map((c) => c.arrow))].sort()
       };
-      const counts = { down: 0, left: 0, right: 0 };
-      arrows.forEach((a) => counts[dirOf(a)]++);
-      return { total: arrows.length, counts, rounds: league.rounds, teams: league.teams,
-               glyphs: [...new Set(arrows.map((a) => a.textContent.trim()))] };
-    });
+    }, EMPTY);
 
-    expect(r.total, "an arrow on every cell, drafted or not").toBe(r.rounds * r.teams);
-    // Exactly one turn per round, and it is the last pick of that round.
-    expect(r.counts.down, "one down arrow per round").toBe(r.rounds);
-    expect(r.glyphs, "one glyph, rotated — never three characters").toHaveLength(1);
-    expect(r.counts.left + r.counts.right, "the rest run along their round")
-      .toBe(r.rounds * r.teams - r.rounds);
+    expect(r.total, "an arrow is checked on every cell still to play")
+      .toBe(r.undrafted);
+    expect(r.missing, "and not one of them is bare").toBe(0);
+    expect(r.wrong, "each points the way its own round runs").toEqual([]);
+    /* The down arrow is the one that carries information a reader cannot
+       get anywhere else, so it is asserted on its own rather than left to
+       the per-cell check: one per round that has a last pick still to make.
+       With forty picks gone in a ten-team league that is the ten rounds
+       after the fourth, and stating it that way rather than as `rounds`
+       is what stops this passing on a board that drew no turn at all. */
+    expect(r.down, "one turn per round still to be played")
+      .toBe(r.downExpected);
   });
 
   test("the pick on the card is the pick the app computed", async ({ context }) => {
@@ -269,10 +327,12 @@ test.describe("the draft board card", () => {
        catches: reading the seat hands out every code in a round exactly once,
        so a uniqueness test passes a board that is mirrored. */
     const r = await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
-      const grid = [...root.querySelectorAll("div")].find(
-        (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-      /* data-pick-code, not `span.font-plex`.
+      /* Scoped to the FILLED cards, because v3 puts a code on an empty
+         cell too — it is how a reader works out when they pick again, and
+         board-marks.spec.mjs asserts that half. Counting both here would
+         report 140 codes against 40 picks and read as a duplication bug.
+
+         data-pick-code, not `span.font-plex`.
 
          The old selector rested on font-plex "naming nothing else on a
          card", which was true and then quietly stopped being true: the
@@ -290,7 +350,8 @@ test.describe("the draft board card", () => {
          MALFORMED — which is one of the things this test exists to catch,
          since the assertion below is that every drawn code matches
          DraftEngine.pickCode() exactly. */
-      const drawn = [...grid.querySelectorAll("[data-pick-code]")]
+      const drawn = [...document.querySelectorAll(
+        '[aria-label="Draft board"] button[data-overall] [data-pick-code]')]
         .map((s) => s.textContent.trim());
       const expected = JukeEngine.picks().map(
         (p) => DraftEngine.pickCode(p.overall, league.teams));
@@ -334,13 +395,19 @@ test.describe("the draft board card", () => {
        them directly, the same selector board-marks.spec.mjs already uses to
        find the same grandchildren. */
     const r = await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
-      const grid = [...root.querySelectorAll("div")].find(
-        (d) => getComputedStyle(d).display === "grid" && d.style.getPropertyValue("--cols"));
-      const cells = [...grid.querySelectorAll('[class*="border-slate-rule/70"]')];
+      /* Every cell is a `td` now rather than a div found by hunting for a
+         grid with a --cols property set, so "the row owns the height" is
+         something the table states rather than something a walker infers.
+         The rule it protects is unchanged: a height set only on filled
+         cells leaves the board with two row heights and a row that grows
+         the moment its first pick lands, shoving everything below it down
+         once per round on a pane that is simultaneously trying to keep the
+         live pick centred. */
+      const cells = [...document.querySelectorAll('[aria-label="Draft board"] tbody td')];
       const h = (el) => Math.round(el.getBoundingClientRect().height);
-      const filled = cells.filter((c) => c.querySelector("p.truncate")).map(h);
-      const empty = cells.filter((c) => !c.querySelector("p.truncate") && h(c) > 10).map(h);
+      const isFilled = (c) => !!c.querySelector("button[data-overall]");
+      const filled = cells.filter(isFilled).map(h);
+      const empty = cells.filter((c) => !isFilled(c) && h(c) > 10).map(h);
       return { filled: [...new Set(filled)], empty: [...new Set(empty)] };
     });
 
