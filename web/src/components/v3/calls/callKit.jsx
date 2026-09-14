@@ -5,7 +5,7 @@ import { useSignedIn } from '../../../hooks/useAuthState.js'
 import { LINE as PLATFORM_LINE } from '../../shell/leaguePlatforms.js'
 import { meetsTier, tierLabel } from '../../../lib/tiers.js'
 import { useTierFresh } from '../../v2/stores.js'
-import { CallButton, Fig, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, cx, ordinal } from '../ui.jsx'
+import { CallButton, Fig, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, cx, ordinal, TOUCH, HIT } from '../ui.jsx'
 
 /* The call tools' own parts, in the Call Sheet idiom.
 
@@ -34,7 +34,7 @@ export function BackToNow() {
   return (
     <a
       href="#/v3"
-      className="-ml-1 inline-flex min-h-[40px] items-center gap-1.5 rounded-[4px] px-1 font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+      className={cx(TOUCH, '-ml-1 inline-flex min-h-[40px] items-center gap-1.5 rounded-[4px] px-1 font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}
     >
       <Icon name="back" className="h-4 w-4" /> Back to Now
     </a>
@@ -101,7 +101,7 @@ export function PlayerRow({ player, name, pos, meta, right, dim = false, lead })
       </span>
       <span className="min-w-0">
         {href && !dim ? (
-          <a href={href} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+          <a href={href} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>
             {label}
           </a>
         ) : (

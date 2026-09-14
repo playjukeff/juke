@@ -5,9 +5,9 @@ import {
 import { TABS as WAIVER_TABS } from '../../rooms/WaiverRoomLive.jsx'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
-import { leagueGapOf } from '../../../lib/leagueGap.js'
+import { gapUnit, leagueGapOf } from '../../../lib/leagueGap.js'
 import { useTierFresh } from '../../v2/stores.js'
-import { Fig, GoLink, Icon, Label, PosTag, Seg, Sheet, ValueBar } from '../ui.jsx'
+import { Fig, GoLink, Icon, Label, PosTag, Seg, Sheet, ValueBar , HIT } from '../ui.jsx'
 import {
   CallHead, CouldNotRead, Empty, FactCell, GatedLabel, Loading, NoTeam, Note, PlayerRow, SampleTag,
   Signed, SituationBand, Step, StepBars, Steps, TierGate, playerHref, sampleBandItems, teamHref,
@@ -58,7 +58,7 @@ function WireRow({ rank, row, max }) {
       <Fig className="text-[12px] text-v3-ink3">{String(rank).padStart(2, '0')}</Fig>
       <PosTag pos={p.pos} />
       <span className="min-w-0">
-        <a href={playerHref(p)} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline">{p.name}</a>
+        <a href={playerHref(p)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>{p.name}</a>
         <span className="block truncate font-figure text-[12px] text-v3-ink3">{p.team || 'FA'}{p.bye ? ` · bye ${p.bye}` : ''}</span>
       </span>
       {/* On a phone the bar takes its own full line rather than being
@@ -138,6 +138,11 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
   // Priced under THIS league's scoring and shape, not the Draft Room's.
   const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
+  /* And the words beside every one of those figures. NOT memoised: what
+     the number is changes the day the season starts, and a caption frozen
+     on the render before that would name the wrong horizon for as long as
+     the tab stayed open. */
+  const unit = gapUnit(engine)
 
   // board.length, never board: mutated in place, only its length moves when
   // players.js lands — CLAUDE.md's memo-key rule.
@@ -173,7 +178,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
           league && league.name,
           platformName,
           snapshot && snapshot.week ? `week ${snapshot.week}` : 'preseason',
-          'season points over replacement',
+          unit.long,
         ]}
       />
     )
@@ -210,7 +215,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
   const lede = !mine
     ? null
     : best
-      ? `+${Math.round(best.improvement)} season points over your best ${best.pos}: he is ${overText(best.best.gap)} a replaceable ${posWord(best.pos)}, ${best.held === null ? `and you hold nobody rankable at ${best.pos}` : `and your best is ${overText(best.held)}`}.${ptsOpen > best.improvement ? ` ${Math.round(ptsOpen)} points are open across every position a claim would improve.` : ''}`
+      ? `+${Math.round(best.improvement)} ${unit.word} points over your best ${best.pos}: he is ${overText(best.best.gap)} a replaceable ${posWord(best.pos)}, ${best.held === null ? `and you hold nobody rankable at ${best.pos}` : `and your best is ${overText(best.held)}`}.${ptsOpen > best.improvement ? ` ${Math.round(ptsOpen)} points are open across every position a claim would improve.` : ''}`
       : targets.length
         ? `${targets.length} players on the wire are above replacement, and none is worth more than the player you already start at his position.`
         : `Nobody unowned is worth more than a replacement-level starter. In a ${snapshot.totalTeams}-team league that is the normal state, not an error.`
@@ -232,7 +237,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
       {/* ---- The call ---- */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         {mine ? (
-          <Sheet code="The call · Waiver claim" aside={sample ? <SampleTag /> : 'season pts'}>
+          <Sheet code="The call · Waiver claim" aside={sample ? <SampleTag /> : unit.short}>
             {best ? (
               <div className="grid gap-5">
                 <p className="text-[18px] leading-[1.45] text-v3-ink">
@@ -240,7 +245,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
                   — <Signed value={best.improvement} tone="gain" className="text-[18px]" /> over the best {best.pos} you hold.
                 </p>
                 <Steps>
-                  <Step n={1} what={`Price the wire’s best ${posWord(best.pos)}`} sub={sample ? 'season points over a replaceable starter' : 'season points over a replaceable starter, under your league’s scoring'}>
+                  <Step n={1} what={`Price the wire’s best ${posWord(best.pos)}`} sub={sample ? `${unit.word} points over a replaceable starter` : `${unit.word} points over a replaceable starter, under your league’s scoring`}>
                     <StepBars
                       digits={0}
                       max={Math.max(best.best.gap, best.held || 0, 1)}
@@ -294,14 +299,14 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
           </Sheet>
 
           {mine ? (
-            <Sheet code="Points open by position" aside="season pts" bodyClass="px-4 pb-4 pt-1 sm:px-5">
+            <Sheet code="Points open by position" aside={unit.short} bodyClass="px-4 pb-4 pt-1 sm:px-5">
               {allGaps.length ? (
                 <ul>
                   {allGaps.map((g) => (
                     <li key={g.pos} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-b border-v3-rule py-2.5 last:border-b-0">
                       <PosTag pos={g.pos} />
                       <span className="min-w-0">
-                        <a href={playerHref(g.best.player)} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline">{g.best.player.name}</a>
+                        <a href={playerHref(g.best.player)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>{g.best.player.name}</a>
                         <span className="block truncate font-figure text-[12px] text-v3-ink3">{g.held === null ? `you hold nobody rankable at ${g.pos}` : `your best ${g.pos} is ${overText(g.held)} repl.`}</span>
                       </span>
                       <Signed value={g.improvement} tone="gain" className="text-[15px]" />
@@ -350,7 +355,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
 
         {view === 'drops' && (
           mine ? (
-            <Sheet code="Your bench, worst first" aside="season pts over repl." bodyClass="px-4 pb-4 pt-1 sm:px-5">
+            <Sheet code="Your bench, worst first" aside={unit.gap} bodyClass="px-4 pb-4 pt-1 sm:px-5">
               {drops.length ? (
                 <ul>{drops.map((row, i) => <WireRow key={row.player.id} rank={i + 1} row={row} max={dropMax} />)}</ul>
               ) : <Empty>Nobody on your bench is rankable — in most leagues that means kickers, defenses and players with no projection, and those are not cut decisions Juke will make for you.</Empty>}
@@ -364,7 +369,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
         {view === 'intel' && (
           <TierGate need={intelGate} title="See what every rival needs">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-              <Sheet code="What your rivals are thin at" aside="season pts" bodyClass="px-4 pb-4 pt-1 sm:px-5">
+              <Sheet code="What your rivals are thin at" aside={unit.short} bodyClass="px-4 pb-4 pt-1 sm:px-5">
                 {rivals.length ? (
                   <ul>
                     {rivals.map((row) => (

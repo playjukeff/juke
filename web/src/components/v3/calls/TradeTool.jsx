@@ -6,9 +6,9 @@ import { tradeWindow, msUntilDeadline } from '../../../lib/tradeDeadline.js'
 import { countdownParts } from '../../../lib/countdown.js'
 import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
-import { leagueGapOf } from '../../../lib/leagueGap.js'
+import { gapUnit, leagueGapOf } from '../../../lib/leagueGap.js'
 import { useTierFresh } from '../../v2/stores.js'
-import { CallButton, Fig, Icon, Label, PosTag, QuietButton, Seg, Sheet, ValueBar, cx } from '../ui.jsx'
+import { CallButton, Fig, Icon, Label, PosTag, QuietButton, Seg, Sheet, ValueBar, cx , HIT , TOUCH } from '../ui.jsx'
 import {
   CallHead, CouldNotRead, Empty, FactCell, GatedLabel, Loading, NoTeam, Note, SampleTag, Signed,
   SituationBand, Step, StepBars, Steps, TierGate, playerHref, sampleBandItems, teamHref,
@@ -110,7 +110,7 @@ function PickRow({ row, on, onToggle }) {
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-v3-ink">{row.player.name}</span>
         <Signed value={row.value} tone={row.value === null ? null : Math.round(row.value) >= 0 ? null : 'quiet'} className="text-[15px]" />
       </button>
-      <a href={playerHref(row.player)} aria-label={`Open ${row.player.name}`} className="grid w-10 shrink-0 place-items-center text-v3-ink3 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call">
+      <a href={playerHref(row.player)} aria-label={`Open ${row.player.name}`} className={cx(TOUCH, 'grid w-10 shrink-0 place-items-center text-v3-ink3 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call')}>
         <Icon name="arrow" className="h-4 w-4" />
       </a>
     </li>
@@ -124,6 +124,11 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
   // Priced under THIS league's scoring and shape, not the Draft Room's.
   const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
+  /* And the words beside every one of those figures. NOT memoised: what
+     the number is changes the day the season starts, and a caption frozen
+     on the render before that would name the wrong horizon for as long as
+     the tab stayed open. */
+  const unit = gapUnit(engine)
   const byId = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,7 +181,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
     : (
       <SituationBand
         lead="The trade"
-        items={[league && league.name, platformName, snapshot && snapshot.week ? `week ${snapshot.week}` : 'preseason', 'season points over replacement']}
+        items={[league && league.name, platformName, snapshot && snapshot.week ? `week ${snapshot.week}` : 'preseason', unit.long]}
       />
     )
   const shell = (title, lede, body, act = action) => (
@@ -222,17 +227,17 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
       : suggestion ? `Ask for ${suggestion.get.player.name}.` : 'Price a trade before you send it.'
   const lede = !empty
     ? swing.priced
-      ? `Season points over replacement: you get ${signedWhole(swing.get)} and send ${signedWhole(swing.give)}, so the swing is ${signedWhole(swing.you)} for you and ${signedWhole(swing.them)} for ${partner ? partner.teamName : 'them'}.`
+      ? `${unit.long[0].toUpperCase()}${unit.long.slice(1)}: you get ${signedWhole(swing.get)} and send ${signedWhole(swing.give)}, so the swing is ${signedWhole(swing.you)} for you and ${signedWhole(swing.them)} for ${partner ? partner.teamName : 'them'}.`
       : 'This deal includes a kicker or a defense. Juke does not rank those two, so it will not put a number on a trade containing one rather than guess at it.'
     : suggestion
-      ? `Your ${suggestion.give.player.name} for ${suggestion.team.teamName}’s ${suggestion.get.player.name}: the market prices them ${suggestion.apart.toFixed(1)} picks apart, the points ${Math.round(suggestion.gain)} season points apart — for you.`
+      ? `Your ${suggestion.give.player.name} for ${suggestion.team.teamName}’s ${suggestion.get.player.name}: the market prices them ${suggestion.apart.toFixed(1)} picks apart, the points ${Math.round(suggestion.gain)} ${unit.word} points apart — for you.`
       : 'Pick a manager and players on both sides; both are priced against replacement before you send anything.'
   // The page's one cobalt action: load the market-even deal. Only while the
   // builder is empty, and never on the sample page, whose action is the way in.
   const pageAction = sample ? action : empty && suggestion ? <CallButton onClick={loadSuggestion}>Price this deal <Icon name="arrow" className="h-4 w-4" /></CallButton> : null
 
   const callSheet = (
-    <Sheet code="The call · Trade" aside={sample ? <SampleTag /> : 'season pts'} aria-live="polite">
+    <Sheet code="The call · Trade" aside={sample ? <SampleTag /> : unit.short} aria-live="polite">
       {!empty ? (
         <div className="grid gap-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -246,7 +251,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
           </div>
           {swing.priced ? (
             <Steps>
-              <Step n={1} what="Price both sides" sub="season points over a replaceable starter, summed">
+              <Step n={1} what="Price both sides" sub={`${unit.word} points over a replaceable starter, summed`}>
                 <StepBars
                   digits={0}
                   max={Math.max(Math.abs(swing.give), Math.abs(swing.get), 1)}
@@ -279,12 +284,12 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
       ) : suggestion ? (
         <div className="grid gap-5">
           <p className="text-[18px] leading-[1.45] text-v3-ink">
-            A deal the market calls even: your <a href={playerHref(suggestion.give.player)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4">{suggestion.give.player.name}</a> for{' '}
-            <a href={playerHref(suggestion.get.player)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4">{suggestion.get.player.name}</a>.
+            A deal the market calls even: your <a href={playerHref(suggestion.give.player)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4')}>{suggestion.give.player.name}</a> for{' '}
+            <a href={playerHref(suggestion.get.player)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4')}>{suggestion.get.player.name}</a>.
           </p>
           <Steps>
             <Step n={1} what="The market prices them the same" sub={`ADP ${suggestion.give.player.adp.toFixed(1)} against ${suggestion.get.player.adp.toFixed(1)}, ${suggestion.apart.toFixed(1)} picks apart`} />
-            <Step n={2} what="The points do not" sub="season points over a replaceable starter">
+            <Step n={2} what="The points do not" sub={`${unit.word} points over a replaceable starter`}>
               <StepBars
                 digits={0}
                 max={Math.max(Math.abs(suggestion.give.value), Math.abs(suggestion.get.value), 1)}
@@ -399,14 +404,14 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
         {view === 'build' && builder}
 
         {view === 'values' && (
-          <Sheet code="Every rostered player, by value" aside="season pts over repl." bodyClass="px-4 pb-4 pt-1 sm:px-5">
+          <Sheet code="Every rostered player, by value" aside={unit.gap} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             <ul>
               {values.map((row, i) => (
                 <li key={row.player.id} className="grid grid-cols-[1.75rem_auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-b border-v3-rule py-2.5 last:border-b-0 sm:grid-cols-[1.75rem_auto_minmax(0,1fr)_7.5rem_4rem]">
                   <Fig className="text-[12px] text-v3-ink3">{String(i + 1).padStart(2, '0')}</Fig>
                   <PosTag pos={row.player.pos} />
                   <span className="min-w-0">
-                    <a href={playerHref(row.player)} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline">{row.player.name}</a>
+                    <a href={playerHref(row.player)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>{row.player.name}</a>
                     {teamHref(row.team) && !sample ? (
                       <a href={teamHref(row.team)} className="block truncate font-figure text-[12px] text-v3-ink3 hover:text-v3-ink hover:underline">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</a>
                     ) : <span className="block truncate font-figure text-[12px] text-v3-ink3">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</span>}
@@ -422,7 +427,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
 
         {view === 'rivals' && (
           <TierGate need={rivalsGate} title="Know what every rival is short of">
-            <Sheet code="What each rival needs" aside="season pts the wire would add" bodyClass="px-4 pb-4 pt-1 sm:px-5">
+            <Sheet code="What each rival needs" aside={`${unit.short} the wire would add`} bodyClass="px-4 pb-4 pt-1 sm:px-5">
               {needs.length ? (
                 <ul>
                   {needs.map((row) => (

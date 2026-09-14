@@ -8,7 +8,7 @@ import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
 import { gameInWeek } from '../../../lib/schedule.js'
 import { matchupRead, teamWeek } from '../../../lib/matchup.js'
-import { Delta, Fig, GoLink, Label, PosTag, Sheet, ValueBar, cx } from '../ui.jsx'
+import { Delta, Fig, GoLink, Label, PosTag, Sheet, ValueBar, cx , HIT } from '../ui.jsx'
 import {
   CallHead, CouldNotRead, Empty, Loading, MarkedBar, NoTeam, Note, PlayerRow, Pts, SampleTag, SituationBand,
   StatusChip, Step, StepBars, Steps, playerHref, sampleBandItems, teamHref,
@@ -170,8 +170,8 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
           {best ? (
             <div className="grid gap-5">
               <p className="text-[18px] leading-[1.45] text-v3-ink">
-                Start <a href={playerHref(best.start)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{best.start.name}</a> over{' '}
-                <a href={playerHref(best.sit)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{best.sit.name}</a> —{' '}
+                Start <a href={playerHref(best.start)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.start.name}</a> over{' '}
+                <a href={playerHref(best.sit)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.sit.name}</a> —{' '}
                 <Delta value={best.gain} digits={1} className="text-[18px]" /> {unit}.
               </p>
               <Steps>
@@ -275,7 +275,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                   <li key={s.sit.id + ':' + s.start.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-b border-v3-rule py-2.5 last:border-b-0">
                     <PosTag pos={s.start.pos} />
                     <span className="min-w-0">
-                      <a href={playerHref(s.start)} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline">Start {s.start.name}</a>
+                      <a href={playerHref(s.start)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>Start {s.start.name}</a>
                       <span className="block truncate font-figure text-[12px] text-v3-ink3">over {s.sit.name}{s.replacing ? ' · that slot scores 0 as set' : ''}</span>
                     </span>
                     <Delta value={s.gain} digits={1} className="text-[15px]" />
