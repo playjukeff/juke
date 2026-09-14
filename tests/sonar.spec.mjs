@@ -148,7 +148,20 @@ for (const [label, opts] of [["a phone", PHONE], ["a desktop", DESKTOP]]) {
       // CTA below the fold, and elementFromPoint only answers about the
       // viewport. Bring it into view first — the question is whether the
       // overlay is in the way, not where the page happens to be scrolled.
-      cta.scrollIntoView({ block: "center" });
+      /* `behavior: "instant"`, because index.css sets `scroll-behavior:
+         smooth` on the root. A smooth scroll is ANIMATED, so the rect read
+         on the next line is the position before it started - the CTA sits
+         below the fold on this page (measured: top 1239 in a 720px
+         viewport), elementFromPoint is asked about a point outside the
+         viewport, and it answers null.
+
+         Which this test then reported as "a click lands on the CTA, not on
+         null" - a covered button on a page where nothing covers anything.
+         The comment above anticipated a null hit and blamed the sticky
+         bottom bar; the real cause is that the scroll had not happened
+         yet. "instant" overrides the stylesheet and is synchronous, so the
+         rect and the hit-test agree. */
+      cta.scrollIntoView({ block: "center", behavior: "instant" });
       const b = cta.getBoundingClientRect();
       const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
       return {

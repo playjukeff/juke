@@ -182,13 +182,27 @@ function NowGuest({ season, post = false }) {
                 only the old one carried" failure data-hero-eyebrow had, on
                 the control instead of the label.
 
-                Only NowGuest carries it, deliberately. NowSeason's own door
-                is ConnectWayIn ("Connect your league"), which is the right
-                primary for a reader mid-season and is NOT a way into a
-                draft - marking it would hand journey.spec a button that can
-                never reach the screen it is walking to. If that flow ever
-                needs to survive an in-season board, the answer is a draft
-                door on NowSeason, not this attribute on a connect button. */}
+                NowSeason carries its own, on StillDrafting's "Set up a
+                mock" - see parts.jsx. Exactly one of the two is ever on the
+                page, because Now() renders one variant or the other.
+
+                CORRECTED IN PLACE: this said only NowGuest needed the
+                marker, "because the committed board carries no NFL_STATE
+                and seasonClock() answers null". That was true when CLAUDE.md
+                recorded it and false by the time it was written here - the
+                14 September data commit landed a real week 1, so
+                seasonClock() answers {week: 1, phase: regular} and the guest
+                homepage is NowSeason. The marker went on a component that
+                does not render, and sonar reported "the hero CTA rendered:
+                false" on a page with a perfectly good door on it. A
+                measurement is true of the board it was taken on; this one
+                was inherited rather than taken.
+
+                What does NOT get the marker is a connect button.
+                ConnectWayIn ("Connect your league") is the right primary for
+                a reader mid-season and is not a way into a draft - and
+                journey.spec clicks this marker and then walks to a FINISHED
+                DRAFT, so only a #/draft door can satisfy it. */}
             <CallButton data-hero-cta href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
             <QuietButton href="#/players">Browse every player</QuietButton>
           </div>
