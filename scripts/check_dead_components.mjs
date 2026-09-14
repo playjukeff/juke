@@ -37,10 +37,15 @@ const ROOT = resolve(process.argv[2] || ".");
 const SRC = join(ROOT, "web/src");
 const ENTRIES = ["web/src/main.jsx", "web/src/entry-server.jsx"];
 
-/* Three roots died and each took its own subtree. Grouping by that rather than
-   listing 28 names flat is what makes a new entry readable: a file arriving
-   under an existing root is a component whose last caller went, and a file
-   arriving on its own is something else entirely. */
+/* Several roots died and each took its own subtree. Grouping by that rather
+   than listing every name flat is what makes a new entry readable: a file
+   arriving under an existing root is a component whose last caller went, and a
+   file arriving on its own is something else entirely.
+
+   Deliberately no count in this sentence. It said "28 names" while the set
+   below held 51, and then 109 — prose restating a number the data already
+   carries, drifting exactly the way this script exists to stop. The run prints
+   the real figure on every invocation; that is the only place it belongs. */
 const DEAD = {
   "the analytics grid Your Insights replaced": [
     "web/src/components/AnalyticsCard.jsx",
@@ -121,6 +126,78 @@ const DEAD = {
     "web/src/components/NewMockPanel.jsx",
     "web/src/components/TeamTab.jsx",
     "web/src/components/shell/RoomHero.jsx",
+  ],
+  /* The two portals main.jsx dropped at the cutover's last step. AppHeader
+     mounted into #appbar-root and DraftRoom into #draftroom-root, and both
+     had stopped drawing anything a reader could reach: #appbar is hidden
+     unconditionally and #draftroom-root is empty on every v3 address. They
+     were kept one pass longer than the screens they belong to precisely
+     BECAUSE being reachable is what stopped this script proving them safe -
+     so the graph could not argue for them, and the cutover declined to
+     change two things at once on a site it was already moving.
+
+     Removing two imports retired 58 files and 19,475 lines, which is the
+     clearest demonstration this file has of its own premise: a component
+     dies when its last caller does, and nobody can track that by hand. */
+  "the two portals main.jsx dropped after the cutover": [
+    "web/src/components/ActivityLog.jsx",
+    "web/src/components/AnalysisTab.jsx",
+    "web/src/components/AppHeader.jsx",
+    "web/src/components/BottomSheet.jsx",
+    "web/src/components/ChatPanel.jsx",
+    "web/src/components/DraftBoardGrid.jsx",
+    "web/src/components/DraftCockpitHeader.jsx",
+    "web/src/components/DraftDecideScreen.jsx",
+    "web/src/components/DraftEntryScreen.jsx",
+    "web/src/components/DraftInsightsDashboard.jsx",
+    "web/src/components/DraftLobby.jsx",
+    "web/src/components/DraftLocker.jsx",
+    "web/src/components/DraftLogDock.jsx",
+    "web/src/components/DraftMenuOverlay.jsx",
+    "web/src/components/DraftRoom.jsx",
+    "web/src/components/DraftRoomEntry.jsx",
+    "web/src/components/DraftRoomLoader.jsx",
+    "web/src/components/DraftSettingsModal.jsx",
+    "web/src/components/DraftWithFriendsModal.jsx",
+    "web/src/components/EarlyAccessModal.jsx",
+    "web/src/components/InProgressBand.jsx",
+    "web/src/components/JukeValueAssistant.jsx",
+    "web/src/components/LockerTable.jsx",
+    "web/src/components/MobileAppTabBar.jsx",
+    "web/src/components/MobileDraftTabBar.jsx",
+    "web/src/components/PickClockBand.jsx",
+    "web/src/components/PickQueueRail.jsx",
+    "web/src/components/PickTicker.jsx",
+    "web/src/components/PicksRail.jsx",
+    "web/src/components/PlayerProfileModal.jsx",
+    "web/src/components/PlayerQueueSidebar.jsx",
+    "web/src/components/PlayersTab.jsx",
+    "web/src/components/PracticeScenarios.jsx",
+    "web/src/components/QueueList.jsx",
+    "web/src/components/RoomPanel.jsx",
+    "web/src/components/ShareBar.jsx",
+    "web/src/components/SonarLoader.jsx",
+    "web/src/components/chatHelpers.js",
+    "web/src/components/insights/InsightsSidebar.jsx",
+    "web/src/components/insights/ViewField.jsx",
+    "web/src/components/insights/ViewLeftOnBoard.jsx",
+    "web/src/components/insights/ViewLeverage.jsx",
+    "web/src/components/insights/ViewTrust.jsx",
+    "web/src/components/insights/YourInsights.jsx",
+    "web/src/components/insights/tokens.js",
+    "web/src/components/phone/ChatTabPhone.jsx",
+    "web/src/components/phone/CockpitHeaderPhone.jsx",
+    "web/src/components/phone/DraftBoardPeekPhone.jsx",
+    "web/src/components/phone/DraftRoomPhone.jsx",
+    "web/src/components/phone/PlayerProfilePhone.jsx",
+    "web/src/components/phone/PlayersTabPhone.jsx",
+    "web/src/components/phone/QueueTabPhone.jsx",
+    "web/src/components/phone/TeamTabPhone.jsx",
+    "web/src/components/phone/playerColumnsPhone.js",
+    "web/src/components/settings/DraftOrder.jsx",
+    "web/src/components/settings/NotificationSettings.jsx",
+    "web/src/components/settings/ScoringRules.jsx",
+    "web/src/components/settings/SettingsControls.jsx",
   ],
 };
 

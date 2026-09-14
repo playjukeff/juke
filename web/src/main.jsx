@@ -1,15 +1,43 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createPortal } from 'react-dom'
 import { ClerkProvider } from '@clerk/clerk-react'
 import App from './App.jsx'
-import AppHeader from './components/AppHeader.jsx'
-import DraftRoom from './components/DraftRoom.jsx'
 import AuthBridge from './components/AuthBridge.jsx'
 import { CLERK_PUBLISHABLE_KEY, CLERK_APPEARANCE } from './clerkConfig.js'
 import './index.css'
 
-// #root, #appbar-root and #draftroom-root are three separate DOM nodes,
+/* ---- The two portals are gone, and the subtree behind them with it ----
+ *
+ * Retired at the cutover's last step. AppHeader mounted into #appbar-root
+ * and DraftRoom into #draftroom-root, and by the end both rendered nothing
+ * a reader could ever see: #appbar is `hidden` unconditionally
+ * (app.js's `const onLegacyDraft = false`), and #draftroom-root measures
+ * zero bytes on every address v3 answers to. Two large retired trees,
+ * parsed and mounted on every single load, to draw nothing.
+ *
+ * They were kept deliberately for one pass rather than removed with the
+ * screens they belong to: being *reachable* is what stopped
+ * check_dead_components.mjs proving them safe, so the graph could not
+ * argue for their removal and the cutover would have been changing two
+ * things at once on a site that was being moved. That pass is over and
+ * this is the deferred half of it.
+ *
+ * The two container divs STAY in index.html. They are empty either way,
+ * index.css still gives them their layout, and seventeen spec files scope
+ * assertions to #draftroom-root — several of which assert it is empty,
+ * which is a real v3 property and not something to delete.
+ *
+ * What removing the imports actually buys is the transitive set behind
+ * them: DraftRoom pulls RoomPage, which pulls the five room bodies,
+ * myleague/*, the decision primitives (Bar/BarRow included) and the
+ * ledger. Nothing under web/src/components/v3 imports any of it — checked
+ * rather than assumed, and tests/bar-rows.spec.mjs had been reporting
+ * exactly that, honestly, through its own control assertion ("the sweep
+ * found bar rows to check", seen = 0) rather than passing empty.
+ *
+ * ---- The ClerkProvider lesson, which outlives the portals ----
+ *
+ * #root, #appbar-root and #draftroom-root are three separate DOM nodes,
 // which used to mean three separate ReactDOM.createRoot() calls, each
 // wrapped in its own <ClerkProvider> so AccountButtons (SiteNav.jsx, which
 // renders inside all three) had Clerk context wherever it landed. That
@@ -32,18 +60,15 @@ import './index.css'
 // otherwise one ordinary React application, one StrictMode boundary
 // included) while still rendering into the same three places in the page
 // app.js already expects and touches unconditionally.
-const appbarRoot = document.getElementById('appbar-root')
-const draftRoomRoot = document.getElementById('draftroom-root')
-
-/* The portals mount a tick after hydration rather than during it, and that
-   delay is the whole point.
+/* ---- Why the portals mounted a tick late, kept because the trap is not
+       about the portals ----
 
    React hydrates a portal's children against whatever is ALREADY in the
    container createPortal() names — it does not treat a portal as a fresh
    mount just because its container sits outside the hydrating root.
    scripts/prerender.mjs only ever fills #root (entry-server.jsx exports
-   App and nothing else), so #appbar-root and #draftroom-root are empty in
-   the served HTML while the client tree renders AppHeader and DraftRoom
+   App and nothing else), so #appbar-root and #draftroom-root were empty in
+   the served HTML while the client tree rendered AppHeader and DraftRoom
    into them. React looked for that markup, found none, and failed:
 
      Warning: Expected server HTML to contain a matching <div> in <div>.
@@ -62,28 +87,17 @@ const draftRoomRoot = document.getElementById('draftroom-root')
    nothing visible, which is exactly why it survived: the page still looked
    right, just built the slow way.
 
-   Rendering null on the first pass makes the client's hydration render
-   match the server's markup exactly — no portals on either side — and the
-   effect then mounts them normally, as a plain client render into empty
-   containers, which is what they always were. The alternative is to teach
-   the prerender to fill all three containers, which is a much larger
-   change to entry-server.jsx and buys nothing: neither of these two
-   components has anything to show before window.JukeEngine exists.
+   Deferring the mount to an effect is what fixed it: the hydration render
+   then matched the server exactly — no portals on either side.
 
-   This has to stay inside the one tree rather than becoming its own
-   createRoot() call — see the ClerkProvider note above. */
-function DeferredPortals() {
-  const [mounted, setMounted] = React.useState(false)
-  React.useEffect(() => setMounted(true), [])
-  if (!mounted) return null
-
-  return (
-    <>
-      {appbarRoot && createPortal(<AppHeader />, appbarRoot)}
-      {draftRoomRoot && createPortal(<DraftRoom />, draftRoomRoot)}
-    </>
-  )
-}
+   With both portals gone that mismatch is gone by construction rather than
+   by a guard, so DeferredPortals is deleted rather than left empty. The
+   rule it was written for is the thing to keep, and it applies to ANY
+   future portal out of this tree: whether a portal's content is hydrated
+   or freshly mounted is a separate question from which container its nodes
+   land in, and only the second is obvious from reading createPortal(). A
+   new portal added here needs the same one-tick deferral, or the same
+   prerender work, or it silently costs the whole root's hydration again. */
 
 // Only wraps when a key exists. entry-server.jsx's Node prerender pass
 // never has one (there's no window there, which Clerk's frontend JS
@@ -100,13 +114,9 @@ const tree = (
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} appearance={CLERK_APPEARANCE}>
         <AuthBridge />
         <App />
-        <DeferredPortals />
       </ClerkProvider>
     ) : (
-      <>
-        <App />
-        <DeferredPortals />
-      </>
+      <App />
     )}
   </React.StrictMode>
 )
