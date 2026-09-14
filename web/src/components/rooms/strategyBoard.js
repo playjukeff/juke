@@ -123,14 +123,28 @@ export function platformScorer(base, projections, week) {
  * (platformScorer), then Juke's weekly block for this week under the
  * league's own rules (weekProjectionUnder), then the season average under
  * those rules (projPerGameUnder) -- with a player on bye zeroed beneath the
- * league's number, never above it. */
+ * league's number, never above it.
+ *
+ * In season the last of those is Juke's REST-OF-SEASON rate instead
+ * (rosPerGameUnder, app.js section 10a2): the preseason projection spread
+ * over seventeen games, shrunk toward what he has actually done. Only the
+ * fallback moves -- the platform's own number and the weekly block still
+ * come first -- and it is asked per call, so a page held open across the
+ * nightly that starts the season moves with it. */
 export function leagueWeekPts(engine, snapshot) {
   if (!engine) return null
   const rules = snapshot && snapshot.rules ? snapshot.rules : null
   const week = snapshot ? snapshot.week : null
-  const average = rules && engine.projPerGameUnder
+  const seasonAverage = rules && engine.projPerGameUnder
     ? (player) => engine.projPerGameUnder(player, rules)
     : engine.projPerGame
+  const average = engine.rosLive && engine.rosPerGameUnder
+    ? (player) => {
+        if (!engine.rosLive()) return seasonAverage(player)
+        const ros = engine.rosPerGameUnder(player, rules)
+        return ros === null || ros === undefined ? seasonAverage(player) : ros
+      }
+    : seasonAverage
   const forWeek = (player) => {
     if (!engine.weekProjectionUnder) return average(player)
     const own = engine.weekProjectionUnder(player, rules, week)

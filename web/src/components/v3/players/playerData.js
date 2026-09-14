@@ -40,7 +40,48 @@ export function boardKey(engine) {
     i += 1
   }
   const starters = JSON.stringify(league.starters || {})
-  return `${board.length}|${league.scoring}|${league.teams}|${starters}|${league.flex}|${league.superflex}|${rules.toFixed(4)}`
+  // The season clock too: a board read before and after the season starts
+  // is the same board and a different page.
+  const c = engine.seasonClock ? engine.seasonClock() : null
+  const clock = c ? `${c.season}:${c.week}:${c.phase}:${c.started ? 1 : 0}` : '-'
+  return `${board.length}|${league.scoring}|${league.teams}|${starters}|${league.flex}|${league.superflex}|${rules.toFixed(4)}|${clock}`
+}
+
+/* ---- The season in progress (app.js section 10a2) ----
+
+   Which of the three orders the list can take. In a regular season that has
+   kicked off: rest of season (the default, and what every recommendation
+   prices on), season so far, and preseason. In the postseason there is no
+   rest of season to rank, so the facts lead. Otherwise: the preseason list,
+   exactly as it was, with no control at all. */
+export function seasonModes(engine) {
+  const c = engine && engine.seasonClock ? engine.seasonClock() : null
+  if (c && c.phase === 'regular' && c.started && engine.rosLive && engine.rosLive()) {
+    return { clock: c, modes: ['ros', 'season', 'pre'], initial: 'ros' }
+  }
+  return { clock: c, modes: ['pre'], initial: 'pre' }
+}
+
+/* A non-breaking space in the middle one on purpose: at 390px the three
+   sit in one segmented control and the label has to wrap, and "SEASON SO /
+   FAR" is a worse break than "SEASON / SO FAR". It is one line everywhere
+   there is room, so nothing else sees it. */
+export const MODE_LABEL = { ros: 'Rest of season', season: 'Season so far', pre: 'Preseason' }
+
+/* Every player's season, under one scoring format: rest of season with its
+   rank change, and season to date. Null out of season. */
+export function readSeason(engine, format) {
+  if (!engine || !engine.rosBoard || !engine.rulesForFormat) return null
+  const b = engine.rosBoard({ rules: engine.rulesForFormat(format) })
+  if (!b) return null
+  return b
+}
+
+/* The weight the model puts on this season, as the sentence the page uses:
+   "3 games in: 23% on this season". */
+export function weightNote(games, weight) {
+  if (!(games > 0)) return 'No games yet: all of it is the preseason projection'
+  return `${games} game${games === 1 ? '' : 's'} in: ${Math.round(weight * 100)}% on this season`
 }
 
 export function liveFormat(engine) {
@@ -105,6 +146,7 @@ export function readIndex(engine, format) {
   const board = engine.board()
   if (!board || !board.length || !engine.vorpUnder) return null
   const table = engine.vorpUnder(format) || {}
+  const season = readSeason(engine, format)
   const rules = engine.rulesForFormat ? engine.rulesForFormat(format) : null
   const live = liveFormat(engine)
 
@@ -116,6 +158,7 @@ export function readIndex(engine, format) {
       pts = engine.pointsUnder(stat.p, rules)
     }
     const juke = engine.overallScore ? engine.overallScore(p) : null
+    const ros = season ? season.rows[p.id] || null : null
     return {
       id: String(p.id),
       name: p.name,
@@ -136,6 +179,17 @@ export function readIndex(engine, format) {
       photo: engine.photoUrl ? engine.photoUrl(p) : '',
       initials: engine.initials ? engine.initials(p.name) : '',
       _live: format === live ? p.projPosRank || null : undefined,
+      // The season: every field null out of season, and a dash on screen.
+      rosRank: ros ? ros.rank : null,
+      rosDelta: ros ? ros.delta : null,
+      rosPts: ros ? ros.pts : null,
+      rosRate: ros ? ros.rate : null,
+      rosGap: ros ? ros.gap : null,
+      rosLeft: ros ? ros.left : null,
+      rosWeight: ros ? ros.weight : null,
+      seasonPts: ros ? ros.seasonPts : null,
+      games: ros ? ros.games : null,
+      ppg: ros ? ros.ppg : null,
     }
   })
 
@@ -154,7 +208,15 @@ export function readIndex(engine, format) {
   for (const r of rows) delete r._live
 
   const teams = [...new Set(rows.map((r) => r.team).filter(Boolean))].sort()
-  return { rows, teams, live, format, size: rows.length }
+  return {
+    rows, teams, live, format, size: rows.length,
+    season: season
+      ? {
+          season: season.season, week: season.week, weeksComplete: season.weeksComplete,
+          sinceWeek: season.sinceWeek, lastWeek: season.lastWeek, k: season.k,
+        }
+      : null,
+  }
 }
 
 /* Severity order for the status column's sort: a player ruled out is the
@@ -170,6 +232,24 @@ export const SORTS = {
   bye: { label: 'Bye', dir: 'asc', read: (r) => r.bye },
   inj: { label: 'Status', dir: 'asc', read: (r) => (r.inj ? INJ_ORDER[r.inj] || 8 : null) },
   name: { label: 'Name', dir: 'asc', read: (r) => r.name },
+  // The season's orders. A player the season has not priced (a kicker has
+  // no rank, a man with no projection has no rest of season) sorts last,
+  // like any other blank.
+  rosRank: { label: 'ROS rank', dir: 'asc', read: (r) => r.rosRank },
+  rosPts: { label: 'ROS pts', dir: 'desc', read: (r) => r.rosPts },
+  rosRate: { label: 'Per game', dir: 'desc', read: (r) => r.rosRate },
+  rosGap: { label: 'Over repl.', dir: 'desc', read: (r) => r.rosGap },
+  delta: { label: 'Moved', dir: 'desc', read: (r) => r.rosDelta },
+  seasonPts: { label: 'Season pts', dir: 'desc', read: (r) => (r.games ? r.seasonPts : null) },
+  ppg: { label: 'Per game', dir: 'desc', read: (r) => r.ppg },
+  games: { label: 'Games', dir: 'desc', read: (r) => r.games },
+}
+
+/* The order each mode opens on. */
+export const MODE_SORT = {
+  ros: { key: 'rosRank', dir: 'asc' },
+  season: { key: 'seasonPts', dir: 'desc' },
+  pre: { key: 'adp', dir: 'asc' },
 }
 
 /* Sorts a COPY — `board` is never sorted in place (CLAUDE.md: its order is
@@ -258,6 +338,7 @@ export function readPlayer(engine, id) {
   return {
     player,
     stat,
+    season: readPlayerSeason(engine, player),
     bio: bioFacts(player, stat),
     readout: engine.jukeReadout ? engine.jukeReadout(player) : null,
     summary: engine.projectionSummary ? engine.projectionSummary(player) : null,
@@ -272,6 +353,51 @@ export function readPlayer(engine, id) {
     seasons,
     live: liveFormat(engine),
     scoring: scoringName(engine, engine.league().scoring),
+  }
+}
+
+/* One player's season beside his preseason, under the scoring the mock is
+   set to (the page's own scoring everywhere else). Null out of season.
+
+   The preseason rank is his place by preseason points over replacement --
+   the same quantity, on the same board, that the rest-of-season rank is
+   measured in, so the two can be read against each other. Kickers and
+   defenses have neither, for UNRANKED_POSITIONS' reason. */
+export function readPlayerSeason(engine, player) {
+  if (!engine || !engine.rosBoard || !player) return null
+  const b = engine.rosBoard({})
+  if (!b) return null
+  const ros = b.rows[player.id]
+  if (!ros) return null
+  const board = engine.board()
+  const gap = engine.replacementGap ? engine.replacementGap(player) : null
+  let preRank = null
+  if (gap !== null && gap !== undefined) {
+    preRank = 1
+    for (const q of board) {
+      if (q.id === player.id) continue
+      const g = engine.replacementGap(q)
+      if (g !== null && g !== undefined && g > gap) preRank += 1
+    }
+  }
+  const s = engine.statOf ? engine.statOf(player) : null
+  const games = s && s.p && s.p.gp > 0 ? s.p.gp - 1 : null
+  return {
+    season: b.season,
+    week: b.week,
+    weeksComplete: b.weeksComplete,
+    sinceWeek: b.sinceWeek,
+    lastWeek: b.lastWeek,
+    k: b.k ? b.k[player.pos] : null,
+    ros,
+    pre: {
+      pts: player.projPts === undefined ? null : player.projPts,
+      perGame: ros.prior,
+      games: player.pos === 'DST' ? null : games,
+      gap: gap === undefined ? null : gap,
+      rank: preRank,
+      posRank: UNRANKED.includes(player.pos) ? null : player.projPosRank || null,
+    },
   }
 }
 

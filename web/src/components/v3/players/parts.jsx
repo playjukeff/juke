@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Label, cx } from '../ui.jsx'
+import { Label, TOUCH, cx } from '../ui.jsx'
 import { injuryWord } from './playerData.js'
 
 /* Parts the Players place needs that ui.jsx does not carry. Presentation
@@ -92,7 +92,8 @@ export function ViewTabs({ current }) {
             href={it.href}
             aria-current={on ? 'page' : undefined}
             className={cx(
-              'inline-flex min-h-[38px] items-center rounded-[4px] px-4 text-[14px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+              TOUCH,
+              'inline-flex min-h-[38px] items-center justify-center rounded-[4px] px-4 text-[14px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
               on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
             )}
           >

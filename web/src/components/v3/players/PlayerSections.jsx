@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { knownAbout } from '../../rooms/prospectBoard.js'
-import { Delta, Fig, GoLink, Label, PosTag, Seg, Sheet, ValueBar, cx, ordinal } from '../ui.jsx'
-import { FORMATS, FORMAT_LABEL, findByName, posWord } from './playerData.js'
+import { Delta, Fig, GoLink, HIT, Label, PosTag, Seg, Sheet, ValueBar, cx, ordinal } from '../ui.jsx'
+import { FORMATS, FORMAT_LABEL, UNRANKED, findByName, posWord, weightNote } from './playerData.js'
 import { Meter } from './parts.jsx'
 
 /* The player page's sections, one per thing production's sheet could show
@@ -39,6 +39,118 @@ function TableBox({ children, caption, minWidth }) {
 
 function Note({ children, className = '' }) {
   return <p className={cx('text-[13px] leading-[1.55] text-v3-ink3', className)}>{children}</p>
+}
+
+/* ---- The season in progress ----
+
+   Absent out of season: readPlayerSeason() answers null, and a permanently
+   empty "this season" panel between August and September is worse than no
+   panel (the rule the news tab already follows).
+
+   Two readings side by side and never one blended number, which is app.js
+   section 10a2's whole argument:
+
+     SEASON SO FAR   what he has actually scored, and per game PLAYED. Fact.
+     REST OF SEASON  Juke's forward view: a rate that shrinks what he has
+                     done toward what he was projected to do, times the
+                     games he has left.
+
+   The preseason figures sit under both, in the same units, so a reader can
+   see which way the season has moved him rather than being told. */
+
+function Cellule({ label, sub, children, tone = 'ink' }) {
+  return (
+    <div className="min-w-0 rounded-[6px] bg-v3-paper p-3">
+      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dd className={cx('mt-1 text-[22px] font-bold leading-none', tone === 'dim' ? 'text-v3-ink3' : 'text-v3-ink')}>{children}</dd>
+      {sub && <dd className="mt-1 text-[12px] leading-[1.35] text-v3-ink3">{sub}</dd>}
+    </div>
+  )
+}
+
+const one = (v) => (v === null || v === undefined ? '—' : Number(v).toFixed(1))
+const whole = (v) => (v === null || v === undefined ? '—' : Math.round(v))
+
+export function SeasonSheet({ d }) {
+  const s = d.season
+  if (!s) return null
+  const p = d.player
+  const { ros, pre } = s
+  const unranked = UNRANKED.includes(p.pos)
+  // The "before" table holds this season's latest games back, through week
+  // sinceWeek — so it is since the END of that week, which is not the same
+  // sentence as "since week 3" and is the one that is true.
+  const since = s.sinceWeek > 0 ? `the end of week ${s.sinceWeek}` : 'the preseason'
+  const played = ros.games > 0
+
+  return (
+    <Sheet code={`This season · ${s.season}`} aside={`Week ${s.week} · ${d.scoring}`} aria-label="This season">
+      <div className="grid gap-5">
+        <div>
+          <Label>Season so far</Label>
+          <dl className="mt-2 grid grid-cols-3 gap-3">
+            <Cellule label="Games" sub="that he has played">{ros.games}</Cellule>
+            {/* No games is not nought points: a man who has not been on a
+                field has no season to date, and a 0 there would be a
+                judgement about one he has not had. */}
+            <Cellule label="Points" sub={played ? 'actually scored' : 'nothing yet'} tone={played ? 'ink' : 'dim'}>{played ? one(ros.seasonPts) : '—'}</Cellule>
+            <Cellule label="Per game" sub="per game played" tone={played ? 'ink' : 'dim'}>{one(ros.ppg)}</Cellule>
+          </dl>
+        </div>
+
+        <div>
+          <Label>Rest of season — what Juke expects</Label>
+          <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Cellule label="Per game" sub={`preseason ${one(pre.perGame)}`}>{one(ros.rate)}</Cellule>
+            <Cellule label="Games left" sub={`through week ${s.lastWeek}`}>{ros.left}</Cellule>
+            <Cellule label="Points left" sub="rate × games left">{whole(ros.pts)}</Cellule>
+            <Cellule
+              label="ROS rank"
+              tone={ros.rank === null ? 'dim' : 'ink'}
+              sub={ros.rank === null ? 'never ranked' : pre.rank ? `preseason #${pre.rank}` : null}
+            >
+              {ros.rank === null ? '—' : `#${ros.rank}`}
+            </Cellule>
+          </dl>
+        </div>
+
+        {/* Places moved, and by how many points — the same pair the index's
+            own "Moved" column draws, and the one thing a reader opens this
+            panel for once a week has been played.
+
+            Two cells rather than three, with where he came FROM inside the
+            one about moving: a phone lays three out two-up and orphans the
+            last, and "from #2" is a qualifier of the delta rather than a
+            figure of its own. */}
+        {ros.rank !== null && ros.rankBefore !== null && (
+          <dl className="grid grid-cols-2 gap-3">
+            <Cellule label="Moved" sub={`place${Math.abs(ros.delta) === 1 ? '' : 's'}, from #${ros.rankBefore} at ${since}`}><Delta value={ros.delta} className="text-[22px]" /></Cellule>
+            <Cellule label="Over replacement" sub="rest of season">{ros.gap === null ? '—' : <Delta value={ros.gap} className="text-[22px]" />}</Cellule>
+          </dl>
+        )}
+
+        <Note>
+          {unranked ? (
+            <>
+              Juke does not rank {p.pos === 'DST' ? 'defenses' : 'kickers'} against each other — three seasons of archived forecasts found their
+              projected order no better than chance — so there is no rest-of-season rank here either. A forward order is a forecast too.
+              His points are real and are scored like anybody&apos;s: a lineup with {p.pos === 'DST' ? 'a defense' : 'a kicker'} in it needs them.
+            </>
+          ) : (
+            <>
+              <strong className="font-semibold text-v3-ink2">{weightNote(ros.games, ros.weight)}.</strong> The rest-of-season rate is what he was projected
+              to average pulled that far toward what he has actually averaged — a weight fitted on three seasons of Sleeper&apos;s own archived
+              preseason projections against what happened, never chosen (app.js section 10a2). One week is mostly noise; it should move him a
+              little rather than a long way.
+            </>
+          )}{' '}
+          It prices games he plays, not the chance he misses one: his bye and any designation known to cost him weeks are already out of
+          &ldquo;games left&rdquo;, and nothing else is guessed at. Every recommendation Juke makes in season — the wire, a trade, a lineup —
+          is priced on this number rather than on the preseason projection above.
+        </Note>
+      </div>
+    </Sheet>
+  )
 }
 
 /* ---- The Juke score, with its arithmetic ---- */
@@ -484,7 +596,7 @@ export function DepthSheet({ engine, d }) {
                       <span className={cx('text-center font-figure text-[12px]', x.isSelf ? 'text-v3-bandInk' : 'text-v3-ink3')}>{x.order || '–'}</span>
                       <PosTag pos={x.pos} />
                       {other ? (
-                        <a href={`#/v3/players/${encodeURIComponent(other.id)}`} className="truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{x.name}</a>
+                        <a href={`#/v3/players/${encodeURIComponent(other.id)}`} className={cx(HIT, 'truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>{x.name}</a>
                       ) : (
                         <span className={cx('truncate text-[14px] font-semibold', x.isSelf ? 'text-white' : 'text-v3-ink')}>{x.name}</span>
                       )}

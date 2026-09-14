@@ -3,7 +3,8 @@ import { CallButton, Delta, Fig, Headline, Icon, Label, PageHead, PosTag, QuietB
 import { injuryWord, posWord, readPlayer } from './playerData.js'
 import { DeepTag, FigCell, InjuryTag, PlayerFace, RookieTag } from './parts.jsx'
 import {
-  DepthSheet, FitSheet, JukeSheet, LogsSheet, NewsSheet, ProjectionSheet, ProspectSheet, RecordSheet, SeasonsSheet, UsageSheet,
+  DepthSheet, FitSheet, JukeSheet, LogsSheet, NewsSheet, ProjectionSheet, ProspectSheet, RecordSheet, SeasonSheet,
+  SeasonsSheet, UsageSheet,
 } from './PlayerSections.jsx'
 import { useBoardKey, useHeaderTick } from './useBoardKey.js'
 import { CountUp } from '../motion.jsx'
@@ -52,6 +53,13 @@ function Header({ d, fit, engine }) {
   const rookie = d.stat && d.stat.exp === 0
   const queued = fit && engine.queued ? engine.queued(p) : false
   const watched = fit && engine.watchlisted ? engine.watchlisted(p) : false
+  /* These three are the PRESEASON projection in every phase — the board he
+     was drafted off, which does not move once games are played. Out of
+     season that goes without saying; in season it does not, and a figure
+     whose caption stops being true the week the season starts is this
+     project's own right-value-wrong-column bug with a date on it. The
+     season's own numbers are in the panel below. */
+  const pre = (sub) => (d.season ? (sub ? `preseason · ${sub}` : 'preseason') : sub)
 
   return (
     <header className="grid gap-6">
@@ -78,9 +86,9 @@ function Header({ d, fit, engine }) {
           {/* The three figures Juke adds tick up to themselves when the page is
               arrived at. A dash (a kicker's withheld score, a missing
               projection) is drawn as a dash and never counts. */}
-          <FigCell label="Proj pts" sub={d.scoring}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
-          <FigCell label="Over repl." sub={r.unranked ? 'not rated' : r.replacementRank ? `vs ${r.replacementRank}` : null}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
-          <FigCell label="Juke score" sub={r.unranked ? 'not rated' : r.label || null}>
+          <FigCell label="Proj pts" sub={pre(d.scoring)}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
+          <FigCell label="Over repl." sub={r.unranked ? 'not rated' : pre(r.replacementRank ? `vs ${r.replacementRank}` : null)}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
+          <FigCell label="Juke score" sub={r.unranked ? 'not rated' : pre(r.label || null)}>
             <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}><CountUp value={typeof r.score === 'number' ? r.score : null} /></span>
           </FigCell>
         </dl>
@@ -138,6 +146,11 @@ export default function V3Player({ playerId }) {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-8">
         <div className="grid min-w-0 gap-6">
+          {/* In season this leads, above the Juke score: what has happened
+              and what is left is the question somebody opens a player for
+              in October, and the preseason arithmetic below it is the
+              reference rather than the answer. Absent out of season. */}
+          <SeasonSheet d={d} />
           <JukeSheet d={d} />
           <ProjectionSheet d={d} />
           <UsageSheet usage={d.usage} />
@@ -152,6 +165,7 @@ export default function V3Player({ playerId }) {
           <NewsSheet engine={engine} player={d.player} />
           <p className="text-[13px] leading-[1.55] text-v3-ink3">
             Every figure here is Juke&apos;s own engine reading tonight&apos;s board of <Fig>{d.readout ? d.readout.boardSize : ''}</Fig> players under {d.scoring}, the scoring your mock is set to — the projection above also shows him under the other two stock tables.
+            {d.season ? ' The projection, the Juke score and the arithmetic behind them are the preseason board, unchanged; “This season” at the top is the only thing on this page that moves when a game is played.' : ''}
           </p>
         </div>
       </div>

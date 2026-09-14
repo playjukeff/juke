@@ -141,6 +141,8 @@ the Stack section above, not a one-time migration hiccup.
 | `scripts/test_engine.py` | Runs `draft-engine.js` and `room.js` in node/deno/bun and asserts the rules from outside a browser. |
 | `scripts/test_history_ownership.py` | The locker write, scoped to the account that owns the row. Reads the real upsert out of `store.js` and drives it against sqlite3 — a client-minted `draft_history.id` is a claim about which row and never about whose. |
 | `scripts/test_crosswalk.py` | The source-id join, without the network. A bad join does not look like a failure, which is why it is not left to a pipeline run. |
+| `scripts/test_inseason.py` | The season being played, as the pipeline stores it: a week nobody has played is absent rather than a column of zeros, the live season reaches the whole pool, and out of season nothing changes. Imports `build_players` directly; no network. |
+| `scripts/test_ros.mjs` | Its other half — app.js section 10a2, lifted out by brace walk and run as shipped against a world small enough to work out by hand: the season clock's contract, the fitted shrinkage, games left, replacement re-derived on rest-of-season points, K and DST scored and never ranked, and `playerMovers()`'s exact shape. |
 | `scripts/smoke-pages.mjs` | The site's post-deploy check, run by `.github/workflows/verify-pages.yml` once Cloudflare's own check run says the commit is promoted. Every URL it asks for is read off the served HTML rather than listed here, and every request carries a `?cb=`. Dependency-free, like every other Node check in CI. |
 | `scripts/wait-for-pages.mjs` | The settle step between that check and that smoke. Cloudflare's check means the BUILD finished, not that the apex serves it — so this waits for the origin's HTML to name assets the origin also serves, twice, spaced, on the same build. A settle and never a retry, for `wait-for-worker.mjs`'s reason. |
 | `tests/insights.spec.mjs` | Your Insights, against fourteen mocks the CPU really drafted rather than a fixture — a synthetic history would test the renderer and nothing about the audit, which is where every defect in this feature has been. Includes the one assertion that is not about rendering: no kicker or defense is ever named as value you left on the board, and your own kicker is still priced. |
@@ -10825,6 +10827,339 @@ behind Clerk's `<SignedIn>` and a keyless build renders none of them — the
 same gap `league-connect.spec.mjs` and `rail-nav.spec.mjs` already record.
 What is verified is the translation (offline suite), the live read of a real
 league, and the build.
+
+## Rankings that move once games are played
+
+The owner, 11 September 2026: *"The Players tab (and anything player-related)
+should become dynamic once the season starts. If Jahmyr Gibbs is the consensus
+#1 before week 1, has a poor week 1, and Bijan Robinson or Ja'Marr Chase have
+outstanding weeks, that should move them up the rankings. Those changes should
+also feed the recommendations Juke makes for Waivers, Strategy, Trade, etc."*
+
+**Every ranking in this app ran on `projPts`, and `projPts` is the PRESEASON
+forecast all year.** Sleeper's season projection endpoint takes a year and
+does not update in season — checked 11 September 2026 against its own 2025
+file, where James Conner, Austin Ekeler, Tyreek Hill, Malik Nabers and Anthony
+Richardson all still carry `gp` 18 for a season they played two to four games
+of. So the board, `replacementGap()`, the Juke score, the tiers and every
+room's `gapOf` would have said in week nine exactly what they said in August.
+That is right for a draft and wrong for a waiver claim.
+
+### Two rankings, and they are never blended into one number
+
+- **Season so far** — points actually scored this season under whatever rules
+  the caller hands in, and points per game **played**. A fact. A monster week
+  moves it at once, and a week he missed is not a nought.
+- **Rest of season** — Juke's forward view. A per-game rate that shrinks what
+  he has done toward what he was projected to do, times the games he has left.
+  Every recommendation prices on this.
+
+Keeping them apart is the whole design. They answer different questions and
+they disagree constantly: on the four-week fixture below, "season so far"
+opens with six quarterbacks because raw points are raw points, and "rest of
+season" opens with backs because a quarterback's replacement is high. One
+number that averaged the two would be the right value in a column nobody
+asked for.
+
+### k is fitted, and this is what it was fitted on
+
+Backtested on Sleeper's own 2023, 2024 and 2025 weekly stats against its own
+archived preseason projections, for the players whose PRESEASON projection put
+them in the top 36 QB / 72 RB / 96 WR / 36 TE / 24 K / 24 DST — a population
+fixed before a snap, so everyone who washed out is still in it. For N = 1..8
+weeks, predict points per game **played** over weeks N+1..17 (a DNP is not a
+zero). One k for QB/RB/WR/TE, one each for K and DST, fitted on the training
+season and scored on the held-out one. Half PPR, MAE in points per game:
+
+```
+                  2024 -> 2025               2025 -> 2024
+              prior  observed  blend     prior  observed  blend
+    N=1  QB    3.02    9.18    2.96       3.28    6.50    3.18
+         RB    3.05    4.59    3.05       2.66    4.70    2.50
+         WR    2.19    5.00    2.19       2.03    4.86    2.05
+         TE    2.22    3.03    2.10       1.96    4.55    2.00
+    N=4  QB    3.59    5.55    3.50       4.17    5.80    4.31
+         RB    3.35    2.91    3.08       2.84    3.45    2.62
+         WR    2.30    3.17    2.16       2.27    3.10    2.20
+         TE    2.47    2.95    2.23       2.40    3.40    2.55
+    N=8  QB    4.26    5.79    4.28       5.48    5.43    5.17
+         RB    3.47    3.09    3.07       3.13    3.00    2.75
+         WR    2.78    3.04    2.67       2.57    2.83    2.44
+         TE    2.50    2.50    2.23       2.74    2.67    2.53
+```
+
+**Observed alone is worse than the preseason projection until about week four
+and never better than the blend.** The blend wins or ties overall in both
+directions; it loses narrowly for QB in 2024 (4.33 against 4.32) and TE in
+2024 (2.43 against 2.39), which is written down rather than tuned away.
+
+**Fitted on all three seasons together: 9.75 under half PPR, 9.0 under full
+PPR, 10.75 under standard — so 10.** That puts 9% on this season after one
+game, 29% after four and 44% after eight.
+
+**One k rather than four, because four buy nothing out of sample.** Fitted per
+position they wander (QB 11 to 50, TE 7 to 50 across seasons), and pooled over
+five train/test folds the weighted MAE is **2.6605 per position against 2.6604
+for one shared k**. Four numbers, one ten-thousandth of a point.
+
+**K and DST differ materially and for a reason.** A season projection carries
+no field goal under forty yards and no points allowed at all, so a kicker's
+prior is weak (k = 3, half his weight on the season after three games) and a
+defense's prior is the better read (k = 21). Neither is ever RANKED —
+`UNRANKED_POSITIONS` carries over, because a forward order is a forecast too —
+but both are scored, because a lineup with a kicker in it needs his points.
+
+### Tried and not used
+
+- **Scaling the prior.** Projected points over 17 understates points per game
+  played, since the projection prices in injury. Fitted c came out 1.00–1.08
+  for the skill positions and did not beat the plain blend out of sample
+  (2.69 against 2.71, 2.69 against 2.65). It genuinely helps tight ends — c
+  fits 1.13, 1.20, 1.20 across the three seasons — and it would move every
+  tight end up the board **before a single snap**, which is a change to the
+  preseason board and not this one's to make.
+- **Sleeper's weekly projection for the next week, on top of the blend**,
+  scored on weeks N+2..17 so its own week is not in the target: better in
+  three of five folds, worse in two (2024 both times). Not used.
+- **This project's own `stats.js` alone** (`pp` and `w` for 2024 and 2025,
+  today's top 180 only, so survivorship-biased) fits k = 13 and 8.5 and gives
+  the same ordering: prior 3.19/2.91, observed 4.11/4.14, blend at k = 10
+  3.01/2.82. A different population, a different fit, the same answer.
+
+### What the number is, and is not
+
+A rate for games he plays, times games left: *if he plays them*. It does not
+price the chance he gets hurt, the same way the rate it blends with was
+measured on games played. Known absences come out — the bye, one week for an
+OUT, four for IR/PUP/NFI (the NFL's own minimum) — and nothing else is guessed
+at.
+
+**Replacement level is re-derived on rest-of-season points**, at
+`replacementRank()`'s own ranks. Measuring a rest-of-season total against a
+preseason replacement would call the difference in horizons a change in the
+player, which is exactly the error `buildPriorSeason()` already avoids from
+the other direction.
+
+**The Draft Room is untouched in every phase.** A mock draft in September is
+still a draft: its board, grade, tiers and Juke score stay on the preseason
+projection. Out of season `seasonClock()` answers and `rosLive()` is false, so
+every existing number is the number it was.
+
+### What the pipeline stores, and what it costs
+
+Once a regular season has scores, its played weeks go into `w` beside last
+season's, and the season two back drops out to pay for it. Two things about
+that are decisions rather than defaults:
+
+- **The live season is stored for the WHOLE pool**, not the top
+  `WEEKLY_KEEP`. The players a waiver wire is made of are exactly the ones
+  below the 180th pick, and a rest-of-season number that knows nothing of what
+  a deep-bench receiver did last Sunday is the preseason number with a new
+  label.
+- **A week nobody has played is absent, never a column of zeros.** Sleeper
+  answers an unplayed week with `{}` and a week in progress with lines only
+  for the teams that have played — and an inactive player on one of *those*
+  teams gets a real `gp: 0` row, which is a real DNP. Stored as zeros, every
+  player would read as having missed a game he has not had yet.
+
+**Measured 13 September 2026** on 2025's real weeks compacted exactly as the
+pipeline does, against today's 481-player pool: the 2024 top-180 block this
+drops is **20.4 KB gzipped**, and the live season's own whole-pool block grows
+3.8 KB (week 1), 10.6 (week 4), 20.4 (week 9), 37.0 (week 17). So `stats.js`
+is about **17 KB lighter through the opening month**, square at roughly week
+nine, and **17 KB heavier by week 17** — on a file that gzips to about 147 KB.
+
+**The first version of that note read "~2 KB lighter in week 1"**, which took
+the whole season's 39 KB as though it were week one's. A season total is not a
+week's cost; measure the block at the week you mean.
+
+### The bridge, which another screen codes against
+
+```
+seasonClock()  -> { season, week, phase, started, weeksComplete } | null
+playerMovers({ limit, rules, lineup, teams })
+               -> [{ id, name, pos, team, rankNow, rankBefore, delta,
+                     seasonPts, ppg }] | []
+rosLive()      -> boolean
+rosBoard(opts) -> the whole board, rest of season, with rank changes | null
+rosValue(player, rules, lineup, teams)     -> one player's row | null
+rosGapUnder(player, rules, lineup, teams)  -> points over ROS replacement
+rosPerGameUnder(player, rules)             -> the ROS rate for one week
+seasonToDate(player, rules)                -> { season, games, points, ppg }
+rosK()         -> the fitted k per position
+```
+
+`seasonClock()` reads `NFL_STATE`, then falls back to `WEEK_PROJ_META`, then
+answers null — both `typeof`-guarded, so it is safe before `stats.js` has
+landed. `started` means week 1 has kicked off. `weeksComplete` counts weeks
+whose games are all final, which is one fewer than Sleeper's `week`.
+
+**Every other entry guards itself on `dataReady()`**, the rule this file
+already states: a bridge entry is only as safe as its own guard, never its
+caller's. An unguarded one here would answer with a plausible table built off
+an empty board, which is the worse failure — a number rather than a throw.
+
+**`playerMovers()` is ordered by rest-of-season POINTS moved, not by places.**
+Places are cheap in the dense middle of the board: measured on the real week 1
+of 2026, one poor Thursday moved Matthew Stafford 32 places on about sixteen
+points, while a back at the top would need a far bigger week to move three. A
+list sorted by places is a list of backup quarterbacks. `delta` is still the
+places, which is what a row prints.
+
+**"Before" is the same table with the latest week's games held back**, so
+nothing is remembered between runs and nothing is invented. The boundary is
+the start of the last complete week — so on the Tuesday after week 4 the
+delta is what week 4 did. Every caption says "since the end of week 3" rather
+than "since week 3", because the second reads as the week it names still
+being to come.
+
+### What the recommendations do differently
+
+`web/src/lib/leagueGap.js` is the one builder eight screens construct their
+`gapOf` from, and in season it prices `rosGapUnder()` instead of
+`replacementGapUnder()`. **Measured on the fixture league in week 5, under its
+own rules and shape:**
+
+```
+                  preseason gap   rest of season   the wire printed
+Drake London           31.3            23.6              +24
+Tetairoa McMillan      10.6             8.0               +8
+Hunter Henry           -6.1             6.2               +6
+```
+
+**Hunter Henry is the case that proves it.** On the preseason board he is six
+points BELOW replacement and would never appear on a list of players worth
+claiming; on the rest of the season he is six above, and the wire lists him
+*because* of the re-pricing. The other two match the rest-of-season figure to
+the point and neither matches the preseason one.
+
+**The Strategy Room's weekly scorer keeps its order.** The platform's own
+weekly projection comes first, then Juke's weekly block under the league's
+rules, and only the season-average fallback beneath them becomes the
+rest-of-season rate. A league that publishes its own number still shows its
+own number.
+
+**And every caption beside those figures had to move with them.** They said
+"season points over replacement" — right in August and wrong in October, which
+is this project's own right-value-wrong-column failure with a horizon instead
+of a table. `gapUnit(engine)` is the one phrasing, read at render time rather
+than memoised for `leagueGapOf()`'s own reason: a page held open across the
+nightly that starts the season has to move with it.
+
+### The three orders on the Players screens
+
+Out of season the index is exactly what it was, with no extra control at all.
+In season it takes three, and **the mode swaps the COLUMNS as well as the
+sort** — a table that kept one set would be printing preseason points under a
+heading about the rest of the season.
+
+- **Rest of season** (the default): ROS rank, Moved, ROS pts, Per game, Over
+  replacement.
+- **Season so far**: games played, season points, per game, and ADP for
+  reference.
+- **Preseason**: today's columns, untouched.
+
+**The rank change is a signed `gain`/`cost` delta and never teal**, which is
+this app's action colour. The phone has no room for a Moved column, so it
+rides in the tag row beside the position and the club — where the player's own
+facts already are — rather than as a third line in a 64px card.
+
+**A saved sort names a column and the mode decides which columns exist**, so a
+sort this mode does not draw falls back to the mode's own order: on a mode
+press, and on a cold load with a stale preference. The same goes for the
+phone's sort menu, which lists only this mode's orders — offering "ROS pts" on
+a preseason list is a control that sorts by a column nobody can see.
+
+**And the mode itself is validated against the clock rather than remembered.**
+A mode saved in September must not survive into February, when there is no
+rest of a season to rank.
+
+**On the player page the season leads, above the Juke score**, and the three
+figures in the header strip say "preseason ·" beside them once a season is
+being played. They are the board he was drafted off and they do not move; a
+caption that stops being true the week the season starts is the same failure
+as a wrong column.
+
+### What the weight sentence says, and the version that was wrong
+
+The index prints how much of the rate is this season. The first cut took the
+**median games played across the whole board**, which includes every
+deep-bench player with none — so at week 5 it read "3 games in: 23%" while the
+top of every order was on four. It states the weeks actually PLAYED instead:
+*"4 weeks played: a back or a receiver who played every one is 29% this
+season"*, which is exact, checkable, and a property of the calendar rather
+than of whichever pool happens to be listed.
+
+The player page keeps `weightNote()` on his OWN games, because there the
+number is about him.
+
+### What was verified, and what was not
+
+**The offline suites.** `scripts/test_inseason.py` (24 checks) and
+`scripts/test_ros.mjs` (30 checks) are in `tests.yml`;
+`test_league_gap.mjs` and `test_strategy_board.mjs` gained the in-season
+half of their own contracts. `test_ros.mjs` lifts every function out of
+`app.js` by brace walk and runs it as shipped, `test_season_sim.mjs`'s
+discipline for its reason.
+
+**On today's committed data none of this runs at all**, which is the
+strongest form of the claim and the cheapest to check: the board in the
+repository carries neither `NFL_STATE` nor `WEEK_PROJ_META`, so
+`seasonClock()` answers **null**, `rosLive()` is **false**, the Players
+screens draw no extra control and every room prices exactly as it did. The
+whole section is dormant until a nightly runs against a season with a score
+in it.
+
+**"Preseason behaviour is byte-identical" is measured rather than argued.**
+Two pages, the SAME `players.js` and `stats.js`, differing only in
+`NFL_STATE` — one a regular season with scores, the other the offseason — so
+`rosLive()` is true on one and false on the other and no other input moves.
+Projected points, points over replacement, the Juke score, the projected
+position rank, the tier, the market rank and the board rank for **all 480
+players: identical on every field**. The same comparator run against a
+14-team league reports **512 differing fields**, which is what says it could
+have seen a difference had there been one.
+
+**The board rebuild is what re-derives replacement level, and the control
+found that out.** `setLeague({ teams: 14 })` alone changed nothing at all and
+the control reported vacuous twice — `buildBoard()` is what recomputes
+`REPLACEMENT_PTS`, and `startDraft()` is the bridge entry that calls it. A
+control that reports zero is a question about the control first.
+
+**The browser, against a fixture built from real weeks.** The real 2026 week 1
+had two teams in it, so most of the board has no games and the season modes
+are a screen of true dashes — not a picture of what week five looks like. A
+local, disposable fixture relabels Sleeper's own 2025 weeks 1–4 as 2026 and
+moves `NFL_STATE` to week 5, compacted through the pipeline's own `compact()`
+so every stored row is byte-identical in shape to a real one. **Never
+committed** — the same rule and the same reasoning as the deep-bench fixture.
+
+On it, the owner's own example comes out: **Gibbs is the preseason #1 and the
+rest-of-season #2, behind Bijan Robinson, who was #2 preseason** — a move of
+one place over four weeks rather than a collapse, which is exactly the
+property the shrinkage is for. Puka Nacua climbs 6 → 3.
+
+Swept at 1440 and 375, guest and connected, in both themes: **76 routes with
+no overflow that can neither scroll nor ellipsise nor clip, and 29,756 text
+measurements with no contrast failure** — each sweep proved non-vacuous by
+planting a known-bad element and confirming the walker names it.
+
+**What is not verified:** nothing has driven a real in-season board through
+the browser, because there is not one yet — the fixture is four weeks of last
+season wearing this season's label, and the first honest end-to-end check is
+the morning after a real week. The connected rooms were driven with a stubbed
+league rather than a real one, which is the gap `league-connect.spec.mjs`
+already records. And the contrast sweep visits the index in its default mode;
+the other two draw the same primitives on the same grounds, which is an
+argument rather than a measurement.
+
+**One trap cost a clean report about nothing.** `PREFIX='#/v3' node sweep.mjs`
+from Git Bash comes back with every route swept and "clean" — and MSYS had
+rewritten the prefix to `#C:/Program Files/Git/v3`, so it had swept the v2
+routes under a garbled name. `MSYS_NO_PATHCONV=1` is the fix, and the tell is
+the same one this file already records: **a sweep scoped to the wrong root is
+a clean report about nothing.** Read the first line of its output, not the
+last.
 
 ## The engine audit of 10 September 2026
 

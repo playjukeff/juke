@@ -362,6 +362,51 @@ check("and the league's own number is never overridden by it", () => {
   assert.equal(score({ id: "b", projPts: 9, inj: "O" }), 0, "the fallback zeroes him");
 });
 
+/* ---- in season: only the fallback moves, and it moves to the rest of the season ----
+ *
+ * The brief's own rule: the platform's number and Juke's weekly block stay
+ * first; the rest-of-season rate replaces the SEASON AVERAGE beneath them,
+ * and nothing else. */
+let seasonLive = true;
+const seasonEngine = {
+  ...engine,
+  rosLive: () => seasonLive,
+  rosPerGameUnder: (p) => (p.ros === undefined ? null : p.ros),
+};
+
+check("in season the fallback is the rest-of-season rate, not the preseason average", () => {
+  seasonLive = true;
+  const score = leagueWeekPts(seasonEngine, { week: 4, rules: { rec: 1 } });
+  assert.equal(score({ id: "c", projPts: 1, ros: 17.25 }), 17.25);
+});
+
+check("and it never jumps the league's own number or Juke's weekly block", () => {
+  seasonLive = true;
+  const snap = { week: 4, rules: { rec: 1 }, projections: { week: 4, points: { a: 24.44 } } };
+  const score = leagueWeekPts(seasonEngine, snap);
+  assert.equal(score({ id: "a", projPts: 1, ros: 99, wk: { 4: 5 } }), 24.44, "the league's own number");
+  assert.equal(score({ id: "b", projPts: 1, ros: 99, wk: { 4: 5 } }), 5, "Juke's weekly block");
+});
+
+check("a bye and an OUT still zero the in-season fallback", () => {
+  seasonLive = true;
+  const score = leagueWeekPts(seasonEngine, { week: 4, rules: {} });
+  assert.equal(score({ id: "d", projPts: 9, ros: 12, bye: 4 }), 0);
+  assert.equal(score({ id: "e", projPts: 9, ros: 12, inj: "O" }), 0);
+});
+
+check("out of season the fallback is exactly the preseason average it always was", () => {
+  seasonLive = false;
+  const score = leagueWeekPts(seasonEngine, { week: 4, rules: { rec: 1 } });
+  assert.equal(score({ id: "f", projPts: 1, ros: 17.25 }), 101);
+});
+
+check("a player the season has no rate for falls back to the preseason average, not to nothing", () => {
+  seasonLive = true;
+  const score = leagueWeekPts(seasonEngine, { week: 4, rules: { rec: 1 } });
+  assert.equal(score({ id: "g", projPts: 1 }), 101);
+});
+
 check("projectionSource says whose numbers a lineup carries", () => {
   const rows = [{ player: { id: "a" } }, { player: { id: "b" } }];
   assert.equal(projectionSource(rows, { week: 1, points: { a: 1, b: 2 } }, 1), "all");

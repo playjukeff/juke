@@ -67,6 +67,22 @@ jobs:
       - name: Source-id crosswalk
         run: python scripts/test_crosswalk.py
 
+      # The season being played, as the pipeline stores it: a week nobody
+      # has played is absent rather than a column of zeros (which would read
+      # as every player missing a game he has not had), the live season
+      # reaches the whole pool rather than the top 180 (the waiver wire is
+      # below that cut), and out of season nothing changes.
+      - name: The season being played, stored
+        run: python scripts/test_inseason.py
+
+      # Its other half: app.js section 10a2 -- the clock another screen codes
+      # against, the fitted shrinkage, games left, replacement re-derived on
+      # rest-of-season points, K/DST scored and never ranked, and "who
+      # moved" with exactly its contract's shape. Every function is lifted
+      # out of app.js and run as shipped.
+      - name: The season in progress, priced
+        run: node scripts/test_ros.mjs
+
       # The one check that is about DEPLOYING rather than about behaviour:
       # the worker ships separately from the site, so it meets databases
       # that are one or two migrations behind it. listLeagues() has a
