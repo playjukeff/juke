@@ -139,12 +139,24 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
   expect(ratio, "neither width renders a fraction of the other").toBeGreaterThan(0.6);
 
   for (const [name, page] of [["phone", phone], ["desktop", desktop]]) {
-    /* The slogan. Title case in the DOM and uppercased in CSS at both
-       widths — asserting the rendered casing is what left this test red for
-       a day with no bug behind it, and it is the same trap the hero
-       eyebrow and the lobby's Randomize button have both hit since. */
-    expect(page.joined.toLowerCase(),
-      `${name} carries the slogan`).toContain("agility through analytics");
+    /* The slogan was asserted here, at both widths, and it is ARCHIVED
+       with the two list entries — see DESKTOP_REQUIRED for the reasoning
+       and for the words themselves.
+
+       This was its third copy and the one that would have outlived the
+       other two: the lists are read in a loop and this is written out by
+       hand, so removing a line from an array leaves it asserted here with
+       nothing to say where the third copy went. Worth noticing rather than
+       quietly deleting — a fact stated in three places is the
+       written-down-twice rule with an extra step, and it is why archiving
+       one sentence took three edits.
+
+       What it USED to be about is kept, because it is not about the
+       slogan: the DOM carries title case and CSS uppercases it, so
+       asserting the rendered casing left this test red for a day with no
+       bug behind it. The same trap has since caught the hero eyebrow and
+       the lobby's Randomize button. Whatever goes in this slot next gets
+       compared lowercased, as everything else here already is. */
 
     // A way into the product, on the page whose job is to get you there.
     expect(page.waysIn, `${name} offers a way into the Draft Room`).toBeGreaterThan(0);
@@ -224,7 +236,29 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
    which remain `hidden sm:block`. */
 
 const DESKTOP_REQUIRED = [
-  "Agility Through Analytics",
+  /* "Agility Through Analytics" was here, and it is ARCHIVED rather than
+     retired — the owner's call, 14 September 2026: it may come back.
+
+     It is the fifth line to leave this list and the first with nothing
+     standing in its place. The other four were REPLACED, which is what
+     the note above asks for, because HomeAlive said the same thing in new
+     words. This one was the hero eyebrow and v3's Now has no eyebrow at
+     all, so there is no sentence to point at instead. Removing it with no
+     trace is what that note forbids; a list that only ever shrinks stops
+     being the thing this test is for.
+
+     So the words are written down here, exactly, and the components that
+     drew them — Hero.jsx, HomeAlive.jsx, phone/HomePhone.jsx — are
+     unreachable rather than deleted, which is where they actually survive.
+     Bringing it back is putting the string on whatever carries it and
+     moving this line back into the array; `check_dead_components.mjs` is
+     what will tell you those three files are still there to read it off.
+
+     It is NOT asserted in the meantime, deliberately. This test's whole
+     value is that a red line means a page lost a sentence it was built
+     on, and a line nobody intends to render is a standing red — which is
+     the permanent-known-failure trap CLAUDE.md records: what nobody
+     believes, nobody reads. */
   // HomeAlive's hero — what replaced Hero's own headline and sub-copy.
   "Know the move",
   "before your league.",
@@ -259,7 +293,11 @@ const DESKTOP_REQUIRED = [
 ];
 
 const PHONE_REQUIRED = [
-  "Agility through analytics",
+  /* The slogan was here too, in the page's own title case against the
+     desktop list's headline caps — and both comparisons lowercase each
+     side, so the two entries were always one sentence. Archived with it;
+     the reasoning is in DESKTOP_REQUIRED rather than repeated here, and
+     bringing it back means restoring both lines. */
   "Know the move",
   "Mock Draft",
   "Connect",
