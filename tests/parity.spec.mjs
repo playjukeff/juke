@@ -10,13 +10,22 @@
    with. The check was a content diff of every visible string at both
    widths, against a curated allowlist of sanctioned differences.
 
-   That was the right test for one responsive page. There are two pages now.
-   The owner's instruction was explicit — the phone changes are "for MOBILE
-   ONLY" and "our website should have a different offering altogether" — so
-   below `sm` the homepage is `HomePhone.jsx`, a launcher, and above it the
-   marketing page is untouched. They share a brand and almost no copy. An
-   allowlist of the sanctioned differences between them would be a list of
+   That was the right test for one responsive page, and for a while there
+   were two: the owner's instruction was explicit — the phone changes are
+   "for MOBILE ONLY" and "our website should have a different offering
+   altogether" — so below `sm` the homepage was `HomePhone.jsx`, a launcher,
+   and above it the marketing page. They shared a brand and almost no copy,
+   and an allowlist of the sanctioned differences would have been a list of
    nearly every string on both, which is not a test.
+
+   **That split is gone twice over and this paragraph described it for
+   months after.** Flow v3 collapsed the two into one responsive HomeAlive,
+   and the cutover replaced HomeAlive with Now. Measured at both widths on
+   the real page, the copy is identical and the only difference is where
+   the nav is drawn. So the reason for asserting claims rather than strings
+   is no longer that two pages say different things — it is that ONE page
+   has two season states, which is a different argument reaching the same
+   answer. See the note above REQUIRED.
 
    ---- What survives, because the original complaint still applies ----
 
@@ -27,16 +36,26 @@
    allowed to disagree — so this file asserts the CLAIMS rather than the
    copy:
 
-   - both carry the brand slogan,
+   - both name the same places,
    - both offer a way into the Draft Room,
-   - both name the same six rooms and mark the same ones live,
    - both make the same free/no-account promise,
-   - neither sells on price, and neither claims a room is live that ROOMS
-     itself does not.
+   - both make the same read-only promise about somebody's league,
+   - neither sells on price, and neither claims more platforms than are
+     built.
 
-   Every one of those is a fact the two pages could drift on, and every one
-   of them would be the reported bug if they did. None of them is a string
-   either page is obliged to phrase the same way. */
+   Every one of those is a fact the two widths could drift on, and every
+   one would be the reported bug if they did. None is a string either width
+   is obliged to phrase the same way.
+
+   **Two of that list have been rewritten rather than dropped**, and each
+   is argued where it is asserted rather than here, so the reasoning cannot
+   go stale separately from the code:
+
+   - "both carry the brand slogan" — the slogan is ARCHIVED (owner's call,
+     14 September 2026; it may come back). See REQUIRED.
+   - "both name the same six rooms and mark the same ones live" — there are
+     five PLACES now rather than six rooms, and Now is not a rooms lobby.
+     See the places assertion in the first test. */
 
 import { test, expect, devices } from "@playwright/test";
 import { openApp } from "./helpers.mjs";
@@ -87,12 +106,6 @@ async function homeAt(browser, contextOpts) {
   // The freshness line and the room list both wait on window.JukeEngine.
   await page.waitForTimeout(900);
   const text = await page.evaluate(() => __collectHomeText());
-  /* The rooms as the engine states them, not as either page words them —
-     this is the source both pages are supposed to be rendering, so a claim
-     that disagrees with it is an overclaim rather than a difference. */
-  const rooms = await page.evaluate(() =>
-    (window.JukeEngine && window.JukeEngine.rooms ? window.JukeEngine.rooms() : [])
-      .map((r) => ({ name: r.name, live: !!r.live })));
   /* A way in, by destination rather than by label. #/rooms/draft is the
      Draft Room's own entry, which is where every "start a mock" control on
      this page points — see ROOMS in app.js for why it is not #/draft-room,
@@ -104,8 +117,19 @@ async function homeAt(browser, contextOpts) {
   const waysIn = await page.evaluate(() =>
     [...document.querySelectorAll('#view-home a[href^="#/draft"]')]
       .filter((a) => a.getBoundingClientRect().height > 0).length);
+  /* The five places, read off the nav rather than listed here.
+     `nav[aria-label="Primary"]` is the same element rail-nav.spec.mjs pins
+     to exactly one visible instance per width — desktop renders it in the
+     header and a phone as a fixed bar, and `md:flex`/`md:hidden` picks. So
+     this reads whichever one is alive, which is what makes comparing the
+     two widths mean anything. */
+  const places = await page.evaluate(() =>
+    [...document.querySelectorAll('#view-home nav[aria-label="Primary"] a')]
+      .filter((a) => a.getBoundingClientRect().height > 0)
+      .map((a) => (a.textContent || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean));
   await context.close();
-  return { text, rooms, waysIn, joined: text.join(" · ") };
+  return { text, waysIn, places, joined: text.join(" · ") };
 }
 
 test("neither homepage contradicts the other about what Juke is", async ({ browser }) => {
@@ -139,12 +163,24 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
   expect(ratio, "neither width renders a fraction of the other").toBeGreaterThan(0.6);
 
   for (const [name, page] of [["phone", phone], ["desktop", desktop]]) {
-    /* The slogan. Title case in the DOM and uppercased in CSS at both
-       widths — asserting the rendered casing is what left this test red for
-       a day with no bug behind it, and it is the same trap the hero
-       eyebrow and the lobby's Randomize button have both hit since. */
-    expect(page.joined.toLowerCase(),
-      `${name} carries the slogan`).toContain("agility through analytics");
+    /* The slogan was asserted here, at both widths, and it is ARCHIVED
+       with the two list entries — see DESKTOP_REQUIRED for the reasoning
+       and for the words themselves.
+
+       This was its third copy and the one that would have outlived the
+       other two: the lists are read in a loop and this is written out by
+       hand, so removing a line from an array leaves it asserted here with
+       nothing to say where the third copy went. Worth noticing rather than
+       quietly deleting — a fact stated in three places is the
+       written-down-twice rule with an extra step, and it is why archiving
+       one sentence took three edits.
+
+       What it USED to be about is kept, because it is not about the
+       slogan: the DOM carries title case and CSS uppercases it, so
+       asserting the rendered casing left this test red for a day with no
+       bug behind it. The same trap has since caught the hero eyebrow and
+       the lobby's Randomize button. Whatever goes in this slot next gets
+       compared lowercased, as everything else here already is. */
 
     // A way into the product, on the page whose job is to get you there.
     expect(page.waysIn, `${name} offers a way into the Draft Room`).toBeGreaterThan(0);
@@ -164,28 +200,38 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
     expect(pricedCta, `${name} has no CTA selling on price`).toEqual([]);
   }
 
-  /* Both pages read the same room list, so both have to name the same rooms
-     and agree about which one is open. This is the claim most likely to
-     drift between two separately-authored pages and the one a visitor would
-     actually be misled by. */
-  expect(phone.rooms, "both pages read the same ROOMS").toEqual(desktop.rooms);
-  const live = phone.rooms.filter((r) => r.live).map((r) => r.name);
-  expect(live.length, "exactly one room is live today").toBe(1);
+  /* ---- The five places, which is what the room assertion became ----
 
-  for (const [name, page] of [["phone", phone], ["desktop", desktop]]) {
-    for (const room of phone.rooms) {
-      /* The phone shortens "The Waiver Room" to "Waiver Room" on its locked
-         cards, so the article is optional — what may not happen is a room
-         missing from one page entirely. */
-      const short = room.name.replace(/^The\s+/, "");
-      expect(page.joined, `${name} names ${room.name}`).toContain(short);
-    }
-    // And the one live room is the one the engine says is live, at both
-    // widths — a page marking a second one live would be an overclaim
-    // rather than a wording difference.
-    expect(page.joined.toLowerCase().split(live[0].replace(/^The\s+/, "").toLowerCase()).length - 1,
-      `${name} names the live room`).toBeGreaterThan(0);
-  }
+     This block read ROOMS off the engine and asserted both pages named all
+     six and agreed which one was live. It could not survive the cutover and
+     it should not: Now is not a rooms lobby, `#/rooms` is redirected, and
+     CLAUDE.md states the shape plainly — there are five PLACES (Now,
+     League, Players, Draft, Record) rather than six rooms, with the three
+     in-season rooms now tools a call opens. `JukeEngine.rooms()` still
+     answers five entries with one live, so the old assertion was not
+     reading a stale source; it was asking a question the product had
+     stopped answering on this page.
+
+     What the claim was really protecting transfers exactly. It was never
+     about rooms — it was that the two widths must not disagree about what
+     the product IS, which is the reported bug this whole file exists for.
+     The nav is where that now lives.
+
+     Asserted as a COMPARISON against a list read off the page, rather than
+     against five names written down here. The old version needed the
+     engine's list because it was checking pages against a source; the
+     source here is the nav itself, and phone-against-desktop is the whole
+     question. So a sixth place ships without touching this file, and a
+     place that renders at one width and not the other still fails — which
+     a hardcoded array would have got backwards on both counts.
+
+     The floor is what stops that being vacuous: two widths that both
+     render no nav at all agree perfectly. It is a floor rather than the
+     exact five for the same reason — five is today's answer, and pinning
+     it here is how this file went stale the first time. */
+  expect(phone.places, "both widths name the same places").toEqual(desktop.places);
+  expect(desktop.places.length, "and the nav is actually there")
+    .toBeGreaterThanOrEqual(5);
 });
 
 /* The sentences each page is built on, asserted by value rather than by
@@ -223,63 +269,99 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
    desktop still has that a phone does not is those three sections below,
    which remain `hidden sm:block`. */
 
-const DESKTOP_REQUIRED = [
-  "Agility Through Analytics",
-  // HomeAlive's hero — what replaced Hero's own headline and sub-copy.
-  "Know the move",
-  "before your league.",
-  /* The stem only, and the platform names deliberately NOT asserted.
+/* ---- One list now, not two, and one page in two season states ----
 
-     This line read "Plug in your league from any major platform." and the
-     page said that while two of four platforms were built -- corrected by
-     an 11px caption 200px lower, which is a footnote rather than a
-     correction. The subhead now interpolates LIVE_NAMES from
-     leaguePlatforms.js, so it cannot overclaim and cannot go stale.
+   The two arrays were DESKTOP_REQUIRED and PHONE_REQUIRED, written when the
+   phone got a launcher and the desktop got the marketing page. That premise
+   retired twice over: Flow v3 collapsed them into one responsive HomeAlive,
+   and the cutover replaced HomeAlive with Now. Measured at both widths on
+   the real page, the copy is now identical — the only thing that differs is
+   where the nav is drawn, which the places assertion above covers and which
+   is not copy. Two arrays holding the same sentences is the
+   written-down-twice rule with prose in it.
 
-     Asserting the rendered names here would reintroduce exactly the drift
-     that constant exists to prevent: the day a third platform ships, this
-     file becomes the last place still saying two. So the assertion is the
-     half of the sentence that is not derived, plus the negative below. */
-  "Plug in your league from",
-  "Keep your drafts on every device",
-  "FREE · NO ACCOUNT NEEDED · RUNS IN YOUR BROWSER",
-  /* Three lines used to sit here -- "Enter the Draft Room", "Open the
-     Draft Room." and "No setup, no league import. Pick your scoring and
-     start." -- all of them ClosingCta's. The owner has taken TakeAPick,
-     ShowYourWorking and ClosingCta off the homepage, so they are gone
-     from the page rather than lost from it.
+   What replaced them is not the old lists re-aimed. Every line below was
+   read off the rendered page rather than off the components, because that
+   is the difference between asserting what the page says and asserting what
+   somebody believes it says.
 
-     Removed rather than replaced, which is the opposite of what the note
-     above says was done for the Hero's four. The difference is that those
-     four were REPLACED by other copy doing the same job, and these three
-     are not: nothing on the page says them any more, because that part of
-     the page is not there. All three components still exist unrendered in
-     web/src/components -- so if any comes back, its copy comes back here
-     with it. */
+   ---- Why some lines are stems ----
+
+   Now has TWO guest states and the nightly decides which: out of season
+   `now/Now.jsx`, in season `now/NowSeason.jsx`. They are different pages
+   with different headlines, different sub-copy and different calls to
+   action, so a line naming either alone writes today's date into an
+   assertion — the trap shell-routes.spec.mjs already had to answer by
+   naming both headlines. SEASONAL below is pairs, and one of each pair has
+   to be on the page.
+
+   And the in-season headline carries the week number ("Week 1 is here.
+   Bring your league."), so the stem is the half that survives week two.
+   Same reasoning as the platform names below: assert the part that is not
+   derived. */
+
+/* Both widths, both season states, signed out — which is what a keyless
+   build renders and therefore all this file can see. */
+const REQUIRED = [
+  // The freshness strip: this page's claim that its numbers are current.
+  "players priced",
+  /* The read-only promise, which is the one claim here about what Juke does
+     to somebody's league. Punctuation deliberately not asserted: out of
+     season it is "Read-only. Juke never edits your league." and in season
+     "Read-only — Juke never edits your league ·". */
+  "Juke never edits your league",
+  /* The method links — the page's own offer to show its working, which is
+     the pitch, and the only route to those documents. */
+  "How Juke calls it",
+  "The draft grade",
+  "The small print",
+  /* The free/no-account promise in the footer's own words. The CLAIM is
+     asserted loosely in the other test (/free/, /no account|browser/); this
+     pins the sentence that actually makes it. */
+  "runs entirely in your browser",
 ];
 
-const PHONE_REQUIRED = [
-  "Agility through analytics",
-  "Know the move",
-  "Mock Draft",
-  "Connect",
-  "Or draft with friends",
-  "Keep your drafts on every device",
-  "The Rooms",
-  "FREE · NO ACCOUNT NEEDED · RUNS IN YOUR BROWSER",
+/* One of each pair has to be present. Out of season first, in season
+   second — both read off the real page in their own state. */
+const SEASONAL = [
+  // The headline.
+  ["Every call, with the math shown.", "Bring your league."],
+  /* The sub-copy's actual claim, which is a different claim in each state:
+     out of season it is about the board, in season about the week. */
+  ["A rank tells you who goes first", "who to start, who to claim, whether a trade is fair"],
+  // The primary call to action.
+  ["Start a free mock draft", "Connect your league"],
 ];
 
 test("each homepage carries its own agreed copy", async ({ browser }) => {
   const phone = await homeAt(browser, PHONE);
   const desktop = await homeAt(browser, DESKTOP);
 
-  for (const line of DESKTOP_REQUIRED) {
-    expect(desktop.joined.toLowerCase(), `desktop carries: ${line}`)
-      .toContain(line.toLowerCase());
+  for (const [name, page] of [["desktop", desktop], ["the phone", phone]]) {
+    for (const line of REQUIRED) {
+      expect(page.joined.toLowerCase(), `${name} carries: ${line}`)
+        .toContain(line.toLowerCase());
+    }
+
+    /* One of each pair, and the failure names BOTH — a run that reports
+       only the state it happened to be in sends the next reader to check
+       the wrong component. Which state this is depends on the nightly, so
+       the message has to carry that rather than assume it. */
+    for (const alts of SEASONAL) {
+      const hit = alts.some((a) => page.joined.toLowerCase().includes(a.toLowerCase()));
+      expect(hit, `${name} carries one of: ${alts.map((a) => `"${a}"`).join(" or ")}`)
+        .toBe(true);
+    }
   }
-  for (const line of PHONE_REQUIRED) {
-    expect(phone.joined.toLowerCase(), `the phone carries: ${line}`)
-      .toContain(line.toLowerCase());
+
+  /* And the two states are not both on screen at once, which is the one
+     way this could pass while the page was wrong: a headline from each
+     would satisfy every pair above and mean Now had rendered twice. */
+  for (const [name, page] of [["desktop", desktop], ["the phone", phone]]) {
+    for (const alts of SEASONAL) {
+      const both = alts.every((a) => page.joined.toLowerCase().includes(a.toLowerCase()));
+      expect(both, `${name} is in one season state, not both: ${alts[0]}`).toBe(false);
+    }
   }
 
   /* The retired claim, asserted absent at both widths.
