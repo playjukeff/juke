@@ -25,7 +25,10 @@ export const REPORT_HASH = '#/v3/draft/report'
 export const LAUNCH_HASH = '#/v3/draft'
 export const INSIGHTS_HASH = '#/v3/draft/insights'
 export const RECORD_HASH = '#/v3/record'
-export const FRIENDS_HASH = '#/rooms/draft?friends=1'
+/* A shared room is v3's own now — live/room.js owns its address, because
+   that is the file that knows how to get into one. FRIENDS_HASH, which
+   handed rooms to the classic Draft Room, is retired rather than left
+   pointing at a screen v3 no longer sends anybody to. */
 
 function engineOf() {
   return typeof window !== 'undefined' ? window.JukeEngine : null

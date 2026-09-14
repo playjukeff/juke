@@ -4,10 +4,13 @@ import { useDraftNotifications } from '../../../hooks/useDraftNotifications.js'
 import { readDecide, readHeader, readNextPicks, readRoster } from '../../v2/cockpit/cockpitData.js'
 import { useDraftVersion, useEngine } from '../../v2/cockpit/useCockpit.js'
 import { CallButton, Headline, Label, QuietButton, Skeleton, cx } from '../ui.jsx'
-import { FRIENDS_HASH, LAUNCH_HASH, REPORT_HASH, resume } from './flow.js'
+import { LAUNCH_HASH, REPORT_HASH, resume } from './flow.js'
 import { FOCUS, Glyph, useDialogFocus } from './kit.jsx'
 import LiveHeader, { PickRibbon } from './live/LiveHeader.jsx'
 import LiveMenu from './live/LiveMenu.jsx'
+import RoomLobby from './live/RoomLobby.jsx'
+import RoomChat from './live/RoomChat.jsx'
+import { readRoom, sendBlocker, useRoomVersion, withRoomNames } from './live/room.js'
 import Pool, { usePoolFilters } from './live/Pool.jsx'
 import Board from './live/Board.jsx'
 import Analysis from './live/Analysis.jsx'
@@ -49,6 +52,31 @@ import { Still } from '../motion.jsx'
    engine.draftPlayer() — the Draft button's own door — keyed on the overall
    pick so a re-render cannot submit twice.
 
+   ---- And in a shared room it drives even less ----
+
+   #/v3/draft/live?room=CODE is the same page with the room as its authority.
+   The browser STOPS DECIDING: engine.draftPlayer() already sends the intent
+   and returns (draftAndAdvance in app.js), the board moves on the broadcast,
+   the clock is painted rather than counted, and the host's own browser
+   drafts the empty chairs off those broadcasts whatever route it is on. So
+   nothing in this file changes about who moves a draft — what changes is
+   which controls are offered, and what a seat is called.
+
+   Three gates, and they are three different questions. `room` is "this is a
+   shared draft" (hasRoom, true through a dropped socket). `view.socket` is
+   "the room can hear us right now" — every control that SENDS is behind it,
+   with the reason said rather than greyed. `view.isHost` is "this browser is
+   the one the room takes a pause or a start from". Undo is hidden outright,
+   because there is no shared undo and a local one is overwritten by the next
+   broadcast; End draft is hidden because "the rest" in a room is nine other
+   people's teams.
+
+   Autopick is asymmetric on purpose: solo it is this component's own
+   per-turn loop, and in a room it is state.autoMe — a real, persistent flag
+   the room's own broadcast handler re-invokes (driveMyAutopilot in app.js).
+   Reading it from React would be a second copy of a flag that already
+   exists, so the switch is bound straight to engine.autoMe().
+
    ---- One tree at each width ----
 
    useMinWidth rather than CSS picks the tree, because CSS-hidden is still
@@ -64,27 +92,33 @@ const PHONE_VIEWS = [VIEWS[0], VIEWS[1], { key: 'team', label: 'Team', icon: 'us
 const RAIL_TABS = [['team', 'Team'], ['queue', 'Queue'], ['picks', 'Picks']]
 const EMPTY_DECIDE = { candidates: [], tierLadder: [], survivors: [], run: null, needs: [], counts: null }
 
+/* state.autoMe, read rather than mirrored. It is a real flag the room's own
+   broadcast handler already re-invokes, so a React copy of it would be the
+   written-down-twice rule with an autopilot on it. Guarded because the
+   bridge entry is a plain read that predates nothing and a build without it
+   should draw the switch off rather than throw. */
+function safeAuto(engine) {
+  try { return engine.autoMe ? engine.autoMe() : false } catch { return false }
+}
+
 function EmptyState({ engine }) {
   let saved = null
   try { saved = engine.inProgressSummary() } catch { saved = null }
-  const room = engine.hasRoom()
   const [problem, setProblem] = useState('')
   return (
     <div className="fixed inset-0 z-[55] overflow-y-auto bg-v3-paper">
       <div className="mx-auto flex min-h-full max-w-[720px] flex-col justify-center px-5 py-16">
         <Label>The Draft Room · live</Label>
-        <Headline className="mt-3">{room ? 'This draft is a shared room.' : saved ? 'Your draft is waiting.' : 'No draft on the clock.'}</Headline>
+        <Headline className="mt-3">{saved ? 'Your draft is waiting.' : 'No draft on the clock.'}</Headline>
         <p className="mt-4 max-w-[60ch] text-[17px] leading-[1.55] text-v3-ink2">
-          {room
-            ? 'A draft with friends runs in the classic Draft Room, where the room itself keeps the clock, the seats and the chat for everybody. v3 hands shared rooms there rather than drawing a second copy of them.'
-            : saved
-              ? `${saved.leagueType} from the ${saved.pickPosition} seat — ${saved.made} of ${saved.total} picks made. It picks up exactly where you left it.`
-              : 'Start a mock from the launcher — it runs entirely in your browser, against CPU drafters on tonight’s board.'}
+          {saved
+            ? `${saved.leagueType} from the ${saved.pickPosition} seat — ${saved.made} of ${saved.total} picks made. It picks up exactly where you left it.`
+            : 'Start a mock from the launcher — it runs entirely in your browser, against CPU drafters on tonight’s board.'}
         </p>
         <div className="mt-7 flex flex-wrap gap-2">
-          {room ? <CallButton href={FRIENDS_HASH}>Open the room <Glyph name="arrow" className="h-4 w-4" /></CallButton>
-            : saved ? <CallButton onClick={() => { if (!resume()) setProblem('That draft could not be resumed — the player list has changed since it was saved.') }}>Resume the draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>
-              : <CallButton href={LAUNCH_HASH}>Set up a mock draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>}
+          {saved
+            ? <CallButton onClick={() => { if (!resume()) setProblem('That draft could not be resumed — the player list has changed since it was saved.') }}>Resume the draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>
+            : <CallButton href={LAUNCH_HASH}>Set up a mock draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>}
           <QuietButton href="#/v3">Back to Now</QuietButton>
         </div>
         {problem && <p role="status" className="mt-3 text-[14px] text-v3-warn">{problem}</p>}
@@ -149,6 +183,11 @@ export default function V3Live() {
 function V3LiveRoom() {
   const engine = useEngine()
   const version = useDraftVersion(engine)
+  /* The room's own changes — a seat claimed, a name typed, a message sent, a
+     socket dropped. useDraftVersion() carries none of them; see the hook's
+     own comment for why that was invisible in a live draft and would not
+     have been in the lobby. */
+  const roomVersion = useRoomVersion(engine)
   const desktop = useMinWidth(1024)
   const wide = useMinWidth(1280)
   const [view, setView] = useState('pool')
@@ -171,18 +210,38 @@ function V3LiveRoom() {
   const heard = useRef({ picks: null, mine: false })
 
   const ready = !!engine && engine.dataReady()
-  const header = ready ? readHeader(engine) : { started: false }
+  /* The room, read once. Null for a solo draft, so every branch below is one
+     question rather than a scatter of hasRoom() calls that could disagree. */
+  const roomView = ready ? readRoom(engine) : null
+  const room = !!roomView
+  /* In a room, teamLabel() has to be the room's: "Your Team" and a CPU name
+     are a lie about a chair a person called Blake is sitting in. One own-
+     property override on a copy of the bridge, so Board, the ribbon, the
+     rails, the pool and the drawer all name seats correctly without six
+     props that mean nothing in a solo mock. Memoised on `room` rather than
+     on `view`, which is a fresh object every render; the override reads the
+     room at CALL time, so it is never a stale seat list. */
+  const eng = useMemo(() => (room ? withRoomNames(engine, roomView) : engine), [engine, room])
+  const header = ready ? readHeader(eng) : { started: false }
   const mySlot = ready ? engine.mySlot() ?? 0 : 0
-  const room = ready ? engine.hasRoom() : false
   const myTurn = !!header.myTurn
   const over = !!header.over
-  const live = ready && header.started && !over && !room
-  const { nextOverall, nextPicks } = ready && header.started ? readNextPicks(engine, myTurn) : { nextOverall: null, nextPicks: [] }
-  const canDraft = header.started && !over && myTurn && !autopick && !room
-  const draftReason = over ? 'The draft is over' : !myTurn ? 'Not your turn' : autopick ? 'Turn autopick off to draft by hand' : ''
+  const live = ready && header.started && !over
+  // Solo autopick is this component's own loop; a room has a real flag.
+  const soloLive = live && !room
+  const roomAuto = room ? !!safeAuto(engine) : false
+  const autoOn = room ? roomAuto : autopick
+  const blocked = room ? sendBlocker(roomView) : null
+  const { nextOverall, nextPicks } = ready && header.started ? readNextPicks(eng, myTurn) : { nextOverall: null, nextPicks: [] }
+  const canDraft = header.started && !over && myTurn && !autoOn && !blocked
+  const draftReason = over ? 'The draft is over'
+    : !myTurn ? 'Not your turn'
+      : blocked || (autoOn ? 'Turn autopick off to draft by hand' : '')
   // `version` is the key, never `engine` or `board`: board is mutated in
   // place, so it cannot tell a memo that a pick landed.
-  const decide = useMemo(() => (live ? readDecide(engine, nextOverall) : EMPTY_DECIDE), [version, nextOverall, live])
+  const decide = useMemo(() => (live ? readDecide(eng, nextOverall) : EMPTY_DECIDE), [version, nextOverall, live, eng])
+  // Read so the room re-renders on it; nothing else consumes the number.
+  void roomVersion
   const phone = !desktop
 
   useEffect(() => { if (engine) setSoundOn(!!engine.soundWanted()) }, [engine])
@@ -192,24 +251,47 @@ function V3LiveRoom() {
      seen — but it stays in the accessibility tree, so a screen reader met
      "Purdy Vacant selected…" before this room's own announcement. While the
      room is mounted the strip is inert and hidden from assistive tech; the
-     attributes come off on the way out, and app.js never reads either. */
+     attributes come off on the way out, and app.js never reads either.
+
+     The legacy chat dock and its phone button are the same problem, arriving
+     the day v3 grew a room of its own: renderChat() un-hides both whenever
+     Live.room() exists, whatever route the tab is on, so a shared draft here
+     put a SECOND "Room chat" region and a floating button into the tree
+     under this one. Covered on screen, and a duplicate to anybody not
+     looking at it — which is how the collision was found, by a locator
+     resolving to two elements rather than by anything on a screen. Same
+     treatment, same restore, and app.js goes on writing into both. */
   useEffect(() => {
-    const strip = typeof document !== 'undefined' ? document.querySelector('body > .sticky-top') : null
-    if (!strip) return undefined
-    const had = { hidden: strip.getAttribute('aria-hidden'), inert: strip.hasAttribute('inert') }
-    strip.setAttribute('aria-hidden', 'true')
-    strip.setAttribute('inert', '')
-    return () => {
-      if (had.hidden === null) strip.removeAttribute('aria-hidden'); else strip.setAttribute('aria-hidden', had.hidden)
-      if (!had.inert) strip.removeAttribute('inert')
-    }
+    if (typeof document === 'undefined') return undefined
+    /* #tabrow and #ticker join them for a reason specific to a ROOM:
+       enterDraftUI() runs off the room's own broadcast, whatever route the
+       tab is on, and un-hides the legacy tab strip and action bar — so a
+       shared draft here put "Suggestions", "Pause clock" and "Discard
+       draft" into the tree under this room. A solo draft on this route
+       never calls it, which is why they had never appeared before. */
+    const quiet = ['body > .sticky-top', '#chatDock', '#chatFab', '#tabrow', '#ticker']
+      .map((sel) => document.querySelector(sel))
+      .filter(Boolean)
+      .map((el) => {
+        const had = { hidden: el.getAttribute('aria-hidden'), inert: el.hasAttribute('inert') }
+        el.setAttribute('aria-hidden', 'true')
+        el.setAttribute('inert', '')
+        return { el, had }
+      })
+    return () => quiet.forEach(({ el, had }) => {
+      if (had.hidden === null) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', had.hidden)
+      if (!had.inert) el.removeAttribute('inert')
+    })
   }, [])
   useEffect(() => { setRosterSlot(mySlot); setGradeSlot(mySlot) }, [mySlot])
   useEffect(() => { if (desktop && view === 'team') setView('pool') }, [desktop, view])
 
-  // Solo autopick — see the file comment.
+  // Solo autopick — see the file comment. A room has its own flag and its
+  // own driver (driveMyAutopilot in app.js), so this must never run there:
+  // two loops answering for one chair is the shape that trips the room's own
+  // rate limit, which deadlocked a real draft once.
   useEffect(() => {
-    if (!live || !autopick || !myTurn) return
+    if (!soloLive || !autopick || !myTurn) return
     if (lastAuto.current === header.overall) return
     lastAuto.current = header.overall
     const choice = engine.autoPickForMe()
@@ -242,7 +324,7 @@ function V3LiveRoom() {
     if (found.length) {
       setSniped((prev) => new Set([...prev, ...found]))
       const p = picks.find((x) => x.overall === found[found.length - 1])
-      if (p) setNotice(`${engine.teamLabel(p.slot)} took ${p.player.name} off your queue.`)
+      if (p) setNotice(`${eng.teamLabel(p.slot)} took ${p.player.name} off your queue.`)
     }
   }, [version])
 
@@ -257,7 +339,7 @@ function V3LiveRoom() {
     if (myTurn && !h.mine) msg = `You are on the clock — pick ${header.code}.`
     else if (h.picks != null && picks.length > h.picks) {
       const p = picks[picks.length - 1]
-      const who = p.slot === mySlot ? 'You' : engine.teamLabel(p.slot)
+      const who = p.slot === mySlot ? 'You' : eng.teamLabel(p.slot)
       msg = `Pick ${p.overall}: ${who} took ${p.player.name}, ${p.player.pos === 'DST' ? 'defense' : p.player.pos}.`
     }
     heard.current = { picks: picks.length, mine: myTurn }
@@ -303,13 +385,24 @@ function V3LiveRoom() {
       </div>
     )
   }
-  if (!header.started || room) return <EmptyState engine={engine} />
+  /* The lobby is the room before it is a draft, and the room is the
+     authority on which it is: adoptRoom() sets state.started from exactly
+     this field, so `phase` is the fact and header.started is its echo. The
+     move off this screen therefore hangs off the broadcast — the nine other
+     managers never press Start at all. */
+  if (roomView && roomView.phase === 'lobby') return <RoomLobby engine={engine} view={roomView} />
+  if (!header.started) return <EmptyState engine={engine} />
 
   const onDraft = (p) => {
     if (!canDraft) return
+    // An intent in a room, a decision solo — one door either way, which is
+    // what keeps two managers from taking the same player.
     const err = engine.draftPlayer(p)
     if (err) setNotice(err === 'not-your-turn' ? 'It is not your turn any more.' : `That pick was refused (${err}).`)
   }
+  /* Autopick: the room's persistent flag, or this page's own per-turn loop.
+     Never both — see the file comment. */
+  const onAutopick = room ? () => { engine.toggleRoomAutopilot() } : setAutopick
   const onSound = () => { engine.toggleSound(); setSoundOn(!!engine.soundWanted()) }
   const onUndo = () => {
     setAutopick(false)
@@ -319,36 +412,45 @@ function V3LiveRoom() {
   }
   const closeMenu = () => { setMenu(null); setNotifyKey((n) => n + 1) }
   const board = engine.board() || []
-  const roster = readRoster(engine, rosterSlot)
+  const roster = readRoster(eng, rosterSlot)
   const counts = engine.filterCounts()
   const queueCount = (engine.queue() || []).length
   const mine = (engine.picks() || []).filter((p) => p.slot === mySlot).length
-  const common = { engine, canDraft, draftReason, onDraft, onOpen: setSelected, nextOverall }
+  const common = { engine: eng, canDraft, draftReason, onDraft, onOpen: setSelected, nextOverall }
+  /* Chat is a fourth tab on the rail and a fifth view on a phone, and only in
+     a room -- a tab that is always there and empty four drafts out of five is
+     furniture. It sits beside Team/Queue/Picks rather than over the field,
+     because the field is what a pick is made from and the talk is what the
+     room is for; neither should cover the other. */
+  const railTabs = room ? [...RAIL_TABS, ['chat', 'Chat']] : RAIL_TABS
+  const phoneViews = room ? [...PHONE_VIEWS, { key: 'chat', label: 'Chat', icon: 'users', kbd: 'k' }] : PHONE_VIEWS
+  const chat = room ? <RoomChat engine={eng} view={roomView} className="min-h-0 flex-1" /> : null
 
   // The room strip sits over the pool on a desk; a phone keeps its height
   // for players and carries the strip in the Call sheet instead.
   const pool = (
     <>
-      {!phone && <RoomRead engine={engine} decide={decide} />}
+      {!phone && <RoomRead engine={eng} decide={decide} />}
       <Pool {...common} version={version} f={f} set={setF} sort={sortBy} phone={phone} />
     </>
   )
   const field =
-    view === 'board' ? <Board engine={engine} version={version} onOpen={setSelected} phone={phone} />
-      : view === 'grade' ? <Analysis engine={engine} slot={gradeSlot} onSlot={setGradeSlot} phone={phone} />
+    view === 'board' ? <Board engine={eng} version={version} onOpen={setSelected} phone={phone} />
+      : view === 'grade' ? <Analysis engine={eng} slot={gradeSlot} onSlot={setGradeSlot} phone={phone} />
         : pool
 
   const picksPane = (
     <>
-      <NextPicks engine={engine} nextPicks={nextPicks} picksMade={header.picksMade} />
-      {!myTurn && <Forecast engine={engine} decide={decide} nextOverall={nextOverall} onOpen={setSelected} limit={phone ? 6 : 5} />}
-      <PicksFeed engine={engine} sniped={sniped} onOpen={setSelected} limit={phone ? 40 : 24} />
+      <NextPicks engine={eng} nextPicks={nextPicks} picksMade={header.picksMade} />
+      {!myTurn && <Forecast engine={eng} decide={decide} nextOverall={nextOverall} onOpen={setSelected} limit={phone ? 6 : 5} />}
+      <PicksFeed engine={eng} sniped={sniped} onOpen={setSelected} limit={phone ? 40 : 24} />
     </>
   )
   const teamBody = (tab) => (
-    tab === 'queue' ? <QueuePanel engine={engine} board={board} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpen={setSelected} />
-      : tab === 'picks' ? picksPane
-        : <RosterPanel engine={engine} slot={rosterSlot} onSlot={setRosterSlot} roster={roster} counts={counts} onOpen={setSelected} />
+    tab === 'chat' ? chat
+      : tab === 'queue' ? <QueuePanel engine={eng} board={board} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpen={setSelected} />
+        : tab === 'picks' ? picksPane
+          : <RosterPanel engine={eng} slot={rosterSlot} onSlot={setRosterSlot} roster={roster} counts={counts} onOpen={setSelected} />
   )
 
   const toast = notice && (
@@ -360,21 +462,21 @@ function V3LiveRoom() {
     <>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{said}</p>
       {toast}
-      <NotifyWatcher key={notifyKey} engine={engine} header={header} />
-      {menu && <LiveMenu engine={engine} header={header} onClose={closeMenu} soundOn={soundOn} onSound={onSound} autopick={autopick} onAutopick={setAutopick} onUndo={onUndo} phone={phone} startPage={menu} />}
-      <PlayerDrawer engine={engine} player={selected} onClose={() => setSelected(null)} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} nextOverall={nextOverall} phone={phone} />
+      <NotifyWatcher key={notifyKey} engine={eng} header={header} />
+      {menu && <LiveMenu engine={eng} header={header} room={roomView} blocked={blocked} onClose={closeMenu} soundOn={soundOn} onSound={onSound} autopick={autoOn} onAutopick={onAutopick} onUndo={onUndo} phone={phone} startPage={menu} />}
+      <PlayerDrawer engine={eng} player={selected} onClose={() => setSelected(null)} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} nextOverall={nextOverall} phone={phone} />
     </>
   )
 
   if (phone) {
     return (
       <div className="fixed inset-0 z-[55] flex flex-col bg-v3-paper font-sheet text-v3-ink">
-        <LiveHeader engine={engine} header={header} phone autopick={autopick} onAutopick={setAutopick} soundOn={soundOn} onSound={onSound} onMenu={() => setMenu('main')} menuOpen={!!menu} />
+        <LiveHeader engine={eng} header={header} phone room={roomView} autopick={autoOn} onAutopick={onAutopick} soundOn={soundOn} onSound={onSound} onMenu={() => setMenu('main')} menuOpen={!!menu} />
         <div className="shrink-0 border-b border-v3-rule bg-v3-paper px-2 py-1.5">
-          <Segments label="Draft views" value={view} onChange={setView} items={PHONE_VIEWS.map((v) => [v.key, v.label])} />
+          <Segments label="Draft views" value={view} onChange={setView} items={phoneViews.map((v) => [v.key, v.label])} />
         </div>
-        <main role="tabpanel" aria-label={PHONE_VIEWS.find((v) => v.key === view)?.label} className="flex min-h-0 flex-1 flex-col">
-          {view === 'team' ? (
+        <main role="tabpanel" aria-label={phoneViews.find((v) => v.key === view)?.label} className="flex min-h-0 flex-1 flex-col">
+          {view === 'chat' ? <div className="flex min-h-0 flex-1 flex-col p-2">{chat}</div> : view === 'team' ? (
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="sticky top-0 z-10 border-b border-v3-rule bg-v3-paper p-2">
                 <Segments label="Team" value={teamPane} onChange={setTeamPane} items={[['roster', 'Roster', `${mine}`], ['queue', 'Queue', `${queueCount}`], ['picks', 'Picks']]} />
@@ -383,12 +485,12 @@ function V3LiveRoom() {
             </div>
           ) : field}
         </main>
-        <CallDock engine={engine} decide={decide} header={header} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpenCall={() => setSheetOpen(true)} autopick={autopick} onAutopick={setAutopick} nextOverall={nextOverall} />
+        <CallDock engine={eng} decide={decide} header={header} canDraft={canDraft} draftReason={draftReason} onDraft={onDraft} onOpenCall={() => setSheetOpen(true)} autopick={autoOn} onAutopick={onAutopick} nextOverall={nextOverall} />
         {sheetOpen && (
           <CallSheet onClose={() => setSheetOpen(false)}>
-            <CallCard {...common} decide={decide} header={header} autopick={autopick} onDraft={(p) => { onDraft(p); setSheetOpen(false) }} />
-            <div className="overflow-hidden rounded-[6px] border border-v3-rule"><RoomRead engine={engine} decide={decide} phone /></div>
-            {!myTurn && <Forecast engine={engine} decide={decide} nextOverall={nextOverall} onOpen={setSelected} />}
+            <CallCard {...common} decide={decide} header={header} autopick={autoOn} onDraft={(p) => { onDraft(p); setSheetOpen(false) }} />
+            <div className="overflow-hidden rounded-[6px] border border-v3-rule"><RoomRead engine={eng} decide={decide} phone /></div>
+            {!myTurn && <Forecast engine={eng} decide={decide} nextOverall={nextOverall} onOpen={setSelected} />}
           </CallSheet>
         )}
         {overlays}
@@ -398,8 +500,8 @@ function V3LiveRoom() {
 
   return (
     <div className="fixed inset-0 z-[55] flex flex-col bg-v3-paper font-sheet text-v3-ink">
-      <LiveHeader engine={engine} header={header} autopick={autopick} onAutopick={setAutopick} soundOn={soundOn} onSound={onSound} onMenu={() => setMenu('main')} menuOpen={!!menu} />
-      <PickRibbon engine={engine} header={header} />
+      <LiveHeader engine={eng} header={header} room={roomView} autopick={autoOn} onAutopick={onAutopick} soundOn={soundOn} onSound={onSound} onMenu={() => setMenu('main')} menuOpen={!!menu} />
+      <PickRibbon engine={eng} header={header} />
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col">
           <div className="flex shrink-0 items-stretch justify-between gap-3 border-b border-v3-rule bg-v3-sheet px-3">
@@ -424,12 +526,18 @@ function V3LiveRoom() {
 
         <aside aria-label="Your sheet" className="flex w-[344px] shrink-0 flex-col overflow-hidden border-l border-v3-rule bg-v3-paper xl:w-[392px] [@media(max-height:780px)]:overflow-y-auto">
           <div className="shrink-0 p-3 pb-2">
-            <CallCard {...common} decide={decide} header={header} autopick={autopick} compact={!wide} />
+            <CallCard {...common} decide={decide} header={header} autopick={autoOn} compact={!wide} />
           </div>
           <div className="sticky top-0 z-10 shrink-0 bg-v3-paper px-3 pb-2">
-            <Segments label="Your sheet" value={railTab} onChange={setRailTab} items={RAIL_TABS.map(([k, t]) => [k, t, k === 'team' ? `${mine}/${header.rounds}` : k === 'queue' ? `${queueCount}` : null])} />
+            <Segments label="Your sheet" value={railTab} onChange={setRailTab} items={railTabs.map(([k, t]) => [k, t, k === 'team' ? `${mine}/${header.rounds}` : k === 'queue' ? `${queueCount}` : null])} />
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3 [@media(max-height:780px)]:flex-none [@media(max-height:780px)]:overflow-visible">
+          {/* The chat brings its own scroller, so the rail must not be one
+              too: a flex child of an overflow-y-auto parent sizes to its
+              content, and the log came out about 180px tall under the Call.
+              Every other tab is a column of panels and wants the rail's. */}
+          <div className={cx('min-h-0 flex-1 px-3 pb-3', railTab === 'chat'
+            ? 'flex flex-col'
+            : 'space-y-3 overflow-y-auto [@media(max-height:780px)]:flex-none [@media(max-height:780px)]:overflow-visible')}>
             {teamBody(railTab)}
           </div>
         </aside>

@@ -68,6 +68,29 @@ function reasonOf(c) {
 
 const surname = (name) => (name || '').split(' ').slice(-1)[0]
 
+/* How many picks until yours.
+
+   headerInfo() puts it in the right-hand slot ONLY when that slot is free,
+   and in a room it never is: clockShowing() is true for everybody there, so
+   the slot carries the shared countdown and rightLabel reads "Time left".
+   The dock read `Number(header.rightValue)` regardless and printed
+   "You're up in null" on every waiting turn of a shared draft — a guarded
+   value with a caller that did not read the guard, which is the rule
+   CLAUDE.md states about pickInfo() arriving at a different wrapper.
+
+   The fallback is derived rather than asked for a second time: nextOverall
+   is this seat's own next pick and header.overall is the one on the clock,
+   so the difference IS the gap, and it agrees with headerInfo's own figure
+   by construction rather than by a second implementation of it. */
+function gapToNext(header, nextOverall) {
+  if (header.rightLabel === 'Your turn in') {
+    const n = Number(header.rightValue)
+    if (Number.isFinite(n)) return n
+  }
+  if (Number.isFinite(nextOverall) && Number.isFinite(header.overall)) return nextOverall - header.overall
+  return null
+}
+
 /* The clock, drained across the Call rather than printed a second time —
    the header already says the number. Its own component because it is the
    one piece of the card that moves every second. */
@@ -218,7 +241,7 @@ export function CallCard({ engine, decide, header, canDraft, draftReason, onDraf
   const { box, lead } = useCallMotion(myTurn, leadKey)
   const cands = decide.candidates || []
   const queued = new Set(engine.queue() || [])
-  const gap = header.rightLabel === 'Your turn in' ? Number(header.rightValue) : null
+  const gap = gapToNext(header, nextOverall)
   const nextCode = nextOverall && de ? de.pickCode(nextOverall, league) : null
   const band = myTurn ? `The call · ${header.code}` : nextCode ? `Your next pick · ${nextCode}` : 'No picks left'
   const aside = myTurn
@@ -352,7 +375,7 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
   useEffect(() => { dockMounted.current = true }, [])
   const myTurn = !!header.myTurn
   const lead = (decide.candidates || [])[0]
-  const gap = header.rightLabel === 'Your turn in' ? Number(header.rightValue) : null
+  const gap = gapToNext(header, nextOverall)
   const nextCode = nextOverall && de ? de.pickCode(nextOverall, engine.league()) : null
 
   let body
@@ -392,7 +415,7 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
           <span className="min-w-0">
             <span className="block truncate font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink3">{header.code} · {header.onClockName || 'CPU'}</span>
             <span className="block truncate text-[15px] font-bold text-v3-ink">
-              {nextCode ? <>You’re up {gap === 1 ? 'next' : `in ${gap}`} · <span className="font-figure tabular-nums">{nextCode}</span></> : 'No picks left for you'}
+              {nextCode ? <>You’re up {gap === 1 ? 'next' : gap != null ? `in ${gap}` : 'later'} · <span className="font-figure tabular-nums">{nextCode}</span></> : 'No picks left for you'}
             </span>
           </span>
           <Glyph name="chevUp" className="h-4 w-4 shrink-0 text-v3-ink2" />
