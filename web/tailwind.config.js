@@ -4,6 +4,73 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ---- v2 "Telemetry" (the #/v2 comparison build, web/src/components/v2) ----
+        //
+        // Its own namespace on purpose. v2 is a side-by-side proposal, not a
+        // re-theme: nothing outside components/v2 may read these, so the live
+        // site cannot drift toward them by accident, and deleting v2 is
+        // deleting this block and one directory.
+        //
+        // Measured on `panel` (#10151F): ink 16.3, ink2 8.7, ink3 5.2, volt
+        // 14.9, loss 6.6 — every text tone clears 4.5. `voltInk` is the only
+        // ink allowed ON volt (15.1:1); white on volt is 1.1 and never used.
+        v2: {
+          ground: '#0B0F19',
+          inset: '#0D121C',
+          panel: '#10151F',
+          raised: '#161C29',
+          hover: '#1B2332',
+          ink: '#E7ECF3',
+          ink2: '#A7B1C2',
+          ink3: '#7F8A9E',
+          volt: '#00FF66',
+          voltInk: '#03140A',
+          cyan: '#22D3EE',
+          violet: '#8B5CF6',
+          loss: '#FF6B6B',
+          warn: '#FFB547',
+        },
+        // v3 "Call Sheet": the full-autonomy proposal, light-first. Same
+        // quarantine as v2 — nothing outside components/v3 reads these.
+        //
+        // Measured on paper / sheet / well (#F2F4F7 / #FFF / #E8ECF1):
+        // ink 16.7/18.4/15.5, ink2 8.8/9.7/8.2, ink3 5.6/6.2/5.2, call
+        // 6.7/7.4/6.2, gain 5.4/6.0/5.0, cost 5.7/6.3/5.3, warn 5.7/6.3/5.3.
+        // White on call is 7.4 and white on band 18.4. `call` is the one
+        // action colour and is never a value; gain/cost/warn are values and
+        // never actions.
+        //
+        // Two themes, one set of names. The values live in index.css as RGB
+        // channels (light on :root, dark under html[data-v3-theme="dark"]),
+        // so a class like bg-v3-sheet/95 still takes its alpha. The band is
+        // dark in BOTH themes, which is what lets white stay legal on it.
+        // `onCall` is the ink on a call button: white in light, near-black
+        // in dark, because dark mode's cobalt is too light to carry white.
+        v3: {
+          paper: 'rgb(var(--v3-paper) / <alpha-value>)',
+          sheet: 'rgb(var(--v3-sheet) / <alpha-value>)',
+          well: 'rgb(var(--v3-well) / <alpha-value>)',
+          rule: 'rgb(var(--v3-rule) / <alpha-value>)',
+          band: 'rgb(var(--v3-band) / <alpha-value>)',
+          bandSoft: 'rgb(var(--v3-band-soft) / <alpha-value>)',
+          bandInk: 'rgb(var(--v3-band-ink) / <alpha-value>)',
+          ink: 'rgb(var(--v3-ink) / <alpha-value>)',
+          ink2: 'rgb(var(--v3-ink2) / <alpha-value>)',
+          ink3: 'rgb(var(--v3-ink3) / <alpha-value>)',
+          call: 'rgb(var(--v3-call) / <alpha-value>)',
+          callDeep: 'rgb(var(--v3-call-deep) / <alpha-value>)',
+          callWash: 'rgb(var(--v3-call-wash) / <alpha-value>)',
+          onCall: 'rgb(var(--v3-on-call) / <alpha-value>)',
+          gain: 'rgb(var(--v3-gain) / <alpha-value>)',
+          gainWash: 'rgb(var(--v3-gain-wash) / <alpha-value>)',
+          cost: 'rgb(var(--v3-cost) / <alpha-value>)',
+          costWash: 'rgb(var(--v3-cost-wash) / <alpha-value>)',
+          warn: 'rgb(var(--v3-warn) / <alpha-value>)',
+          warnWash: 'rgb(var(--v3-warn-wash) / <alpha-value>)',
+          // What a shadow or a scrim is cast in: the ink in light, black at
+          // night. Never text.
+          shade: 'rgb(var(--v3-shade) / <alpha-value>)',
+        },
         obsidian: '#0B0E14',
         charcoal: '#151923',
         teal: {
@@ -419,6 +486,14 @@ export default {
       },
       transitionDuration: { hover: '160ms' },
       fontFamily: {
+        // v2 only: a condensed scoreboard face for the telemetry build's
+        // headlines and big numerals. Fetched by V2App on mount and never
+        // before, so no live page pays for it.
+        telemetry: ['"Barlow Condensed"', 'Gabarito', 'system-ui', 'sans-serif'],
+        // v3 only: one grotesk for everything worded, one condensed mono for
+        // every figure. Fetched by V3App on mount, never before.
+        sheet: ['"Schibsted Grotesk"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        figure: ['Inconsolata', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
         // The display face, and it has to be the same string style.css's
         // --font-display carries — two copies of "what the display face
         // is" is the written-down-twice failure with a typeface in it, and

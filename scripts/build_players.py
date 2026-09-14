@@ -122,6 +122,127 @@ WEEKLY_SEASONS = [2025, 2024]
 WEEKLY_WEEKS = 18
 PROJECTION_SEASON = 2026
 
+# ---- the season being played ----
+#
+# Once a regular season has scores, its played weeks are stored in `w` as
+# well, because they are the only evidence app.js's rest-of-season model has
+# that the preseason projection was wrong: Sleeper's season projection is the
+# preseason forecast all year (checked 11 September 2026 against its own 2025
+# file: James Conner, Austin Ekeler, Tyreek Hill, Malik Nabers and Anthony
+# Richardson all still carry gp 18 for a season they played 2 to 4 games of).
+#
+# Two seasons of weekly logs, the same as today -- the live one and the one
+# before it -- so the season two back drops out to pay for this one. Measured
+# 13 September 2026 on 2025's real weeks compacted exactly as below, against
+# today's 481-player pool: the 2024 top-180 block this DROPS is 20.4 KB
+# gzipped, and the live season's own whole-pool block grows 3.8 KB (week 1),
+# 10.6 (week 4), 20.4 (week 9), 37.0 (week 17). So stats.js is ~17 KB LIGHTER
+# through the opening month, square by about week nine, and ~17 KB heavier by
+# week 17 -- on a file that gzips to about 147 KB.
+#
+# (The first version of this note read "~2 KB lighter in week 1", which took
+# the WHOLE season's 39 KB as though it were week one's. A season total is
+# not a week's cost; measure the block at the week you mean.)
+#
+# The whole pool, and not the top WEEKLY_KEEP, for the live season alone:
+# the players a waiver wire is made of are exactly the ones below the 180th
+# pick, and a rest-of-season number that knows nothing of what a deep-bench
+# receiver did last Sunday is the preseason number with a new label.
+#
+# Out of season this changes nothing. `live_season()` answers None unless
+# Sleeper says a regular season has scores (or it is the postseason), and
+# then WEEKLY_SEASONS is used exactly as it always was.
+
+
+def nfl_state_block(state):
+    """NFL_STATE for stats.js: the state the nightly was built against.
+
+    app.js's seasonClock() reads it to decide whether the season is being
+    played. Absent or unreadable is null, never a guess -- a clock that
+    invents a week is worse than one that says it does not know."""
+    if not isinstance(state, dict):
+        return None
+    season = str(state.get("season") or "")
+    kind = state.get("season_type")
+    if not season or kind not in ("pre", "regular", "post", "off"):
+        return None
+    week = state.get("week")
+    return {
+        "season": season,
+        "week": week if isinstance(week, int) and not isinstance(week, bool) else 0,
+        "seasonType": kind,
+        "seasonStart": state.get("season_start_date") or None,
+        "hasScores": bool(state.get("season_has_scores")),
+    }
+
+
+def live_season(state):
+    """(season, last week to ask for) while a season is being played, or None.
+
+    A regular season counts from the moment it has a score, not from the date:
+    Sleeper flips season_type to "regular" days before the opener, and a week
+    with no games in it must not be stored at all (see played_week()). The
+    postseason keeps the finished regular season's eighteen weeks."""
+    block = nfl_state_block(state)
+    if not block:
+        return None
+    season = int(block["season"])
+    if block["seasonType"] == "regular" and block["hasScores"]:
+        return season, min(max(block["week"], 1), WEEKLY_WEEKS)
+    if block["seasonType"] == "post":
+        return season, WEEKLY_WEEKS
+    return None
+
+
+def weekly_seasons(live):
+    """The seasons whose week-by-week logs are stored: two, newest first."""
+    if not live:
+        return list(WEEKLY_SEASONS)
+    return [live[0], live[0] - 1]
+
+
+def weekly_plan(live):
+    """[(season, last week to ask for, strict)] -- strict for the live season,
+    where a week with no game in it is dropped by played_week()."""
+    plan = []
+    for season in weekly_seasons(live):
+        is_live = bool(live) and season == live[0]
+        plan.append((season, live[1] if is_live else WEEKLY_WEEKS, is_live))
+    return plan
+
+
+def weekly_logs(player_id, rank, weekly, live):
+    """One player's `w`: {season: [compacted week line + "w"], ...}.
+
+    Past seasons stop at the WEEKLY_KEEP cut by board rank, as they always
+    have. The live season is stored for everybody -- see live_season()."""
+    by_season = {}
+    for season, weeks in weekly.items():
+        if rank >= WEEKLY_KEEP and not (live and season == live[0]):
+            continue
+        logs = []
+        for week in sorted(weeks):
+            line = weeks[week].get(player_id)
+            if not line:
+                continue
+            block = compact(line)
+            block["w"] = week
+            logs.append(block)
+        if logs:
+            by_season[str(season)] = logs
+    return by_season
+
+
+def played_week(data):
+    """Whether a week's stat file has a game in it.
+
+    Sleeper answers a week nobody has played yet with an empty object, and
+    a week in progress with lines only for the teams that have played -- an
+    inactive player on one of those teams gets a line with gp 0, which is a
+    real DNP. So a week with no gp at all is a week with no games, and it is
+    left out rather than stored as a column of zeros."""
+    return bool(data) and any((line or {}).get("gp") for line in data.values())
+
 # Past seasons' projections, kept beside the actuals so the app can be held to
 # what it said. Until now only the coming season was stored and it was
 # overwritten nightly, which meant the one question worth asking of a
@@ -532,11 +653,32 @@ def reconcile(row):
 # `projected_keys` is derived from what the projection actually carries, so
 # dropping the value here is what takes rec_40p out of PROJECTED_KEYS -- no
 # second list to keep in step.
-FORMULAIC_PROJECTION_KEYS = ("rec_40p",)
+FORMULAIC_PROJECTION_KEYS = ("rec_40p", "pass_fd", "rush_fd", "rec_fd")
+
+# The three first-down keys joined it on 10 September 2026, found by the
+# same ratio sweep. On a projection each is its own yards divided by ten --
+# pass_fd 185/185, rush_fd 805/805 and rec_fd 861/861 across the season and
+# past-season blocks, and 564 of 564 in a fetched weekly file -- where the
+# real rate is about 0.042 a passing yard, 0.048 a rushing yard and 0.041 a
+# receiving yard (fit 2022-24, checked on 2025). So the formula forecasts
+# 2.0 to 2.4 times the first downs a player records, and a league that pays
+# for them priced every back and receiver on a number nobody forecast.
+# Default rules score first downs at zero, so the default board is untouched.
+
+# A season projection's defence line carries two values that are not
+# forecasts at all: blk_kick is exactly 1 for every one of the 32 current
+# defences and all 96 past ones, and pts_allow_0 is exactly 1 on all 96 past
+# ones -- one blocked kick and one shutout a season, for every team, every
+# year. Five points of placeholder under default scoring, on a number
+# projectionRecord() then graded. Season blocks only: the WEEKLY file's
+# blk_kick is a real fractional forecast (0.04 to 0.08), and its
+# points-allowed tiers are what the weekly defence projection is made of.
+SEASON_PLACEHOLDER_KEYS = ("blk_kick", "pts_allow_0")
 
 
-def forecast_only(block):
-    """A projection block with the formulaic keys taken out.
+def forecast_only(block, season=True):
+    """A projection block with the formulaic keys taken out, and for a
+    season block the placeholder defence keys too.
 
     Takes the SHORT keys, because it runs on compact()'s output rather than
     on a raw feed row.
@@ -546,6 +688,9 @@ def forecast_only(block):
     out = dict(block)
     for key in FORMULAIC_PROJECTION_KEYS:
         out.pop(STAT_FIELDS[key], None)
+    if season:
+        for key in SEASON_PLACEHOLDER_KEYS:
+            out.pop(STAT_FIELDS[key], None)
     return out
 
 
@@ -585,7 +730,15 @@ TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com"
 TANK01_LIST = f"https://{TANK01_HOST}/getNFLPlayerList"
 
 
-def fetch_week_projections():
+def fetch_nfl_state():
+    """Sleeper's NFL state, or {} if it would not answer. Asked once a run:
+    the weekly projections, the live season's logs and NFL_STATE all read
+    this one answer, so they cannot disagree about which week it is."""
+    state = fetch_json(f"{SLEEPER}/state/nfl", optional=True) or {}
+    return state if isinstance(state, dict) else {}
+
+
+def fetch_week_projections(state=None):
     """This week's forecast, which the season endpoint cannot stand in for.
 
     The season projection is a COARSER dataset than the weekly one, and for
@@ -613,7 +766,8 @@ def fetch_week_projections():
     week Sleeper has no opinion about, this returns nothing and every caller
     falls back to the season projection exactly as it did before.
     """
-    state = fetch_json(f"{SLEEPER}/state/nfl", optional=True) or {}
+    if state is None:
+        state = fetch_nfl_state()
     season = str(state.get("season") or "")
     week = state.get("week")
     kind = state.get("season_type")
@@ -2463,7 +2617,9 @@ def main():
             past_projections[season] = data
         print(f"  {len(data)} lines")
 
-    week_projections, week_proj_meta = fetch_week_projections()
+    nfl_state = fetch_nfl_state()
+    live = live_season(nfl_state)
+    week_projections, week_proj_meta = fetch_week_projections(nfl_state)
 
     # Optional, keyed, and never fatal: no key means no crosswalk and a build
     # that is otherwise identical to today's.
@@ -2473,13 +2629,15 @@ def main():
     # not appear, so the app draws a selector of the years it actually has
     # rather than a tab that opens onto an empty table.
     weekly = {}
-    for season in WEEKLY_SEASONS:
-        print(f"Fetching {season} weekly game logs...")
+    for season, last, is_live in weekly_plan(live):
+        print(f"Fetching {season} weekly game logs{' (the season being played)' if is_live else ''}...")
         got = {}
-        for week in range(1, WEEKLY_WEEKS + 1):
+        for week in range(1, last + 1):
             data = fetch_json(
                 f"{SLEEPER}/stats/nfl/regular/{season}/{week}", optional=True)
-            if data:
+            # The live season asks the stricter question: a week that has not
+            # been played is absent, never a week of zeros.
+            if (played_week(data) if is_live else data):
                 got[week] = data
         if got:
             weekly[season] = got
@@ -2612,7 +2770,7 @@ def main():
         # about. A stale block is worse than none -- see app.js.
         week_line = week_projections.get(player_id)
         if week_line:
-            block = forecast_only(compact(week_line))
+            block = forecast_only(compact(week_line), season=False)
             if block:
                 record["wp"] = block
 
@@ -2637,21 +2795,9 @@ def main():
         if past:
             record["pp"] = past
 
-        if rank < WEEKLY_KEEP:
-            by_season = {}
-            for season, weeks in weekly.items():
-                logs = []
-                for week in sorted(weeks):
-                    line = weeks[week].get(player_id)
-                    if not line:
-                        continue
-                    block = compact(line)
-                    block["w"] = week
-                    logs.append(block)
-                if logs:
-                    by_season[str(season)] = logs
-            if by_season:
-                record["w"] = by_season
+        by_season = weekly_logs(player_id, rank, weekly, live)
+        if by_season:
+            record["w"] = by_season
 
         if record:
             stats[player_id] = record
@@ -2834,7 +2980,10 @@ def main():
             "                  keyed by year to line up with s\n"
             "     x            this player's id at other sources, so nothing\n"
             "                  has to match on a name at request time\n"
-            "     w            week by week logs, keyed by season\n"
+            "     w            week by week logs, keyed by season. Two seasons;\n"
+            "                  once a season is being played it is one of\n"
+            "                  them, stored for every player on the board,\n"
+            "                  with only the weeks that have been played\n"
             "     pr           prospect: what a FIRST-YEAR player did before\n"
             "                  he got here. d is [round, pick, overall], or 0\n"
             "                  for undrafted -- which is a fact rather than a\n"
@@ -2858,6 +3007,10 @@ def main():
             "   over anything outside it scores history correctly and adds\n"
             "   nothing to the 2026 projection, which is what the draft board\n"
             "   is ranked on. The scoring editor says so on each rule.\n\n"
+            "   NFL_STATE is Sleeper's NFL state when this file was built:\n"
+            "   season, week, seasonType (pre/regular/post/off), seasonStart,\n"
+            "   hasScores. app.js's seasonClock() reads it. null if Sleeper\n"
+            "   did not answer.\n\n"
             "   TEAM_RANKS is a separate, player-less block: each of the 32 NFL\n"
             "   teams (by code, aliased through the same TEAM_ALIASES a player\n"
             "   record's own team uses) ranked 1st (best) to 32nd (worst) on\n"
@@ -2884,6 +3037,7 @@ def main():
             "const STAT_KEYS = " + json.dumps(key_map, separators=(",", ":")) + ";\n\n"
             "const PROJECTED_KEYS = " + json.dumps(projected_keys, separators=(",", ":")) + ";\n\n"
             "const WEEK_PROJ_META = " + json.dumps(week_proj_meta, separators=(",", ":")) + ";\n\n"
+            "const NFL_STATE = " + json.dumps(nfl_state_block(nfl_state), separators=(",", ":")) + ";\n\n"
             "const PLAYER_STATS = " + json.dumps(stats, separators=(",", ":")) + ";\n\n"
             "const TEAM_RANKS_META = " + json.dumps(
                 {"season": team_ranks_season, "teams": len(team_ranks)},

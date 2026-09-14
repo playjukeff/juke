@@ -147,6 +147,22 @@ check("an even trade is zero on both sides", () => {
   assert.equal(s.them, 0);
 });
 
+/* Found by the 10 September 2026 audit: sending away a player below
+ * replacement counted his negative value as a gain. He is worth nothing in
+ * a trade in either direction -- both sides can swap him for the
+ * waiver-level player tomorrow. */
+check("giving away a below-replacement player gains nothing", () => {
+  const s = tradeSwing([byId.get("w")], [], gapOf);
+  assert.equal(s.you, 0, "not +70 for giving away a body nobody would start");
+  assert.equal(s.priced, true);
+});
+
+check("and receiving one costs nothing", () => {
+  const s = tradeSwing([byId.get("d")], [byId.get("a"), byId.get("w")], gapOf);
+  assert.equal(s.get, 180, "the -70 receiver counts as 0, not as a deduction");
+  assert.equal(s.you, 160);
+});
+
 check("an unpriceable player makes the WHOLE trade unpriceable", () => {
   /* Not "worth zero". A kicker is a real asset the app has declined to
      rank, so counting him at 0 reports a swing confidently wrong in a

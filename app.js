@@ -854,6 +854,26 @@ function onDraftRoomRoute() {
   return path === "draft-room";
 }
 
+/* #/v2/draft/live — the v2 comparison build's live draft cockpit
+   (web/src/components/v2/cockpit/). Asked ONLY by applyRoute()'s teardown
+   branch below, deliberately not folded into onDraftRoomRoute(): that one
+   also decides hideHome in syncHomeVisibility(), and the v2 build renders
+   INSIDE #view-home, so hiding it for this route would hide the cockpit.
+
+   Why the teardown needs to know about it at all: a solo draft's CPU picks
+   (runCPUs() -> cpuStep()) and its pick clock (resetClock() -> startTicking())
+   both live in this file, and every route that is not #/draft-room stops
+   them (stopSim()/stopClock()) on the way in. DraftRoom.jsx is not mounted
+   as the live screen on this route (its effects all gate on #/draft-room),
+   so nothing would restart them — the draft would freeze on the first CPU
+   turn. */
+function onV2LiveRoute() {
+  const path = location.hash.replace(/^#\/?/, "").split("?")[0];
+  // v3's live draft (#/v3/draft/live) needs exactly the same carry-on, for
+  // the same reason: it renders inside #view-home and drives nothing itself.
+  return path === "v2/draft/live" || path === "v3/draft/live";
+}
+
 /* Split out of applyRoute() so the hashchange listener's bare-anchor guard
    (below) can restore view-home/shellbar without running the rest of
    applyRoute() — its scrollTo(0, 0) and its closeRooms()/stopSim()/
@@ -982,6 +1002,19 @@ function applyRoute() {
   if (onDraftRoomRoute()) {
     // #draftroom-root owns its own visibility and lifecycle entirely — see
     // the comment at web/index.html beside that id. Nothing to do here.
+  } else if (onV2LiveRoute()) {
+    // The v2 cockpit: skip the teardown, and carry a solo draft on from
+    // wherever it was left — the CPU picks if a CPU is up, a fresh clock if
+    // it is you. Both calls are idempotent (scheduleCpuStep() and
+    // resetClock() clear before they set), and the guards keep a draft that
+    // is already moving from being touched: an arrival straight after
+    // startDraft() finds state.simulating already true. A room is never
+    // driven from here — the room broadcasts, and the host's browser drives
+    // its empty chairs off those, whatever route it is on.
+    if (state.started && !hasRoom() && !draftOver() && !state.simulating) {
+      if (!isMyTurn()) runCPUs();
+      else if (!state.timerId) resetClock();
+    }
   } else if (!onDraftRoomRoute()) {
     // Leaving is not discarding. The draft stays in memory and in the save;
     // only the clock and the CPU timer stop, so nothing advances off-screen
@@ -1241,6 +1274,9 @@ function loadScores() {
    than being fixed at load.                               */
 
 let board = [];
+// Bumped on every rebuild, so a cache keyed on it (the rest-of-season
+// table, section 10a2) cannot serve one board's rows to another.
+let BOARD_BUILDS = 0;
 
 const DEFAULT_SET = "half";
 
@@ -1358,6 +1394,7 @@ function buildBoard() {
   // not to the generated data, which gets read again on a restart.
   board = adpSet().map((p) => Object.assign({}, p));
   board.sort((a, b) => a.adp - b.adp);
+  BOARD_BUILDS++;
 
   const counts = {};
   board.forEach(function (player, i) {
@@ -3302,7 +3339,24 @@ function survivalProbability(player, atOverall) {
   if (typeof player.td !== "number" || player.td < MIN_ADP_SAMPLE) return null;
   const overall = atOverall === undefined ? nextPickFor(state.mySlot) : atOverall;
   if (overall === null || overall === undefined) return null;
-  return 1 - normalCdf((overall - player.adp) / player.sd);
+  /* Conditioned on his still being here NOW. The question on screen is
+     asked about a player who has not been taken, and the unconditional
+     tail ignores that: measured 10 September 2026 against the CPU room, a
+     player given 2% to last lasted 37% of the time, and the conditional
+     form took the Brier score from 0.142 to 0.127. Nothing new is
+     modelled -- it is the same normal draw, asked the right question.
+
+     And null, not a number, for a player already three spreads past his
+     ADP. Both tails are then tiny, normalCdf's absolute error (1.5e-7) is
+     no longer small beside them, and the market model has nothing honest
+     to say about why he is still on the board. */
+  const now = state.picks.length + 1;
+  if (overall <= now) return 1;
+  const zNow = (now - player.adp) / player.sd;
+  if (zNow > 3) return null;
+  const here = 1 - normalCdf(zNow);
+  const then = 1 - normalCdf((overall - player.adp) / player.sd);
+  return Math.max(0, Math.min(1, then / here));
 }
 
 /* Starters-worth of talent left at a position — undrafted players whose
@@ -3975,6 +4029,55 @@ function replacementGap(player) {
   return player.projPts - (REPLACEMENT_PTS[player.pos] || 0);
 }
 
+/* The same figure for a CONNECTED league: its own scoring and its own roster
+   shape, rather than this session's Draft Room.
+
+   The Waiver and Trade rooms priced every claim and every trade with
+   replacementGap(), which reads league.rules and REPLACEMENT_PTS -- the mock
+   draft's table and the mock draft's team count. Found by the audit of
+   10 September 2026: a 12-team full-PPR league was being told what a player
+   is worth over a 10-team half-PPR replacement. The lineup room had been
+   moved onto the league's rules a week earlier (projPerGameUnder); the
+   season-value rooms had not.
+
+   Built on gradeProjections(), which already prices the board under an
+   arbitrary rules table for a connected league's own draft report, handed
+   the league's shape so replacementRank() draws the line where THAT league
+   runs out of starters. Nothing is written down twice, and nothing a
+   running draft reads (projPts, REPLACEMENT_PTS) is touched.
+
+   Falls back to replacementGap() when the league sends no lineup -- an older
+   worker -- because the Draft Room's shape is then the best answer there is,
+   and a room that went blank would be worse. Same refusal for K and DST. */
+let LEAGUE_GAP_CACHE = null;
+function leagueGapTable(rawRules, lineupIn, teams) {
+  const rules = rulesFromLeague(rawRules) || league.rules;
+  const shape = Object.assign({}, league, {
+    teams: teams,
+    starters: Object.assign({}, lineupIn.starters),
+    flex: lineupIn.flex || 0,
+    superflex: lineupIn.superflex || 0,
+    bench: lineupIn.bench || 0,
+  });
+  const key = board.length + "|" + teams + "|" +
+    Object.keys(DEFAULT_RULES).map(function (k) { return rules[k]; }).join(",") + "|" +
+    JSON.stringify([shape.starters, shape.flex, shape.superflex]);
+  if (LEAGUE_GAP_CACHE && LEAGUE_GAP_CACHE.key === key) return LEAGUE_GAP_CACHE.value;
+  const value = gradeProjections(rules, shape);
+  LEAGUE_GAP_CACHE = { key: key, value: value };
+  return value;
+}
+
+function replacementGapUnder(player, rawRules, lineupIn, teams) {
+  if (!player) return null;
+  if (!lineupIn || !lineupIn.starters || !(teams > 0)) return replacementGap(player);
+  if (UNRANKED_POSITIONS.indexOf(player.pos) >= 0) return null;
+  const t = leagueGapTable(rawRules, lineupIn, teams);
+  const pts = t.proj[player.id];
+  if (pts === null || pts === undefined) return null;
+  return pts - (t.replacement[player.pos] || 0);
+}
+
 /* Points above replacement for the whole board, under an arbitrary scoring
    format rather than the live league's own rules — what homepage v4 pass
    2 needs in two places (the hero board widget's VORP column, the Show
@@ -4125,6 +4228,420 @@ function draftSignals(player) {
   bust = Math.max(0, Math.min(100, bust));
 
   return { overall: overall, upside: upside, bust: bust, reasons: reasons, stats: s };
+}
+
+
+/* ---- 10a2. The season in progress ------------------------
+
+   Sleeper's season projection is the PRESEASON forecast all year: its own
+   2025 file, read on 11 September 2026, still projects James Conner, Austin
+   Ekeler, Tyreek Hill, Malik Nabers and Anthony Richardson for an 18-game
+   season they played 2 to 4 games of. So projPts -- and everything built on
+   it: the board, replacementGap(), the Juke score, the tiers -- would say in
+   week 9 exactly what it said in August. That is right for a draft and wrong
+   for a waiver claim.
+
+   Two answers, never blended into one number:
+
+   * SEASON SO FAR -- points actually scored this season, under whatever
+     rules the caller hands in, and points per game PLAYED. A fact. A monster
+     week moves it at once.
+   * REST OF SEASON (ROS) -- Juke's forward view. A per-game rate that
+     shrinks what he has done toward what he was projected to do,
+
+         rate = w * observed per game + (1 - w) * preseason per game
+         w    = n / (n + k),  n = games he has actually played
+
+     times the games he has left (his bye and weeks he is known to miss
+     taken out). Recommendations price on this.
+
+   ---- k is fitted, not chosen ----
+
+   Backtested on Sleeper's own 2023, 2024 and 2025 weekly stats against its
+   own archived preseason projections, for the players whose PRESEASON
+   projection put them in the top 36 QB / 72 RB / 96 WR / 36 TE / 24 K /
+   24 DST -- a population fixed before a snap, so the players who washed out
+   are in it. For N = 1..8 weeks, predict points per game PLAYED over weeks
+   N+1..17 (a DNP is not a zero). Out of sample, half PPR, MAE in points per
+   game, trained on one season and scored on the other:
+
+                     2024 -> 2025               2025 -> 2024
+                 prior  observed  blend     prior  observed  blend
+       N=1  QB    3.02    9.18    2.96       3.28    6.50    3.18
+            RB    3.05    4.59    3.05       2.66    4.70    2.50
+            WR    2.19    5.00    2.19       2.03    4.86    2.05
+            TE    2.22    3.03    2.10       1.96    4.55    2.00
+       N=4  QB    3.59    5.55    3.50       4.17    5.80    4.31
+            RB    3.35    2.91    3.08       2.84    3.45    2.62
+            WR    2.30    3.17    2.16       2.27    3.10    2.20
+            TE    2.47    2.95    2.23       2.40    3.40    2.55
+       N=8  QB    4.26    5.79    4.28       5.48    5.43    5.17
+            RB    3.47    3.09    3.07       3.13    3.00    2.75
+            WR    2.78    3.04    2.67       2.57    2.83    2.44
+            TE    2.50    2.50    2.23       2.74    2.67    2.53
+       all  QB/RB/WR/TE 2.84  3.68  2.69       2.79    3.75    2.69
+
+   Observed alone is worse than the preseason projection until about week
+   four and never better than the blend. The blend wins or ties in both
+   directions overall; it loses narrowly for QB in 2024 (4.33 against 4.32)
+   and TE in 2024 (2.43 against 2.39), which is written down rather than
+   tuned away.
+
+   ONE k for QB/RB/WR/TE. Fitted per position the four k values wander
+   (QB 11 to 50, TE 7 to 50 across seasons), and out of sample they buy
+   nothing: pooled over five train/test folds the weighted MAE is 2.6605 per
+   position against 2.6604 for one shared k. Fitted on all three seasons
+   together: 9.75 half PPR, 9.0 full PPR, 10.75 standard -- so 10, which
+   puts 9% on this season after one game, 29% after four and 44% after
+   eight. Kickers and defenses do differ, materially and for a reason: a
+   season projection carries no field goal under forty yards and no points
+   allowed at all, so the kicker's prior is weak (k = 3) and a defense's
+   prior is the better read (k = 21). Neither is ever RANKED as value --
+   UNRANKED_POSITIONS carries over -- but both are scored, because a lineup
+   with a kicker in it needs his points.
+
+   ---- tested and not used ----
+
+   * Scaling the prior (projected points / 17 understates points per game
+     PLAYED, since it prices in injury): fitted c came out 1.00-1.08 for the
+     skill positions and did not beat the plain blend out of sample (2.69 vs
+     2.71, 2.69 vs 2.65). It did help tight ends (c fits 1.13, 1.20, 1.20
+     across 2023, 2024 and 2025 -- this line read "1.20 in all three
+     seasons" until it was re-derived) and kickers -- and it would move
+     every tight end up the board before a single snap, which is a change
+     to the preseason board and not this one's to make.
+   * Sleeper's weekly projection for the next week on top of the blend,
+     scored on weeks N+2..17 so its own week is not in the target: better in
+     three of five folds, worse in two (2024 both times). Not used.
+   * This project's own stats.js alone (pp and w for 2024 and 2025, today's
+     top 180 only, so survivorship-biased) fits k = 13 and 8.5 and gives the
+     same ordering: prior 3.19/2.91, observed 4.11/4.14, blend at k = 10
+     3.01/2.82.
+
+   ---- what the number is, and is not ----
+
+   A rate for games he plays, times games left: "if he plays them". It does
+   not price the chance he gets hurt, the same way the rate it blends with
+   was measured on games played. Known absences are taken out -- the bye,
+   one week for an OUT, four for IR/PUP/NFI (the NFL's own minimum) -- and
+   nothing else is guessed at.
+
+   The Draft Room is untouched. A mock draft in September is still a draft,
+   and its board, grade, tiers and Juke score stay on the preseason
+   projection in every phase. Out of season none of this runs: seasonClock()
+   answers and rosLive() is false, so every existing number is the number it
+   was. */
+
+const REGULAR_WEEKS = 18;
+// Most fantasy seasons end in week 17 (and week 18 is where starters rest),
+// and the backtest above targets weeks through 17 for the same reason.
+const ROS_LAST_WEEK = 17;
+const ROS_K = { QB: 10, RB: 10, WR: 10, TE: 10, K: 3, DST: 21 };
+// Weeks a designation is known to cost, counted from the current week. IR,
+// PUP and NFI are the NFL's four-game minimum; anything longer is not known.
+const ROS_OUT_WEEKS = { O: 1, IR: 4, PUP: 4, NFI: 4, SUS: 1, COV: 1, DNR: 1 };
+const NFL_PHASES = { pre: "preseason", regular: "regular", post: "postseason", off: "offseason" };
+// "Who moved" only among players inside this many places, now or before.
+// Below it the board is replacement-level noise, where a third of a point
+// moves a player twenty places and a list of the biggest movers would be a
+// list of the deepest bench.
+const MOVERS_POOL = 150;
+
+/* Where the NFL is, from what the nightly stored. Pure, so a node suite can
+   drive every branch without a browser.
+
+   `state` is NFL_STATE (the pipeline's copy of Sleeper's /state/nfl);
+   `meta` is WEEK_PROJ_META, the fallback, which only ever exists in a
+   regular season; `scored` answers "has any game of meta's season been
+   played" when there is no state to say so. `started` means week 1 has
+   kicked off. `weeksComplete` counts weeks whose games are all final --
+   Sleeper's `week` is the week in progress, so it is one fewer. */
+function seasonClockFrom(state, meta, scored) {
+  if (state && state.season && state.seasonType) {
+    const phase = NFL_PHASES[state.seasonType];
+    if (!phase) return null;
+    const week = Number.isFinite(Number(state.week)) ? Number(state.week) : 0;
+    const started = phase === "regular" ? (week > 1 || !!state.hasScores) : phase === "postseason";
+    const weeksComplete = phase === "regular"
+      ? Math.max(0, Math.min(week, REGULAR_WEEKS + 1) - 1)
+      : phase === "postseason" ? REGULAR_WEEKS : 0;
+    return { season: String(state.season), week: week, phase: phase, started: started, weeksComplete: weeksComplete };
+  }
+  if (meta && meta.season && meta.week > 0) {
+    const week = Number(meta.week);
+    return {
+      season: String(meta.season), week: week, phase: "regular",
+      started: week > 1 || !!scored,
+      weeksComplete: Math.max(0, week - 1)
+    };
+  }
+  return null;
+}
+
+// Whether any game of `season` has been stored -- the fallback's only way
+// to tell a week 1 that has kicked off from one that has not.
+function seasonHasPlayed(season) {
+  if (typeof PLAYER_STATS === "undefined") return false;
+  return Object.keys(PLAYER_STATS).some(function (id) {
+    const rows = PLAYER_STATS[id].w && PLAYER_STATS[id].w[season];
+    return Array.isArray(rows) && rows.some(didPlay);
+  });
+}
+
+function seasonClock() {
+  const state = typeof NFL_STATE === "undefined" ? null : NFL_STATE;
+  const meta = typeof WEEK_PROJ_META === "undefined" ? null : WEEK_PROJ_META;
+  return seasonClockFrom(state, meta, !state && meta ? seasonHasPlayed(String(meta.season)) : false);
+}
+
+// The one switch. Everything in this section answers null or [] unless a
+// regular season is being played.
+function rosLive() {
+  const c = seasonClock();
+  return !!(c && c.phase === "regular" && c.started);
+}
+
+function seasonLog(player, season) {
+  const s = statOf(player);
+  const rows = s && s.w ? s.w[season] : null;
+  return Array.isArray(rows) ? rows : [];
+}
+
+/* Season to date under a rule table. Through pointsUnder() and nothing else
+   -- the weekly lines are the same short keys a season block uses, so a
+   second scorer would be the written-down-twice failure with a number in
+   it. A game is a week didPlay() says happened; a DNP row is not a zero. */
+function seasonToDateUnder(player, rules, season, throughWeek) {
+  const played = seasonLog(player, season).filter(function (r) {
+    return didPlay(r) && (throughWeek === null || throughWeek === undefined || r.w <= throughWeek);
+  });
+  let points = 0;
+  played.forEach(function (r) { points += pointsUnder(r, rules); });
+  points = Math.round(points * 10) / 10;
+  return { games: played.length, points: points, ppg: played.length ? points / played.length : null };
+}
+
+// How much of the rate is this season, at n games: n / (n + k).
+function rosWeight(pos, games) {
+  const k = ROS_K[pos];
+  if (!(k >= 0) || !(games > 0)) return 0;
+  return games / (games + k);
+}
+
+// The shrinkage itself. No prior means no rate: a number built from a
+// handful of games with nothing to shrink toward is not Juke's view, it is
+// the season so far with another label.
+function rosRate(prior, observed, games, pos) {
+  if (prior === null || prior === undefined || !Number.isFinite(prior)) return null;
+  if (!(games > 0) || observed === null || observed === undefined) return prior;
+  const w = rosWeight(pos, games);
+  return w * observed + (1 - w) * prior;
+}
+
+/* Games he has left, from the week in progress through ROS_LAST_WEEK. A row
+   for the current week -- played or not -- means his game this week is over.
+   His bye is taken out, and so are the weeks a designation is known to
+   cost. */
+function rosGamesLeft(player, clock, log) {
+  if (!clock) return 0;
+  const cur = Math.max(1, clock.week || 1);
+  const doneThisWeek = (log || []).some(function (r) { return r.w === cur; });
+  const from = doneThisWeek ? cur + 1 : cur;
+  const outTo = cur + (ROS_OUT_WEEKS[player.inj] || 0);
+  let left = 0;
+  for (let w = from; w <= ROS_LAST_WEEK; w++) {
+    if (w === player.bye) continue;
+    if (w < outTo) continue;
+    left++;
+  }
+  return left;
+}
+
+// A league's shape from a snapshot's lineup and team count, or the Draft
+// Room's own when the caller has none -- the same rule leagueGapTable()
+// follows, so the two can never price a player under different leagues.
+function shapeFrom(lineupIn, teams) {
+  if (!lineupIn || !lineupIn.starters || !(teams > 0)) return league;
+  return Object.assign({}, league, {
+    teams: teams,
+    starters: Object.assign({}, lineupIn.starters),
+    flex: lineupIn.flex || 0,
+    superflex: lineupIn.superflex || 0,
+    bench: lineupIn.bench || 0
+  });
+}
+
+/* A few tables at once, not one: the Players list prices under a scoring
+   format, a connected room under its league's own rules, and both can be on
+   one page -- a single slot would rebuild the whole board on every call as
+   they alternated, and gapOf() is called once per player per render. Twelve
+   is every (rules, shape, before/after, board) a page can plausibly ask
+   for, and the oldest is dropped past that. Measured cost of a build: a few
+   milliseconds for 480 players. */
+const ROS_CACHE = new Map();
+const ROS_CACHE_MAX = 12;
+function rosCached(key, build) {
+  if (ROS_CACHE.has(key)) return ROS_CACHE.get(key);
+  const value = build();
+  if (ROS_CACHE.size >= ROS_CACHE_MAX) ROS_CACHE.delete(ROS_CACHE.keys().next().value);
+  ROS_CACHE.set(key, value);
+  return value;
+}
+
+/* The whole board, rest of season, under one rule table and one league
+   shape, using games through `throughWeek` (null: all of them). Games LEFT
+   and designations are always today's: the only thing `throughWeek` changes
+   is how much of the season the rate has seen, which is what lets
+   "who moved" isolate what the games did.
+
+   Replacement level is recomputed on ROS points at replacementRank()'s own
+   ranks -- the preseason's replacement measured against a rest-of-season
+   total would call the difference in horizons a change in the player. */
+function rosTable(rawRules, shape, throughWeek) {
+  if (!dataReady() || !board.length) return null;
+  const clock = seasonClock();
+  if (!clock || clock.phase !== "regular" || !clock.started) return null;
+  const rules = rulesFromLeague(rawRules) || league.rules;
+  const lg = shape || league;
+  const tw = throughWeek === null || throughWeek === undefined ? "all" : throughWeek;
+  const key = ["table", clock.season, clock.week, tw, BOARD_BUILDS, board.length,
+    Object.keys(DEFAULT_RULES).map(function (k) { return rules[k]; }).join(","),
+    lg.teams, JSON.stringify([lg.starters, lg.flex, lg.superflex])].join("|");
+  return rosCached(key, function () { return buildRosTable(rules, lg, clock, tw, key); });
+}
+
+function buildRosTable(rules, lg, clock, tw, key) {
+  const rows = {};
+  const byPos = {};
+  board.forEach(function (p) {
+    const s = statOf(p);
+    const block = s && s.p;
+    const games = projGames(p.pos, block);
+    const prior = block && block.gp > 0 && games ? pointsUnder(block, rules) / games : null;
+    const log = seasonLog(p, clock.season);
+    const std = seasonToDateUnder(p, rules, clock.season, tw === "all" ? null : tw);
+    const rate = rosRate(prior, std.ppg, std.games, p.pos);
+    const left = rosGamesLeft(p, clock, log);
+    const pts = rate === null ? null : Math.round(rate * left * 10) / 10;
+    rows[p.id] = {
+      id: String(p.id), pos: p.pos, prior: prior, rate: rate, games: std.games,
+      seasonPts: std.points, ppg: std.ppg, left: left, pts: pts,
+      weight: rosWeight(p.pos, std.games), gap: null, score: null, rank: null, posRank: null
+    };
+    if (pts !== null) (byPos[p.pos] = byPos[p.pos] || []).push(rows[p.id]);
+  });
+
+  const replacement = {};
+  POSITIONS.forEach(function (pos) {
+    const list = (byPos[pos] || []).slice().sort(function (a, b) { return b.pts - a.pts; });
+    if (!list.length) { replacement[pos] = 0; return; }
+    const cut = Math.min(replacementRank(pos, lg), list.length) - 1;
+    replacement[pos] = list[Math.max(0, cut)].pts;
+    // Kickers and defenses keep their points and lose every rating: the
+    // UNRANKED_POSITIONS refusal is about the forecast ORDER, and a rest-of-
+    // season order is a forecast too.
+    if (UNRANKED_POSITIONS.indexOf(pos) >= 0) return;
+    list.forEach(function (r, i) { r.posRank = i + 1; r.gap = r.pts - replacement[pos]; });
+  });
+
+  const ranked = board.map(function (p) { return rows[p.id]; }).filter(function (r) { return r.gap !== null; });
+  const best = Math.max(1, Math.max.apply(null, ranked.map(function (r) { return r.gap; }).concat([0])));
+  // A stable sort over board order, so a tie falls the way the board does.
+  ranked.slice().sort(function (a, b) { return b.gap - a.gap; }).forEach(function (r, i) {
+    r.rank = i + 1;
+    r.score = Math.max(0, Math.min(100, (r.gap / best) * 100));
+  });
+
+  return { key: key, season: clock.season, week: clock.week, throughWeek: tw, rows: rows, replacement: replacement, best: best };
+}
+
+// The boundary "who moved" is measured from: the start of the last complete
+// week, or the preseason while week 1 is the only one being played. So on the
+// Tuesday after week 3 it is what weeks 3 (and anything since) did.
+function moversSince(clock) {
+  return clock ? Math.max(0, clock.weeksComplete - 1) : 0;
+}
+
+/* The board, rest of season, with each row's rank change since moversSince().
+   One object for a list screen, rather than 480 calls. */
+function rosBoard(opts) {
+  if (!dataReady()) return null;
+  const o = opts || {};
+  const shape = shapeFrom(o.lineup, o.teams);
+  const now = rosTable(o.rules || null, shape, null);
+  if (!now) return null;
+  const clock = seasonClock();
+  const since = moversSince(clock);
+  const before = rosTable(o.rules || null, shape, since);
+  return rosCached("board|" + now.key + "|" + (before ? before.key : "-"), function () {
+    const rows = {};
+    Object.keys(now.rows).forEach(function (id) {
+      const r = now.rows[id];
+      const b = before ? before.rows[id] : null;
+      const rankBefore = b ? b.rank : null;
+      rows[id] = Object.assign({}, r, {
+        rankBefore: rankBefore,
+        ptsBefore: b ? b.pts : null,
+        delta: r.rank !== null && rankBefore !== null ? rankBefore - r.rank : null
+      });
+    });
+    return {
+      season: clock.season, week: clock.week, weeksComplete: clock.weeksComplete,
+      sinceWeek: since, lastWeek: ROS_LAST_WEEK, k: Object.assign({}, ROS_K),
+      replacement: now.replacement, rows: rows
+    };
+  });
+}
+
+// One player's rest of season, or null out of season.
+function rosValue(player, rules, lineupIn, teams) {
+  if (!player) return null;
+  const b = rosBoard({ rules: rules, lineup: lineupIn, teams: teams });
+  return b ? b.rows[player.id] || null : null;
+}
+
+// Season to date for one player under a rule table (raw league rules or
+// null for the Draft Room's), or null when no season is being played.
+function seasonToDate(player, rawRules) {
+  if (!player || !dataReady() || !rosLive()) return null;
+  const clock = seasonClock();
+  const rules = rulesFromLeague(rawRules) || league.rules;
+  const std = seasonToDateUnder(player, rules, clock.season, null);
+  return { season: clock.season, games: std.games, points: std.points, ppg: std.ppg };
+}
+
+/* Who moved: players whose rest-of-season rank changed since moversSince(),
+   computed from stored weeks alone -- "before" is the same table with the
+   latest week's games held back, so nothing here is remembered or invented.
+
+   Ordered by how many rest-of-season POINTS the games moved, not by how many
+   places. Places are cheap in the dense middle of the board: measured on the
+   real week 1 of 2026, one poor Thursday moved Matthew Stafford 32 places
+   (112 to 144) on about sixteen points, while a back at the top would need
+   a far bigger week to move three. A list sorted by places would be a list
+   of backup quarterbacks; `delta` is still the places, which is what a row
+   prints. */
+function playerMovers(opts) {
+  const o = opts || {};
+  const b = rosBoard(o);
+  if (!b) return [];
+  const limit = o.limit > 0 ? Math.floor(o.limit) : 10;
+  const out = [];
+  board.forEach(function (p) {
+    const r = b.rows[p.id];
+    if (!r || r.rank === null || r.rankBefore === null || !r.delta) return;
+    if (r.rank > MOVERS_POOL && r.rankBefore > MOVERS_POOL) return;
+    out.push({
+      id: String(p.id), name: p.name, pos: p.pos, team: p.team || "",
+      rankNow: r.rank, rankBefore: r.rankBefore, delta: r.delta,
+      seasonPts: r.seasonPts, ppg: r.ppg === null ? null : Math.round(r.ppg * 10) / 10
+    });
+  });
+  const moved = function (m) { const r = b.rows[m.id]; return Math.abs((r.pts || 0) - (r.ptsBefore || 0)); };
+  out.sort(function (a, b2) {
+    return moved(b2) - moved(a) || Math.abs(b2.delta) - Math.abs(a.delta) || a.rankNow - b2.rankNow;
+  });
+  return out.slice(0, limit);
 }
 
 
@@ -4659,7 +5176,7 @@ function withGrading(ctx, fn) {
 
    Side-effect-free: touches no player's projPts and not REPLACEMENT_PTS,
    both of which the scoring editor owns. */
-function gradeProjections(rules) {
+function gradeProjections(rules, shape) {
   const proj = {};
   const byPos = {};
   board.forEach(function (p) {
@@ -4673,9 +5190,10 @@ function gradeProjections(rules) {
   POSITIONS.forEach(function (pos) {
     const list = (byPos[pos] || []).sort(function (a, b) { return b - a; });
     if (!list.length) { replacement[pos] = 0; return; }
-    // replacementRank() reads gradedLeague(), so this has to run INSIDE the
-    // context it is being computed for.
-    const cut = Math.min(replacementRank(pos), list.length) - 1;
+    // replacementRank() reads gradedLeague() unless handed a shape, so a
+    // grading caller runs this INSIDE the context it is computed for and a
+    // pricing caller (replacementGapUnder) passes the league it prices.
+    const cut = Math.min(replacementRank(pos, shape), list.length) - 1;
     replacement[pos] = cut >= 0 ? list[cut] : list[list.length - 1];
   });
   return { proj: proj, replacement: replacement };
@@ -8239,7 +8757,11 @@ function positionWeeklyCVUnder(leagueRules) {
       const pts = weeks.map(score);
       const mean = pts.reduce((a, b) => a + b, 0) / pts.length;
       if (mean <= 0) return; // a coefficient of variation is meaningless around zero
-      const variance = pts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pts.length;
+      // Sample variance, n-1: these are a handful of weeks standing in for a
+      // player's spread, and dividing by n understates it by (n-1)/n -- a
+      // few percent at 10-17 weeks, in the direction the audit of
+      // 10 September 2026 found the whole model already leaning.
+      const variance = pts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (pts.length - 1);
       const row = sums[player.pos] || { sum: 0, n: 0 };
       row.sum += Math.sqrt(variance) / mean;
       row.n += 1;
@@ -12757,6 +13279,11 @@ window.JukeEngine = {
      order for those two no better than chance, and a targets list that
      ranked them would be selling a number the app itself withholds. */
   replacementGap: replacementGap,
+  /* replacementGap() under a connected league's own scoring and roster
+     shape -- see its comment. The season-value rooms call it through
+     lib/leagueGap.js; guarded like every entry that reads board data. */
+  replacementGapUnder: (player, rules, lineup, teams) =>
+    (dataReady() ? replacementGapUnder(player, rules, lineup, teams) : null),
   /* A player's projection PER GAME, as a number.
 
      The Strategy Room asks a weekly question — start him or him, this
@@ -12786,6 +13313,46 @@ window.JukeEngine = {
   weekProjMeta: function () {
     return typeof WEEK_PROJ_META === "undefined" ? null : WEEK_PROJ_META;
   },
+  /* ---- the season in progress (section 10a2) ----
+
+     seasonClock() is a CONTRACT another screen codes against, so its shape
+     does not move:
+       { season: '2026', week: 1,
+         phase: 'preseason' | 'regular' | 'postseason' | 'offseason',
+         started: boolean, weeksComplete: number }   or null when unknown.
+     It reads NFL_STATE, then WEEK_PROJ_META, then answers null; both are
+     `typeof`-guarded, so it is safe before stats.js has landed.
+
+     playerMovers({ limit, rules }) is the other one:
+       [{ id, name, pos, team, rankNow, rankBefore, delta, seasonPts, ppg }]
+     or [] -- out of season, before the board lands, or when nobody moved.
+     `rules` is a connected league's own table (the snapshot's) or null for
+     the Draft Room's; `lineup` and `teams` may ride along to rank under a
+     league's own shape. delta is places UP since the start of the last
+     complete week (rosBoard().sinceWeek).
+
+     Everything else answers null unless a regular season is being played,
+     and guards itself on dataReady() -- CLAUDE.md's rule that a bridge entry
+     is only as safe as its own guard. */
+  seasonClock: seasonClock,
+  rosLive: () => (dataReady() ? rosLive() : false),
+  playerMovers: (opts) => (dataReady() ? playerMovers(opts) : []),
+  rosBoard: (opts) => (dataReady() ? rosBoard(opts) : null),
+  rosValue: (player, rules, lineup, teams) => (dataReady() ? rosValue(player, rules, lineup, teams) : null),
+  // Points over a rest-of-season replacement, the unit gapOf() prices in.
+  // Null for K and DST, exactly as replacementGap() is.
+  rosGapUnder: (player, rules, lineup, teams) => {
+    const r = dataReady() ? rosValue(player, rules, lineup, teams) : null;
+    return r ? r.gap : null;
+  },
+  // Juke's rest-of-season rate for a week he plays -- the Strategy scorer's
+  // fallback in season, under the platform's own weekly number.
+  rosPerGameUnder: (player, rules) => {
+    const r = dataReady() ? rosValue(player, rules) : null;
+    return r ? r.rate : null;
+  },
+  seasonToDate: (player, rules) => (dataReady() ? seasonToDate(player, rules) : null),
+  rosK: () => Object.assign({}, ROS_K),
   projPerGame: function (player) {
     if (!player) return null;
     const s = statOf(player);

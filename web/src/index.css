@@ -29,6 +29,81 @@
   --jd-bar-dur: 640ms;
 }
 
+/* ---- v3 "Call Sheet": the two themes ----------------------------------
+
+   RGB channels, read by the `v3` colour names in tailwind.config.js, so an
+   alpha modifier (bg-v3-sheet/95) still works. Nothing outside
+   components/v3 reads a --v3-* name, and the attribute that switches them
+   is data-v3-theme rather than production's own data-theme: v3/theme.js
+   sets it while #/v3 is mounted and removes it on the way out, so the live
+   site never sees either value.
+
+   Light is on :root so a v3 class resolves on its very first frame, before
+   the store has stamped anything. Dark was set by contrast rather than by
+   inverting: ink 15.8 / 14.4 / 12.8 on paper / sheet / well, ink3 6.7 /
+   6.1 / 5.4, call 7.0 / 6.4 / 5.7, gain, cost and warn all above 6.6, and
+   each on its own wash above 5.4. The band stays DARK in dark mode, a
+   blue-slate raised above the sheet (1.7:1), so every white label written
+   on it is legal in both themes (white on band 10.1, band-ink 5.7).
+   Dark's cobalt is too light to carry white, so a call button's ink is its
+   own token: on-call is white in light and #0A1024 in dark (7.1). */
+:root {
+  --v3-paper: 242 244 247;
+  --v3-sheet: 255 255 255;
+  --v3-well: 232 236 241;
+  --v3-rule: 213 219 227;
+  --v3-band: 12 20 34;
+  --v3-band-soft: 26 36 54;
+  --v3-band-ink: 154 167 184;
+  --v3-ink: 12 20 34;
+  --v3-ink2: 57 69 86;
+  --v3-ink3: 85 98 116;
+  --v3-call: 31 63 224;
+  --v3-call-deep: 23 49 184;
+  --v3-call-wash: 230 235 253;
+  --v3-on-call: 255 255 255;
+  --v3-gain: 10 115 56;
+  --v3-gain-wash: 227 243 233;
+  --v3-cost: 184 38 27;
+  --v3-cost-wash: 251 231 229;
+  --v3-warn: 138 83 0;
+  --v3-warn-wash: 251 240 220;
+  /* the colour a shadow is cast in: the ink on paper, pure black at night */
+  --v3-shade: 12 20 34;
+}
+html[data-v3-theme='dark'] {
+  --v3-paper: 13 18 25;
+  --v3-sheet: 21 28 39;
+  --v3-well: 29 38 52;
+  --v3-rule: 46 58 77;
+  --v3-band: 51 66 95;
+  --v3-band-soft: 62 78 110;
+  --v3-band-ink: 185 196 214;
+  --v3-ink: 231 236 243;
+  --v3-ink2: 181 191 205;
+  --v3-ink3: 143 155 173;
+  --v3-call: 129 152 255;
+  --v3-call-deep: 162 179 255;
+  --v3-call-wash: 28 38 84;
+  --v3-on-call: 10 16 36;
+  --v3-gain: 76 208 138;
+  --v3-gain-wash: 17 48 31;
+  --v3-cost: 255 138 126;
+  --v3-cost-wash: 59 25 22;
+  --v3-warn: 242 182 75;
+  --v3-warn-wash: 53 39 15;
+  --v3-shade: 0 0 0;
+  color-scheme: dark;
+}
+html[data-v3-theme='light'] {
+  color-scheme: light;
+}
+/* The ground behind the page is the page's own: without this an overscroll
+   or a short route shows production's navy under a light sheet. */
+html[data-v3-theme] {
+  background-color: rgb(var(--v3-paper));
+}
+
 /* Bricolage Grotesque, self-hosted exactly like Plex and Archivo above: one
    variable file, latin subset, the unicode-range Google's own CSS2 API
    serves for a plain display=swap request. `font-decision` in the Tailwind

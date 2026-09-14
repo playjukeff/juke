@@ -47,7 +47,7 @@ import {
    that file owns D1 and nothing else, this owns "what does Sleeper say"
    and nothing else, and the two meet in a route handler rather than
    reaching into each other. */
-import { lookupUser, leagueSnapshot, nflState, SNAPSHOT_TTL, SLEEPER_API } from "./sleeper.js";
+import { lookupUser, leagueSnapshot, leagueMatchups, nflState, SNAPSHOT_TTL, SLEEPER_API } from "./sleeper.js";
 import {
   lookupLeague as espnLookupLeague,
   leagueSnapshot as espnLeagueSnapshot, leagueTransactions as espnLeagueTransactions,
@@ -1197,6 +1197,56 @@ async function sleeperSnapshotRoute(request, env) {
   return new Response(body, { headers });
 }
 
+/* One week of a Sleeper league's matchups: who plays whom, and -- for a
+   week that has been played -- what every starter scored, in Sleeper's own
+   numbers. See leagueMatchups() in sleeper.js for what was measured.
+
+   Additive: nothing else reads it and no existing route changed. A page
+   talking to a worker that predates it gets a 404 with no CORS headers,
+   which the browser reports as a failed fetch, and v3's matchup screen
+   degrades to what the snapshot alone can say.
+
+   Cached per league AND week, on a key this route builds, for the snapshot
+   route's two reasons -- one entry per week rather than per way of asking,
+   and a cached body carries no CORS. Same TTL as the snapshot: a live
+   week's points move, and the store on the page asks no more often than
+   this anyway. A failure is never cached. */
+async function sleeperMatchupsRoute(request, env) {
+  if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+  const url = new URL(request.url);
+  const leagueId = (url.searchParams.get("league") || "").trim().slice(0, 40);
+  const week = (url.searchParams.get("week") || "").trim().slice(0, 3);
+  if (!/^[0-9]{6,32}$/.test(leagueId) || !/^[0-9]{1,2}$/.test(week)) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const cache = caches.default;
+  const key = new Request(
+    "https://juke.internal/sleeper/matchups?league=" + leagueId + "&week=" + Number(week),
+    { method: "GET" }
+  );
+  const hit = await cache.match(key);
+  if (hit) return new Response(await hit.text(), { headers });
+
+  const out = await leagueMatchups(leagueId, Number(week), env.SLEEPER_BASE || SLEEPER_API);
+  if (!out.view) {
+    const status = out.reason === "not-found" ? 404 : out.reason === "bad-request" ? 400 : 503;
+    return new Response(JSON.stringify({ error: out.reason }), { status, headers });
+  }
+
+  const body = JSON.stringify(out.view);
+  await cache.put(key, new Response(body, {
+    headers: { "content-type": "application/json", "cache-control": "public, max-age=" + SNAPSHOT_TTL }
+  }));
+  return new Response(body, { headers });
+}
+
 /* ---- ESPN ----
 
    Two routes mirroring the Sleeper pair above, and one thing that is not a
@@ -1949,6 +1999,16 @@ const handler = {
         }, corsFor(request)) });
       }
       return sleeperSnapshotRoute(request, env);
+    }
+
+    if (url.pathname === "/sleeper/matchups") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return sleeperMatchupsRoute(request, env);
     }
 
     /* ESPN's two, mirroring Sleeper's. `ctx` reaches the snapshot because

@@ -39,6 +39,12 @@ export function parseHashRoute(hash) {
   if (path === 'you') return { view: 'you', slug: null }
   if (path === 'drafts') return { view: 'drafts', slug: null }
   if (path === 'history') return { view: 'history', slug: null }
+  // The v2 comparison build. One view with its own sub-route rather than
+  // three entries here, so the whole proposal is reachable from one prefix
+  // and removable by deleting one line.
+  if (path === 'v2' || path.startsWith('v2/')) return { view: 'v2', slug: path.slice(3) }
+  // v3, the full-autonomy proposal. Same shape and the same reason.
+  if (path === 'v3' || path.startsWith('v3/')) return { view: 'v3', slug: path.slice(3) }
   return { view: 'home', slug: null }
 }
 

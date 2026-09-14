@@ -9,6 +9,7 @@ import TradeWindow from './TradeWindow.jsx'
 import { tradeWindow } from '../../lib/tradeDeadline.js'
 import UpgradeGate from '../shell/UpgradeGate.jsx'
 import { useEngine, useJukeTick } from '../../hooks/useJukeEngine.js'
+import { leagueGapOf } from '../../lib/leagueGap.js'
 
 /* The Trade Room, with a real league behind it.
  *
@@ -100,7 +101,8 @@ export default function TradeRoomLive({ league, snapshot, status, reason, tab })
   useJukeTick(engine)
 
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
 
   const byId = useMemo(
     () => new Map(board.map((p) => [String(p.id), p])),

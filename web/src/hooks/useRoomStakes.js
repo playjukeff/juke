@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useEngine, useJukeTick } from './useJukeEngine.js'
 import { useLeague, useLeagueSnapshot } from './useLeague.js'
 import { roomStakes } from '../components/shell/roomStakes.js'
+import { leagueGapOf } from '../lib/leagueGap.js'
 import { leagueWeekPts, withLiveStatus } from '../components/rooms/strategyBoard.js'
 
 /* What each room has at stake, assembled for a caller outside any room.
@@ -49,7 +50,8 @@ export function useRoomStakes() {
   useJukeTick(engine)
 
   const board = engine && engine.dataReady && engine.dataReady() ? engine.board() : []
-  const gapOf = engine ? engine.replacementGap : null
+  // Priced under THIS league's scoring and shape, not the Draft Room's.
+  const gapOf = useMemo(() => leagueGapOf(engine, snapshot), [engine, snapshot])
 
   /* `board.length` in the deps and `board` deliberately not: the array is
      mutated in place and never replaced, so a dep on it never fires. What

@@ -42,12 +42,24 @@
  *
  * `week` may be null -- a snapshot taken before the season starts has no
  * week -- and then nobody is on bye rather than everybody being compared
- * against a week that does not exist. Same rule injuryWatch() follows. */
+ * against a week that does not exist. Same rule injuryWatch() follows.
+ *
+ * ---- And a player ruled out scores nothing either ----
+ *
+ * The same argument, one step on: an OUT, IR, PUP, SUSpended or DNR
+ * starter leaves the slot as empty as a bye does, and scoring him at his
+ * full average let the projected total, the win probability and the
+ * season odds all count points nobody will score -- found by an audit on
+ * 10 September 2026. Questionable is NOT zeroed: that is "we do not know",
+ * and the room already lists him under Might not play. This wraps only
+ * Juke's own fallback; the league's own number sits above it in
+ * leagueWeekPts() and is never overridden. */
 export function weekScorer(base, week) {
   if (typeof base !== 'function') return base
   return (player) => {
     if (!player) return null
     if (week && player.bye && player.bye === week) return 0
+    if (injurySeverity(player.inj) === 'out') return 0
     return base(player)
   }
 }
@@ -111,14 +123,28 @@ export function platformScorer(base, projections, week) {
  * (platformScorer), then Juke's weekly block for this week under the
  * league's own rules (weekProjectionUnder), then the season average under
  * those rules (projPerGameUnder) -- with a player on bye zeroed beneath the
- * league's number, never above it. */
+ * league's number, never above it.
+ *
+ * In season the last of those is Juke's REST-OF-SEASON rate instead
+ * (rosPerGameUnder, app.js section 10a2): the preseason projection spread
+ * over seventeen games, shrunk toward what he has actually done. Only the
+ * fallback moves -- the platform's own number and the weekly block still
+ * come first -- and it is asked per call, so a page held open across the
+ * nightly that starts the season moves with it. */
 export function leagueWeekPts(engine, snapshot) {
   if (!engine) return null
   const rules = snapshot && snapshot.rules ? snapshot.rules : null
   const week = snapshot ? snapshot.week : null
-  const average = rules && engine.projPerGameUnder
+  const seasonAverage = rules && engine.projPerGameUnder
     ? (player) => engine.projPerGameUnder(player, rules)
     : engine.projPerGame
+  const average = engine.rosLive && engine.rosPerGameUnder
+    ? (player) => {
+        if (!engine.rosLive()) return seasonAverage(player)
+        const ros = engine.rosPerGameUnder(player, rules)
+        return ros === null || ros === undefined ? seasonAverage(player) : ros
+      }
+    : seasonAverage
   const forWeek = (player) => {
     if (!engine.weekProjectionUnder) return average(player)
     const own = engine.weekProjectionUnder(player, rules, week)

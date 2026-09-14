@@ -79,18 +79,35 @@ export function freeAgents(board, snapshot, gapOf, limit) {
 
 /* What the reader's own roster is thin at.
  *
- * A position is a gap when the best player held at it is worth less than
- * the best free agent at it — which is the only definition that answers
- * the question the room is for ("would a claim actually improve me"). A
+ * A position is a gap when the best free agent at it is worth more than
+ * the WEAKEST starter he would displace there — which is what the question
+ * the room is for ("would a claim actually improve me") actually asks. A
  * roster-count rule would say a team with four running backs is fine when
  * all four are below replacement, and that is the failure the draft
  * grade's own cover component was rewritten once already to stop making.
+ *
+ * ---- The weakest starter, not the best player held ----
+ *
+ * It compared against the BEST player at the position until 10 September
+ * 2026, and an audit found the case that breaks it: RB1 at +100, RB2
+ * starting at −20, and a +30 back on the wire. Against the best held the
+ * claim reads −70 and is never offered; against the man it replaces in the
+ * lineup it is +50, and that is the claim a manager wants to hear about.
+ * The best player at a position is the one a claim never touches.
+ *
+ * Same position only, the way swaps() is: the snapshot carries no slot
+ * eligibility, so "this back would push your FLEX receiver out" is a claim
+ * about the lineup this module cannot prove. A team that starts nobody at
+ * the position (a lineup not yet set) falls back to the best player held,
+ * which is what a claim would be measured against then.
  *
  * `byId` is a lookup from Sleeper id to board row, built by the caller
  * once per render rather than per position. */
 export function rosterGaps(team, byId, available, gapOf) {
   if (!team || !byId) return []
+  const starting = new Set((team.starters || []).map(String))
   const bestHeld = new Map()
+  const weakestStarter = new Map()
   for (const id of team.players || []) {
     const player = byId.get(String(id))
     if (!player) continue
@@ -98,6 +115,10 @@ export function rosterGaps(team, byId, available, gapOf) {
     if (gap === null || gap === undefined) continue
     const prev = bestHeld.get(player.pos)
     if (prev === undefined || gap > prev) bestHeld.set(player.pos, gap)
+    if (starting.has(String(id))) {
+      const low = weakestStarter.get(player.pos)
+      if (low === undefined || gap < low) weakestStarter.set(player.pos, gap)
+    }
   }
 
   const bestFree = new Map()
@@ -111,7 +132,8 @@ export function rosterGaps(team, byId, available, gapOf) {
     // A position the reader holds nobody rankable at is the widest gap
     // there is, not a missing value — `held` stays null and the caller
     // says so rather than printing a subtraction against zero.
-    const held = bestHeld.has(pos) ? bestHeld.get(pos) : null
+    const held = weakestStarter.has(pos) ? weakestStarter.get(pos)
+      : bestHeld.has(pos) ? bestHeld.get(pos) : null
     const improvement = held === null ? row.gap : row.gap - held
     if (improvement > 0) gaps.push({ pos, held, best: row, improvement })
   }

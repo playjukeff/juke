@@ -661,6 +661,35 @@
         .catch(() => syncResult(false, "offline", { snapshot: null }));
     },
 
+    /* One week of a Sleeper league's matchups -- who plays whom, and for a
+       played week what every starter scored, in Sleeper's own numbers. See
+       leagueMatchups() in worker/sleeper.js.
+
+       Sleeper only: ESPN publishes the whole season on the snapshot. Any
+       other provider answers `unsupported` without a request, so a caller
+       asks one question and branches on the answer. A worker that predates
+       the route answers 404 with no CORS headers, which the browser reports
+       as a failed fetch -- `offline` here, and the matchup screen says what
+       it could not read rather than drawing an empty week. */
+    leagueMatchups: function (leagueId, week, provider) {
+      const id = String(leagueId || "");
+      const w = Number(week);
+      if (!id || !Number.isInteger(w) || w < 1) return Promise.resolve(syncResult(false, "bad-request", { week: null }));
+      if (provider && provider !== "sleeper") return Promise.resolve(syncResult(false, "unsupported", { week: null }));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/sleeper/matchups?league=" + encodeURIComponent(id) + "&week=" + encodeURIComponent(String(w)))
+        .then(function (r) {
+          if (r.status === 404) return syncResult(false, "not-found", { week: null });
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status), { week: null });
+          return r.json()
+            .then((body) => (body && Array.isArray(body.games))
+              ? syncResult(true, null, { week: body })
+              : syncResult(false, "bad-response", { week: null }))
+            .catch(() => syncResult(false, "bad-response", { week: null }));
+        })
+        .catch(() => syncResult(false, "offline", { week: null }));
+    },
+
     // Am I signed in, and on which tier — GET /me. Nothing on the client
     // called this before tiers existed; web/src/lib/tierStore.js is the
     // first caller. Answers signedIn:false rather than an error for a

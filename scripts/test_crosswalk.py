@@ -1364,6 +1364,29 @@ check("an empty block is handled", bp.forecast_only({}), {})
 check("and so is one that never had the key",
       bp.forecast_only({rc: 42}), {rc: 42})
 
+# First downs are the same formula -- yards divided by ten on every
+# projection row, season and weekly -- and leave every projection for the
+# same reason, while an actual line keeps the real count.
+for fd, yd, yards, real in (("rush_fd", "rush_yd", 1100, 52), ("rec_fd", "rec_yd", 1290, 55), ("pass_fd", "pass_yd", 4200, 180)):
+    short = bp.STAT_FIELDS[fd]
+    line = {yd: yards, fd: yards / 10}
+    check(f"a season projection does not carry {fd}", short in bp.forecast_only(bp.compact(line)), False)
+    check(f"nor a weekly one", short in bp.forecast_only(bp.compact(line), season=False), False)
+    check(f"an actual line keeps its real {fd}", bp.compact({yd: yards, fd: real}).get(short), real)
+
+# The defence placeholders leave a SEASON block and nothing else. Both
+# directions matter: the weekly file's blk_kick is a real fractional
+# forecast, and its points-allowed tiers are the weekly defence projection.
+bk, pa0, sk = bp.STAT_FIELDS["blk_kick"], bp.STAT_FIELDS["pts_allow_0"], bp.STAT_FIELDS["sack"]
+season_dst = bp.forecast_only(bp.compact({"sack": 44, "blk_kick": 1, "pts_allow_0": 1}))
+check("a season defence projection drops the blocked-kick placeholder", bk in season_dst, False)
+check("and the shutout placeholder", pa0 in season_dst, False)
+check("and keeps its real forecasts", season_dst.get(sk), 44)
+weekly_dst = bp.forecast_only(bp.compact({"sack": 2.6, "blk_kick": 0.06, "pts_allow_0": 0.03}), season=False)
+check("a weekly defence projection keeps its blocked kicks", weekly_dst.get(bk), 0.1)
+check("and its points-allowed tier", pa0 in weekly_dst, True)
+check("an actual defence line keeps both", bp.compact({"sack": 3, "blk_kick": 1, "pts_allow_0": 1}).get(bk), 1)
+
 # The one gate, at the END of the file.
 #
 # It used to sit two hundred lines up, so every check written after it --

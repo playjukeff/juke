@@ -455,3 +455,176 @@ export async function leagueSnapshot(leagueId, base) {
     teams,
   };
 }
+
+/* ---- One week's matchups ----
+
+   Sleeper publishes no season schedule (matchups.js says so at length), and
+   that is the one thing a matchup screen cannot do without. What it DOES
+   publish is `/league/<id>/matchups/<week>`: every roster in the league for
+   that week, paired by a shared `matchup_id`, with its points, its starters
+   in slot order, the points each starter scored and the points every
+   rostered player scored. One call per week, so this is its own route
+   rather than a field on the snapshot -- fourteen or more calls a season is
+   a different cost from a view on a request already being made.
+
+   Measured 11 September 2026 against two real public leagues, a finished
+   2025 one and an in-season 2026 one (twelve teams each):
+
+     - A played week carries real points on every row and a pairing for
+       every roster.
+     - A week not yet played is already paired (the regular season is
+       generated up front) and every points field is 0.0. **0 is not a
+       result** -- the rule matchups.js applies to ESPN on the way in -- so
+       an upcoming week publishes null points here.
+     - The week in progress carries partial points: the Thursday game's
+       players have theirs, everybody else 0.0. It is published as `live`,
+       never as a score.
+     - A playoff week that has been played pairs the bracket and the
+       consolation games alike, and a roster with no game that week (a
+       first-round bye, or eliminated) has `matchup_id: null`.
+     - **A playoff week NOT yet played is paired too, and the pairing is not
+       the bracket** -- the in-season league already pairs week 15 before a
+       seed exists. So an upcoming playoff week publishes no games at all
+       and says the bracket is not set, rather than an opponent Sleeper has
+       not actually decided.
+
+   Which weeks are regular season is read off the league
+   (`playoff_week_start`), and how many playoff weeks there are is derived
+   from `playoff_teams` and `playoff_round_type` -- one week a round, a
+   two-week final, or two weeks a round. Derived, and checked: the finished
+   league's six teams at one week a round come out at week 17, which is its
+   own `last_scored_leg`. Nothing here is a guess at a calendar.
+
+   Whether a week is final, live or upcoming is read off Sleeper's own
+   /state/nfl against the league's season, never off a clock -- the same
+   reason nflState() gives for the header's week. */
+
+const PLAYOFF_ROUND_WEEKS = { 0: [1, 0], 1: [1, 1], 2: [2, 0] };
+
+export function sleeperSeasonShape(settings) {
+  const s = settings || {};
+  const start = Number(s.playoff_week_start);
+  if (!Number.isFinite(start) || start < 2 || start > 19) return { regularSeasonWeeks: null, weeks: null };
+  const regular = start - 1;
+  const seeds = Number(s.playoff_teams);
+  if (!Number.isFinite(seeds) || seeds < 2) return { regularSeasonWeeks: regular, weeks: null };
+  const rounds = Math.ceil(Math.log2(seeds));
+  const [perRound, extraFinal] = PLAYOFF_ROUND_WEEKS[Number(s.playoff_round_type) || 0] || PLAYOFF_ROUND_WEEKS[0];
+  return { regularSeasonWeeks: regular, weeks: regular + rounds * perRound + extraFinal };
+}
+
+/* The week a league is in, from Sleeper's own state: 0 when nothing has
+   been played, Infinity once the league's season is over. */
+export function sleeperCurrentWeek(league, state) {
+  if (!league) return 0;
+  if (String(league.status || "") === "complete") return Infinity;
+  const season = String(league.season || "");
+  if (!state || !season) return 0;
+  const stateSeason = String(state.season || "");
+  if (stateSeason && Number(stateSeason) > Number(season)) return Infinity;
+  if (stateSeason !== season) return 0;
+  const type = String(state.season_type || "regular");
+  if (type === "pre") return 0;
+  if (type === "post" || type === "off") return Infinity;
+  const week = Number(state.week);
+  return Number.isFinite(week) && week > 0 ? week : 0;
+}
+
+function pts(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
+}
+
+/* One roster's side of a week, in Sleeper's own words. `starters` keeps the
+   slot order (a "0" pads an empty slot, and stays as a row with no player
+   so the lineup is not silently shortened); the bench is every other player
+   who scored, highest first. Points are the platform's own -- Sleeper's
+   `starters_points` and `players_points`, never a Juke recomputation. */
+function sleeperSide(row, scored) {
+  const starters = Array.isArray(row.starters) ? row.starters.map(String) : [];
+  const sp = Array.isArray(row.starters_points) ? row.starters_points : [];
+  const pp = row.players_points && typeof row.players_points === "object" ? row.players_points : {};
+  const starting = new Set(starters);
+  const bench = Object.keys(pp)
+    .filter((id) => !starting.has(String(id)))
+    .map((id) => ({ id: String(id), points: scored ? pts(pp[id]) : null }))
+    .sort((a, b) => (b.points || 0) - (a.points || 0));
+  return {
+    rosterId: Number(row.roster_id) || null,
+    points: scored ? pts(row.points) : null,
+    starters: starters.map((id, i) => ({
+      id: id === "0" ? null : id,
+      points: scored && id !== "0" ? pts(sp[i] !== undefined ? sp[i] : pp[id]) : null,
+    })),
+    bench: bench.slice(0, 30),
+  };
+}
+
+/* The pure half: Sleeper's three answers to one week's view. */
+export function sleeperWeek(league, state, rows, week) {
+  if (!league || !league.league_id) return null;
+  const shape = sleeperSeasonShape(league.settings);
+  const current = sleeperCurrentWeek(league, state);
+  const phase = week < current ? "final" : week === current ? "live" : "upcoming";
+  const playoff = !!(shape.regularSeasonWeeks && week > shape.regularSeasonWeeks);
+  const scored = phase !== "upcoming";
+
+  const groups = new Map();
+  const unpaired = [];
+  (Array.isArray(rows) ? rows : []).slice(0, MAX_ROSTERS).forEach((r) => {
+    if (!r || r.roster_id === undefined || r.roster_id === null) return;
+    const mid = r.matchup_id;
+    if (mid === null || mid === undefined) { unpaired.push(Number(r.roster_id)); return; }
+    if (!groups.has(mid)) groups.set(mid, []);
+    groups.get(mid).push(r);
+  });
+
+  /* An upcoming playoff week's pairing is not the bracket -- see above. */
+  const bracketPending = playoff && phase === "upcoming";
+  const games = [];
+  if (!bracketPending) {
+    groups.forEach((pair, mid) => {
+      if (pair.length !== 2) { pair.forEach((r) => unpaired.push(Number(r.roster_id))); return; }
+      const sides = pair.map((r) => sleeperSide(r, scored)).sort((a, b) => a.rosterId - b.rosterId);
+      games.push({ matchupId: Number(mid), teams: sides });
+    });
+    games.sort((a, b) => a.matchupId - b.matchupId);
+  }
+
+  return {
+    leagueId: String(league.league_id),
+    season: String(league.season || ""),
+    week,
+    phase,
+    playoff,
+    bracketPending,
+    currentWeek: Number.isFinite(current) ? current : null,
+    seasonOver: current === Infinity,
+    regularSeasonWeeks: shape.regularSeasonWeeks,
+    weeks: shape.weeks,
+    games,
+    /* Rosters with no game this week: a bye in an odd-sized league, a
+       first-round playoff bye, or a team out of the playoffs. Stated rather
+       than dropped, so a screen can say which team has no game. */
+    noGame: bracketPending ? [] : unpaired.filter((n) => Number.isFinite(n)).sort((a, b) => a - b),
+  };
+}
+
+/* `{ view, reason }`, the shape espn.js's reads answer in: a league that is
+   not there is `not-found`, and a league that answered with a week that did
+   not is `upstream` -- an empty list is Sleeper saying the week has no
+   pairings yet, and a failed fetch is not that, so the two are kept apart
+   rather than both drawing "no games". */
+export async function leagueMatchups(leagueId, week, base) {
+  const w = Number(week);
+  if (!Number.isInteger(w) || w < 1 || w > 22) return { view: null, reason: "bad-request" };
+  const id = encodeURIComponent(leagueId);
+  const [league, rows, state] = await Promise.all([
+    getJson("/league/" + id, base),
+    getJson("/league/" + id + "/matchups/" + encodeURIComponent(String(w)), base),
+    nflState(base),
+  ]);
+  if (!league || !league.league_id) return { view: null, reason: "not-found" };
+  if (!Array.isArray(rows)) return { view: null, reason: "upstream" };
+  return { view: sleeperWeek(league, state, rows, w), reason: null };
+}
