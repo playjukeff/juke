@@ -93,8 +93,15 @@ function stubLedger(context, { signedIn = true, answer }) {
 const screen = (page) => page.locator("#view-home");
 
 async function openHistory(context, opts) {
+  const { show } = opts || {};
   await stubLedger(context, opts);
-  const page = await openApp(context, "#/record");
+  /* `?show=calls` reaches the LEDGER, which is where the filters live.
+     #/record opens in `peek` mode - a preview of the first few calls under
+     a "See all N calls, with filters" button - so a test that asks for a
+     Room pill on the bare address is asking a screen that deliberately
+     does not draw one yet. SHOWS in V3Record makes this a real address
+     rather than a back door: it is what that button navigates to. */
+  const page = await openApp(context, show ? `#/record?show=${show}` : "#/record");
   /* The Calls sheet itself, which every state renders.
      This waited for "Juke said", and that string is a per-ROW label: it
      lives in STEPS (a `hidden lg:grid` header row, so not in innerText at
@@ -164,7 +171,31 @@ test.describe("the decision ledger", () => {
     /* A sample ledger is the one thing this screen may not draw: once
        somebody signs in, a demonstration and their own history sit in the
        same layout with nothing to tell them apart. */
-    expect(body, "no verdict badge is drawn for a guest").not.toMatch(/Good call|Bad call|Pending/);
+    /* Scoped to the calls LIST, not the whole screen.
+       This matched the page text, and v3's summary strip carries KPI cards
+       labelled "Good calls", "Bad calls" and "Pending" with an em-dash for
+       a value - so it reported a verdict badge on a screen drawing none.
+       The requirement is that a guest is shown no ROWS, which is what the
+       count below actually asks. */
+    /* `ul li`, because the sheet also carries an <ol aria-label="How a
+       call reads"> - the four-step legend - whose items are list items
+       too. Counting every li reported nine rows on a screen drawing none,
+       which is the same shape as the KPI-label match this replaced: a
+       selector wide enough to catch the furniture around the thing. */
+    /* [data-call-rows], which is the list of CALLS and nothing else.
+       Two wider selectors were wrong before it. The original matched
+       /Good call|Bad call|Pending/ against the page text and hit the KPI
+       cards ("GOOD CALLS —"); counting every li then hit Vocabulary's
+       glossary, which DEFINES those three words, and the four-step "How a
+       call reads" legend. Both reported a sample ledger on a screen
+       drawing none.
+
+       The rows list carries a name now rather than being identified by
+       having no class - an attribute says what an element IS, which is the
+       rule this suite already follows for the Start button and the hero
+       eyebrow. */
+    const rows = await page.locator("[data-call-rows] li").count();
+    expect(rows, "no sample ledger is drawn for a guest").toBe(0);
     expect(body, "and it says why there is nothing here").toContain("a sample would defeat the point");
 
     await page.close();
@@ -201,7 +232,7 @@ test.describe("the decision ledger", () => {
 
   test("the room pills are the rooms in the ledger, not a fixed list", async ({ context }) => {
     test.skip(!LOCAL_SITE, CLERK_GATED);
-    const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
+    const page = await openHistory(context, { answer: { ok: true, decisions: ROWS }, show: "calls" });
 
     /* Three rooms are represented, so three pills plus All. Waiver, Trade
        and Strategy — and crucially NOT Prospect or Draft, which write
@@ -224,7 +255,7 @@ test.describe("the decision ledger", () => {
 
   test("every filter group actually narrows the list", async ({ context }) => {
     test.skip(!LOCAL_SITE, CLERK_GATED);
-    const page = await openHistory(context, { answer: { ok: true, decisions: ROWS } });
+    const page = await openHistory(context, { answer: { ok: true, decisions: ROWS }, show: "calls" });
     const rowsNow = () => screen(page).innerText();
 
     /* Each group addressed by its own aria-label, for the reason above: all
@@ -264,3 +295,4 @@ test.describe("the decision ledger", () => {
     await page.close();
   });
 });
+
