@@ -1,5 +1,52 @@
+/* RETIRED WITH ITS SUBJECT, and kept as the line that says so.
+
+   ---- What this asserted ----
+
+   The sheet's drag handle had to be reachable on ANY phone, in every state
+   the screen could get into — reported from an iPhone SE, where switching
+   auto-pick on in the Queue tab left the handle under the auto-pick ribbon
+   and there was no way to swipe the sheet back down. The bug was that
+   BottomSheet honoured its maxHeight at mount and at a snap change but
+   never when that ceiling MOVED, and turning auto-pick on moves it by
+   growing the header.
+
+   ---- Why it is skipped rather than re-aimed or deleted ----
+
+   v3's phone draft room is one view at a time — Pool, Board, Team, Grade,
+   chosen from the rail — and it has no bottom sheet, no snap points and no
+   auto-pick ribbon. Nothing in web/src/components/v3 mentions BottomSheet
+   or AUTOPICK_RIBBON_H, checked rather than assumed. So there is no sheet
+   whose handle can be covered and no ribbon to cover it.
+
+   Deleted, this file takes its reasoning with it. Re-aimed at v3, it would
+   be the vacuity this project has shipped three times: a test asking for a
+   mark the screen does not draw reports zero and PASSES, and 0 === 0 reads
+   exactly like a feature that works.
+
+   ---- The rule, which is what is actually being kept ----
+
+   A control's own handle may not be covered by furniture that GROWS. The
+   two halves that made it bite are both still possible: a fixed element
+   whose ceiling is read once rather than watched, and a viewport shorter
+   than the one the suite profiles — phone.spec.mjs still drives exactly
+   one device (iPhone 13, 390x664), and this defect needed a short screen
+   to reach. A single device profile is a sample, not a phone.
+
+   So if v3's phone draft ever grows furniture that appears and disappears
+   over a control — an autopick ribbon by another name, a connection
+   banner, a pick-order strip — this is the line that says to measure the
+   relationship again: the header's bottom edge must never fall below the
+   top edge of whatever it sits over, at every viewport, in both states.
+   The sizes below are real device states rather than numbers picked to
+   fail, and they are worth reusing. */
+
 import { test, expect, devices } from "@playwright/test";
 import { openApp } from "./helpers.mjs";
+
+/* Skipped at the file level rather than per test, so a reader sees one
+   reason rather than four identical ones, and so adding a case here does
+   not quietly start running against a screen that is not there. */
+test.skip(true, "v3's phone draft has no bottom sheet - see the note above");
 
 /* The sheet's drag handle has to be reachable on ANY phone, in every state
    the screen can get into — reported from an iPhone SE, where switching
