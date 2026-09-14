@@ -20,12 +20,12 @@ import { openApp, createRoom } from "./helpers.mjs";
    if that day comes — an app store submission would be the moment. */
 const PHONE = { ...devices["iPhone 13"], defaultBrowserType: undefined };
 
-/* Scoped to #draftroom-root on purpose. The legacy setup screen is still in
+/* Scoped to #view-home on purpose. The legacy setup screen is still in
    the document, display:none, and its selects are 14.5px — hidden elements
    still report a computed font size, so an unscoped sweep fails on markup no
    thumb can reach. */
 const FIELD_READER = `window.readSmallFields = function () {
-  return [...document.querySelectorAll("#draftroom-root input, #draftroom-root select, #draftroom-root textarea")]
+  return [...document.querySelectorAll("#view-home input, #view-home select, #view-home textarea")]
     .filter(function (el) { return el.type !== "checkbox" && el.type !== "radio"; })
     .filter(function (el) { return parseFloat(getComputedStyle(el).fontSize) < 16; })
     .map(function (el) { return (el.id || String(el.className)).slice(0, 40); });
@@ -81,12 +81,35 @@ async function startPhoneDraft(page, opts = { mySlot: 3, clockLength: 90 }, inSa
     const ok = window.JukeEngine.startDraft(o);
     if (ok && extra) new Function("return (" + extra + ")()")();
     render();
+    /* The cockpit is at #/draft/live since the cutover, and the bare
+       address is the LAUNCHER. Pressing Start in the UI navigates there;
+       calling startDraft() through the bridge does not, so every caller of
+       this helper was left on the launcher with a draft running behind it
+       — and the failures landed on whatever each test looked for next,
+       which reads as a missing screen rather than as a fixture that never
+       arrived at one. */
+    if (ok) location.hash = "#/draft/live";
     return ok;
   }, { o: opts, extra: inSameTurn ? inSameTurn.toString() : null });
   expect(started, "the draft actually started (a false here is setupProblem() refusing)").toBe(true);
 
+  /* Wait for the cockpit, rather than for the loader's ABSENCE.
+
+     That wait was `!document.querySelector("[data-draft-loader]")`, and
+     the loader it names belongs to the legacy DraftRoom — still imported
+     through DeferredPortals, so still mountable, and never removed on a
+     path nothing navigates to. Waiting for it to go can therefore hang on
+     a screen that is perfectly ready.
+
+     A positive condition cannot fail that way: the tablist IS the cockpit,
+     so this waits for the thing every caller actually needs and says so
+     when it does not arrive. Same reasoning the board helper's own note
+     gives for waiting on the table rather than on a click having landed. */
   await page.waitForFunction(
-    () => !document.querySelector("[data-draft-loader]"),
+    () => {
+      const t = document.querySelector('[role="tablist"][aria-label="Draft views"]');
+      return !!t && t.getBoundingClientRect().height > 0;
+    },
     null,
     { timeout: 20000 },
   );
@@ -105,37 +128,43 @@ test("no field is under 16px, or iOS zooms in and stays there", async ({ browser
      then the settings modal (which is where the scoring editor's forty-four
      number inputs live), then the live draft's player search. */
   await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
-    [...root.querySelectorAll("button")]
-      .find((b) => /draft settings/i.test(b.getAttribute("aria-label") || ""))
-      .click();
+    const root = document.getElementById("view-home");
+    /* Matched on the button's TEXT as well as its aria-label: v3's
+       launcher draws "Draft settings" as a visible label rather than
+       hanging it off an attribute, so an aria-label-only match found
+       nothing and the click threw on undefined — which reads as a missing
+       screen rather than as a control that says the same thing a
+       different way. */
+    const openIt = [...root.querySelectorAll("button")].find((b) =>
+      /draft settings/i.test(b.getAttribute("aria-label") || "") ||
+      /draft settings/i.test(b.textContent || ""));
+    if (!openIt) throw new Error("no Draft settings control on the launcher");
+    openIt.click();
   });
   await page.waitForTimeout(400);
 
-  /* The scoring rules are a collapsible section now, not a "Scoring" tab —
-     the settings modal became the whole Draft Settings screen (draft name,
-     type, third-round reversal, scoring, teams, player pool, clock, CPU
-     autopick, roster, draft order) and forty-nine numeric inputs are a
-     screen rather than a section, so they are folded away behind a row.
+  /* The scoring rules are still folded away behind a row, and opening it
+     is still the point: the inputs it holds are the whole reason this test
+     visits the settings screen, and a version that stopped opening them
+     would keep passing while checking nothing.
 
-     That row is what has to be opened, and opening it is the point: the
-     inputs it holds are the whole reason this test visits the settings
-     screen at all, and a version that stopped opening them would keep
-     passing while checking nothing. Matched on "scoring rules" rather than
-     on a tab label, because the section header is what the row says. */
+     What moved is only the label — "Scoring rules" is the SECTION heading
+     now and the control under it reads "Edit all 49 scoring rules", which
+     carries a count that changes with the rule table. So it is matched on
+     aria-controls instead: the attribute names what the button opens, and
+     it cannot go stale when a rule is added. */
   await page.evaluate(() => {
-    const m = [...document.querySelectorAll("div")]
-      .find((d) => (d.className || "").toString().includes("z-[70]"));
-    const row = [...m.querySelectorAll("button")]
-      .find((b) => /scoring rules/i.test(b.textContent || ""));
+    const row = document.querySelector('button[aria-controls="v3-rule-editor"]');
     if (!row) throw new Error("no scoring-rules row on the settings screen");
-    row.click();
+    if (row.getAttribute("aria-expanded") !== "true") row.click();
   });
   await page.waitForTimeout(400);
 
   const fieldCount = await page.evaluate(() => {
-    const m = [...document.querySelectorAll("div")]
-      .find((d) => (d.className || "").toString().includes("z-[70]"));
+    const m = document.querySelector('[role="dialog"]')
+      || [...document.querySelectorAll("div")]
+        .find((d) => (d.className || "").toString().includes("z-[80]"));
+    if (!m) throw new Error("the settings drawer did not open");
     return m.querySelectorAll("input").length;
   });
   // The guard on the guard: the sweep below is only meaningful if the fields
@@ -147,8 +176,9 @@ test("no field is under 16px, or iOS zooms in and stays there", async ({ browser
   expect(inModal, "every settings field clears the floor").toEqual([]);
 
   await page.evaluate(() => {
-    const m = [...document.querySelectorAll("div")]
-      .find((d) => (d.className || "").toString().includes("z-[70]"));
+    const m = document.querySelector('[role="dialog"]')
+      || [...document.querySelectorAll("div")]
+        .find((d) => (d.className || "").toString().includes("z-[80]"));
     [...m.querySelectorAll("button")]
       .find((b) => /close draft settings/i.test(b.getAttribute("aria-label") || "")).click();
   });
@@ -173,43 +203,28 @@ test("no field is under 16px, or iOS zooms in and stays there", async ({ browser
      in style.css applies to every field in the document by tag, Tailwind
      class or not, which is what makes the search field's 14px source
      (`text-sm`) beside it. */
-  /* Wait for the toggle before reaching for it.
+  /* The search field is on the Pool directly now, and the toggle that used
+     to hide it is gone.
 
-     The evaluate below is a single synchronous read, so it asks once and
-     throws "no icon-only search toggle on the Players panel" if the phone
-     draft room has not finished rendering its Players panel yet. That is
-     not a missing control, it is a race — and it read as one, failing a
-     full run and then passing 12/12 on a re-run of the same file.
+     What this block did was open a search TOGGLE on the phone's Players
+     panel, because the field lived behind it — and the reason it existed
+     at all is the half worth keeping: the sweep above cannot see a field
+     that has not rendered, so it "passed" identically whether that field
+     cleared the floor or not. v3's Pool draws the field itself, so there
+     is nothing to open; the guard that the field is genuinely on screen
+     before the sweep is trusted is kept below, and is the whole reason
+     this is a wait rather than a one-shot read.
 
-     Same defect as the two the config and helpers already grew waits for,
-     and the same rule this repo states about it: a one-shot
-     `page.evaluate(...).find(...)` is the wrong shape for anything that
-     renders asynchronously, because "not there yet" and "not there at all"
-     come back identically. Bounded, and NOT swallowed: if the toggle
-     genuinely never appears that is this test's subject and the timeout
-     should say so. */
-  await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
-    const sheet = root && [...root.querySelectorAll("div")]
-      .find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
-    const panel = sheet && sheet.lastElementChild;
-    return !!(panel && [...panel.querySelectorAll("button")]
-      .find((b) => b.textContent.trim() === "" && b.querySelector("svg")));
-  }, null, { timeout: 20000 });
+     A one-shot `evaluate(...).find(...)` is the wrong shape here anyway:
+     "not there yet" and "not there at all" come back identically, which
+     is how the old version failed a full run and passed 12/12 on a rerun
+     of the same file. */
+  await page.waitForSelector('#view-home input[placeholder="Search players"]',
+    { timeout: 20000 });
 
-  await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
-    const sheet = [...root.querySelectorAll("div")]
-      .find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
-    const panel = sheet && sheet.lastElementChild;
-    const searchBtn = panel && [...panel.querySelectorAll("button")]
-      .find((b) => b.textContent.trim() === "" && b.querySelector("svg"));
-    if (!searchBtn) throw new Error("no icon-only search toggle on the Players panel");
-    searchBtn.click();
-  });
   await page.waitForTimeout(300);
   const searchFieldSize = await page.evaluate(() => {
-    const input = document.querySelector('#draftroom-root input[placeholder="Search players"]');
+    const input = document.querySelector('#view-home input[placeholder="Search players"]');
     return input ? parseFloat(getComputedStyle(input).fontSize) : null;
   });
   expect(searchFieldSize, "the Players tab's search field clears the floor too").toBeGreaterThanOrEqual(16);
@@ -237,8 +252,24 @@ test("nothing is sitting on top of the Start button", async ({ browser }) => {
   const page = await openApp(context, "#/draft");
   await page.waitForTimeout(600);
 
+  /* Scrolled to with Playwright rather than inside the page, and that is
+     not a style preference: v3's launcher puts the button below the fold
+     on a phone (top 732 in a 664px viewport, under the resume card and the
+     recent drafts), and an in-page `scrollIntoView()` moved it by exactly
+     nothing — the shell scrolls an inner container, not the document, so
+     the element's own scrollIntoView had no scroller to act on. Playwright
+     walks the ancestors and scrolls whichever one actually scrolls.
+
+     Being below the fold is a layout decision rather than the defect here.
+     The defect is something PAINTING OVER the button — a chat dock whose
+     `top: 8px` survived into a relative position, in the original report —
+     and a thing on top of it is on top of it wherever the page sits. So
+     the hit-test carries the assertion and the viewport check only says
+     the scroll worked. */
+  await page.locator("#view-home [data-start-draft]").first().scrollIntoViewIfNeeded();
+
   const r = await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     /* [data-start-draft], and the attribute exists because of this test.
 
        This used to be a regex of every name the button has ever had —
@@ -257,9 +288,17 @@ test("nothing is sitting on top of the Start button", async ({ browser }) => {
     // own centre. Geometry rather than a screenshot, because the answer is
     // "would this click land", not "does it look right".
     const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    /* Its CENTRE on screen, not its whole box. The box test was
+       `b.top >= 0 && b.bottom <= innerHeight`, which asks a second question
+       — does this control fit entirely above the fold — that v3's launcher
+       answers differently and that has nothing to do with the defect here.
+       What the hit-test below needs is that the point it probes is a point
+       the viewport actually contains; anything stricter reports a page
+       that scrolls as a page that is broken. */
+    const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
     return { found: true, onTop: !!(hit && (hit === btn || btn.contains(hit))),
              hit: hit ? hit.tagName + "." + String(hit.className).slice(0, 30) : null,
-             inViewport: b.top >= 0 && b.bottom <= innerHeight };
+             inViewport: cy >= 0 && cy <= innerHeight && cx >= 0 && cx <= innerWidth };
   });
 
   expect(r.found, "the lobby offers a Start button").toBe(true);
@@ -289,7 +328,7 @@ function sweepOverflow() {
      and stops inventing them where it cannot. */
   const slack = devicePixelRatio > 1 ? 2 : 1;
 
-  document.querySelectorAll("#draftroom-root *").forEach((el) => {
+  document.querySelectorAll("#view-home *").forEach((el) => {
     const b = el.getBoundingClientRect();
     if (!b.width || !b.height) return;
     if (el.scrollWidth <= el.clientWidth + slack) return;
@@ -298,6 +337,23 @@ function sweepOverflow() {
     const scrolls = /auto|scroll/.test(c.overflowX);
     const ellipsises = c.textOverflow === "ellipsis" && c.overflow !== "visible";
     if (scrolls || ellipsises) return;
+
+    /* Visually-hidden text is not a leak, and cannot be one.
+
+       An `sr-only` span is 1px square with its content clipped away — the
+       standard screen-reader-only recipe — so it "overflows its box" by
+       construction, by however long the sentence is: this sweep reported
+       `SPAN.sr-only over=109` and `P.sr-only over=373` on a cockpit where
+       nothing was wrong. No sighted reader can reach that text because no
+       sighted reader can see it, which is the opposite of the question
+       being asked here.
+
+       Exempted by the property that hides it rather than by the class
+       name: anything clipped to nothing is invisible whatever it is
+       called, and a class allow-list would miss the next helper that does
+       the same thing under another name. */
+    const clipped = c.clipPath === "inset(50%)" || /rect\(0px,\s*0px,\s*0px,\s*0px\)/.test(c.clip);
+    if (clipped && b.width <= 2 && b.height <= 2) return;
 
     /* A decoration hung deliberately outside its box is not a leak.
        The position badge on an avatar sits at -bottom-1 -right-1, so its
@@ -341,24 +397,26 @@ test("nothing overflows sideways that cannot scroll or ellipsise", async ({ brow
   });
   await page.evaluate((fn) => { window.__sweep = new Function("return (" + fn + ")()"); }, sweepOverflow.toString());
 
-  /* Swept once per tab of the new bottom sheet, not just on whatever the
-     draft opens on. Each tab is a distinct component (PlayersTabPhone,
-     QueueTabPhone, TeamTabPhone, ChatTabPhone) with its own markup, and the
-     original single-tab sweep is exactly what let the rank-number column's
-     overflow past its own box ship: three-digit ranks (100+) sat in a
-     16px-wide cell built for two, colliding with the Draft button beside it
-     on well over half the board. Confirmed by measurement before the fix —
-     `scrollWidth 20` against `clientWidth 16` — and by screenshot, then
-     fixed by widening the cell rather than by loosening this sweep. */
+  /* Swept once per VIEW, not just on whatever the draft opens on. The
+     reason is unchanged and is why this is a loop: the original
+     single-view sweep is exactly what let the rank column's overflow ship
+     — three-digit ranks in a cell built for two, colliding with the Draft
+     button beside them on well over half the board, `scrollWidth 20`
+     against `clientWidth 16`, fixed by widening the cell rather than by
+     loosening this sweep.
+
+     The views were the bottom sheet's tabs (Players / Queue / Team /
+     Chat). v3's phone draft has no sheet: it is one view at a time off the
+     rail, and they are Pool / Board / Team / Grade. Read off the tablist
+     rather than named here, so a fifth view is swept the day it ships and
+     a renamed one does not read as a missing control — which is how this
+     loop failed, on a cockpit that was rendering perfectly. */
   const byTab = {};
-  for (const label of ["Players", "Queue", "Team", "Chat"]) {
-    await page.evaluate((l) => {
-      const root = document.getElementById("draftroom-root");
-      const btn = [...root.querySelectorAll("button")]
-        .find((b) => b.textContent.trim() === l && b.getBoundingClientRect().height > 0);
-      if (!btn) throw new Error("no visible tab button reading " + l);
-      btn.click();
-    }, label);
+  const views = await page.getByRole("tab").all();
+  expect(views.length, "the cockpit draws its views").toBeGreaterThan(2);
+  for (const view of views) {
+    const label = (await view.textContent()).trim();
+    await view.click();
     await page.waitForTimeout(350);
     byTab[label] = await page.evaluate(() => window.__sweep());
   }
@@ -369,19 +427,27 @@ test("nothing overflows sideways that cannot scroll or ellipsise", async ({ brow
   // And the player profile overlay, opened from the Players tab — its own
   // full-screen surface (PlayerProfilePhone.jsx) with a four-way tab strip
   // of its own, swept the same way.
-  await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
-    const btn = [...root.querySelectorAll("button")]
-      .find((b) => b.textContent.trim() === "Players" && b.getBoundingClientRect().height > 0);
-    btn.click();
-  });
+  await page.getByRole("tab", { name: /^Pool/ }).click();
   await page.waitForTimeout(350);
-  await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
-    const nameBtn = [...root.querySelectorAll("button")].find((b) => b.querySelector("p.truncate"));
-    if (!nameBtn) throw new Error("no player row to open a profile from");
-    nameBtn.click();
-  });
+  /* The row's own name button, which is what opens the drawer.
+
+     It used to be found by `p.truncate` — the legacy row's name element —
+     and v3 draws spans, so that matched nothing and threw "no player row
+     to open a profile from" on a pool full of rows.
+
+     A locator rather than an evaluate, for the reason this file states
+     twice already: a one-shot `evaluate(...).find(...)` cannot tell "not
+     there yet" from "not there at all", and this runs immediately after a
+     view change. The row's name button is the one control in the row that
+     carries a headshot beside its text. */
+  /* `li`, not `tr`. Pool.jsx renders two different row shapes and the
+     phone gets the LIST one — the table is the desk-width path — so a
+     `tbody tr` locator waits its whole timeout on a pool of eighty-one
+     list items. The headshot is what separates a player row from the
+     dividers and the show-more control in the same list. */
+  const firstPlayer = page.locator("#view-home li button").filter({ has: page.locator("img") }).first();
+  await firstPlayer.click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(350);
   const profileLeaks = await page.evaluate(() => window.__sweep());
   expect(profileLeaks, "the player profile overlay").toEqual([]);
@@ -483,7 +549,7 @@ test("the live draft opens ready to draft, not behind extra taps", async ({ brow
   await startPhoneDraft(page, { mySlot: 0, clockLength: 90 });
 
   const r = await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const seen = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
     const sheet = [...root.querySelectorAll("div")]
       .find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
@@ -552,7 +618,7 @@ test("the live draft opens ready to draft, not behind extra taps", async ({ brow
    never takes the `isPhone` branch at either width and this test still
    exercises exactly the tablet/desktop nav it always did. */
 const BAR_READER = `window.visibleNavs = function () {
-  var root = document.getElementById("draftroom-root");
+  var root = document.getElementById("view-home");
   return [].slice.call(root.querySelectorAll("nav")).filter(function (n) {
     var b = n.getBoundingClientRect();
     if (!(b.width > 0 && b.height > 0)) return false;
@@ -666,7 +732,7 @@ test("the entry screen stacks on a phone instead of painting over itself", async
   expect(code, "a room was created, which is the only way to the entry screen")
     .toBeTruthy();
   await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     return [...root.querySelectorAll("div")].some((d) => typeof d.className === "string"
       && d.className.includes("lg:grid-cols-[300px_minmax(0,1fr)_330px]"));
   }, null, { timeout: 15000 });
@@ -721,7 +787,7 @@ test("the entry screen stacks on a phone instead of painting over itself", async
    every player row owns one of those for its own independent horizontal
    scroll, and the board peek has nothing that scrolls sideways at all.
 
-   The tab is opened through #draftroom-root deliberately, and by clicking
+   The tab is opened through #view-home deliberately, and by clicking
    through the real Lobby ("Start mock draft") rather than the
    `window.JukeEngine.startDraft()` bridge the other tests in this file use —
    the same reasoning `startSoloDraft()` in helpers.mjs already gives for
@@ -736,11 +802,11 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
   const page = await openApp(context, "#/draft");
 
   const clickIn = (name) => page.evaluate((label) => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const b = [...root.querySelectorAll("button")]
       .filter((x) => x.getBoundingClientRect().height > 0)
       .find((x) => x.textContent.trim() === label);
-    if (!b) throw new Error("no button in #draftroom-root reading " + label);
+    if (!b) throw new Error("no button in #view-home reading " + label);
     b.click();
   }, name);
 
@@ -748,9 +814,9 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
   // sitting on top of the Start button" above for why the label is not a
   // thing to match on.
   const clickStart = () => page.evaluate(() => {
-    const b = [...document.querySelectorAll("#draftroom-root [data-start-draft]")]
+    const b = [...document.querySelectorAll("#view-home [data-start-draft]")]
       .find((x) => x.getBoundingClientRect().height > 0);
-    if (!b) throw new Error("no [data-start-draft] on screen in #draftroom-root");
+    if (!b) throw new Error("no [data-start-draft] on screen in #view-home");
     b.click();
   });
 
@@ -786,7 +852,7 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
   );
   await clickStart();
   await page.waitForFunction(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     return [...root.querySelectorAll("button")]
       .some((b) => b.getBoundingClientRect().height > 0 && b.textContent.trim() === "Players");
   }, null, { timeout: 15000 });
@@ -800,7 +866,7 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
        child is whichever tab body is mounted (BottomSheet's own JSX: the
        drag/handle row, then `<div className="min-h-0 flex-1">{children}</div>`),
        which is PlayersTabPhone's root here since Players is selected. */
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const sheet = [...root.querySelectorAll("div")]
       .find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
     const panel = sheet && sheet.lastElementChild;
@@ -876,7 +942,7 @@ test("the bottom sheet cycles through its three snap heights on a tap", async ({
   await startPhoneDraft(page);
 
   const readHeight = () => page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const sheet = [...root.querySelectorAll("div")].find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
     return sheet ? Math.round(sheet.getBoundingClientRect().height) : null;
   });
@@ -884,7 +950,7 @@ test("the bottom sheet cycles through its three snap heights on a tap", async ({
   // than by its class list — the one thing a `<div>` with no text and no
   // role has to identify it by.
   const getHandlePoint = () => page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const sheet = [...root.querySelectorAll("div")].find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
     const drag = [...sheet.children].find((c) => getComputedStyle(c).cursor === "grab");
     const b = drag.getBoundingClientRect();
@@ -932,7 +998,7 @@ test("the bottom sheet cycles through its three snap heights on a tap", async ({
      never an absolute offset, or the test has to be rewritten every time
      the header's own height moves. */
   const headerH = await page.evaluate(() => {
-    const h = document.querySelector("#draftroom-root header");
+    const h = document.querySelector("#view-home header");
     return Math.round(h.getBoundingClientRect().height);
   });
   const cap = Math.min(700, 664 - headerH);
@@ -1013,12 +1079,12 @@ test("the four tabs each show their own content, and a player profile opens and 
   // class collision the test above documents (DraftBoardPeekPhone's board
   // wrapper shares BottomSheet's own `min-h-0 flex-1` class verbatim).
   const readTabBody = () => page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const sheet = [...root.querySelectorAll("div")].find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
     return sheet && sheet.lastElementChild ? sheet.lastElementChild.innerText : "";
   });
   const tapTab = (label) => page.evaluate((l) => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const btn = [...root.querySelectorAll("button")]
       .find((b) => b.textContent.trim() === l && b.getBoundingClientRect().height > 0);
     if (!btn) throw new Error("no visible tab reading " + l);
@@ -1053,7 +1119,7 @@ test("the four tabs each show their own content, and a player profile opens and 
 
   // Open a profile from the first player row.
   const opened = await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const nameBtn = [...root.querySelectorAll("button")].find((b) => b.querySelector("p.truncate"));
     const name = nameBtn ? nameBtn.querySelector("p").textContent.trim() : null;
     if (nameBtn) nameBtn.click();
@@ -1063,7 +1129,7 @@ test("the four tabs each show their own content, and a player profile opens and 
   await page.waitForTimeout(400);
 
   const profile = await page.evaluate((expectedName) => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const seen = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
     const overlay = [...root.querySelectorAll("div")]
       .find((d) => /fixed inset-0/.test(d.className) && /z-\[70\]/.test(d.className));
@@ -1094,14 +1160,14 @@ test("the four tabs each show their own content, and a player profile opens and 
   expect(profile.closeBtnFound, "and a way to close it").toBe(true);
 
   await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const closeBtn = [...root.querySelectorAll("button")]
       .find((b) => (b.getAttribute("aria-label") || "") === "Close player profile");
     closeBtn.click();
   });
   await page.waitForTimeout(400);
   const afterClose = await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const overlay = [...root.querySelectorAll("div")]
       .find((d) => /fixed inset-0/.test(d.className) && /z-\[70\]/.test(d.className));
     return !!overlay;
@@ -1141,7 +1207,7 @@ test("each row's name stays fixed while its own strip scrolls, independently of 
   await startPhoneDraft(page, { mySlot: 0, clockLength: 90 });
 
   const r = await page.evaluate(() => {
-    const root = document.getElementById("draftroom-root");
+    const root = document.getElementById("view-home");
     const sheet = [...root.querySelectorAll("div")].find((d) => /fixed inset-x-0 bottom-0 z-30/.test(d.className));
     const panel = sheet.lastElementChild;
     const list = [...panel.querySelectorAll("div")]

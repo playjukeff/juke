@@ -42,6 +42,23 @@ function sweepOverflow() {
     const c = getComputedStyle(el);
     if (/auto|scroll/.test(c.overflowX)) return;
     if (c.textOverflow === "ellipsis" && c.overflow !== "visible") return;
+
+    /* Visually-hidden text is not a leak, and cannot be one.
+
+       An `sr-only` span is 1px square with its content clipped away — the
+       standard screen-reader-only recipe — so it "overflows its box" by
+       construction, by however long the sentence is: this sweep reported
+       `SPAN.sr-only over=109` and `P.sr-only over=373` on a cockpit where
+       nothing was wrong. No sighted reader can reach that text because no
+       sighted reader can see it, which is the opposite of the question
+       being asked here.
+
+       Exempted by the property that hides it rather than by the class
+       name: anything clipped to nothing is invisible whatever it is
+       called, and a class allow-list would miss the next helper that does
+       the same thing under another name. */
+    const clipped = c.clipPath === "inset(50%)" || /rect\(0px,\s*0px,\s*0px,\s*0px\)/.test(c.clip);
+    if (clipped && b.width <= 2 && b.height <= 2) return;
     if (c.overflow === "hidden" || c.overflowX === "hidden") return;
     const spill = [...el.children].filter(
       (k) => k.getBoundingClientRect().right > el.getBoundingClientRect().right + slack);
