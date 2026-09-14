@@ -18,7 +18,16 @@
 import { test, expect } from "@playwright/test";
 import { openApp } from "./helpers.mjs";
 
-const CARD = (id) => `#draftroom-root [data-practice-scenario="${id}"]`;
+/* Unscoped. #draftroom-root is empty on every v3 address - the container
+   stays in index.html but nothing portals into it - so every selector under
+   it matched nothing and all six tests in this file spent 20s discovering
+   the same thing at the same shared line.
+
+   The marker itself survived the cutover untouched: V3DraftHome draws the
+   same four cards and carries the same data-practice-scenario. An attribute
+   says what a control IS, which is exactly why this file needed one line
+   changed rather than a rewrite. */
+const CARD = (id) => `[data-practice-scenario="${id}"]`;
 
 // The lobby draws its cards from engine reads that are deferred (the board,
 // draft-engine.js), so the grid is what says the screen is ready — not a
@@ -49,7 +58,7 @@ test.describe("Practice a scenario", () => {
   test("a guest gets four cards and each one says what it will run", async ({ context }) => {
     const page = await openLobby(context);
 
-    const cards = await page.$$eval("#draftroom-root [data-practice-scenario]", (els) =>
+    const cards = await page.$$eval("[data-practice-scenario]", (els) =>
       els.map((el) => ({ id: el.dataset.practiceScenario, text: el.innerText })));
 
     expect(cards.map((c) => c.id)).toEqual([

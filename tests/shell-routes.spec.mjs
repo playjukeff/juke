@@ -75,9 +75,22 @@ const CASES = [
   { hash: "#/league", needs: "Your league, read and priced." },
   { hash: "#/record", needs: "Every draft and every call, graded." },
   { hash: "#/account", needs: "You're drafting as a guest." },
-  { hash: "#/calls/lineup", needs: "Start Dallas Goedert over Brock Bowers." },
-  { hash: "#/calls/wire", needs: "Claim Drake London." },
-  { hash: "#/calls/trade", needs: "Ask for Isaiah Likely." },
+  /* The three calls are matched by the SHAPE of their headline, never by
+     the players in it. These were literals - "Claim Drake London.", "Ask
+     for Isaiah Likely.", "Start Dallas Goedert over Brock Bowers." - and a
+     sample call is computed off tonight's board, which the pipeline
+     regenerates every morning. All three went red reporting "claim jaxon
+     smith-njigba." against an expected "claim drake london.": the product
+     working exactly as designed, and the assertion describing one night in
+     September. A measurement is true of the board it was taken on.
+
+     The lineup call takes two shapes because the tool has two honest
+     answers - a swap worth making, or a lineup already optimal - and
+     demanding the first would go red on any night the sample lineup
+     happens to be right. */
+  { hash: "#/calls/lineup", needs: /start .+ over .+\.|your lineup is already the best one\./ },
+  { hash: "#/calls/wire", needs: /claim .+\./ },
+  { hash: "#/calls/trade", needs: /ask for .+\./ },
   { hash: "#/method/how-it-works", needs: "How the Draft Room works" },
 ];
 
@@ -114,10 +127,14 @@ for (const size of [{ w: 390, h: 844, label: "phone" }, { w: 1440, h: 900, label
       /* One string or several, and several means "any of these is this
          screen" rather than "all of these are on it" — see the Now case
          above for the only reason that distinction exists. */
-      const wanted = [].concat(c.needs).map(norm);
+      /* A RegExp is allowed as well as a string, for the three calls whose
+         headline names a player off tonight's board - see their entries.
+         Already lower-cased by norm(), so the patterns are written that
+         way rather than carrying an `i` flag. */
+      const wanted = [].concat(c.needs);
       expect(
-        wanted.some((w) => seen.includes(w)),
-        `${c.hash} draws its own screen (wanted one of ${JSON.stringify(wanted)})`,
+        wanted.some((w) => (w instanceof RegExp ? w.test(seen) : seen.includes(norm(w)))),
+        `${c.hash} draws its own screen (wanted one of ${JSON.stringify(wanted.map(String))})`,
       ).toBe(true);
 
       // Nothing overflows the page sideways, at either width.

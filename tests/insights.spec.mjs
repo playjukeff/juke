@@ -93,7 +93,11 @@ test("the panel draws four views, and every one of them has content", async ({ b
 
   for (const key of ["left", "leverage", "field", "trust"]) {
     await view(page, key).click();
-    const head = page.locator("[data-ins-deal] section h3");
+    /* v3 gives the view heading an id rather than nesting it in a
+       section: h2#v3-ins-view, with the sub-line as the <p> after it and
+       the content in [data-ins-body]. [data-ins-deal] was production's
+       panel wrapper and has no counterpart. */
+    const head = page.locator("#v3-ins-view");
     await expect(head).toHaveText(report.views[key].title);
     // The content region, not the header: a view that renders its own title
     // and nothing under it is the empty-panel failure this page is least
@@ -114,13 +118,18 @@ test("selecting a mock re-derives the table, and a change of view forgets it", a
   await seedHistory(page);
   await openInsights(page);
 
-  const sub = page.locator("[data-ins-deal] section h3 + p");
+  const sub = page.locator("#v3-ins-view + p");
   const featured = await sub.textContent();
 
   // The third bar, which is a different mock at a different seat from the
   // featured one — the bars are aria-pressed buttons, and the pressed one is
   // the mock the table is about.
-  await page.locator('[data-ins-deal] [role="button"][aria-pressed]').nth(2).click();
+  /* Scoped to the panel BODY, and matched as a real button. v3's bars
+     are <button aria-pressed> inside [data-ins-body]; the old selector
+     asked for role="button" across the whole wrapper, which would also
+     catch the view nav's own aria-pressed buttons now that they sit in the
+     same tree - and the nav is not what "the third bar" means. */
+  await page.locator('[data-ins-body] button[aria-pressed]').nth(2).click();
   const picked = await sub.textContent();
   expect(picked, "the sub-line names the mock that was clicked").not.toBe(featured);
 
@@ -242,7 +251,7 @@ test("nothing on the panel overflows in a way it can neither scroll nor ellipsis
      clips. */
   const sweep = () =>
     page.evaluate(() => {
-      const root = document.querySelector("[data-ins-deal]");
+      const root = document.querySelector("[data-ins-body]");
       const out = [];
       root.querySelectorAll("*").forEach((el) => {
         const cs = getComputedStyle(el);

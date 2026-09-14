@@ -313,7 +313,7 @@ function Ledger({ decisions }) {
         <Label className="text-[11px]">Room · week</Label>
         {STEPS.map((s, i) => <Label key={s} className={cx('text-[11px]', i === STEPS.length - 1 && 'text-right')}>{s}</Label>)}
       </div>
-      {page.length ? <ul>{page.map((d) => <CallRow key={d.id} d={d} />)}</ul> : (
+      {page.length ? <ul data-call-rows>{page.map((d) => <CallRow key={d.id} d={d} />)}</ul> : (
         <p className="px-5 py-10 text-center text-[15px] text-v3-ink3">No calls match these filters.</p>
       )}
       <MoreFooter shown={page.length} total={filtered.length} step={PAGE} onMore={() => setShown((n) => n + PAGE)} noun="calls" />
@@ -369,7 +369,7 @@ function CallsSection({ dec, mode, onSeeAll, signedIn, leagueStatus }) {
   } else if (mode === 'peek') {
     body = (
       <>
-        <ul>{decisions.slice(0, PEEK).map((d) => <CallRow key={d.id} d={d} />)}</ul>
+        <ul data-call-rows>{decisions.slice(0, PEEK).map((d) => <CallRow key={d.id} d={d} />)}</ul>
         {decisions.length > PEEK ? (
           <div className="border-t border-v3-rule px-4 py-3 sm:px-5">
             <button type="button" onClick={onSeeAll} className="inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">

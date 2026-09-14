@@ -101,7 +101,11 @@ test("homepage to a finished draft, pressing only what a person can press",
        button reads "Start a mock draft", one word off DraftLocker's. The
        attribute says what the control IS; CLAUDE.md already records the
        rule and helpers.mjs now follows it too. */
-    const enter = page.locator("#draftroom-root [data-start-draft]").first();
+    /* Unscoped, because #draftroom-root is empty on every v3 address -
+       the container stays in index.html but nothing portals into it any
+       more. The marker is the point and it is on v3's own launcher;
+       helpers.mjs dropped the same scope for the same reason. */
+    const enter = page.locator("[data-start-draft]:visible").first();
     await expect(enter, "the entry asks for one thing").toBeVisible({ timeout: 30000 });
     /* ---- 3. sit down, and change something, so the draft is actually mine
 
@@ -129,7 +133,13 @@ test("homepage to a finished draft, pressing only what a person can press",
        Still pressing only what a person can press, which is this file's own
        rule. */
     await page.getByRole("button", { name: /draft settings/i }).first().click();
-    await expect(page.getByRole("heading", { name: "Draft Settings" })).toBeVisible({ timeout: 15000 });
+    /* The drawer itself, by role. v3's SettingsDrawer is a
+       role=dialog/aria-modal labelled by #v3-settings-title, and the words
+       it shows are "Draft settings" in a span rather than a heading - so a
+       getByRole("heading", {name: "Draft Settings"}) missed on the role AND
+       on the case, which is the uppercase trap this repo has now hit five
+       times. The dialog is what "the settings opened" actually means. */
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 15000 });
 
     // The seventh chair. The list is 0-based and so is mySlot.
     const chairs = page.locator("ol li button");
@@ -151,7 +161,14 @@ test("homepage to a finished draft, pressing only what a person can press",
     await expect.poll(() => page.evaluate(() => JukeEngine.league().scoring)).toBe("ppr");
     await expect.poll(() => page.evaluate(() => state.mySlot)).toBe(6);
 
-    await page.getByRole("button", { name: "Save" }).click();
+    /* Closed rather than saved, because v3's drawer has no Save. Every
+       control writes through to the one real `league` the moment it is
+       pressed - which is what the two poll() assertions above have just
+       confirmed, before this line runs - so the only thing left to do with
+       the drawer is dismiss it. A "Save" here would be a control that
+       commits something already committed. */
+    await page.getByRole("button", { name: /close draft settings/i }).click();
+    await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15000 });
 
     /* ---- 4. start ------------------------------------------------------ */
     await enter.click();
@@ -167,7 +184,7 @@ test("homepage to a finished draft, pressing only what a person can press",
     // all rather than computed.
     await page.waitForFunction(() => isMyTurn(), null, { timeout: 30000 });
     const before = await page.evaluate(() => state.picks.length);
-    await page.locator("#draftroom-root button").filter({ hasText: /^Draft$/ }).first().click();
+    await page.locator("button:visible").filter({ hasText: /^Draft$/ }).first().click();
     await expect.poll(() => page.evaluate(() => state.picks.length),
       { timeout: 15000 }).toBeGreaterThan(before);
     // Index `before`, not the tail: the instant my pick lands the app's own
@@ -196,12 +213,27 @@ test("homepage to a finished draft, pressing only what a person can press",
 
        aria-pressed is the toggle's own state, so it doubles as the assertion
        that the press registered rather than landing on a dead control. */
-    const autopick = page
-      .locator('#draftroom-root button[aria-pressed]:visible')
-      .filter({ hasText: /^Autopick$/ })
-      .first();
+    /* v3 puts Autopick back INSIDE the draft menu, which reverses what the
+       note above describes: the production review that cut Pause and Undo
+       promoted this to a header toggle, and v3's LiveMenu carries it again
+       as a switch beside them. So the menu is opened first - which is still
+       "only what a person can press", just one press more than before.
+
+       role=switch with aria-checked, not a button with aria-pressed. The
+       control is a real Switch (kit.jsx), and aria-checked doubles as the
+       assertion that the press registered rather than landing on a dead
+       control - the same job the old aria-pressed read did. */
+    /* :visible, because LiveHeader renders the menu button twice - a phone
+       row and a desktop row, exactly one of them on screen - and .first()
+       picks whichever sits earlier in the DOM rather than the one a person
+       can press. Same duplicate-control trap as the tablist, the filter
+       groups and the insights bars. */
+    await page.locator('button[aria-label="Draft menu"]:visible').first().click();
+    const autopick = page.locator('[role="switch"][aria-label="Autopick"]:visible').first();
     await autopick.click();
-    await expect(autopick, "the toggle went on").toHaveAttribute("aria-pressed", "true");
+    await expect(autopick, "the toggle went on").toHaveAttribute("aria-checked", "true");
+    // Out of the menu, so the board is what the rest of this walks.
+    await page.keyboard.press("Escape");
     await expect.poll(() => page.evaluate(() => draftOver()), { timeout: 180000 }).toBe(true);
 
     /* ---- 7. read the result -------------------------------------------- */
@@ -259,16 +291,22 @@ test("homepage to a finished draft, pressing only what a person can press",
        happily - the standings printed starter strength under a column of
        totals for months. */
     await expect.poll(() => page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
+      const root = document.getElementById("view-home");
       return /Draft Grade|THE ONE THAT GOT AWAY|One That Got Away/i.test(root.innerText || "");
     }), { timeout: 30000 }).toBe(true);
 
     const result = await page.evaluate(() => {
-      const root = document.getElementById("draftroom-root");
+      const root = document.getElementById("view-home");
       const all = analyseDraft();
       const rows = [...root.querySelectorAll("button")]
         .map((b) => (b.textContent || "").trim())
-        .filter((t) => /^\d+/.test(t) && all.some((x) => t.includes(JukeEngine.teamLabel(x.slot))));
+        /* "Your team" counts as a team name. v3's standings label your own
+           row that way rather than with teamLabel(mySlot) - which is right,
+           and meant this filter saw 9 rows in a 10-team room and reported
+           the standings as short by one. The row is there and correct; the
+           filter could not recognise it. */
+        .filter((t) => /^\d+/.test(t)
+          && (/your team/i.test(t) || all.some((x) => t.includes(JukeEngine.teamLabel(x.slot)))));
       const shown = rows.map((t) => {
         const rank = parseInt(t, 10);
         const m = t.match(/(\d+)([A-F][+-]?)$/);

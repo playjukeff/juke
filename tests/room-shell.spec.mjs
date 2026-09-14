@@ -39,15 +39,38 @@
 import { test, expect } from "@playwright/test";
 import { openApp } from "./helpers.mjs";
 
-/* The three calls, by address and by the subject each one names. Read off
-   the built site rather than copied out of a component — the same rule
-   shell-routes.spec.mjs follows, and for the same reason: these are the
-   sentences a reader actually sees, and a component's source spells them
-   before CSS has uppercased anything. */
+/* The three calls, by address and by the SHAPE of the sentence each one
+   names — never by the players in it.
+
+   These were literals: "Claim Drake London.", "Ask for Isaiah Likely.",
+   "Start Dallas Goedert over Brock Bowers." Every one of them was read off
+   the built site, which is the rule this file states two paragraphs up and
+   is exactly what made them wrong: a sample call is computed from tonight's
+   board, and `players.js` is regenerated every morning. The board moved and
+   all three went red, reporting "claim jaxon smith-njigba." against an
+   expected "claim drake london." — the product working perfectly and the
+   assertion describing one night in September.
+
+   A measurement is true of the board it was taken on. That rule is written
+   down a dozen times in CLAUDE.md about figures; this is the same failure
+   with a player's name in it.
+
+   What the file actually guards is that the H1 IS the call — a real
+   imperative naming a real subject, rather than a room's name used as
+   chrome. The verb and its object are what carry that, so the verb is
+   asserted and the object is only required to be SOMETHING. */
 const CALLS = [
-  { hash: "#/calls/lineup", names: "Start Dallas Goedert over Brock Bowers." },
-  { hash: "#/calls/wire", names: "Claim Drake London." },
-  { hash: "#/calls/trade", names: "Ask for Isaiah Likely." },
+  {
+    hash: "#/calls/lineup",
+    /* Two legitimate headlines, because the tool has two honest answers: a
+       swap worth making, or a lineup already optimal. Allowing only the
+       first would make this red on any night the sample lineup happens to
+       be right — which is a fact about the board, not a defect. */
+    shape: /^start .+ over .+\.$|^your lineup is already the best one\.$/,
+    what: "a start-over-bench call, or that the lineup is already best",
+  },
+  { hash: "#/calls/wire", shape: /^claim .+\.$/, what: "a claim call naming a player" },
+  { hash: "#/calls/trade", shape: /^ask for .+\.$/, what: "a trade call naming a player" },
 ];
 
 test.describe("the calls wear one shell", () => {
@@ -63,14 +86,19 @@ test.describe("the calls wear one shell", () => {
          subject were simply absent. */
       const h1 = page.locator("#root h1").first();
       const norm = (t) => t.toLowerCase().replace(/\s+/g, " ").trim();
-      expect(norm(await h1.innerText())).toContain(norm(call.names));
+      const said = norm(await h1.innerText());
+      expect(said, `the body's H1 is ${call.what}`).toMatch(call.shape);
 
+      /* The other half, and the one that would silently pass if the subject
+         were simply absent: the chrome must not be where the call lives.
+         Asserted against the H1's OWN text rather than a literal, so it
+         still means something now that the literal is gone. */
       const header = page.locator("header").first();
       if (await header.count()) {
         expect(
           norm(await header.innerText()),
           "the call's subject is not repeated in the chrome",
-        ).not.toContain(norm(call.names));
+        ).not.toContain(said);
       }
 
       await context.close();
