@@ -17,7 +17,7 @@ import { hashQuery, replaceQuery, scrollPageTo } from '../record/recordKit.js'
    ---- The hash is the router, so the document's own anchors are caught ----
 
    The docs link sections as href="#s06". Followed here, that would replace
-   #/v3/method/how-it-works with #s06 and the app would route home. So a
+   #/method/how-it-works with #s06 and the app would route home. So a
    section link scrolls instead, links between the three docs and back into
    the app are rewritten to their v3 addresses, and outside links open in a
    new tab. A section is deep-linkable as ?s=s06, and moving through the
@@ -44,11 +44,11 @@ function sanitize(root) {
 /* A link out of a document, onto its v3 address. */
 function mapHref(href) {
   const sec = href.includes('#s') ? href.split('#')[1] : null
-  if (/draft-room-how-it-works\.html/.test(href)) return '#/v3/method/how-it-works' + (sec ? `?s=${sec}` : '')
-  if (/privacy\.html/.test(href)) return '#/v3/method/privacy' + (sec ? `?s=${sec}` : '')
-  if (/terms\.html/.test(href)) return '#/v3/method/terms' + (sec ? `?s=${sec}` : '')
-  if (/index\.html#\/rooms\/draft/.test(href)) return '#/v3/draft'
-  if (/index\.html/.test(href) || href === '/' || href === '../') return '#/v3'
+  if (/draft-room-how-it-works\.html/.test(href)) return '#/method/how-it-works' + (sec ? `?s=${sec}` : '')
+  if (/privacy\.html/.test(href)) return '#/method/privacy' + (sec ? `?s=${sec}` : '')
+  if (/terms\.html/.test(href)) return '#/method/terms' + (sec ? `?s=${sec}` : '')
+  if (/index\.html#\/rooms\/draft/.test(href)) return '#/draft'
+  if (/index\.html/.test(href) || href === '/' || href === '../') return '#/'
   return href
 }
 
@@ -102,9 +102,9 @@ function NotFound({ doc }) {
         There is no document called <span className="font-figure text-v3-ink">{String(doc).slice(0, 40)}</span>. The method is three pages, and all three are here.
       </p>
       <div className="flex flex-wrap gap-2">
-        <CallButton href="#/v3/method/how-it-works">How Juke calls it <Icon name="arrow" className="h-4 w-4" /></CallButton>
-        <QuietButton href="#/v3/method/privacy">Privacy</QuietButton>
-        <QuietButton href="#/v3/method/terms">Terms</QuietButton>
+        <CallButton href="#/method/how-it-works">How Juke calls it <Icon name="arrow" className="h-4 w-4" /></CallButton>
+        <QuietButton href="#/method/privacy">Privacy</QuietButton>
+        <QuietButton href="#/method/terms">Terms</QuietButton>
       </div>
     </div>
   )
@@ -119,7 +119,7 @@ function DocSwitch({ current }) {
       {Object.entries(DOCS).map(([k, d]) => (
         <a
           key={k}
-          href={`#/v3/method/${k}`}
+          href={`#/method/${k}`}
           aria-current={k === current ? 'page' : undefined}
           className={cx(
             TOUCH,

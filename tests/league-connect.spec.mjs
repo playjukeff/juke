@@ -95,7 +95,7 @@ const text = (page) => page.locator("#view-home").innerText();
 
 test.describe("a connected league", () => {
   test("nothing on the site claims four working platforms", async ({ context }) => {
-    const page = await openApp(context, "#/rooms");
+    const page = await openApp(context, "#/");
     await page.waitForSelector("#view-home h1");
 
     /* The bug in one assertion. `Sleeper · ESPN · Yahoo · CBS` was written
@@ -124,7 +124,7 @@ test.describe("a connected league", () => {
   });
 
   test("a guest is still asked, and the rooms are still locked", async ({ context }) => {
-    const page = await openApp(context, "#/rooms");
+    const page = await openApp(context, "#/");
     await page.waitForSelector("#view-home h1");
     const body = await text(page);
 
@@ -148,7 +148,7 @@ test.describe("a connected league", () => {
     test.skip(!LOCAL_SITE, CLERK_GATED);
     const page = await context.newPage();
     await stubAccount(page, [LEAGUE]);
-    await page.goto(`${SITE}/index.html#/rooms`);
+    await page.goto(`${SITE}/index.html#/`);
     await page.waitForSelector("#view-home h1");
     // The lobby reads the league through useLeague(), which resolves a tick
     // after mount — wait for the answer rather than for a duration. "Your
@@ -453,7 +453,7 @@ test.describe("My League when the read fails", () => {
 
     const page = await context.newPage();
     await stubFailingRead(page);
-    await page.goto(`${SITE}/index.html#/my-league`);
+    await page.goto(`${SITE}/index.html#/league`);
     await page.waitForSelector("#view-home h1");
 
     /* Settle first, and wait on EITHER outcome rather than on the right one.

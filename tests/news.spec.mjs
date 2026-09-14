@@ -53,7 +53,7 @@ async function start(page) {
        directly and never had to care. */
     window.JukeEngine.startDraft({ mySlot: 0, clockLength: 90 });
     render();
-    location.hash = "#/draft-room";
+    location.hash = "#/draft";
   });
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
 
@@ -147,7 +147,7 @@ test.describe("latest news", () => {
       test.skip(!LOCAL_WORKER,
         "asserts the keyless path; the deployed worker has a provider key");
 
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await start(page);
       await crosswalk(page, "Jahmyr Gibbs");
       await openSheet(page, "Gibbs");
@@ -211,7 +211,7 @@ test.describe("latest news", () => {
     });
 
   test("headlines render, and hostile ones stay text", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await start(page);
     await stubNews(page, HOSTILE);
     await crosswalk(page, "Jahmyr Gibbs");
@@ -292,7 +292,7 @@ test.describe("latest news", () => {
 
   test("a slow answer cannot land in a different player's sheet",
     async ({ context }) => {
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await start(page);
       await crosswalk(page, "Jahmyr Gibbs");
       await crosswalk(page, "Puka Nacua", "T-TEST-2");
@@ -347,7 +347,7 @@ test.describe("latest news", () => {
     });
 
   test("a player we could not link is never asked about", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await start(page);
 
     /* The pipeline reports these in unmatched.txt and the sheet shows nothing.
@@ -380,7 +380,7 @@ test.describe("latest news", () => {
   });
 
   test("the panel does not survive into the next player's sheet", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await start(page);
     await crosswalk(page, "Jahmyr Gibbs");
 
@@ -416,7 +416,7 @@ test.describe("latest news", () => {
   });
 
   test("a failed fetch leaves no mark on the sheet", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await start(page);
     await crosswalk(page, "Puka Nacua");
 

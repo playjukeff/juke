@@ -299,7 +299,7 @@ function Scenarios({ engine, ready, tick, roomActive }) {
               <SignInButton mode="modal">
                 <button type="button" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', FOCUS)}>Sign in</button>
               </SignInButton>
-            ) : <a href="#/v3/account" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4')}>Sign in</a>}
+            ) : <a href="#/account" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4')}>Sign in</a>}
             {' to save results and get scenarios built from your drafts.'}
           </>
         )}
@@ -323,7 +323,7 @@ function Recent({ history, inProgress, onDelete }) {
           <ul className="divide-y divide-v3-rule">
             {history.slice(0, RECENT).map((e) => (
               <li key={e.id} data-rise="" className="flex items-center gap-1 pr-2">
-                <a href={`#/v3/draft/report?id=${encodeURIComponent(e.id)}`} className={cx('grid min-w-0 flex-1 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-v3-paper sm:px-5', FOCUS)}>
+                <a href={`#/draft/report?id=${encodeURIComponent(e.id)}`} className={cx('grid min-w-0 flex-1 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-v3-paper sm:px-5', FOCUS)}>
                   <span className="font-sheet text-[28px] font-black leading-none tracking-[-0.03em] text-v3-ink">{e.grade || '—'}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[15px] font-semibold text-v3-ink">

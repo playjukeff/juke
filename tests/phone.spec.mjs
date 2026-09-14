@@ -94,7 +94,7 @@ async function startPhoneDraft(page, opts = { mySlot: 3, clockLength: 90 }, inSa
 
 test("no field is under 16px, or iOS zooms in and stays there", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await page.evaluate(FIELD_READER);
 
   // A coarse pointer is what the rule keys on, so a test on a fine one proves
@@ -234,7 +234,7 @@ test("no field is under 16px, or iOS zooms in and stays there", async ({ browser
    already checks. */
 test("nothing is sitting on top of the Start button", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await page.waitForTimeout(600);
 
   const r = await page.evaluate(() => {
@@ -325,7 +325,7 @@ function sweepOverflow() {
 
 test("nothing overflows sideways that cannot scroll or ellipsise", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   /* The picks run in the same synchronous turn as the start, which is what
      the third argument is for. Same reason board-card.spec.mjs and
      board-marks.spec.mjs both call stopSim(): startDraft() ends in
@@ -477,7 +477,7 @@ test("the homepage hero starts under the header, not a screen below it", async (
    first intermediate screen at all. */
 test("the live draft opens ready to draft, not behind extra taps", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   // Seat 0, so pick 1.01 is mine and the Draft button on the top row is
   // enabled rather than greyed out for not being my turn.
   await startPhoneDraft(page, { mySlot: 0, clockLength: 90 });
@@ -592,7 +592,7 @@ for (const width of [900, 1280]) {
   test(`the draft tab bar never marks a tab whose panel is not mounted (${width}px)`,
     async ({ browser }) => {
       const context = await browser.newContext({ viewport: { width, height: 800 } });
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await startPhoneDraft(page);
       await page.evaluate(BAR_READER);
 
@@ -660,7 +660,7 @@ for (const width of [900, 1280]) {
    DraftRoom.jsx's `isPhone` branch is ever reached. */
 test("the entry screen stacks on a phone instead of painting over itself", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   const code = await createRoom(page);
   expect(code, "a room was created, which is the only way to the entry screen")
@@ -733,7 +733,7 @@ test("the entry screen stacks on a phone instead of painting over itself", async
    ever changes and stops being a no-op. */
 test("every player on the Players tab is reachable on a phone", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   const clickIn = (name) => page.evaluate((label) => {
     const root = document.getElementById("draftroom-root");
@@ -872,7 +872,7 @@ test("every player on the Players tab is reachable on a phone", async ({ browser
    no-op in the harness, exactly as it would be in a hand. */
 test("the bottom sheet cycles through its three snap heights on a tap", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startPhoneDraft(page);
 
   const readHeight = () => page.evaluate(() => {
@@ -1006,7 +1006,7 @@ test("the bottom sheet cycles through its three snap heights on a tap", async ({
    reachable from the Players tab, so the two are already one journey. */
 test("the four tabs each show their own content, and a player profile opens and closes over them", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startPhoneDraft(page);
 
   // Text pulled from the sheet's own content slot, scoped past the same
@@ -1133,7 +1133,7 @@ test("the four tabs each show their own content, and a player profile opens and 
    the kind of claim worth measuring rather than trusting: */
 test("each row's name stays fixed while its own strip scrolls, independently of every other row", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   // Seat 0, so pick 1 is mine and nobody's autopick can have claimed the
   // first couple of board slots out from under this test in the interval
   // before it reads the DOM — a real risk at another seat, since a CPU's

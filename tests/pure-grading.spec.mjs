@@ -38,7 +38,7 @@ const FOREIGN = `(() => {
 test.describe("grading a foreign draft", () => {
   test("it grades, and the live draft does not move", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     // Let the live room fill a little, so there is something to disturb.
@@ -91,7 +91,7 @@ test.describe("grading a foreign draft", () => {
      avoid it. There is no legitimate caller, so it refuses. */
   test("it refuses to nest rather than corrupting the outer context", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     const result = await page.evaluate(`(() => {
@@ -114,7 +114,7 @@ test.describe("grading a foreign draft", () => {
      draft nobody is looking at. */
   test("a failure inside grading still restores the live draft", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     const ok = await page.evaluate(`(() => {

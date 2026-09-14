@@ -94,7 +94,7 @@ const screen = (page) => page.locator("#view-home");
 
 async function openHistory(context, opts) {
   await stubLedger(context, opts);
-  const page = await openApp(context, "#/history");
+  const page = await openApp(context, "#/record");
   await page.waitForFunction(
     () => /Juke said/.test(document.getElementById("view-home").innerText),
     null,
@@ -237,7 +237,7 @@ test.describe("the decision ledger", () => {
        at. Both screens still exist and answer different questions, so this
        asserts the rail names the right one rather than that the other is
        gone. */
-    await expect(page.locator('a[href="#/history"]').first()).toHaveCount(1);
+    await expect(page.locator('a[href="#/record"]').first()).toHaveCount(1);
     await page.close();
   });
 });

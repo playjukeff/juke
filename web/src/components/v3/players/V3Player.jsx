@@ -9,7 +9,7 @@ import {
 import { useBoardKey, useHeaderTick } from './useBoardKey.js'
 import { CountUp } from '../motion.jsx'
 
-/* One player, as a page — #/v3/players/<sleeperId>, and a defense's id is
+/* One player, as a page — #/players/<sleeperId>, and a defense's id is
    its club (SEA). Production's player sheet is an overlay inside the Draft
    Room with its research behind seven tabs; here it is the whole page, in
    the order a reader asks: who he is and whether he can play, what Juke
@@ -27,7 +27,7 @@ const POS_NAME = { QB: 'Quarterback', RB: 'Running back', WR: 'Wide receiver', T
 
 function BackLink() {
   return (
-    <a href="#/v3/players" className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-[6px] text-[14px] font-semibold text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+    <a href="#/players" className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-[6px] text-[14px] font-semibold text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
       <Icon name="back" className="h-4 w-4" /> Every player
     </a>
   )
@@ -41,7 +41,7 @@ function NotFound({ id }) {
         label="Players · not on the board"
         title="No player answers to that id."
         lede={`Nothing on tonight's board carries the id "${id}". Players join and leave when the nightly rebuild runs — search the index for him by name.`}
-        action={<QuietButton href="#/v3/players">Browse every player</QuietButton>}
+        action={<QuietButton href="#/players">Browse every player</QuietButton>}
       />
     </div>
   )
@@ -102,7 +102,7 @@ function Header({ d, fit, engine }) {
 
       {fit && (
         <div className="flex flex-wrap items-center gap-3 rounded-[6px] border border-v3-rule bg-v3-sheet p-3">
-          <CallButton href="#/v3/draft/live">Back to your draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
+          <CallButton href="#/draft/live">Back to your draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
           <QuietButton onClick={() => engine.queueToggle(p.name)} aria-pressed={queued}>
             {queued ? <><Icon name="check" className="h-4 w-4" /> In your queue</> : 'Add to your queue'}
           </QuietButton>

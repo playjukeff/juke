@@ -49,7 +49,7 @@ import { openApp, LOCAL_SITE } from "./helpers.mjs";
 const CLERK_GATED =
   "needs a connected league, which a keyed build gates behind Clerk";
 
-const ROUTES = ["#/rooms/waiver", "#/rooms/trade"];
+const ROUTES = ["#/calls/wire", "#/calls/trade"];
 
 /* Signed in, with one league, and a snapshot built out of the real board so
    the rows are real players rather than a fixture the renderer cannot

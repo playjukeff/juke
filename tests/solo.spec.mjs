@@ -123,7 +123,7 @@ async function finishDraft(page) {
 
 test("the default league drafts to the end", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   await configure(page, {});
   await startSoloDraft(page);
@@ -149,7 +149,7 @@ test("the default league drafts to the end", async ({ browser }) => {
 
 test("twelve teams, fifteen rounds, full PPR, bench six", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   /* The bench is the part this instruction used to leave out. Eight starters
      plus a FLEX plus five bench is fourteen spots, so fifteen rounds would
@@ -184,7 +184,7 @@ test("twelve teams, fifteen rounds, full PPR, bench six", async ({ browser }) =>
 for (const pos of ["ALL", "QB", "RB", "WR", "TE", "K", "DST"]) {
   test(`auto-draft finishes with the ${pos} filter showing`, async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     await configure(page, { teams: 12 });
     /* The eleventh seat, which is where the real report came from, set
@@ -196,7 +196,7 @@ for (const pos of ["ALL", "QB", "RB", "WR", "TE", "K", "DST"]) {
        outright, so the chip filter matched nothing and the failure read as
        "Cannot read properties of undefined". It became the Lobby's own
        "Your seat" <select> in NewMockPanel — and design_handoff_v3_alive
-       moved it again, because DraftRoomEntry is what #/draft-room's
+       moved it again, because DraftRoomEntry is what #/draft's
        pre-draft branch renders at every width now and the dashboard
        carrying that select sits behind "Your insights". Same failure
        shape: a locator waiting 30s for a control on a screen that is no
@@ -277,7 +277,7 @@ for (const pos of ["ALL", "QB", "RB", "WR", "TE", "K", "DST"]) {
    lineup being wrong moves everybody's grade. */
 test("every lineup fields the best eligible player", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   await configure(page, { teams: 12 });
   await startSoloDraft(page);
@@ -328,7 +328,7 @@ test("every lineup fields the best eligible player", async ({ browser }) => {
    what the label was distinguishing. */
 test("solo autopick drafts my seat and nobody else's", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await page.evaluate(() => {
@@ -367,7 +367,7 @@ test("solo autopick drafts my seat and nobody else's", async ({ browser }) => {
    board actually allows — because the bug was entirely the gap between them. */
 test("a filled starting slot is not a cap, and does not claim to be", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await page.evaluate(() => {
@@ -441,7 +441,7 @@ test("a filled starting slot is not a cap, and does not claim to be", async ({ b
 test("auto-drafting the rest finishes the board, and the menu no longer offers it",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     // Part way in by hand, which is when a person reaches for it.
@@ -455,18 +455,37 @@ test("auto-drafting the rest finishes the board, and the menu no longer offers i
       render();
     });
 
-    /* Open the kebab and check the item is not in it, mid-draft, with a
+    /* Open the menu and check the item is not in it, mid-draft, with a
        board still left to fill — which is the one moment it would have
        been offered, so it is the only moment its absence means anything.
 
-       :visible for the same reason readAnalysisScreen() needs it in
-       grade.spec.mjs - DraftCockpitHeader.jsx renders this control twice,
-       a 34px round one and a 44px bare one, and only ever shows the one
-       its width calls for. Both are in the DOM, so matching on the label
-       alone is a strict-mode violation rather than a missing button. */
-    const menuBtn = page.locator('#draftroom-root button[aria-label="Draft options"]:visible');
-    const finish = page.locator('#draftroom-root button').filter({ hasText: /^Auto-draft the rest/ });
+       The control is "Draft menu" on v3's live header and it was "Draft
+       options" on the Draft Room's cockpit bar. Both names are a label, and
+       a label is what this project's own rule says not to anchor on — kept
+       anyway, because the thing being asserted here IS a piece of copy ("no
+       item reading Auto-draft the rest"), so there is no attribute that
+       would make this check independent of what the menu says.
+
+       :visible is still load-bearing: LiveHeader renders its control twice,
+       once for the phone layout and once for the desktop one, and only ever
+       shows the one its width calls for. Both are in the DOM, so matching on
+       the label alone is a strict-mode violation rather than a missing
+       button. Scoped to the page rather than to #draftroom-root, which is
+       empty on every route since the cutover. */
+    const menuBtn = page.locator('button[aria-label="Draft menu"]:visible');
+    const finish = page.locator("button:visible").filter({ hasText: /^Auto-draft the rest/ });
     await menuBtn.click();
+    /* The menu is actually open before its contents are asserted absent.
+       Without this the check passes just as happily against a menu that
+       never opened, which is the vacuity trap this project has now shipped
+       three times — an absence means nothing unless the thing it is absent
+       FROM is on screen. "End draft" is the item that does the same job
+       honestly (it drafts the rest, records it and grades it), so it is
+       both the proof the menu is up and the reason the other one is gone. */
+    await expect(
+      page.getByRole("button", { name: /^End draft/ }),
+      "the menu is open, so the absence below means something",
+    ).toBeVisible();
     await expect(finish, "the cut menu item stays cut").toHaveCount(0);
     await page.keyboard.press("Escape");
 
@@ -543,7 +562,7 @@ test("auto-drafting the rest finishes the board, and the menu no longer offers i
 test("the suggestion model's discount is capped in absolute picks, not just percentage",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     const out = await page.evaluate(() => {
@@ -584,7 +603,7 @@ test("the suggestion model's discount is capped in absolute picks, not just perc
 test.describe("a league deeper than real ADP alone can serve", () => {
   test("twelve teams, twenty rounds runs end to end once the board is deep enough", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     // Eight starters, a FLEX and five bench is fourteen roster spots for
     // fourteen rounds by default (the same arithmetic solo.spec.mjs's other
@@ -633,7 +652,7 @@ test.describe("a league deeper than real ADP alone can serve", () => {
      480 exactly. */
   test("the guard still refuses a league too deep for any board", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     await configure(page, { teams: 24, rounds: 24, bench: 15 });
 

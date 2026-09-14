@@ -19,7 +19,7 @@ import { CallCard, CallDock, Forecast, RoomRead } from './live/Call.jsx'
 import { NextPicks, PicksFeed, QueuePanel, RosterPanel } from './live/Rails.jsx'
 import { Still } from '../motion.jsx'
 
-/* The live draft, at #/v3/draft/live.
+/* The live draft, at #/draft/live.
 
    ---- The design, in two sentences ----
 
@@ -54,7 +54,7 @@ import { Still } from '../motion.jsx'
 
    ---- And in a shared room it drives even less ----
 
-   #/v3/draft/live?room=CODE is the same page with the room as its authority.
+   #/draft/live?room=CODE is the same page with the room as its authority.
    The browser STOPS DECIDING: engine.draftPlayer() already sends the intent
    and returns (draftAndAdvance in app.js), the board moves on the broadcast,
    the clock is painted rather than counted, and the host's own browser
@@ -119,7 +119,7 @@ function EmptyState({ engine }) {
           {saved
             ? <CallButton onClick={() => { if (!resume()) setProblem('That draft could not be resumed — the player list has changed since it was saved.') }}>Resume the draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>
             : <CallButton href={LAUNCH_HASH}>Set up a mock draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>}
-          <QuietButton href="#/v3">Back to Now</QuietButton>
+          <QuietButton href="#/">Back to Now</QuietButton>
         </div>
         {problem && <p role="status" className="mt-3 text-[14px] text-v3-warn">{problem}</p>}
       </div>

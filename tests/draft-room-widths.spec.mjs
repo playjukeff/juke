@@ -56,7 +56,7 @@ for (const width of [1024, 1440]) {
   test(`the desktop draft room holds together at ${width}`, async ({ browser }) => {
     test.setTimeout(180000);
     const context = await browser.newContext({ viewport: { width, height: 900 } });
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
     await page.waitForFunction(() => typeof state === "object" && state.started, null, { timeout: 30000 });
 

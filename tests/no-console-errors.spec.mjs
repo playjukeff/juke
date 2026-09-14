@@ -41,8 +41,20 @@
 import { test, expect } from "@playwright/test";
 import { openApp, startSoloDraft, SITE, LOCAL_SITE } from "./helpers.mjs";
 
-const ROUTES = ["#/", "#/rooms", "#/rooms/draft", "#/drafts", "#/you", "#/my-league",
-  "#/rooms/waiver", "#/rooms/trade", "#/rooms/strategy", "#/rooms/prospect"];
+const ROUTES = [
+  "#/",
+  "#/draft",
+  "#/draft/insights",
+  "#/players",
+  "#/players/rookies",
+  "#/league",
+  "#/record",
+  "#/account",
+  "#/calls/lineup",
+  "#/calls/wire",
+  "#/calls/trade",
+  "#/method/how-it-works",
+];
 
 /* Runtime dependencies on somebody else's server, each documented as failing
    by disappearing. A host earns its place here by being one we cannot deploy,
@@ -102,12 +114,20 @@ for (const width of [1440, 375]) {
   });
 }
 
-test("a live draft throws nothing across its four tabs", async ({ browser }) => {
+/* The one screen this sweep cannot reach from a route list, because it does
+   not exist until somebody starts a draft.
+ *
+ * Six views rather than the four the Draft Room had, and they are named for
+ * what they show rather than for the tab they used to be: Pool, Board and
+ * Grade in the field, Team, Queue and Picks on the sheet beside it. Matched
+ * by role="tab" and accessible name — an assertion about what a control IS,
+ * which is the same reason the Start button is matched by an attribute. */
+test("a live draft throws nothing across its views", async ({ browser }) => {
   test.setTimeout(240000);
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
-  const seen = watch(page, () => "#/rooms/draft");
-  const p = await openApp(context, "#/rooms/draft", { page });
+  const seen = watch(page, () => "#/draft/live");
+  const p = await openApp(context, "#/draft", { page });
   await startSoloDraft(p);
   await p.waitForFunction(() => typeof state === "object" && state.started, null, { timeout: 30000 });
   await p.evaluate(() => {
@@ -115,14 +135,9 @@ test("a live draft throws nothing across its four tabs", async ({ browser }) => 
     for (let i = 0; i < 30; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
     render();
   });
-  for (const label of ["Players", "Board", "Decide", "Analysis"]) {
-    await p.evaluate((l) => {
-      const root = document.getElementById("draftroom-root");
-      const b = [...root.querySelectorAll("button")]
-        .find((x) => x.textContent.trim() === l && x.getBoundingClientRect().height > 0);
-      if (b) b.click();
-    }, label);
-    await p.waitForTimeout(400);
+  for (const label of ["Pool", "Board", "Grade", "Team", "Queue", "Picks"]) {
+    const tab = p.getByRole("tab", { name: label, exact: true }).first();
+    if (await tab.count()) { await tab.click(); await p.waitForTimeout(400); }
   }
   expect(seen, "console errors and uncaught exceptions during a draft").toEqual([]);
   await context.close();

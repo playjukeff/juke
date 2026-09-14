@@ -51,8 +51,8 @@ function Lede({ audience, bucket, week, season, plan }) {
 function MockButton({ primary, inProgress }) {
   const label = inProgress ? 'Resume your mock' : 'Run a mock'
   return primary
-    ? <CallButton href="#/v3/draft">{label} <Icon name="arrow" className="h-4 w-4" /></CallButton>
-    : <QuietButton href="#/v3/draft">{label}</QuietButton>
+    ? <CallButton href="#/draft">{label} <Icon name="arrow" className="h-4 w-4" /></CallButton>
+    : <QuietButton href="#/draft">{label}</QuietButton>
 }
 
 export default function NowMember({ audience, tier, season, leagueStatus, tierStatus, onRetryTier }) {
@@ -86,12 +86,12 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
       : (
         <>
           <MockButton primary inProgress={!!locker.inProgress} />
-          <span className="self-center"><GoLink href="#/v3/draft/insights">Your insights</GoLink></span>
+          <span className="self-center"><GoLink href="#/draft/insights">Your insights</GoLink></span>
         </>
       )
   } else {
     actions = inSeason
-      ? <QuietButton href="#/v3/account">Account and leagues</QuietButton>
+      ? <QuietButton href="#/account">Account and leagues</QuietButton>
       : <MockButton primary inProgress={!!locker.inProgress} />
   }
 

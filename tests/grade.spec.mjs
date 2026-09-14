@@ -118,7 +118,7 @@ async function readAnalysisScreen(page) {
 test("a fully CPU-driven draft grades every team consistently, at two league sizes", async ({ browser }) => {
   for (const teams of [10, 12]) {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await page.evaluate((n) => window.JukeEngine.setLeague({ ...window.JukeEngine.league(), teams: n }), teams);
     await page.waitForTimeout(200);
     await startSoloDraft(page);
@@ -168,7 +168,7 @@ test("a fully CPU-driven draft grades every team consistently, at two league siz
    seat regardless of who they happen to have taken. */
 test("the Analysis tab does not assert a room comparison before the room has one", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const teams = await page.evaluate(() => league.teams);
@@ -239,7 +239,7 @@ test("the Analysis tab does not assert a room comparison before the room has one
    test above found tied. */
 test("a component that was tied starts showing real numbers again once the room differs", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   await page.evaluate(() => {
@@ -278,7 +278,7 @@ test("a component that was tied starts showing real numbers again once the room 
 
 test("the Analysis screen's own numbers match what analyseDraft() computed for that seat", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
   await finishWithAdvice(page);
 
@@ -350,7 +350,7 @@ const PINNED_SEEDS = [1000, 8919, 16838, 24757, 32676, 40595, 48514, 56433, 6435
 
 async function gradeWithSeed(browser, seed, mode) {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
   const grade = await page.evaluate(({ seed, mode }) => {
     state.seed = seed;
@@ -436,7 +436,7 @@ test("the app's own advice beats a deliberately unbuilt roster in most rooms", a
    the full scale. Without the floor this room measures 100. */
 test("a room of identical drafters does not produce a full-scale grade spread", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const room = await page.evaluate(() => {
@@ -552,7 +552,7 @@ const CHAIR_SEEDS = [1103, 2207, 3301, 4409, 5501, 6607];
 
 test("the chair a manager drafts from does not decide their grade", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await page.evaluate((seeds) => {

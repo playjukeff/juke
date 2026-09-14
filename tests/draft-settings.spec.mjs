@@ -56,7 +56,7 @@ async function pressStart(page) {
 for (const [label, opts] of [["a phone", PHONE], ["a desktop", DESKTOP]]) {
   test(`the seat chosen in Draft Settings is the seat drafted from, on ${label}`, async ({ browser }) => {
     const context = await browser.newContext(opts);
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await ready(page);
 
     /* engine.setMySlot() is the exact call DraftOrder.jsx's own row onClick
@@ -82,23 +82,43 @@ for (const [label, opts] of [["a phone", PHONE], ["a desktop", DESKTOP]]) {
 
 test("the seat survives being tapped in the real screen and saved", async ({ browser }) => {
   const context = await browser.newContext(PHONE);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await ready(page);
 
   await page.getByRole("button", { name: /draft settings/i }).first().click();
-  await expect(page.getByRole("heading", { name: "Draft Settings" })).toBeVisible();
+
+  /* The screen became a drawer off the launcher at the cutover, and it is
+     asked for by role and name rather than by a heading string: the old
+     "Draft Settings" heading is the drawer's BAND label now, and the
+     heading proper is the drawer's own subject ("The next mock's shape").
+     A dialog is what this is, so that is what is asserted. */
+  const drawer = page.getByRole("dialog", { name: /the next mock/i });
+  await expect(drawer).toBeVisible();
 
   /* The chairs are one <button> per <li> in the Draft order list, found by
      position rather than by name: a CPU chair's name comes off cpuName() and
-     moves with the data, and the position is the thing under test. */
-  const chairs = page.locator("ol li button");
+     moves with the data, and the position is the thing under test. Scoped to
+     the drawer, because the launcher behind it draws lists of its own. */
+  const chairs = drawer.locator("ol li button");
   await chairs.nth(7).scrollIntoViewIfNeeded();
   await chairs.nth(7).click();
   expect(await page.evaluate(() => state.mySlot),
     "tapping the eighth chair takes the eighth chair").toBe(7);
 
-  await page.getByRole("button", { name: "Save" }).click();
-  expect(await page.evaluate(() => state.mySlot), "and Save does not discard it").toBe(7);
+  /* There is no Save, and its absence is the product rather than a gap.
+     The drawer says "Applies as you change it" on its own band, which is
+     the same decision the modal it replaced had already made — CLAUDE.md's
+     "Save is a dismiss, not a commit" — followed one step further by not
+     offering the button at all.
+
+     So what is asserted is what Save was really guarding: the seat survives
+     the screen being DISMISSED. A control that cannot discard your choice
+     is better than one that promises not to, and this is the assertion that
+     would catch it starting to. */
+  await drawer.getByRole("button", { name: "Close draft settings" }).click();
+  await expect(drawer).toBeHidden();
+  expect(await page.evaluate(() => state.mySlot),
+    "and dismissing the drawer does not discard it").toBe(7);
 
   await pressStart(page);
   expect(await page.evaluate(() => state.mySlot), "and the draft starts there").toBe(7);
@@ -116,7 +136,7 @@ test("the seat survives being tapped in the real screen and saved", async ({ bro
    which is not what failed. */
 test("every Draft Settings control survives into the draft that starts", async ({ browser }) => {
   const context = await browser.newContext(DESKTOP);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await ready(page);
 
   const report = await page.evaluate(() => {
@@ -181,7 +201,7 @@ test("every Draft Settings control survives into the draft that starts", async (
    that simply skips you. */
 test("shrinking the league moves a seat that no longer exists", async ({ browser }) => {
   const context = await browser.newContext(DESKTOP);
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await ready(page);
 
   const got = await page.evaluate(() => {

@@ -67,7 +67,7 @@ async function draftInto(page, picks, teams = 10) {
     stopSim();
     for (let i = 0; i < n; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
     render();
-    location.hash = "#/draft-room";
+    location.hash = "#/draft";
   }, { n: picks, t: teams });
 
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
@@ -110,7 +110,7 @@ const FILLED = `(() => {
 test.describe("the draft board card", () => {
   test("every line clears 4.5:1 on its own cell, opacity composited",
     async ({ context }) => {
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await draftInto(page, 60);
 
       const r = await page.evaluate((filledSrc) => {
@@ -177,7 +177,7 @@ test.describe("the draft board card", () => {
 
   test("the name is an initial and a surname, and a defense keeps its club",
     async ({ context }) => {
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await draftInto(page, 20);
 
       const r = await page.evaluate(() => {
@@ -211,7 +211,7 @@ test.describe("the draft board card", () => {
     });
 
   test("the arrow turns down on the last pick of every round", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await draftInto(page, 40);
 
     /* The turn is the one thing the pick numbers do not tell you on sight, and
@@ -259,7 +259,7 @@ test.describe("the draft board card", () => {
   });
 
   test("the pick on the card is the pick the app computed", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await draftInto(page, 40);
 
     /* The property, not the arithmetic. A pick code has to be derivable from
@@ -316,7 +316,7 @@ test.describe("the draft board card", () => {
      tests in board-marks.spec.mjs the same day, for the same reason. */
 
   test("a filled row is the same height as an empty one", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await draftInto(page, 15);
 
     /* Setting the card's height only on filled cells leaves the board with two

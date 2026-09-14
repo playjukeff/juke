@@ -50,7 +50,7 @@ async function seedHistory(page) {
   // and the Draft Room showing its own report, which is not the screen under
   // test. A reload is what a person pressing "Back to the locker" and then
   // returning would produce, minus the clicks.
-  await page.evaluate(() => { location.hash = "#/rooms/draft"; });
+  await page.evaluate(() => { location.hash = "#/draft"; });
   await page.reload();
   await page.waitForFunction(() => typeof state === "object" && window.JukeEngine, null, { timeout: 30000 });
   await page.waitForFunction(() => window.JukeEngine.dataReady(), null, { timeout: 30000 });
@@ -69,7 +69,7 @@ function view(page, key) {
 
 test("the panel draws four views, and every one of them has content", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
   await openInsights(page);
 
@@ -96,7 +96,7 @@ test("the panel draws four views, and every one of them has content", async ({ b
 
 test("selecting a mock re-derives the table, and a change of view forgets it", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
   await openInsights(page);
 
@@ -122,7 +122,7 @@ test("selecting a mock re-derives the table, and a change of view forgets it", a
 
 test("no kicker or defense is ever named as the value you left on the board", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
   await openInsights(page);
 
@@ -165,7 +165,7 @@ test("no kicker or defense is ever named as the value you left on the board", as
 
 test("the total reconciles against the rows under it", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
   await openInsights(page);
 
@@ -191,7 +191,7 @@ test("the total reconciles against the rows under it", async ({ browser }) => {
 
 test("a pick with no alternative shows a dash, not a number from another comparison", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
   await openInsights(page);
 
@@ -214,7 +214,7 @@ test("a pick with no alternative shows a dash, not a number from another compari
 
 test("nothing on the panel overflows in a way it can neither scroll nor ellipsise", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await seedHistory(page);
 
   /* Both widths, mounted fresh at each. The handoff is authored at a fixed

@@ -4,45 +4,50 @@
    completion since the beginning; a room never had, and the difference was a
    draft that deadlocked at pick 86 in front of two real people. Everything
    below exists because something in it was once broken and nothing said so.
+
+   ---- and what the cutover changed in it ----
+
+   Two things, and neither is a new idea.
+
+   The ADDRESSES moved. A room is `#/draft/live?room=<code>` now, and the
+   launcher a host starts from is `#/draft`. Every older shape still works —
+   canonicalHash() in app.js redirects them — which is exactly why this file
+   drives the canonical ones almost everywhere: a suite that exercises a
+   redirect is testing the redirect rather than the room. The one deliberate
+   exception is kept and labelled below.
+
+   The SELECTORS moved with the screen. `#draftroom-root` is empty on every
+   route now — v3 renders into `#root` — so a locator scoped to it matches
+   nothing, `count()` is 0, and every optional step is skipped in silence.
+   What replaced the old label matches is `[data-start-room]`, `[data-leave-room]`
+   and the room's own accessible names: an attribute says what a control IS,
+   a label says what it currently reads, and this pair of controls has now
+   survived five renames on that rule.
+
+   What has NOT changed is what the file is actually about: whether ten
+   chairs got filled by the right two clients. That question is answered by
+   what each socket sent, not by what either page happened to draw, so the
+   room's own state is still read through Live.
 */
 
 import { test, expect } from "@playwright/test";
 import { openApp, createRoom, roomView, sent, waitForRoom, pickGaps, median, perSeat }
   from "./helpers.mjs";
 
-/* The legacy setup screen is `display:none !important` in web/index.html -
-   The React lobby replaced it visually and the markup stayed for app.js's
-   unguarded listeners. So a Playwright click, which waits for visibility,
-   can never resolve on a control inside it: this suite sat red from the day
-   that landed, and nobody saw it because the room specs need the worker and
-   local wrangler crash-loops on the owner's machine.
+/* Start the room, from the host's own lobby.
 
-   evaluate() does not check visibility, which is the same split every other
-   spec here already relies on (see helpers.mjs's startDraft). */
-/* The React room's own controls, pressed the way a person presses them.
+   RoomLobby.jsx's Start carries [data-start-room] and reads "Start for
+   everyone"; it is the host's alone (startBlocker refuses everybody else),
+   and the transition off that screen hangs off the room's broadcast rather
+   than off the button — so the wait below is on the room's status and not on
+   anything this page drew.
 
-   This file used to click #startBtn and #autoBtn through page.evaluate,
-   because the legacy setup screen is display:none and Playwright's
-   actionability check can never resolve on something inside it. Those are
-   real, visible buttons now, so they are clicked normally - and a click that
-   would not land is a failure worth having rather than a thing to route
-   around.
-
-   The room's own state is still read through Live rather than off the screen.
-   That is not laziness: what this file is actually about is whether ten
-   chairs got filled by the right two clients, and that question is answered
-   by what each socket sent, not by what either page happened to draw. */
+   There is no "Enter Draft Room" step in front of it any more. createRoom()
+   (helpers.mjs) goes through the engine bridge, which sets the hash itself
+   and lands on the room's own lobby through canonicalHash(); the host is
+   already on the screen the button is on. */
 async function startRoomDraft(page) {
-  // createRoom() (helpers.mjs) creates the room through the engine bridge
-  // directly, which has no way to reach React's own local enteredRoom
-  // state — so the host is still sitting on Settings & Locker, one click
-  // short of the screen "Start for everyone" is actually on. Optional,
-  // not asserted: a page already past it (mid-test, or an older build)
-  // just won't have the button.
-  const enter = page.locator('#draftroom-root button:text-is("Enter Draft Room")');
-  if (await enter.count()) await enter.click();
-
-  await page.click("#draftroom-root >> text=/Start for everyone|Start draft/");
+  await page.locator("[data-start-room]:visible").first().click({ timeout: 30000 });
   await page.waitForFunction(() => Live.room() && Live.room().status === "drafting",
     null, { timeout: 20000 });
 }
@@ -50,10 +55,18 @@ async function startRoomDraft(page) {
 /* The autopick toggle. In a room this is engine.toggleRoomAutopilot(), which
    is one pick per turn on your own chair - never the whole board. The legacy
    button carried the promise in its label ("Auto-draft my picks", and "the
-   rest" only when solo); the React control is a switch with an aria-pressed
-   state, so the promise is asserted where it now lives. */
+   rest" only when solo); v3's control is kit.jsx's Switch — role="switch"
+   with "Autopick" as its accessible name — so the promise is asserted where
+   it now lives.
+
+   Asked by ROLE rather than by an attribute, because that is what this
+   control genuinely is: a switch named Autopick is a fact about the element,
+   and role+name is the one selector that survives the label being restyled,
+   moved between the header and the menu, or drawn with its text hidden
+   (LiveMenu renders it hideLabel, which is why the name has to come from the
+   accessible name rather than from textContent). */
 function autopickSwitch(page) {
-  return page.locator('#draftroom-root button[aria-pressed]').filter({ hasText: /Autopick/i }).first();
+  return page.getByRole("switch", { name: /autopick/i }).first();
 }
 
 async function toggleAutopick(page) {
@@ -64,11 +77,13 @@ async function toggleAutopick(page) {
 
 async function twoManagers(browser) {
   const hostCtx = await browser.newContext();
-  const host = await openApp(hostCtx, "#/draft-room");
+  // #/draft is v3's draft home — the launcher. createRoom() moves the host on
+  // to #/draft/live?room=<code> itself.
+  const host = await openApp(hostCtx, "#/draft");
   const code = await createRoom(host);
 
   const guestCtx = await browser.newContext();
-  const guest = await openApp(guestCtx, `#/draft-room?room=${code}`);
+  const guest = await openApp(guestCtx, `#/draft/live?room=${code}`);
   await guest.waitForFunction(() => Live.room() && Live.room().yourSeat >= 0);
 
   return { hostCtx, host, guestCtx, guest, code };
@@ -147,19 +162,16 @@ test("a dropped socket comes back on its own, and the chair comes with it", asyn
   await guest.evaluate(() => Live.state().socket.close());
 
   // While it is down, nothing pretends otherwise.
-  /* The legacy version asserted the chat footer here: the box went dead
-     together with one line saying why, because "nothing happens" was how the
-     silent version was reported. There is no chat in the React room yet -
-     ChatPlaceholder says as much on screen - so there is no footer to go
-     dead, and pretending otherwise would be a test of nothing.
+  /* What is asserted here is the fact every control on the screen is reading:
+     the socket is down while the room is not. Both halves matter. "In a room"
+     is Live.room() and "the socket is up right now" is Live.active(), and the
+     start button once asked the wrong one - which is how a dropped socket
+     started a *solo* draft on the host's phone while everybody else waited.
 
-     What is asserted instead is the fact underneath it, which is the one the
-     chat footer was reporting: the socket is down while the room is not. Both
-     halves matter. "In a room" is Live.room() and "the socket is up right
-     now" is Live.active(), and the start button once asked the wrong one -
-     which is how a dropped socket started a *solo* draft on the host's phone
-     while everybody else waited. When chat lands, its disabled state belongs
-     back here beside this.
+     v3 says so on screen now (sendBlocker() in live/room.js, drawn by
+     LiveHeader as a status chip and by RoomLobby as a Problem), which is a
+     rendering of exactly this pair — so the pair is what is asserted, and a
+     screen check would be a second reading of one fact.
 
      Both facts are read in ONE round trip, at the instant the wait resolves,
      rather than as two separate expect(await guest.evaluate(...)) calls. That
@@ -203,11 +215,32 @@ test("the start button will not start a solo draft on top of a room", async ({ b
   await host.evaluate(() => { Live.state().wanted = false; Live.state().socket.close(); });
   await host.waitForFunction(() => Live.status() !== "open");
 
-  await expect(host.locator("#startBtn")).toHaveText("Reconnecting…");
-  await expect(host.locator("#startBtn")).toBeDisabled();
+  /* The control the host is actually looking at, rather than the legacy
+     #startBtn this used to read.
+
+     The bug it guards is unchanged and is worth restating, because the
+     screen it happened on is gone and the failure is not: with a dropped
+     socket, inRoom() is false while hasRoom() is true, and a start button
+     that asked the first fell through to the branch below it — which starts
+     a SOLO draft, on the host's phone, against CPUs, while nine people sat
+     on "Waiting for the host". So the refusal has to be visible AND nothing
+     may begin locally even if a click gets through.
+
+     RoomLobby's Start is disabled by startBlocker(), which returns
+     sendBlocker()'s sentence while the socket is down. Asserting the button
+     is disabled is the half a person sees; the evaluate() below is the half
+     that would have caught the solo draft. */
+  const start = host.locator("[data-start-room]:visible").first();
+  await expect(start, "the room's own Start is on this screen").toHaveCount(1);
+  await expect(start).toBeDisabled();
+  await expect(host.getByText(/Reconnecting to the room/i).first(),
+    "and says why, rather than being a grey nobody reads").toBeVisible();
 
   // Even if the click gets through, nothing local may begin.
-  await host.evaluate(() => document.getElementById("startBtn").click());
+  await host.evaluate(() => {
+    const b = document.querySelector("[data-start-room]");
+    if (b) b.click();
+  });
   expect(await host.evaluate(() => state.started), "no draft started behind the room's back").toBe(false);
 
   await hostCtx.close();
@@ -241,17 +274,23 @@ test("leaving the draft leaves the room, and the link brings you back", async ({
   await host.evaluate(() => goHome());
 
   expect(await host.evaluate(() => Live.status()), "the room was actually left").toBe("off");
-  // Leaving a room lands you in the real Draft Room, not back on the
-  // retired view the suite happens to be driving.
-  expect(await host.evaluate(() => location.hash), "and the code is out of the address").toBe("#/draft-room");
+  /* #/draft, which is where goHome() itself sends a tab carrying a room code
+     (app.js: `if (location.hash.indexOf("room=") >= 0) location.hash = "#/draft"`)
+     and is v3's draft home rather than a redirect to one.
+
+     This asserted "#/draft-room" until the cutover, which was the retired
+     React room's own address. Read off app.js rather than guessed: the point
+     of the assertion is that the CODE is out of the address, so that a reload
+     lands on the launcher instead of walking straight back into the room. */
+  expect(await host.evaluate(() => location.hash), "and the code is out of the address").toBe("#/draft");
 
   // The bug was being dragged back by the next broadcast a moment later.
   await host.waitForTimeout(6000);
-  expect(await host.evaluate(() => state.started), "still on the setup screen").toBe(false);
+  expect(await host.evaluate(() => state.started), "still on the launcher").toBe(false);
 
   // The way back in is the link, and it arrives as a hash change on a tab
   // that is already on the site — which is the case that used to do nothing.
-  await host.evaluate((c) => { location.hash = `#/draft-room?room=${c}`; }, code);
+  await host.evaluate((c) => { location.hash = `#/draft/live?room=${c}`; }, code);
   await host.waitForFunction(() => Live.status() === "open", null, { timeout: 30000 });
 
   const back = await roomView(host);
@@ -274,29 +313,51 @@ test("leaving the draft leaves the room, and the link brings you back", async ({
    disagreed about any of it. */
 test("a room belongs to its host, and says so to everybody in it", async ({ browser }) => {
   const hostCtx = await browser.newContext();
-  const host = await openApp(hostCtx, "#/draft-room");
+  const host = await openApp(hostCtx, "#/draft");
   // A room is named after its host, so the host has to be called something.
   await host.evaluate(() => Live.setName("Blake"));
   const code = await createRoom(host);
 
   const guestCtx = await browser.newContext();
+  /* THE ONE OLD INVITE SHAPE, ON PURPOSE — do not modernise this line.
+
+     It used to be kept because #/draft-room?room= was what every invite ever
+     sent looked like and the retired-route redirect had to carry the query.
+     It is kept now for the same reason one layer along: this is the only
+     thing in the suite that drives canonicalHash()'s invite branch end to
+     end, from a cold page load, the way a phone holding a link from last
+     week does. `#/draft-room?room=<code>` has to land on #/draft/live with
+     the code intact — drop the query and a guest arrives at an empty draft
+     home instead of in the draft they were invited to, and nothing on screen
+     says why.
+
+     Every other join in this file is canonical, deliberately: a suite that
+     exercises a redirect everywhere is a suite that has stopped testing the
+     room. One is the regression net; two is an accident. */
   const guest = await openApp(guestCtx, `#/draft-room?room=${code}`);
   await guest.waitForFunction(() => Live.room() && Live.room().yourSeat >= 0);
+  expect(await guest.evaluate(() => location.hash), "the old invite shape is redirected, code and all")
+    .toBe(`#/draft/live?room=${code}`);
 
   /* ---- the room is named, on both screens ----
-     #friendsTitle, not a label inside #inviteBox: the heading became the
-     summary of a collapsed <details> and the id moved with the job. Asked for
-     by id here for the same reason renderInvite() asks for it by id — a
-     structural selector is a second place for that decision to live. */
-  await expect
-    .poll(() => guest.evaluate(() => document.getElementById("friendsTitle").textContent))
-    .toBe("Blake's Draft Room");
-  expect(await host.evaluate(() => document.getElementById("friendsTitle").textContent))
-    .toBe("Blake's Draft Room");
+     RoomLobby draws `${hostName}'s draft room` as its headline, off the
+     room's own broadcast, so the guest learns the name from the room rather
+     than from the host's browser. Polled on the guest because the name
+     arrives with a broadcast rather than with the page. */
+  await expect(guest.getByText(/Blake's draft room/i).first()).toBeVisible({ timeout: 30000 });
+  await expect(host.getByText(/Blake's draft room/i).first()).toBeVisible();
 
   /* ---- the league is locked, and not only the five obvious controls ----
      Every one of these runs refreshSetup() -> buildBoard(), so an unlocked one
-     is a guest quietly rebuilding their own board out from under the draft. */
+     is a guest quietly rebuilding their own board out from under the draft.
+
+     Read off the legacy controls deliberately, and they are still the real
+     mechanism: LOCKABLE and the #scoringFields sweep are what app.js
+     disables when a room exists, and v3's own settings drawer refuses on
+     top of them (SettingsDrawer's `locked`). These are hidden elements, not
+     retired ones — app.js writes to them on every render — so this asserts
+     the engine's own lock rather than one screen's drawing of it, which is
+     the same split appbar.spec.mjs already relies on. */
   const locks = (page) => page.evaluate(() => ({
     teams: document.getElementById("teamCount").disabled,
     rounds: document.getElementById("roundCount").disabled,
@@ -347,30 +408,50 @@ test("a room belongs to its host, and says so to everybody in it", async ({ brow
     showing: clockShowing(),
     // The display question and the authority question are different, and the
     // page used the second to answer the first.
-    counting: clockRunnable(),
-    headerLabel: document.getElementById("rightLabel").textContent,
-    headerValue: document.getElementById("rightValue").textContent,
-    boardCell: (document.getElementById("boardClock") || {}).textContent || null
+    counting: clockRunnable()
   }));
   expect(watching.myTurn).toBe(false);
   expect(watching.showing, "a clock the whole room is waiting on is drawn").toBe(true);
   expect(watching.counting, "but this browser never counts it").toBe(false);
-  expect(watching.headerLabel).toBe("Time left");
-  expect(watching.headerValue, "as a real countdown, not a dash").toMatch(/^\d+:\d\d$/);
-  expect(watching.boardCell, "and on the live cell too").toMatch(/^\d+:\d\d$/);
+
+  /* And it really is drawn, on the screen the guest is looking at.
+
+     LiveHeader's ClockReadout is a role="timer" whose accessible name is the
+     countdown itself ("0:47 left"), which is the one place the number is
+     stated rather than styled — the legacy #rightLabel/#rightValue pair this
+     used to read is hidden markup now. A real countdown, not a dash, is the
+     assertion: nine managers out of ten once watched a clock they could not
+     see, and an empty timer is indistinguishable from that. */
+  await expect(guest.getByRole("timer").first())
+    .toHaveAttribute("aria-label", /^\d+:\d\d left/);
 
   // ---- what a guest is not offered ----
-  const bar = await guest.evaluate(() => ({
-    pause: document.getElementById("pauseBtn").hidden,
-    undo: document.getElementById("undoBtn").hidden,
-    quit: document.getElementById("restartBtn").textContent
-  }));
-  expect(bar.pause, "pausing a shared clock is the host's").toBe(true);
-  expect(bar.undo, "there is no shared undo").toBe(true);
-  expect(bar.quit, "and the label says what the button does").toBe("Leave the room");
+  /* Read out of the draft menu, which is where v3 puts the things you can do
+     to a draft. Each of these is absent rather than disabled, which is this
+     project's own rule: a control that cannot act must not merely fail.
 
-  expect(await host.evaluate(() => document.getElementById("pauseBtn").hidden),
-    "the host keeps it").toBe(false);
+     The menu is opened first and asserted OPEN before anything is asserted
+     absent — an absence means nothing if the thing it is absent from never
+     rendered, which is the vacuity trap this suite has now shipped three
+     times. "Leave the room" is the item that is always there in a room, so
+     it is both the proof the menu is up and one of the assertions. */
+  const openMenu = async (page) => {
+    await page.locator('button[aria-label="Draft menu"]:visible').first().click();
+    await expect(page.getByRole("dialog", { name: /draft menu/i })).toBeVisible();
+  };
+  await openMenu(guest);
+  const guestMenu = guest.getByRole("dialog", { name: /draft menu/i });
+  await expect(guestMenu, "the label says what the button does").toContainText(/Leave the room/i);
+  await expect(guestMenu, "pausing a shared clock is the host's").not.toContainText(/Pause the clock/i);
+  await expect(guestMenu, "there is no shared undo").not.toContainText(/Take back my last pick/i);
+  await expect(guestMenu, "and \"the rest\" in a room is nine other people's teams")
+    .not.toContainText(/End draft/i);
+  await guest.keyboard.press("Escape");
+
+  await openMenu(host);
+  await expect(host.getByRole("dialog", { name: /draft menu/i }), "the host keeps the pause")
+    .toContainText(/Pause the clock/i);
+  await host.keyboard.press("Escape");
 
   // ---- pausing is a message, not a local flag ----
   await host.evaluate(() => togglePause());
@@ -380,14 +461,27 @@ test("a room belongs to its host, and says so to everybody in it", async ({ brow
   await host.evaluate(() => togglePause());
   await expect.poll(() => guest.evaluate(() => Live.room().paused)).toBe(false);
 
-  // ---- the board is not scouting for the room ----
-  const chips = await guest.evaluate(() => {
-    state.filterPlayers = "ALL";
-    render();
-    return document.querySelectorAll("#playerTable .chip.val, #playerTable .chip.reach").length;
-  });
-  expect(chips, "Value and Reach are not read out to nine other managers").toBe(0);
-
   await hostCtx.close();
   await guestCtx.close();
 });
+
+/* ---- and the one assertion that has no v3 equivalent ----
+
+   It read: in a room, the Players table draws no Value/Reach chip, because
+   the app reading the board for you before you commit is right in a solo
+   mock and is scouting for nine other managers in a shared one. It was
+   asserted by counting `#playerTable .chip.val, #playerTable .chip.reach`,
+   which is the legacy board — unreachable on every route since the cutover.
+
+   v3's pool (live/Pool.jsx) draws no such chip AT ALL, in a room or solo:
+   its columns are points, VORP, the Juke score and survival, through
+   playerColumns.js. So there is nothing to suppress and nothing to count,
+   and a rewritten version of this check would pass against a screen that
+   had never had the feature — a zero that means "not built" wearing the
+   clothes of a zero that means "correctly withheld".
+
+   Skipped rather than deleted, and skipped rather than quietly rewritten,
+   because the RULE is still live: if a per-player read of the board ever
+   lands on the pool, it may not be drawn to a room. This is the line that
+   says so. */
+test.skip("the board is not scouting for the room", () => {});

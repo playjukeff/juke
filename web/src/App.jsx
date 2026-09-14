@@ -1,32 +1,27 @@
-import Homepage from './components/Homepage.jsx'
-import RoomsLobby from './components/RoomsLobby.jsx'
-import RoomPage from './components/RoomPage.jsx'
-import MyLeagueScreen from './components/MyLeagueScreen.jsx'
-import YouScreen from './components/YouScreen.jsx'
-import DraftsScreen from './components/DraftsScreen.jsx'
-import HistoryScreen from './components/HistoryScreen.jsx'
 import V2App from './components/v2/V2App.jsx'
 import V3App from './components/v3/V3App.jsx'
 import { useHashRoute } from './hooks/useHashRoute.js'
 
-/* The one tree #root renders, and the only place the routes React owns are
-   chosen between.
+/* The one tree #root renders, and the only place the two apps React owns
+   are chosen between.
 
-   `home` is the default and the unresolved state both, which is what keeps
-   the prerender honest: scripts/prerender.mjs renders this with no window,
-   useHashRoute() answers home there, and the client's hydration pass answers
-   home too — so the markup matches and the real route lands one tick later.
-   Anything that reads location during render puts React #418 back. */
+   v3 is the site. Its own route table (V3App.jsx) decides what each address
+   inside it draws, so there is exactly one line here per app rather than one
+   per screen — and every address the site used to answer to has already been
+   rewritten to a v3 one by app.js's canonicalHash() before this renders.
+
+   v2 stays reachable at #/v2 as the comparison record. It costs one branch
+   and it is the only way to look at what was proposed beside what shipped.
+
+   `v3` with no sub-path is the default AND the unresolved state, which is
+   what keeps the prerender honest: scripts/prerender.mjs renders this with
+   no window, useHashRoute() answers that there, and the client's hydration
+   pass answers it too — so the markup matches and the real route lands one
+   tick later. Anything that reads location during render puts React #418
+   back. */
 export default function App() {
   const { view, slug } = useHashRoute()
 
-  if (view === 'rooms') return <RoomsLobby />
-  if (view === 'room') return <RoomPage slug={slug} />
-  if (view === 'my-league') return <MyLeagueScreen />
-  if (view === 'you') return <YouScreen />
-  if (view === 'drafts') return <DraftsScreen />
-  if (view === 'history') return <HistoryScreen />
   if (view === 'v2') return <V2App sub={slug} />
-  if (view === 'v3') return <V3App sub={slug} />
-  return <Homepage />
+  return <V3App sub={slug} />
 }

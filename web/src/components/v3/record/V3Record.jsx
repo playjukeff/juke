@@ -112,7 +112,7 @@ function DraftRow({ e, onDelete }) {
   return (
     <li className="flex items-stretch border-t border-v3-rule first:border-t-0">
       <a
-        href={`#/v3/draft/report?id=${encodeURIComponent(e.id)}`}
+        href={`#/draft/report?id=${encodeURIComponent(e.id)}`}
         className="grid min-w-0 flex-1 grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-3.5 pl-4 pr-1 transition-colors hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:pl-5 lg:grid-cols-[92px_minmax(0,1.2fr)_minmax(0,1fr)_150px_120px]"
         aria-label={`${e.leagueType}, ${when}${e.grade ? `, graded ${e.grade}` : ''}${hasFinish ? `, ${ordinal(e.rank)} of ${e.teams}` : ''}. Open the report`}
       >
@@ -177,7 +177,7 @@ function DraftsSection({ locker, mode, onSeeAll }) {
           <p className="max-w-[56ch] text-[15px] leading-[1.55] text-v3-ink2">
             Run a mock against tonight&apos;s board and it lands here the moment the last pick does — the letter it earned, where it finished in its room, and the report behind both.
           </p>
-          <CallButton href="#/v3/draft">Start a mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
+          <CallButton href="#/draft">Start a mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
         </div>
       ) : (
         <>
@@ -346,10 +346,10 @@ function CallsSection({ dec, mode, onSeeAll, signedIn, leagueStatus }) {
     const cta = signedOut
       ? (ready
         ? <SignUpButton mode="modal"><QuietButton>Create an account</QuietButton></SignUpButton>
-        : <QuietButton href="#/v3/account">What an account adds</QuietButton>)
+        : <QuietButton href="#/account">What an account adds</QuietButton>)
       : leagueStatus === 'connected'
-        ? <GoLink href="#/v3">See this week&apos;s calls</GoLink>
-        : <QuietButton href="#/v3/account">Connect a league</QuietButton>
+        ? <GoLink href="#/">See this week&apos;s calls</GoLink>
+        : <QuietButton href="#/account">Connect a league</QuietButton>
     body = (
       <div className="grid gap-6 p-5 sm:p-8">
         <div className="flex max-w-[64ch] flex-col items-start gap-3">
@@ -401,7 +401,7 @@ export default function V3Record() {
   const sync = useSyncStatus()
   const [show, setShowState] = useState(readShow)
 
-  // A link to #/v3/record?show=calls from elsewhere while this page is open
+  // A link to #/record?show=calls from elsewhere while this page is open
   // arrives as a hashchange, not a remount.
   useEffect(() => {
     const on = () => setShowState(readShow())
@@ -437,7 +437,7 @@ export default function V3Record() {
         label="Record"
         title="Every draft and every call, graded."
         lede="The mocks you have finished, each with the letter it earned beside where it finished in its room — and the calls Juke made on your real roster: what it said, what you did, what happened, and whether it was right."
-        action={locker.ready && locker.list.length ? <CallButton href="#/v3/draft">Run another mock <Icon name="arrow" className="h-4 w-4" /></CallButton> : null}
+        action={locker.ready && locker.list.length ? <CallButton href="#/draft">Run another mock <Icon name="arrow" className="h-4 w-4" /></CallButton> : null}
       />
 
       <Summary locker={locker} stats={stats} calls={calls} callsStatus={dec.status} signedIn={signedIn} sync={sync} leagueStatus={leagueStatus} />

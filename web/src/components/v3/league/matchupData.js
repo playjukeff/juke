@@ -32,7 +32,7 @@
 
 import { seasonPhase } from '../../../lib/seasonPhase.js'
 
-/* #/v3/league/matchup?week=N[&team=id] — the one address a matchup has.
+/* #/league/matchup?week=N[&team=id] — the one address a matchup has.
    `team` is omitted for the reader's own team, so the link a reader shares
    of their own game is the short one. */
 export function matchupHref(week, team, mine) {
@@ -41,7 +41,7 @@ export function matchupHref(week, team, mine) {
   const id = team ? (team.rosterId !== null && team.rosterId !== undefined ? team.rosterId : team.ownerId) : null
   const mineId = mine ? (mine.rosterId !== null && mine.rosterId !== undefined ? mine.rosterId : mine.ownerId) : null
   if (id !== null && id !== undefined && String(id) !== String(mineId)) q.push('team=' + encodeURIComponent(String(id)))
-  return '#/v3/league/matchup' + (q.length ? '?' + q.join('&') : '')
+  return '#/league/matchup' + (q.length ? '?' + q.join('&') : '')
 }
 
 /* V3App strips the query before routing, so the page reads it here. A week

@@ -73,6 +73,47 @@ const DEAD = {
     "web/src/components/TakeAPick.jsx",
     "web/src/components/phone/HomePhone.jsx",
   ],
+  /* The cutover: v3 became the site, so App.jsx renders two apps instead of
+     nine screens and every production screen lost its only caller in one
+     commit. This is the largest single entry this file will ever have, and
+     it is exactly the shape the script exists for — App.jsx's diff removed
+     seven imports, and twenty-three files died.
+
+     The three myleague/* panels, decision/Confidence.jsx, icons.jsx and
+     ledger/VerdictBadge.jsx are the second order: nothing here imported them
+     directly, MyLeagueScreen did, and it went. That is LobbyBar taking four
+     files with it, at scale.
+
+     None of them is deleted, and that is the same rule as everywhere else:
+     prove the replacement works on the running site before removing what it
+     replaced. Every capability has an address in v3 (V3App.jsx's route table
+     names each one), so what is owed is a deploy and a look, not a decision
+     about whether the feature exists. */
+  "the production screens v3 replaced at the cutover": [
+    "web/src/components/BoardPeek.jsx",
+    "web/src/components/ComingSoonModal.jsx",
+    "web/src/components/DraftsScreen.jsx",
+    "web/src/components/HistoryScreen.jsx",
+    "web/src/components/HomeAlive.jsx",
+    "web/src/components/HomeProof.jsx",
+    "web/src/components/Homepage.jsx",
+    "web/src/components/MyLeagueScreen.jsx",
+    "web/src/components/RoomsGridAlive.jsx",
+    "web/src/components/RoomsLobby.jsx",
+    "web/src/components/YouScreen.jsx",
+    "web/src/components/decision/Confidence.jsx",
+    "web/src/components/icons.jsx",
+    "web/src/components/ledger/VerdictBadge.jsx",
+    "web/src/components/myleague/DraftReportPanel.jsx",
+    "web/src/components/myleague/LeagueBar.jsx",
+    "web/src/components/myleague/MoveCard.jsx",
+    "web/src/components/myleague/MyLeagueDemo.jsx",
+    "web/src/components/myleague/PastWeekPanel.jsx",
+    "web/src/components/myleague/SeasonEndPanel.jsx",
+    "web/src/components/myleague/SecondaryMoves.jsx",
+    "web/src/components/myleague/StandingsPanel.jsx",
+    "web/src/components/myleague/WeekStrip.jsx",
+  ],
   /* No importer and no reason recorded anywhere. Named separately rather than
      filed under a root, because "nobody imports it and nobody wrote down why"
      is a different fact from "its caller went". */

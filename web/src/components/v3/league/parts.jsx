@@ -221,7 +221,7 @@ export function ConnectCall({ primary = false, label = 'Connect a league', class
   const ref = useRef(null)
   const Btn = primary ? CallButton : QuietButton
   if (!signedIn) {
-    return <Btn href="#/v3/account" className={className}>Log in to connect <Icon name="arrow" className="h-4 w-4" /></Btn>
+    return <Btn href="#/account" className={className}>Log in to connect <Icon name="arrow" className="h-4 w-4" /></Btn>
   }
   const open = () => {
     if (tierStatus === 'ready' && leagues.length >= leagueCap(tier)) ref.current?.openAtLimit(tier, leagueCap(tier))
@@ -361,7 +361,7 @@ export function LeagueSwitcher() {
           <button type="button" role="menuitem" onClick={connectAnother} className="flex min-h-[48px] w-full items-center gap-2.5 px-4 text-left text-[15px] font-semibold text-v3-ink hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none">
             <span aria-hidden="true" className="font-figure text-[18px] leading-none">+</span> Connect another league
           </button>
-          <a href="#/v3/account" role="menuitem" onClick={() => setOpen(false)} className="flex min-h-[48px] items-center gap-2.5 border-t border-v3-rule px-4 text-[15px] text-v3-ink2 hover:bg-v3-paper hover:text-v3-ink focus-visible:bg-v3-paper focus-visible:outline-none">
+          <a href="#/account" role="menuitem" onClick={() => setOpen(false)} className="flex min-h-[48px] items-center gap-2.5 border-t border-v3-rule px-4 text-[15px] text-v3-ink2 hover:bg-v3-paper hover:text-v3-ink focus-visible:bg-v3-paper focus-visible:outline-none">
             <Icon name="account" className="h-4 w-4" /> Manage leagues
           </a>
         </div>

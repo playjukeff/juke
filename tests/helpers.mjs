@@ -166,7 +166,19 @@ export function clickHidden(page, id) {
   return page.evaluate((id) => document.getElementById(id).click(), id);
 }
 
-export async function openApp(context, path = "#/draft-room", opts = {}) {
+/* The default is #/draft, and it moved with the site rather than with a
+   preference.
+
+   It was #/draft-room, which is now redirected by app.js's canonicalHash()
+   — so every caller that omits a path would land here through a redirect,
+   which works and is the wrong thing for a suite to be exercising. What
+   those callers want is a page with the engine on it and a draft one press
+   away, and #/draft is where that is.
+
+   Note what this is NOT: the live cockpit. #/draft is the launcher, the same
+   way #/draft-room used to render the Lobby before a draft was entered.
+   startSoloDraft() is what takes a page from here to #/draft/live. */
+export async function openApp(context, path = "#/draft", opts = {}) {
   const page = await context.newPage();
   await page.addInitScript(instrumentation);
   await page.goto(`${SITE}/index.html${path}`);
@@ -343,9 +355,22 @@ export async function createRoom(page) {
    assumed present — a page that starts already past the Locker (a room,
    or a test driving a second client) simply won't have "Start mock
    draft" to click, the same way it might not have "Enter Draft Room". */
+/* ---- and what the cutover changed in it ----
+
+   Two things, and neither is a new idea. The SCOPE was '#draftroom-root',
+   which is the container DraftRoom.jsx renders into and which is empty on
+   every route now: v3 renders into #root. A locator scoped to it matches
+   nothing, `count()` is 0, every step is skipped, and the throw at the foot
+   of this function reports "no Start control was found to press" on a page
+   whose Start button is sitting there perfectly enabled. So the scope is the
+   page.
+
+   And the room's second Start was matched by the text /Start for everyone|
+   Start draft/, which is the label match this function's own comment spends
+   a paragraph arguing against. v3 carries [data-start-room] on it, so it is
+   matched by what it IS. That is the fifth rename this pair of controls has
+   survived and the first one that costs nothing. */
 export async function startSoloDraft(page) {
-  const enter = page.locator('#draftroom-root button:text-is("Enter Draft Room")');
-  if (await enter.count()) await enter.click();
 
   // Checked before clicking, not inferred from the click failing to start
   // a draft afterward — a disabled button and a missing one are different
@@ -374,7 +399,7 @@ export async function startSoloDraft(page) {
      anchor on: an attribute says what a control IS, a label says what it
      currently reads. The `.first()` is because a room can have this
      screen's Start and NewMockPanel's on the page together. */
-  const startMock = page.locator('#draftroom-root [data-start-draft]').first();
+  const startMock = page.locator('[data-start-draft]').first();
   /* Recorded where the click happens, never re-queried afterwards: pressing
      it starts the draft and unmounts the entry screen, so a count() taken
      after the fact is 0 for the success case as well as the skipped one. */
@@ -405,7 +430,7 @@ export async function startSoloDraft(page) {
     await page
       .waitForFunction(
         () => {
-          const b = document.querySelector("#draftroom-root [data-start-draft]");
+          const b = document.querySelector("[data-start-draft]");
           return !!b && !b.disabled;
         },
         null,
@@ -429,7 +454,7 @@ export async function startSoloDraft(page) {
   // that drives a draft — grade, journey, solo — sat here until the
   // 6-minute test timeout killed it. A hang, not an assertion: nothing in
   // the output named this line, and the app was fine throughout.
-  const startBtn = page.locator('#draftroom-root >> text=/Start for everyone|Start draft/');
+  const startBtn = page.locator('[data-start-room]').first();
   if (await startBtn.count()) {
     if (!(await startBtn.isEnabled())) throw new Error("the Start button refused this league");
     await startBtn.click();

@@ -34,9 +34,17 @@
    RGB channels, read by the `v3` colour names in tailwind.config.js, so an
    alpha modifier (bg-v3-sheet/95) still works. Nothing outside
    components/v3 reads a --v3-* name, and the attribute that switches them
-   is data-v3-theme rather than production's own data-theme: v3/theme.js
-   sets it while #/v3 is mounted and removes it on the way out, so the live
-   site never sees either value.
+   is data-v3-theme rather than the legacy pages' own data-theme.
+
+   /theme.js stamps it in <head>, before the body is parsed, and that moved
+   there at the cutover: v3/theme.js used to be the only writer and it runs
+   from a React layout effect, which is after the module bundle has
+   hydrated. That was fine while v3 was one route among several and became a
+   light flash on every load for every dark reader the moment it became the
+   site — the exact reason the legacy theme block is not in app.js either.
+   v3/theme.js still owns the CHOICE, the listener and the System case, and
+   still removes the attribute when the app unmounts, which now happens only
+   on the way to #/v2.
 
    Light is on :root so a v3 class resolves on its very first frame, before
    the store has stamped anything. Dark was set by contrast rather than by

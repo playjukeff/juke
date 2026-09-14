@@ -15,7 +15,7 @@ import { useSyncExternalStore } from 'react'
 
    What it switches is html[data-v3-theme], which only the --v3-* colours in
    index.css answer to. It is stamped while V3App is mounted and REMOVED
-   when it unmounts, so leaving #/v3 for the live site or v2 leaves nothing
+   when it unmounts, so leaving #/ for the live site or v2 leaves nothing
    behind: production has its own data-theme and never sees this one. */
 
 const KEY = 'juke.v3.theme'
@@ -68,7 +68,7 @@ export function setThemeChoice(next) {
 
 /* Called by V3App from a layout effect, so the attribute is on the document
    before the first v3 frame is painted and nobody sees the wrong theme
-   flash. Counted, so a remount (StrictMode, a route change inside #/v3)
+   flash. Counted, so a remount (StrictMode, a route change inside #/)
    cannot strip the attribute out from under a mounted app. */
 export function mountTheme() {
   mounts += 1

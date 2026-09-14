@@ -7,7 +7,7 @@ import { platformFor } from '../../shell/leaguePlatforms.js'
 import { useEngine, useJukeTick } from '../../../hooks/useJukeEngine.js'
 import { gapUnit, leagueGapOf } from '../../../lib/leagueGap.js'
 import { useTierFresh } from '../../v2/stores.js'
-import { Fig, GoLink, Icon, Label, PosTag, Seg, Sheet, ValueBar , HIT } from '../ui.jsx'
+import { Fig, GoLink, Icon, Label, PosTag, Seg, Sheet, ValueBar, HIT, cx } from '../ui.jsx'
 import {
   CallHead, CouldNotRead, Empty, FactCell, GatedLabel, Loading, NoTeam, Note, PlayerRow, SampleTag,
   Signed, SituationBand, Step, StepBars, Steps, TierGate, playerHref, sampleBandItems, teamHref,
@@ -274,7 +274,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
                   <div className="rounded-[6px] bg-v3-paper p-4">
                     <Label>Run next</Label>
                     <p className="mt-1.5 text-[15px] leading-[1.55] text-v3-ink2">Next year’s class is where the next real add comes from. Every first-year player on the board, ranked.</p>
-                    <div className="mt-3"><GoLink href="#/v3/players/rookies">Open the rookies</GoLink></div>
+                    <div className="mt-3"><GoLink href="#/players/rookies">Open the rookies</GoLink></div>
                   </div>
                 )}
               </div>

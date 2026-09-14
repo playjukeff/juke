@@ -14,7 +14,7 @@ import { findTeam, recordText, standing, teamHref, teamWeekRows, usePricing } fr
 import { ConnectCall, CouldNotRead, InjuryChip, KpiGrid, ResultChip, pct } from './parts.jsx'
 import { matchupHref } from './matchupData.js'
 
-/* #/v3/league/team/<id> — any team in a connected league.
+/* #/league/team/<id> — any team in a connected league.
 
    Production opened a team's roster in place under its standings row; v3
    gives it an address, so a rival can be read — and linked to from the
@@ -43,7 +43,7 @@ function PlayerCell({ player, id }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
       <span className="min-w-0">
-        <a href={`#/v3/players/${encodeURIComponent(String(player.id))}`} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">
+        <a href={`#/players/${encodeURIComponent(String(player.id))}`} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">
           {player.name}
         </a>
         <span className="block truncate font-figure text-[12px] uppercase tracking-[0.06em] text-v3-ink3">
@@ -182,7 +182,7 @@ export default function V3Team({ teamId }) {
   const pricing = usePricing(ready ? snapshot : null)
   const model = useLeagueModel(league, ready ? snapshot : null)
   const team = useMemo(() => (ready ? findTeam(snapshot, decodeURIComponent(teamId || '')) : null), [ready, snapshot, teamId])
-  const back = <QuietButton href="#/v3/league"><Icon name="back" className="h-4 w-4" /> League</QuietButton>
+  const back = <QuietButton href="#/league"><Icon name="back" className="h-4 w-4" /> League</QuietButton>
 
   if (status === 'loading' || (connected && (snapStatus === 'loading' || snapStatus === 'none'))) {
     return (

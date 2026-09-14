@@ -22,6 +22,41 @@
   } catch (err) {}   // private browsing can make localStorage throw
 })();
 
+/* The same job for the theme the site actually wears now.
+
+   data-v3-theme is what every --v3-* colour in web/src/index.css answers to,
+   and until the cutover it was stamped from a React layout effect — correct
+   while v3 was one route among several, and wrong the moment it became the
+   site. A layout effect runs after the module bundle has fetched, parsed and
+   hydrated, which is after app.js, which is the exact reason the block above
+   is not in app.js: by then the flash has already happened. A reader who
+   chose dark would watch the page paint light first, on every single load.
+
+   The store (web/src/components/v3/theme.js) still owns the choice, the
+   listener and the System case; this only puts the answer on the document
+   before the first frame, and the store re-stamps the identical value when
+   it mounts. Three choices, not two: "system" is the default and is resolved
+   here against the device, so a phone that turns dark at sunset arrives
+   dark rather than arriving light and correcting itself.
+
+   Same file rather than a second one beside it: this file is already "the
+   stored theme, applied before anything paints", and a second parser-
+   blocking request in <head> costs a round trip to say the same sentence. */
+(function () {
+  var choice = "system";
+  try {
+    var v = localStorage.getItem("juke.v3.theme");
+    if (v === "light" || v === "dark" || v === "system") choice = v;
+  } catch (err) {}
+  var dark = choice === "dark";
+  if (choice === "system") {
+    try {
+      dark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    } catch (err) {}
+  }
+  document.documentElement.setAttribute("data-v3-theme", dark ? "dark" : "light");
+})();
+
 /* This file used to carry a second IIFE here, stamping data-standalone from
    matchMedia('(display-mode: standalone)') so #boot-sonar (index.html)
    could tell an installed-app cold launch apart from an ordinary browser

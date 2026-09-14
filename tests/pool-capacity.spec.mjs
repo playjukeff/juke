@@ -72,7 +72,7 @@ function shape(page, patch) {
 test("a deep league is refused, and the reason is capacity rather than the board",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     const r = await shape(page, { ...LINEUP, teams: 22, bench: 10, scoring: "half" });
 
@@ -96,7 +96,7 @@ test("a deep league is refused, and the reason is capacity rather than the board
 test("a shorter roster is allowed, and so is the league every control defaults to",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     /* The way out the message names, found on today's board rather than
        written down from a measurement.
@@ -157,7 +157,7 @@ test("a shorter roster is allowed, and so is the league every control defaults t
 test("trimming the roster is a real way out of the refusal, and it survives going home",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     const steps = await page.evaluate((L) => {
       const E = window.JukeEngine;
@@ -203,7 +203,7 @@ test("trimming the roster is a real way out of the refusal, and it survives goin
 test("capacity is never larger than the board, across every league the screen offers",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     const bad = await page.evaluate((L) => {
       const out = [];
@@ -261,7 +261,7 @@ test("capacity is never larger than the board, across every league the screen of
 test("no allowed league leaves a seat short, and the waste it can leave is bounded", async ({ browser }) => {
   test.slow();
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   const rows = await page.evaluate((L) => {
     const out = [];

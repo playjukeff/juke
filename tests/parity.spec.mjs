@@ -102,7 +102,7 @@ async function homeAt(browser, contextOpts) {
      Matched by prefix rather than exactly, because the archive's own rows
      append a ?report= id to the same route. */
   const waysIn = await page.evaluate(() =>
-    [...document.querySelectorAll('#view-home a[href^="#/rooms/draft"]')]
+    [...document.querySelectorAll('#view-home a[href^="#/draft"]')]
       .filter((a) => a.getBoundingClientRect().height > 0).length);
   await context.close();
   return { text, rooms, waysIn, joined: text.join(" · ") };

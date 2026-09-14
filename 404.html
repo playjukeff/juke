@@ -102,12 +102,15 @@
 
     <div class="nf-acts">
       <a class="nf-go" href="/">Go to Juke</a>
-      <!-- #/drafts, not #/draft. The latter is the retired route: applyRoute()
-           still redirects it, so this link "worked", but it worked by landing
-           on a redirect written for old bookmarks rather than by pointing at
-           the room. The one page whose entire job is recovering from a bad
-           address should not itself carry one. -->
-      <a class="nf-alt" href="/#/drafts">Open the Draft Room</a>
+      <!-- #/draft, which is the draft room's own address now rather than a
+           retired one. This link used to read /#/drafts, and before that
+           /#/draft — each of them correct when written and each of them
+           landing on a redirect afterwards. It "worked" both times, which is
+           exactly the problem: the one page whose entire job is recovering
+           from a bad address should not itself carry one. Every path in this
+           file is absolute because Pages serves it at whatever address
+           missed. -->
+      <a class="nf-alt" href="/#/draft">Open the Draft Room</a>
     </div>
   </main>
 

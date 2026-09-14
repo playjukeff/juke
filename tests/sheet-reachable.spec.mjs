@@ -83,7 +83,7 @@ async function openDraft(browser, size) {
     defaultBrowserType: undefined,
     viewport: { width: size.width, height: size.height },
   });
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   /* Wait for the board rather than for a duration. players.js/stats.js are
      deferred behind the cold-load reveal, so a flat wait reads the Lobby's
      own "Loading the player board..." refusal and startDraft() starts

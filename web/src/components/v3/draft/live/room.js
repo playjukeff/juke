@@ -31,8 +31,8 @@
 
 import { useEffect, useReducer, useRef } from 'react'
 
-export const ROOM_HASH = '#/v3/draft/live'
-export const LAUNCHER_HASH = '#/v3/draft'
+export const ROOM_HASH = '#/draft/live'
+export const LAUNCHER_HASH = '#/draft'
 
 /* Codes are what live.js mints: no vowels, no 0/O, no 1/l/I. Accepted
    case-insensitively and from a pasted LINK as well as a bare code, because
