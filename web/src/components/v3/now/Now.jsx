@@ -170,7 +170,40 @@ function NowGuest({ season, post = false }) {
             {post ? 'The season is over, and next year’s draft is the one decision left. ' : ''}A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <CallButton href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
+            {/* data-hero-cta: the guest homepage's primary door, and the one
+                control journey.spec walks to a finished draft through.
+                sonar.spec hit-tests it too - it is the only way to tell an
+                overlay that has really gone from one that is merely
+                transparent.
+
+                The marker lived on six production files and every one of
+                them is retired, so it arrived at the cutover pointing at
+                nothing: the same "replacing a page orphans every attribute
+                only the old one carried" failure data-hero-eyebrow had, on
+                the control instead of the label.
+
+                NowSeason carries its own, on StillDrafting's "Set up a
+                mock" - see parts.jsx. Exactly one of the two is ever on the
+                page, because Now() renders one variant or the other.
+
+                CORRECTED IN PLACE: this said only NowGuest needed the
+                marker, "because the committed board carries no NFL_STATE
+                and seasonClock() answers null". That was true when CLAUDE.md
+                recorded it and false by the time it was written here - the
+                14 September data commit landed a real week 1, so
+                seasonClock() answers {week: 1, phase: regular} and the guest
+                homepage is NowSeason. The marker went on a component that
+                does not render, and sonar reported "the hero CTA rendered:
+                false" on a page with a perfectly good door on it. A
+                measurement is true of the board it was taken on; this one
+                was inherited rather than taken.
+
+                What does NOT get the marker is a connect button.
+                ConnectWayIn ("Connect your league") is the right primary for
+                a reader mid-season and is not a way into a draft - and
+                journey.spec clicks this marker and then walks to a FINISHED
+                DRAFT, so only a #/draft door can satisfy it. */}
+            <CallButton data-hero-cta href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
             <QuietButton href="#/players">Browse every player</QuietButton>
           </div>
           <p className="mt-4 font-figure text-[13px] text-v3-ink3">No account needed · runs in your browser</p>

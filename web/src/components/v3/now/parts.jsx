@@ -477,7 +477,14 @@ export function StillDrafting({ post = false }) {
           <span className="block text-[14px] leading-[1.5] text-v3-ink2">Mock drafts against tonight’s board are in Draft — free, no account, graded the moment the last pick lands.</span>
         </span>
       </span>
-      <QuietButton href="#/draft" className="shrink-0">Set up a mock</QuietButton>
+      {/* data-hero-cta: the guest homepage's draft door IN SEASON.
+          NowSeason renders StillDrafting and NowGuest renders DraftBlock's
+          own copy, so exactly one of the two markers is ever on the page -
+          which is what journey.spec's `.first()` and sonar.spec's
+          first-with-height both assume. See Now.jsx's note for why a
+          connect button is deliberately not marked: journey walks this
+          control to a FINISHED DRAFT, and only a #/draft door gets there. */}
+      <QuietButton data-hero-cta href="#/draft" className="shrink-0">Set up a mock</QuietButton>
     </Sheet>
   )
 }

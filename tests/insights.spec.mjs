@@ -57,10 +57,24 @@ async function seedHistory(page) {
 }
 
 async function openInsights(page) {
-  const btn = page.locator('#draftroom-root button:text-is("Your insights")');
-  await btn.waitFor({ timeout: 20000 });
-  await btn.click();
-  await page.locator("[data-ins-deal]").waitFor({ timeout: 20000 });
+  /* v3 gives the panel its own address, so this navigates rather than
+     hunting for a button.
+
+     It pressed "Your insights" inside #draftroom-root, which was the
+     production launcher's own control - that container is empty on every
+     v3 address now, so the locator matched nothing and every test in this
+     file spent 20s discovering the same thing. The panel is a real route
+     (V3App: `draft` + `insights`), which is a better entry anyway: it is
+     what a saved link or the nav reaches, and it does not depend on which
+     screen happens to carry a button to it this month.
+
+     Waiting on the view nav rather than [data-ins-deal], which was the
+     production panel's wrapper and has no v3 counterpart. The nav is what
+     the panel IS - it holds the data-ins-view buttons every test below
+     drives - and it renders only once the report has resolved, which is
+     the condition the old wrapper wait was really standing in for. */
+  await page.evaluate(() => { location.hash = "#/draft/insights"; });
+  await page.locator('nav[aria-label="Insights views"]').waitFor({ timeout: 20000 });
 }
 
 function view(page, key) {
