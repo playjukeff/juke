@@ -6387,7 +6387,7 @@ function headerInfo() {
       leagueSummary: leagueSum,
       statusLine: "Draft complete",
       pickText: totalPicks() + " picks made",
-      rightLabel: "Rounds", rightValue: String(league.rounds)
+      rightLabel: "Rounds", rightValue: String(league.rounds), rightIsClock: false
     };
   }
 
@@ -6401,7 +6401,8 @@ function headerInfo() {
       statusLine: "You're on the clock!",
       pickText: "Pick " + pickCode(overall) + " (" + overall + " Overall)",
       rightLabel: state.clockLength ? (state.paused ? "Paused" : "Time left") : "Available",
-      rightValue: state.clockLength ? clockText() : String(board.filter((p) => !p.drafted).length)
+      rightValue: state.clockLength ? clockText() : String(board.filter((p) => !p.drafted).length),
+      rightIsClock: !!state.clockLength
     };
   }
 
@@ -6422,7 +6423,17 @@ function headerInfo() {
     statusLine: teamLabel(pickInfo(overall).slot) + (showClock && gap ? " · you are in " + gap : ""),
     pickText: "Pick " + pickCode(overall) + " (" + overall + " Overall)",
     rightLabel: showClock ? (state.paused ? "Paused" : "Time left") : "Your turn in",
-    rightValue: showClock ? clockText() : String(gap)
+    rightValue: showClock ? clockText() : String(gap),
+    /* Whether that slot is a COUNTDOWN or a count of picks, said as a fact
+       rather than left to be re-derived from the label. A reader of this
+       object has to know which, because a countdown is a `role="timer"`
+       whose accessible name is the number and a pick count is neither —
+       and the only other way to tell is to match "Time left"/"Paused" as
+       strings, which is this file's own written-down-twice rule with prose
+       in it. Set on every branch that fills the slot at all; the two
+       not-started branches carry no right-hand block, so falsy there is
+       the right answer rather than a gap. */
+    rightIsClock: showClock
   };
 }
 

@@ -228,13 +228,27 @@ test("the host sets the draft order and a guest cannot", async ({ browser }) => 
      rather than a drag — HTML5 drag and drop does not exist on touch and the
      host is very often on a phone, which is the reason RoomLobby settled on
      it. */
-  await host.evaluate(([a, b]) => {
-    const rows = [...document.querySelectorAll("ol > li")]
-      .map((li) => li.firstElementChild)
-      .filter((el) => el && /^(Take seat \d+|Seat \d+,)/.test(el.getAttribute("aria-label") || ""));
-    rows[a].click();
-    rows[b].click();
-  }, [hostSeat, guestSeatBefore]);
+  /* Two locators rather than one evaluate holding two nodes, and that is
+     not tidiness — the first version collected both buttons up front and
+     clicked them back to back, and it swapped nothing.
+
+     `held` is React state (RoomLobby.jsx), so the first press re-renders
+     every chair: the labels change from "Tap to move" to "Tap another seat
+     to swap", and the element the array is still pointing at is detached.
+     Clicking a detached node throws nothing and does nothing, so the test
+     failed at the poll thirty seconds later on a lobby that was working —
+     a fixture asserting against a screen it had already let go of.
+
+     A locator resolves at the moment it is used, so it finds whatever is
+     rendered NOW, which is what a person tapping twice does. Matched on the
+     seat number in the accessible name rather than on list position, for
+     this project's own reason: the number is what the chair IS, and the
+     label's second half is exactly the part that moves. */
+  const chair = (page, seat) =>
+    page.getByRole("button", { name: new RegExp(`^Seat ${seat + 1},`) }).first();
+
+  await chair(host, hostSeat).click();
+  await chair(host, guestSeatBefore).click();
 
   // The guest is moved by the room, not by their own browser.
   await expect

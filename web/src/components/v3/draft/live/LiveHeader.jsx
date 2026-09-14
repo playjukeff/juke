@@ -38,9 +38,19 @@ function ClockReadout({ engine, header, phone }) {
   const paused = !!engine.paused()
 
   if (header.over) return null
-  if (!myTurn) {
-    // Solo: a CPU has no countdown of its own, so the useful number is how
-    // long until you are back — headerInfo()'s own "Your turn in".
+  /* Whose turn it is does not decide whether there is a clock to draw, and
+     for a while this branched as though it did. Solo, a CPU has no countdown
+     of its own, so the useful number is how long until you are back. In a
+     ROOM there is a real clock running on a real person and clockShowing()
+     puts it in this slot for everybody — so a guest fell into the branch
+     below and read a live countdown rendered as plain text, with no
+     role="timer" and no accessible name carrying the number.
+
+     Which is the "a clock everyone is waiting on has to be a clock everyone
+     can see" rule half-kept: it was on screen and it was not announced. The
+     engine already answers this — rightIsClock — so ask it rather than
+     inferring it from myTurn, which is a different question. */
+  if (!myTurn && !info.rightIsClock) {
     const n = Number(info.rightValue)
     return (
       <div className={cx('shrink-0', phone ? 'text-right' : '')}>
