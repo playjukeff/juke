@@ -1,189 +1,90 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLeagueFresh } from '../../v2/stores.js'
+import { useLeagueFresh, useTierFresh } from '../../v2/stores.js'
 import { readLocker, readLeagueShape } from '../../v2/v2data.js'
-import { FORMATS, LEAD, readCall, readSituation } from '../data.js'
+import { useSignedIn } from '../../../hooks/useAuthState.js'
+import { meetsTier } from '../../../lib/tiers.js'
 import {
-  CallButton, Delta, Fig, GoLink, Headline, Icon, Label, PosTag, QuietButton, Seg, Sheet, Skeleton,
-  ValueBar, cx, ordinal, useEngineData,
+  CallButton, GoLink, Headline, Icon, Label, QuietButton, Sheet, Skeleton, ordinal, useEngineData,
 } from '../ui.jsx'
 import { CountUp, StreamText } from '../motion.jsx'
 import SampleBoard from '../draft/SampleBoard.jsx'
 import NowConnected from './NowConnected.jsx'
+import NowSeason from './NowSeason.jsx'
+import NowMember, { NowMemberLoading } from './NowMember.jsx'
+import { SituationBand, TheCall } from './TheCall.jsx'
+import { FreeLeagueNote, SeasonBand } from './parts.jsx'
+import { bucketOf, useNextKickoffAt, useSeason } from './season.js'
 
-/* Now — the first of v3's five places.
+export { SituationBand, TheCall }
 
-   Connected, it is the week's call sheet (NowConnected). Signed out or with
-   no league, it is this: what a priced call looks like, on tonight's board,
-   and the three things a visitor can do about it. The page leads with a call
-   rather than a pitch because the call IS the pitch — "the market takes him,
-   the points take him, here is by how much" is the whole product in one
-   block, and it is live. */
+/* Now — the first of v3's five places, and the one page that changes with
+   who is reading it and when.
+
+   ---- The matrix ----
+
+   Three audiences (guest, a free account, a subscriber — Season Pass or
+   Multi-League), crossed with whether Juke can read a league, crossed with
+   where the NFL season is (seasonClock(): before it, week N, after it).
+   Eighteen cells on paper, six pages in practice, because most cells
+   collapse for a reason worth stating:
+
+     any audience, league connected     NowConnected. The LEAGUE's own
+                                        snapshot decides its phase — drafted
+                                        or not, which week, season complete —
+                                        and it outranks the NFL calendar,
+                                        which only knows about the NFL. A
+                                        free account can only get here with a
+                                        league connected on a plan it has
+                                        since left (Free connects none), so
+                                        it collapses in too, with one quiet
+                                        note about what its plan does not
+                                        reach.
+     guest, before the season          NowGuest: a priced call on tonight's
+                                        board and a free mock. Unchanged.
+     guest, after the season           NowGuest again, under a band saying
+                                        the season is over: next year's draft
+                                        is the one decision left, and the
+                                        mock is how you practise it.
+     guest, week N                      NowSeason: the week, not the draft.
+                                        Bring your league is the action; the
+                                        in-season tools work on a SAMPLE
+                                        league beside it.
+     signed in, no league               NowMember, one frame for all three
+                                        phases: a welcome, the locker, and
+                                        the plan's own next step — the Season
+                                        Pass prompt for Free, connecting for a
+                                        subscriber, nothing while the plan is
+                                        still being read.
+
+   Signed in and the league store has not answered: a skeleton, never the
+   guest page — that page offers to connect a league somebody may already
+   have. Unknown season renders the preseason pages (season.js says why). */
 
 export default function Now() {
-  const { status } = useLeagueFresh()
-  if (status === 'connected') return <NowConnected />
-  return <NowGuest />
-}
+  const signedIn = useSignedIn()
+  const { status: leagueStatus } = useLeagueFresh()
+  const { status: tierStatus, tier, refresh: refreshTier } = useTierFresh()
+  const season = useSeason()
+  const bucket = bucketOf(season.phase)
 
-const FORMAT_LABEL = { standard: 'Std', half: 'Half', ppr: 'Full' }
+  const audience = !signedIn ? 'guest'
+    : tierStatus === 'ready' ? (meetsTier(tier, 'pro') ? 'sub' : 'free')
+    : 'unknown'
 
-function SituationBand({ s }) {
-  if (!s) return <div className="h-[44px] animate-pulse rounded-[6px] bg-v3-well" aria-hidden="true" />
+  let page
+  if (leagueStatus === 'connected') {
+    page = <NowConnected plan={audience === 'free' ? <FreeLeagueNote /> : null} />
+  } else if (audience === 'guest') {
+    page = bucket === 'season' ? <NowSeason season={season} /> : <NowGuest season={season} post={bucket === 'post'} />
+  } else if (leagueStatus === 'loading') {
+    page = <NowMemberLoading />
+  } else {
+    page = <NowMember audience={audience} tier={tier} season={season} leagueStatus={leagueStatus} tierStatus={tierStatus} onRetryTier={refreshTier} />
+  }
+  // data-* for the verification harness and for anybody reading the DOM:
+  // which cell of the matrix this is, stated rather than inferred.
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-[6px] bg-v3-band px-4 py-2.5 font-figure text-[13px] text-v3-bandInk">
-      <span className="font-bold uppercase tracking-[0.14em] text-white">Tonight&apos;s board</span>
-      <span><CountUp value={s.players} className="font-figure font-bold tabular-nums text-white" /> players priced</span>
-      {s.refreshed && <span>refreshed {s.refreshed}</span>}
-      {s.scoring && <span>your mock is set to <span className="text-white">{s.scoring}</span></span>}
-    </div>
-  )
-}
-
-/* The decimals a figure already carries, so a count lands on the same text
-   the figure would have printed at rest. */
-function decimals(v) {
-  const t = String(v)
-  return t.includes('.') ? t.split('.')[1].length : 0
-}
-
-/* One side of the call: who, what the market and the points say about him.
-   Change the position or the scoring and the figures tick from the last
-   player's to the new one's — the lede's "watch it move", taken literally. */
-function Side({ tag, p, winner, verdictLabel }) {
-  return (
-    <div className={cx('flex flex-col gap-3 rounded-[6px] border p-4', winner ? 'border-v3-ink bg-v3-sheet shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))]' : 'border-v3-rule bg-v3-paper')}>
-      <div className="flex items-center justify-between gap-2">
-        <Label>{tag}</Label>
-        {winner && <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{verdictLabel}</span>}
-      </div>
-      <div className="flex items-center gap-3">
-        {p.photo ? (
-          <img src={p.photo} alt="" width="48" height="48" loading="lazy" className="h-12 w-12 shrink-0 rounded-full bg-v3-well object-cover" data-drop-on-error="" />
-        ) : (
-          <span className="h-12 w-12 shrink-0 rounded-full bg-v3-well" aria-hidden="true" />
-        )}
-        <div className="min-w-0">
-          <div className="truncate text-[18px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">{p.name}</div>
-          <div className="mt-1 flex items-center gap-2"><PosTag pos={p.pos} /><span className="font-figure text-[13px] text-v3-ink2">{p.team || '—'}</span></div>
-        </div>
-      </div>
-      <dl className="grid grid-cols-3 gap-2 border-t border-v3-rule pt-3">
-        <div><dt><Label className="text-[11px]">ADP</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.adp === 'number' ? p.adp : null} format={(v) => v.toFixed(decimals(p.adp))} /></dd></div>
-        <div><dt><Label className="text-[11px]">Proj pts</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.pts === 'number' ? p.pts : null} format={(v) => v.toFixed(decimals(p.pts))} /></dd></div>
-        <div><dt><Label className="text-[11px]">Over repl.</Label></dt><dd className="mt-0.5 text-[18px]"><Delta value={p.vorp} count /></dd></div>
-      </dl>
-    </div>
-  )
-}
-
-function TheCall() {
-  const situation = useEngineData(readSituation)
-  const [pos, setPos] = useState('WR')
-  const [format, setFormat] = useState(null)
-  const fmt = format || (situation ? situation.scoringKey : 'half')
-  // readCall depends on the chosen position and format, so it is read here
-  // rather than through useEngineData's change key, which only knows about
-  // the board and the league. The board is re-checked on data-loaded.
-  const [boardReady, setBoardReady] = useState(false)
-  useEffect(() => {
-    const e = window.JukeEngine
-    const ok = () => setBoardReady(!!(e && e.dataReady && e.dataReady()))
-    ok()
-    window.addEventListener('juke:data-loaded', ok)
-    return () => window.removeEventListener('juke:data-loaded', ok)
-  }, [])
-  const call = useMemo(() => {
-    const e = typeof window !== 'undefined' ? window.JukeEngine : null
-    if (!boardReady || !e) return null
-    try { return readCall(e, pos, fmt) } catch { return null }
-  }, [boardReady, pos, fmt])
-
-  const posWord = { QB: 'quarterback', RB: 'running back', WR: 'receiver', TE: 'tight end' }[pos]
-
-  return (
-    <Sheet
-      code={`The call · ${pos === 'TE' ? 'Tight end' : posWord.charAt(0).toUpperCase() + posWord.slice(1)}`}
-      aside={`${FORMAT_LABEL[fmt]} PPR`.replace('Std PPR', 'Standard')}
-      bodyClass="p-4 sm:p-5"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Seg label="Position" value={pos} onChange={setPos} options={LEAD.map((p) => ({ value: p, label: p }))} />
-        <Seg label="Scoring" value={fmt} onChange={setFormat} options={FORMATS.map((f) => ({ value: f, label: FORMAT_LABEL[f] }))} />
-      </div>
-
-      {!call ? (
-        <div className="mt-5"><Skeleton lines={6} /></div>
-      ) : call.agree ? (
-        <div className="mt-5 grid gap-4">
-          <p className="text-[17px] leading-[1.5] text-v3-ink">
-            At {posWord} under this scoring, the market and the points agree tonight: <strong>{call.market.name}</strong> first, <strong>{call.other.name}</strong> after him.
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Side tag="Market and points" p={call.market} winner verdictLabel="Agreed" />
-            <Side tag="Next" p={call.other} />
-          </div>
-        </div>
-      ) : (
-        <div className="mt-5 grid gap-4">
-          <p className="text-[18px] leading-[1.45] text-v3-ink">
-            The market drafts <strong>{call.market.name}</strong> first. The points take <strong>{call.juke.name}</strong> — by{' '}
-            <Delta value={call.gap} className="text-[18px]" /> over a replaceable {posWord}.
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Side tag="The market takes" p={call.market} />
-            <Side tag="Juke takes" p={call.juke} winner verdictLabel="The call" />
-          </div>
-          <Arithmetic call={call} posWord={posWord} />
-        </div>
-      )}
-    </Sheet>
-  )
-}
-
-/* The arithmetic behind the call, as the three steps it actually is. Numbered
-   because it is a sequence: a projection, a baseline, the difference. */
-function Arithmetic({ call, posWord }) {
-  const j = call.juke
-  const m = call.market
-  const max = Math.max(j.pts, m.pts, 1)
-  return (
-    <div className="rounded-[6px] border border-v3-rule bg-v3-paper p-4">
-      <Label>How the call is made</Label>
-      <ol className="mt-3 grid gap-3">
-        {[
-          { n: 1, what: 'Project the season', sub: 'under this scoring, from raw stats', a: m.pts, b: j.pts, fmt: (v) => v },
-          { n: 2, what: `Find the replaceable ${posWord}`, sub: 'the last one a league this size starts', a: m.replacement, b: j.replacement, fmt: (v) => v, same: true },
-        ].map((row) => (
-          <li key={row.n} className="grid grid-cols-[28px_1fr] gap-3">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-v3-band font-figure text-[13px] font-bold text-white">{row.n}</span>
-            <div>
-              <div className="text-[15px] font-bold text-v3-ink">{row.what} <span className="font-normal text-v3-ink2">— {row.sub}</span></div>
-              {row.same ? (
-                <div className="mt-1 font-figure text-[14px] text-v3-ink2"><CountUp value={typeof j.replacement === 'number' ? j.replacement : null} format={(v) => v.toFixed(decimals(j.replacement))} className="font-bold tabular-nums text-v3-ink" /> pts, the same line for both</div>
-              ) : (
-                <div className="mt-2 grid gap-1.5">
-                  {[{ p: m, v: row.a }, { p: j, v: row.b }].map((x) => (
-                    <div key={x.p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,9rem)_1fr_3.5rem]">
-                      <span className="truncate text-[13px] text-v3-ink2">{x.p.name}</span>
-                      <ValueBar value={x.v} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                      <CountUp value={typeof x.v === 'number' ? x.v : null} format={(v) => v.toFixed(decimals(x.v))} className="text-right font-figure text-[14px] font-bold tabular-nums text-v3-ink" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </li>
-        ))}
-        <li className="grid grid-cols-[28px_1fr] gap-3">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-v3-band font-figure text-[13px] font-bold text-white">3</span>
-          <div>
-            <div className="text-[15px] font-bold text-v3-ink">The gap over that line is the call</div>
-            <div className="mt-1 font-figure text-[14px] text-v3-ink2">
-              {j.name.split(' ').slice(-1)[0]} <Delta value={j.vorp} count /> · {m.name.split(' ').slice(-1)[0]} <Delta value={m.vorp} count /> · difference <Delta value={call.gap} count />
-            </div>
-          </div>
-        </li>
-      </ol>
+    <div data-now-audience={leagueStatus === 'connected' ? 'league' : audience} data-now-phase={season.phase} data-now-source={season.source}>
+      {page}
     </div>
   )
 }
@@ -254,17 +155,17 @@ function RecordBlock() {
   )
 }
 
-function NowGuest() {
-  const situation = useEngineData(readSituation)
+function NowGuest({ season, post = false }) {
+  const kickoffAt = useNextKickoffAt()
   return (
     <div className="grid gap-10">
-      <SituationBand s={situation} />
+      {post ? <SeasonBand season={season} kickoffAt={kickoffAt} /> : <SituationBand />}
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div className="lg:sticky lg:top-[92px]">
-          <Label>Juke · fantasy football, priced</Label>
+          <Label>{post ? 'Juke · the season is over' : 'Juke · fantasy football, priced'}</Label>
           <Headline className="mt-3">Every call, with the math shown.</Headline>
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
-            A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.
+            {post ? 'The season is over, and next year’s draft is the one decision left. ' : ''}A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <CallButton href="#/v3/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>

@@ -17,8 +17,10 @@ import { gameFor, matchupHref, sleeperWeekView } from '../league/matchupData.js'
 import { useSleeperWeeks } from '../league/useSleeperWeeks.js'
 import { CountText, CountUp } from '../motion.jsx'
 import {
-  CouldNotRead, InjuryChip, ResultChip, WinBar, pct, useDraftPhase, useKickoff, whenText,
+  CouldNotRead, InjuryChip, ResultChip, WinBar, pct, useCountdown, useDraftPhase, useKickoff, whenText,
 } from '../league/parts.jsx'
+import { LockerCard, useLockerSummary } from './parts.jsx'
+import { useNextKickoffAt } from './season.js'
 
 /* Now, connected: this week's call sheet.
 
@@ -49,7 +51,7 @@ import {
 
 const PHASE = { soon: 'Draft in', drafting: 'Drafting now', late: 'Draft time passed' }
 
-function SituationBand({ league, snapshot, sheet, rank, total }) {
+function SituationBand({ league, snapshot, sheet, rank, total, showKickoff = true }) {
   const kickoff = useKickoff()
   const draft = useDraftPhase(snapshot.draftAt, snapshot.draftStatus)
   const platform = platformFor(league.provider).name
@@ -70,7 +72,7 @@ function SituationBand({ league, snapshot, sheet, rank, total }) {
         <span className="font-bold text-white">
           {PHASE[draft.phase]}{draft.parts ? <> <Fig>{draft.parts.full}</Fig></> : null}
         </span>
-      ) : kickoff ? (
+      ) : kickoff && showKickoff ? (
         <span>Next kickoff <Fig className="font-bold text-white">{kickoff.full}</Fig></span>
       ) : null}
     </div>
@@ -190,6 +192,109 @@ function PlayerLink({ player, className = '' }) {
 
 function Nothing({ children }) {
   return <p className="text-[15px] leading-[1.55] text-v3-ink2">{children}</p>
+}
+
+/* THE ONE THING THIS WEEK — the week as the headline.
+
+   One call, chosen by the lane order the calls below already keep rather
+   than by whichever number is bigger (the two units do not convert — see
+   the header): the lineup swap first, because it is the decision that
+   expires at kickoff; then the claim; then a starter who might not play;
+   and when none of them clears roomStakes' floor, the block says nothing
+   needs doing rather than inventing a call. The matchup is one link away,
+   and the next kickoff is printed as the exact time as well as the ticking
+   digits — lineups lock as each game kicks off, so that instant is the
+   deadline on everything above it. This block carries the page's one
+   cobalt action; the lanes below link to their tools quietly. */
+function WeekCall({ sheet, week }) {
+  const kickoffAt = useNextKickoffAt()
+  const parts = useCountdown(kickoffAt)
+  const { swaps, gaps, hurt, stakes, total, game, opponent } = sheet
+  const starting = hurt.filter((r) => r.starting)
+  let call = null
+  if (stakes.strategy && swaps[0]) {
+    const s = swaps[0]
+    call = {
+      kind: 'Lineup',
+      href: '#/v3/calls/lineup',
+      button: 'Make the lineup call',
+      pos: s.start.pos,
+      title: <>Start <PlayerLink player={s.start} /> over <PlayerLink player={s.sit} /></>,
+      figure: (
+        <>
+          <Delta value={s.gain} digits={1} className="text-[20px]" /> this week
+          {total !== null ? <span className="ml-2 text-v3-ink2">{total.toFixed(1)} as set → <span className="font-bold text-v3-ink">{(total + s.gain).toFixed(1)}</span></span> : null}
+          {s.replacing ? <span className="ml-2 text-v3-cost">that slot scores 0 as set</span> : null}
+        </>
+      ),
+    }
+  } else if (stakes.waiver && gaps[0]) {
+    const g = gaps[0]
+    call = {
+      kind: 'Wire',
+      href: '#/v3/calls/wire',
+      button: 'Make the claim',
+      pos: g.pos,
+      title: <>Claim <PlayerLink player={g.best.player} /></>,
+      figure: <><Delta value={g.improvement} className="text-[20px]" /> season points over the {g.pos} he would replace</>,
+    }
+  } else if (starting.length) {
+    const r = starting[0]
+    call = {
+      kind: 'Status',
+      href: '#/v3/calls/lineup',
+      button: 'Check your lineup',
+      pos: r.player.pos,
+      title: <><PlayerLink player={r.player} /> might not play</>,
+      figure: (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <InjuryChip severity={r.severity} onBye={r.onBye} code={r.player.inj} />
+          A starter, and nothing on your bench beats him at {r.player.pos}. Check him before his game kicks off.
+        </span>
+      ),
+    }
+  }
+  const also = []
+  if (call && call.kind !== 'Wire' && stakes.waiver) also.push(`a claim worth ${stakeLabel(stakes.waiver)}`)
+  if (hurt.length && !(call && call.kind === 'Status')) also.push(`${hurt.length} ${hurt.length === 1 ? 'player' : 'players'} might not play`)
+  const matchWeek = game ? game.week : week
+  const matchText = matchWeek ? `Week ${matchWeek} matchup` : 'The matchup'
+  return (
+    <div className="mt-7 rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
+      <div className="flex items-center justify-between gap-3">
+        <Label>The one thing this week</Label>
+        {call ? <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{call.kind}</span> : null}
+      </div>
+      {call ? (
+        <>
+          <div className="mt-3 flex items-start gap-3">
+            <PosTag pos={call.pos} className="mt-1.5" />
+            <p className="min-w-0 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">{call.title}</p>
+          </div>
+          <p className="mt-2 font-figure text-[14px] text-v3-ink2">{call.figure}</p>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">Nothing needs doing this week.</p>
+          <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">No swap on your bench clears a point, nothing on the wire beats what you hold, and every starter is available. Your lineup stands.</p>
+        </>
+      )}
+      {also.length ? <p className="mt-2 text-[14px] leading-[1.5] text-v3-ink2">Also this week: {also.join(' · ')}.</p> : null}
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+        {call ? <CallButton href={call.href}>{call.button} <Icon name="arrow" className="h-4 w-4" /></CallButton> : null}
+        <GoLink href={matchupHref(matchWeek)}>{matchText}</GoLink>
+      </div>
+      {parts ? (
+        <div className="mt-4 flex items-start gap-2 border-t border-v3-rule pt-3 font-figure text-[13px] text-v3-ink2">
+          <Icon name="clock" className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            <span className="block">Next kickoff <span className="font-bold tabular-nums text-v3-ink">{parts.full}</span></span>
+            <span className="block">{whenText(kickoffAt)} · lineups lock as each game kicks off</span>
+          </p>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 /* LINEUP — points this week. The best same-position swap and the next two,
@@ -456,6 +561,13 @@ function SeasonOver({ league, snapshot, rank, total }) {
 
 function PreDraft({ league, snapshot }) {
   const draft = useDraftPhase(snapshot.draftAt, snapshot.draftStatus)
+  /* The countdown is the whole of what this page knows, and on its own it
+     leaves a paying reader a screen of nothing under a clock. The locker is
+     the one other real thing there is to say before a draft — what they have
+     practised — and it is the pairing NowMember already makes out of season
+     for the identical reason. Drawn rather than invented: the same
+     historyList() summary Record and Account read. */
+  const locker = useLockerSummary()
   /* Words in the headline, the ticking clock in the sheet beside it: a
      headline that changes every minute reads as a counter, not a sentence. */
   const ms = snapshot.draftAt ? snapshot.draftAt - Date.now() : 0
@@ -476,23 +588,26 @@ function PreDraft({ league, snapshot }) {
           <QuietButton href="#/v3/league">Open League</QuietButton>
         </div>
       </div>
-      <Sheet code="Draft" aside={snapshot.draftAt ? whenText(snapshot.draftAt) : 'No time set'}>
-        <div className="font-figure text-[44px] font-bold leading-none tabular-nums text-v3-ink">
-          {draft.parts ? draft.parts.full : draft.phase === 'drafting' ? 'Live' : '—'}
-        </div>
-        <p className="mt-3 text-[15px] leading-[1.55] text-v3-ink2">
-          {draft.phase === 'drafting'
-            ? 'Picks land on your platform; rosters fill here once it finishes — ESPN publishes a draft only when it is complete.'
-            : draft.phase === 'late'
-              ? 'The scheduled time has gone by and the draft has not run. Rosters appear here once it does.'
-              : 'Counted down to the time your platform publishes, in your own time zone.'}
-        </p>
-      </Sheet>
+      <div className="grid gap-4">
+        <Sheet code="Draft" aside={snapshot.draftAt ? whenText(snapshot.draftAt) : 'No time set'}>
+          <div className="font-figure text-[44px] font-bold leading-none tabular-nums text-v3-ink">
+            {draft.parts ? draft.parts.full : draft.phase === 'drafting' ? 'Live' : '—'}
+          </div>
+          <p className="mt-3 text-[15px] leading-[1.55] text-v3-ink2">
+            {draft.phase === 'drafting'
+              ? 'Picks land on your platform; rosters fill here once it finishes — ESPN publishes a draft only when it is complete.'
+              : draft.phase === 'late'
+                ? 'The scheduled time has gone by and the draft has not run. Rosters appear here once it does.'
+                : 'Counted down to the time your platform publishes, in your own time zone.'}
+          </p>
+        </Sheet>
+        <LockerCard summary={locker} />
+      </div>
     </div>
   )
 }
 
-export default function NowConnected() {
+export default function NowConnected({ plan = null }) {
   const { league } = useLeagueFresh()
   const { snapshot, status, reason } = useSnapshotFresh(league ? league.leagueId : null, league ? league.provider : null)
   const ready = status === 'ready' && !!snapshot
@@ -528,6 +643,7 @@ export default function NowConnected() {
       <div className="grid gap-10">
         <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} />
         <PreDraft league={league} snapshot={snapshot} />
+        {plan}
       </div>
     )
   }
@@ -544,19 +660,23 @@ export default function NowConnected() {
   if (seasonPhase(snapshot) === 'complete') {
     return (
       <div className="grid gap-10">
-        <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} />
+        {/* No kickoff on a finished season: the page's own headline is that
+            nothing is left to decide, and a countdown beside it says the
+            opposite. Same rule SeasonBand keeps for the pages with no
+            league. */}
+        <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} showKickoff={false} />
         <SeasonOver league={league} snapshot={snapshot} rank={st.rank} total={st.table.length} />
+        {plan}
       </div>
     )
   }
 
-  const { mine, stakes, hurt, game, opponent, total } = sheet
+  const { mine, game, opponent, total } = sheet
   const week = snapshot.week
 
-  /* The one cobalt action on the page is the lane with something to do,
-     in lane order — never "whichever number is bigger", for the unit
-     reason above. With nothing to do, the page has no primary action. */
-  const primaryLane = stakes.strategy ? 'lineup' : stakes.waiver ? 'wire' : null
+  /* The one cobalt action on the page is WeekCall's — the lane with
+     something to do, in lane order, never "whichever number is bigger", for
+     the unit reason above. The lanes below link to their tools quietly. */
 
   const title = !mine
     ? 'Which team is yours?'
@@ -568,14 +688,11 @@ export default function NowConnected() {
 
   const facts = []
   if (mine && total !== null) facts.push(`You project ${total.toFixed(1)} as set${sheet.oppTotal !== null && opponent ? `; ${opponent.teamName} projects ${sheet.oppTotal.toFixed(1)}` : ''}.`)
-  if (stakes.strategy) facts.push(`One lineup swap adds ${stakeLabel(stakes.strategy).slice(1)}.`)
-  if (stakes.waiver) facts.push(`The wire holds ${Math.round(stakes.waiver.pts)} season points over replacement that your roster does not.`)
-  if (hurt.length) facts.push(`${hurt.length} ${hurt.length === 1 ? 'player' : 'players'} might not play.`)
-  if (mine && !stakes.strategy && !stakes.waiver && !hurt.length) facts.push('Nothing on the sheet needs doing this week.')
+  if (mine && total === null) facts.push('A starter has no projection yet, so there is no total to state.')
 
   return (
     <div className="grid gap-10">
-      <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} />
+      <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} showKickoff={!mine} />
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div>
@@ -584,7 +701,7 @@ export default function NowConnected() {
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
             {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}
           </p>
-          {!mine ? <div className="mt-7"><QuietButton href="#/v3/account">Manage leagues</QuietButton></div> : null}
+          {!mine ? <div className="mt-7"><QuietButton href="#/v3/account">Manage leagues</QuietButton></div> : <WeekCall sheet={sheet} week={week} />}
         </div>
         {mine ? <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} sleeperGame={sleeperGame} /> : null}
       </div>
@@ -598,8 +715,8 @@ export default function NowConnected() {
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-6">
-            <div className="flex lg:col-span-3"><LineupCall sheet={sheet} primary={primaryLane === 'lineup'} /></div>
-            <div className="flex lg:col-span-3"><WireCall sheet={sheet} snapshot={snapshot} platform={platform} primary={primaryLane === 'wire'} /></div>
+            <div className="flex lg:col-span-3"><LineupCall sheet={sheet} primary={false} /></div>
+            <div className="flex lg:col-span-3"><WireCall sheet={sheet} snapshot={snapshot} platform={platform} primary={false} /></div>
             <div className="flex lg:col-span-2"><InjuryCall sheet={sheet} snapshot={snapshot} platform={platform} /></div>
             <div className="flex lg:col-span-2"><TradeCall sheet={sheet} snapshot={snapshot} /></div>
             <div className="flex lg:col-span-2"><LeagueCall league={league} snapshot={snapshot} sheet={sheet} odds={model.odds} /></div>
@@ -608,6 +725,7 @@ export default function NowConnected() {
       ) : (
         <div className="max-w-[520px]"><LeagueCall league={league} snapshot={snapshot} sheet={sheet} odds={model.odds} /></div>
       )}
+      {plan}
     </div>
   )
 }
