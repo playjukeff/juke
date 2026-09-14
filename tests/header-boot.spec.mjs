@@ -32,7 +32,7 @@ import { openApp, startSoloDraft } from "./helpers.mjs";
 test("a started draft renders a header before the engine has landed", async ({ browser }) => {
   const context = await browser.newContext();
   await context.route("**/draft-engine.js*", (route) => route.abort());
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   const out = await page.evaluate(() => {
     const res = { engine: typeof DraftEngine };
@@ -70,7 +70,7 @@ test("and the header describes the draft as soon as the engine is there", async 
      worse bug than the crash it replaced and would look like a styling
      problem. So: same call, same started draft, engine present. */
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await page.evaluate(() => {

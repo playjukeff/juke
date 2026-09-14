@@ -24,16 +24,16 @@ import { CallButton, Fig, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Ske
    for a value's direction, warn for caution (an injury, a SAMPLE label). */
 
 export function playerHref(p) {
-  return p && p.id ? `#/v3/players/${encodeURIComponent(String(p.id))}` : null
+  return p && p.id ? `#/players/${encodeURIComponent(String(p.id))}` : null
 }
 export function teamHref(t) {
-  return t && t.rosterId !== null && t.rosterId !== undefined ? `#/v3/league/team/${encodeURIComponent(String(t.rosterId))}` : null
+  return t && t.rosterId !== null && t.rosterId !== undefined ? `#/league/team/${encodeURIComponent(String(t.rosterId))}` : null
 }
 
 export function BackToNow() {
   return (
     <a
-      href="#/v3"
+      href="#/"
       className={cx(TOUCH, '-ml-1 inline-flex min-h-[40px] items-center gap-1.5 rounded-[4px] px-1 font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}
     >
       <Icon name="back" className="h-4 w-4" /> Back to Now
@@ -260,7 +260,7 @@ export function NoTeam({ teams, what }) {
       <p className="max-w-[60ch] text-[15px] leading-[1.55] text-v3-ink2">
         Reconnect this league to {what} — Juke does not know which of the {teams} rosters is yours.
       </p>
-      <div className="mt-4"><QuietButton href="#/v3/account">Your leagues</QuietButton></div>
+      <div className="mt-4"><QuietButton href="#/account">Your leagues</QuietButton></div>
     </Sheet>
   )
 }
@@ -275,7 +275,7 @@ export function WayIn() {
   if (signedIn) {
     return (
       <div className="grid gap-2">
-        <CallButton href="#/v3/account">Connect a league <Icon name="arrow" className="h-4 w-4" /></CallButton>
+        <CallButton href="#/account">Connect a league <Icon name="arrow" className="h-4 w-4" /></CallButton>
       </div>
     )
   }
@@ -283,8 +283,8 @@ export function WayIn() {
   const login = <QuietButton>Log in</QuietButton>
   return (
     <div className="flex flex-wrap gap-2">
-      {ready ? <SignUpButton mode="modal">{signup}</SignUpButton> : <CallButton href="#/v3/account">Sign up &amp; connect <Icon name="arrow" className="h-4 w-4" /></CallButton>}
-      {ready ? <SignInButton mode="modal">{login}</SignInButton> : <QuietButton href="#/v3/account">Log in</QuietButton>}
+      {ready ? <SignUpButton mode="modal">{signup}</SignUpButton> : <CallButton href="#/account">Sign up &amp; connect <Icon name="arrow" className="h-4 w-4" /></CallButton>}
+      {ready ? <SignInButton mode="modal">{login}</SignInButton> : <QuietButton href="#/account">Log in</QuietButton>}
     </div>
   )
 }

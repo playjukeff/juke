@@ -230,7 +230,7 @@ function Table({ rows, cols, sort, onSort, deepAt }) {
         </thead>
         <tbody>
           {rows.map((r, i) => {
-            const href = `#/v3/players/${encodeURIComponent(r.id)}`
+            const href = `#/players/${encodeURIComponent(r.id)}`
             return (
               <Fragment key={r.id}>
               {deepAt === i ? <DeepDivider asRow span={cols.length + 2} /> : null}
@@ -283,7 +283,7 @@ function PhoneList({ rows, cols, sort, mode, deepAt }) {
   return (
     <ul className="md:hidden" aria-label="Players">
       {rows.map((r, i) => {
-        const href = `#/v3/players/${encodeURIComponent(r.id)}`
+        const href = `#/players/${encodeURIComponent(r.id)}`
         return (
           <Fragment key={r.id}>
           {deepAt === i ? <DeepDivider /> : null}

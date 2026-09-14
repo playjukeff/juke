@@ -7,7 +7,7 @@ import { LAUNCH_HASH, RECORD_HASH } from './flow.js'
 import { FOCUS, Glyph } from './kit.jsx'
 import { CountUp, DUR, EASE, cancelAll, playOn, useEntrance } from '../motion.jsx'
 
-/* The report, at #/v3/draft/report (optional ?id=<historyId>).
+/* The report, at #/draft/report (optional ?id=<historyId>).
 
    Which draft it describes, in order:
    1. ?id= names a locker entry: its FROZEN report (engine.historyReport),
@@ -296,9 +296,20 @@ export default function V3Report() {
         <Gate
           label={`From your record · ${summary.dateCompleted}`}
           title="This one predates the frozen report."
-          actions={<><CallButton href={`#/rooms/draft?report=${encodeURIComponent(id)}`}>Open it in the classic locker <Glyph name="arrow" className="h-4 w-4" /></CallButton><QuietButton href={RECORD_HASH}>Back to your record</QuietButton></>}
+          /* This offered "Open it in the classic locker" at
+             #/rooms/draft?report=<id> until the cutover, and that address now
+             canonicalises to #/draft/report?id=<id> — THIS screen. So the one
+             action on the card returned to the card, which is the dead-control
+             failure with a loop in it: it renders, it contrasts, it throws
+             nothing, and pressing it appears to do nothing at all.
+
+             The classic locker is unreachable from every address now, so the
+             action cannot be honoured and is not offered. The copy says what
+             is true instead — the grade and rank recorded that night are real
+             and are shown; the full breakdown is what predates the freeze. */
+          actions={<CallButton href={RECORD_HASH}>Back to your record <Glyph name="arrow" className="h-4 w-4" /></CallButton>}
         >
-          {`${summary.leagueType} from seat ${summary.seat}, graded ${summary.grade || '—'}${summary.rank ? ` · ${summary.projectedRank} of ${summary.teams}` : ''} when it finished. It was recorded before Juke kept each report frozen, so the full breakdown can only be rebuilt by replaying the draft against tonight’s board — which the classic locker does, and which would move its numbers from what was recorded.`}
+          {`${summary.leagueType} from seat ${summary.seat}, graded ${summary.grade || '—'}${summary.rank ? ` · ${summary.projectedRank} of ${summary.teams}` : ''} when it finished. That grade is what was recorded on the night. The full breakdown is not: it was kept before Juke froze each report, and rebuilding it would mean replaying the draft against tonight’s board, which would move its numbers away from what actually happened.`}
         </Gate>
       )
     } else {

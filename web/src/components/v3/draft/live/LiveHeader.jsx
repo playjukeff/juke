@@ -3,6 +3,7 @@ import { DE } from '../../../v2/cockpit/cockpitData.js'
 import { Label, PosTag, cx } from '../../ui.jsx'
 import { LAUNCH_HASH } from '../flow.js'
 import { FOCUS, Glyph, Switch, fmtClock } from '../kit.jsx'
+import { leaveRoom, sendBlocker } from './room.js'
 import { DUR, EASE, PRESS, motion, useCalm, useFlip } from '../../motion.jsx'
 import { useRef } from 'react'
 
@@ -37,9 +38,19 @@ function ClockReadout({ engine, header, phone }) {
   const paused = !!engine.paused()
 
   if (header.over) return null
-  if (!myTurn) {
-    // Solo: a CPU has no countdown of its own, so the useful number is how
-    // long until you are back — headerInfo()'s own "Your turn in".
+  /* Whose turn it is does not decide whether there is a clock to draw, and
+     for a while this branched as though it did. Solo, a CPU has no countdown
+     of its own, so the useful number is how long until you are back. In a
+     ROOM there is a real clock running on a real person and clockShowing()
+     puts it in this slot for everybody — so a guest fell into the branch
+     below and read a live countdown rendered as plain text, with no
+     role="timer" and no accessible name carrying the number.
+
+     Which is the "a clock everyone is waiting on has to be a clock everyone
+     can see" rule half-kept: it was on screen and it was not announced. The
+     engine already answers this — rightIsClock — so ask it rather than
+     inferring it from myTurn, which is a different question. */
+  if (!myTurn && !info.rightIsClock) {
     const n = Number(info.rightValue)
     return (
       <div className={cx('shrink-0', phone ? 'text-right' : '')}>
@@ -106,9 +117,14 @@ function StateRule({ rule }) {
   )
 }
 
-export default function LiveHeader({ engine, header, phone, autopick, onAutopick, soundOn, onSound, onMenu, menuOpen }) {
+export default function LiveHeader({ engine, header, phone, room = null, autopick, onAutopick, soundOn, onSound, onMenu, menuOpen }) {
   const myTurn = !!header.myTurn
-  const canPause = !header.over && engine.clockLength() > 0
+  /* The clock in a room is the room's, and pausing it is the host's — the
+     room refuses it from anybody else (room.js's pause()), so a button that
+     is offered and then silently ignored is the dead-control failure with a
+     draft behind it. Offered when it can act, and never otherwise. */
+  const canPause = !header.over && engine.clockLength() > 0 && (!room || room.isHost)
+  const blocked = room ? sendBlocker(room) : null
   const paused = !!header.paused
   // A 3px rule across the top: ink while it is yours, caution once it is
   // urgent. The resting state (a CPU on the clock) is the plain bar.
@@ -120,9 +136,15 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
       <header className="relative z-20 shrink-0 border-b border-v3-rule bg-v3-sheet" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <StateRule rule={rule} />
         <div className="flex h-[60px] items-center gap-2 px-2">
-          <a href={LAUNCH_HASH} aria-label="Leave the draft — it stays saved" className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] text-v3-ink hover:bg-v3-well', FOCUS)}>
-            <Glyph name="back" className="h-5 w-5" />
-          </a>
+          {room ? (
+            <button type="button" onClick={() => leaveRoom(engine)} data-leave-room aria-label="Leave the room — your seat is drafted for until you come back" className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] text-v3-ink hover:bg-v3-well', FOCUS)}>
+              <Glyph name="back" className="h-5 w-5" />
+            </button>
+          ) : (
+            <a href={LAUNCH_HASH} aria-label="Leave the draft — it stays saved" className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[6px] text-v3-ink hover:bg-v3-well', FOCUS)}>
+              <Glyph name="back" className="h-5 w-5" />
+            </a>
+          )}
           <div className="min-w-0 flex-1">
             <span className={cx('block truncate font-figure text-[11px] font-bold uppercase tracking-[0.12em]', myTurn ? 'text-v3-ink' : 'text-v3-ink3')}>{state}</span>
             <span className="flex items-baseline gap-2">
@@ -142,13 +164,33 @@ export default function LiveHeader({ engine, header, phone, autopick, onAutopick
       <StateRule rule={rule} />
       <div className="flex h-[68px] items-center gap-4 px-4 xl:gap-6 xl:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
-            <Glyph name="back" className="h-4 w-4" /> Leave
-          </a>
+          {room ? (
+            /* Leaving the SCREEN leaves the ROOM: the chair goes to the CPU
+               so the draft keeps moving without you, and the invite link
+               brings you back to the same seat. A link that only changed the
+               hash would leave a socket open on a screen nobody is on. */
+            <button type="button" onClick={() => leaveRoom(engine)} data-leave-room title="Leave the room — your seat is drafted for until you come back" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+              <Glyph name="back" className="h-4 w-4" /> Leave
+            </button>
+          ) : (
+            <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+              <Glyph name="back" className="h-4 w-4" /> Leave
+            </a>
+          )}
           <div className="min-w-0">
-            <Label className="block truncate">The Draft Room</Label>
-            <span className="block truncate font-figure text-[13px] text-v3-ink2">{header.leagueSummary}</span>
+            <Label className="block truncate">{room ? (room.hostName ? `${room.hostName}'s room` : 'Draft room') : 'The Draft Room'}</Label>
+            <span className="block truncate font-figure text-[13px] text-v3-ink2">
+              {room ? `${room.taken} of ${room.seats.length} managers · ${header.leagueSummary}` : header.leagueSummary}
+            </span>
           </div>
+          {blocked && (
+            /* A socket that has dropped is the normal path, not a fault: the
+               room is still there and the seat is still held. Said, because
+               every control that sends is refusing while this is up. */
+            <span role="status" className="hidden shrink-0 items-center gap-1.5 rounded-[4px] bg-v3-warnWash px-2 py-1 font-figure text-[12px] font-semibold text-v3-warn lg:inline-flex">
+              <Glyph name="alert" className="h-3.5 w-3.5" /> {blocked}
+            </span>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-4">

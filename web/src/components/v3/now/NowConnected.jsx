@@ -46,7 +46,7 @@ import { useNextKickoffAt } from './season.js'
 
    The same modules the Strategy, Waiver and Trade rooms and My League read,
    through leagueData.js — see its header for the list. The calls link to
-   the tools at #/v3/calls/*; this page states the call and its arithmetic,
+   the tools at #/calls/*; this page states the call and its arithmetic,
    the tool is where it is worked. */
 
 const PHASE = { soon: 'Draft in', drafting: 'Drafting now', late: 'Draft time passed' }
@@ -184,7 +184,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
 function PlayerLink({ player, className = '' }) {
   if (!player) return <span className={className}>Empty slot</span>
   return (
-    <a href={`#/v3/players/${encodeURIComponent(String(player.id))}`} className={cx('truncate font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink', className)}>
+    <a href={`#/players/${encodeURIComponent(String(player.id))}`} className={cx('truncate font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink', className)}>
       {player.name}
     </a>
   )
@@ -216,7 +216,7 @@ function WeekCall({ sheet, week }) {
     const s = swaps[0]
     call = {
       kind: 'Lineup',
-      href: '#/v3/calls/lineup',
+      href: '#/calls/lineup',
       button: 'Make the lineup call',
       pos: s.start.pos,
       title: <>Start <PlayerLink player={s.start} /> over <PlayerLink player={s.sit} /></>,
@@ -232,7 +232,7 @@ function WeekCall({ sheet, week }) {
     const g = gaps[0]
     call = {
       kind: 'Wire',
-      href: '#/v3/calls/wire',
+      href: '#/calls/wire',
       button: 'Make the claim',
       pos: g.pos,
       title: <>Claim <PlayerLink player={g.best.player} /></>,
@@ -242,7 +242,7 @@ function WeekCall({ sheet, week }) {
     const r = starting[0]
     call = {
       kind: 'Status',
-      href: '#/v3/calls/lineup',
+      href: '#/calls/lineup',
       button: 'Check your lineup',
       pos: r.player.pos,
       title: <><PlayerLink player={r.player} /> might not play</>,
@@ -340,7 +340,7 @@ function LineupCall({ sheet, primary }) {
       )}
       <p className="mt-4 text-[13px] leading-[1.5] text-v3-ink3">Same position only — your platform does not tell Juke which slot is a FLEX, so these are the swaps that are certainly legal.</p>
       <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
-        {primary ? <CallButton href="#/v3/calls/lineup">Open the lineup tool <Icon name="arrow" className="h-4 w-4" /></CallButton> : <GoLink href="#/v3/calls/lineup">Open the lineup tool</GoLink>}
+        {primary ? <CallButton href="#/calls/lineup">Open the lineup tool <Icon name="arrow" className="h-4 w-4" /></CallButton> : <GoLink href="#/calls/lineup">Open the lineup tool</GoLink>}
       </div>
     </Sheet>
   )
@@ -399,7 +399,7 @@ function WireCall({ sheet, snapshot, platform, primary }) {
         </p>
       </div>
       <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
-        {primary ? <CallButton href="#/v3/calls/wire">Open the wire <Icon name="arrow" className="h-4 w-4" /></CallButton> : <GoLink href="#/v3/calls/wire">Open the wire</GoLink>}
+        {primary ? <CallButton href="#/calls/wire">Open the wire <Icon name="arrow" className="h-4 w-4" /></CallButton> : <GoLink href="#/calls/wire">Open the wire</GoLink>}
       </div>
     </Sheet>
   )
@@ -436,7 +436,7 @@ function TradeCall({ sheet, snapshot }) {
         </dl>
       ) : null}
       <p className="mt-3 text-[13px] leading-[1.5] text-v3-ink3">Over replacement for the season. Kickers and defenses are not priced — Juke declines to rank them.</p>
-      <div className="mt-auto pt-4"><GoLink href="#/v3/calls/trade">{w.state === 'passed' || w.state === 'disabled' ? 'Price a roster' : 'Build a trade'}</GoLink></div>
+      <div className="mt-auto pt-4"><GoLink href="#/calls/trade">{w.state === 'passed' || w.state === 'disabled' ? 'Price a roster' : 'Build a trade'}</GoLink></div>
     </Sheet>
   )
 }
@@ -519,7 +519,7 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
           </ul>
         </div>
       ) : null}
-      <div className="mt-auto pt-4"><GoLink href="#/v3/league">Open League</GoLink></div>
+      <div className="mt-auto pt-4"><GoLink href="#/league">Open League</GoLink></div>
     </Sheet>
   )
 }
@@ -539,8 +539,8 @@ function SeasonOver({ league, snapshot, rank, total }) {
           {s ? `${s.won}-${s.lost}${s.tied ? '-' + s.tied : ''}${rank ? `, ${ordinal(rank)} of ${total}` : ''}. ` : ''}The one decision still ahead of you is next year&apos;s draft, and it is the only one you can practise.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <CallButton href="#/v3/draft">Mock a {snapshot.totalTeams}-team board <Icon name="arrow" className="h-4 w-4" /></CallButton>
-          <QuietButton href="#/v3/league">Read the season back</QuietButton>
+          <CallButton href="#/draft">Mock a {snapshot.totalTeams}-team board <Icon name="arrow" className="h-4 w-4" /></CallButton>
+          <QuietButton href="#/league">Read the season back</QuietButton>
         </div>
       </div>
       {s ? (
@@ -584,8 +584,8 @@ function PreDraft({ league, snapshot }) {
           Rosters are empty until {snapshot.name || league.name} drafts. The week&apos;s calls — the lineup swap, the claim, the trade window, who might not play — start the morning after.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <CallButton href="#/v3/draft">Mock a {snapshot.totalTeams}-team board first <Icon name="arrow" className="h-4 w-4" /></CallButton>
-          <QuietButton href="#/v3/league">Open League</QuietButton>
+          <CallButton href="#/draft">Mock a {snapshot.totalTeams}-team board first <Icon name="arrow" className="h-4 w-4" /></CallButton>
+          <QuietButton href="#/league">Open League</QuietButton>
         </div>
       </div>
       <div className="grid gap-4">
@@ -632,7 +632,7 @@ export default function NowConnected({ plan = null }) {
         </div>
       )
     }
-    return <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/v3/account">Manage leagues</QuietButton></CouldNotRead>
+    return <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/account">Manage leagues</QuietButton></CouldNotRead>
   }
 
   const st = standing(snapshot, league.ownerId)
@@ -701,7 +701,7 @@ export default function NowConnected({ plan = null }) {
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
             {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}
           </p>
-          {!mine ? <div className="mt-7"><QuietButton href="#/v3/account">Manage leagues</QuietButton></div> : <WeekCall sheet={sheet} week={week} />}
+          {!mine ? <div className="mt-7"><QuietButton href="#/account">Manage leagues</QuietButton></div> : <WeekCall sheet={sheet} week={week} />}
         </div>
         {mine ? <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} sleeperGame={sleeperGame} /> : null}
       </div>

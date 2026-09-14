@@ -57,7 +57,7 @@ async function draftInto(page, picks) {
     stopSim();
     for (let i = 0; i < n; i++) { const c = onTheClock(); if (c) makePick(cpuChoice(c.slot, c.round)); }
     render();
-    location.hash = "#/draft-room";
+    location.hash = "#/draft";
   }, picks);
   expect(await page.evaluate(() => state.started), "draft started").toBe(true);
 
@@ -127,7 +127,7 @@ const CONTRAST = `
 
 test.describe("what the board marks", () => {
   test("your column is marked all the way down, drafted or not", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await draftInto(page, 40);
 
     /* The whole feature. Marking only the filled cells says where you have
@@ -151,7 +151,7 @@ test.describe("what the board marks", () => {
 
   test("the live ring is on the pick that is on the clock, and moves with it",
     async ({ context }) => {
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await draftInto(page, 12);
 
       const read = () => page.evaluate((c) => {
@@ -180,7 +180,7 @@ test.describe("what the board marks", () => {
   test("the seat bracket is drawn on the board's own ground, and clears its bar there",
     async ({ browser }) => {
       const context = await browser.newContext();
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await draftInto(page, 60);
 
       const r = await page.evaluate((c) => {
@@ -278,7 +278,7 @@ test.describe("what the board marks", () => {
      instead of stubbing it out. */
 
   test("the number in the corner is the pick that cell really is", async ({ context }) => {
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await draftInto(page, 20);
 
     /* The property, not the arithmetic. A corner number is right when

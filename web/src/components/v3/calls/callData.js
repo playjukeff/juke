@@ -189,7 +189,7 @@ export function marketEvenDeal(mine, rivals, byId, gapOf, windows = [3, 6]) {
    A deal handed in by address.
 
    Now can open the Trade tool on a specific question:
-     #/v3/calls/trade?with=<rosterId>&give=<id,id>&get=<id,id>
+     #/calls/trade?with=<rosterId>&give=<id,id>&get=<id,id>
    V3App strips the query before routing, so it is read off the hash here.
    Ids that are not on the right roster are dropped rather than trusted. --- */
 export function dealFromHash(hash) {

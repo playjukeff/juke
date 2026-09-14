@@ -23,13 +23,17 @@ import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
 
-/* Juke v3 — "Call Sheet". The full-autonomy proposal: its own information
-   architecture, not a restyle of production or of v2.
+/* Juke — "Call Sheet". This is the site as of the cutover: its own
+   information architecture rather than a restyle of what came before, and
+   the thing #/ renders. It began as the v3 proposal and kept the directory
+   name, which is now a fact about where the files live and nothing about
+   what the product is.
 
    ---- The information architecture, in one sentence ----
 
    Organised by the decision in front of you, not by the room it lives in.
-   Production has six rooms and three account pages; v3 has five places:
+   The site it replaced had six rooms and three account pages; this has five
+   places:
 
      Now      the calls in front of you today — the week's lineup swap, the
               claim worth making, the trade window, the draft countdown — or,
@@ -51,6 +55,20 @@ import V3Method from './method/V3Method.jsx'
    which is the guideline the design system search returned for mobile nav,
    and it is the same five on desktop so a reader never relearns the map. */
 
+/* A layout effect in the browser, an ordinary one on the server.
+
+   The theme has to be stamped before the first v3 frame paints, which is
+   what useLayoutEffect buys — and a layout effect cannot run during
+   renderToString(), so React warns about every one it meets there. That
+   warning is real rather than noise: it is telling you the server's markup
+   and the client's intended markup can disagree. Here they cannot, because
+   what this effect writes is an attribute on <html> rather than anything in
+   this tree, and /theme.js has already written the identical value in <head>
+   before the body was parsed (see its second block). Selecting the hook at
+   module scope keeps the hook COUNT identical on both sides, which is the
+   only thing React's rules actually require. */
+const useMountEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+
 let facesRequested = false
 function useSheetFaces() {
   useEffect(() => {
@@ -64,11 +82,11 @@ function useSheetFaces() {
 }
 
 export const NAV = [
-  { key: 'now', label: 'Now', icon: 'now', href: '#/v3', match: ['', 'calls'] },
-  { key: 'league', label: 'League', icon: 'league', href: '#/v3/league', match: ['league'] },
-  { key: 'players', label: 'Players', icon: 'players', href: '#/v3/players', match: ['players'] },
-  { key: 'draft', label: 'Draft', icon: 'draft', href: '#/v3/draft', match: ['draft'] },
-  { key: 'record', label: 'Record', icon: 'record', href: '#/v3/record', match: ['record'] },
+  { key: 'now', label: 'Now', icon: 'now', href: '#/', match: ['', 'calls'] },
+  { key: 'league', label: 'League', icon: 'league', href: '#/league', match: ['league'] },
+  { key: 'players', label: 'Players', icon: 'players', href: '#/players', match: ['players'] },
+  { key: 'draft', label: 'Draft', icon: 'draft', href: '#/draft', match: ['draft'] },
+  { key: 'record', label: 'Record', icon: 'record', href: '#/record', match: ['record'] },
 ]
 
 /* The next NFL kickoff, counted down — production's own nextKickoff(), and
@@ -111,33 +129,37 @@ function Account() {
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <a href="#/v3/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
+          <a href="#/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
           <UserButton />
         </SignedIn>
       </>
     )
   }
   return (
-    <a href="#/v3/account" aria-label="Account" className={cx(TOUCH, 'inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>
+    <a href="#/account" aria-label="Account" className={cx(TOUCH, 'inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>
       <Icon name="account" className="h-5 w-5" />
       <span className="hidden sm:inline">{signedIn ? 'Account' : 'Log in'}</span>
     </a>
   )
 }
 
-function Compare() {
-  return (
-    <details className="relative hidden sm:block">
-      <summary className={cx(TOUCH, 'flex min-h-[40px] cursor-pointer list-none items-center gap-1.5 rounded-[6px] border border-v3-rule px-3 text-[13px] font-semibold text-v3-ink2 hover:text-v3-ink [&::-webkit-details-marker]:hidden')}>
-        Compare <Icon name="arrow" className="h-3.5 w-3.5 rotate-90" />
-      </summary>
-      <div className="absolute right-0 z-50 mt-2 w-[220px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.25)]">
-        <a href="#/" className="flex min-h-[44px] items-center justify-between px-4 text-[14px] text-v3-ink hover:bg-v3-paper">Production <Icon name="arrow" className="h-4 w-4 text-v3-ink3" /></a>
-        <a href="#/v2" className="flex min-h-[44px] items-center justify-between border-t border-v3-rule px-4 text-[14px] text-v3-ink hover:bg-v3-paper">v2 · Telemetry <Icon name="arrow" className="h-4 w-4 text-v3-ink3" /></a>
-      </div>
-    </details>
-  )
-}
+/* The "Compare" menu and the "v3" badge beside the logo both left with the
+   cutover, and neither was a styling decision.
+
+   The badge said "this is the proposal" on the thing that is now the
+   product — the stale-copy failure this project already has a rule about,
+   in the most-read four characters on the site. And the menu's own first
+   entry pointed at "Production", which is #/, which is the page it was
+   drawn on: a control that navigates to itself, which is the dead-control
+   failure with a destination rather than without one. Its second entry
+   invited every visitor to go and look at a design that was not chosen.
+
+   #/v2 is still REACHABLE and that is the point of keeping it — it is the
+   comparison record, it costs one branch in App.jsx, and it is the only way
+   to see what was proposed beside what shipped. It is simply no longer
+   advertised in the primary bar of a shipped product. Unadvertised is not
+   the same as absent, the same way #view-app is unreachable rather than
+   deleted. */
 
 /* The theme, from the top bar, on every screen and at every width. An icon
    rather than a labelled Seg because the bar is full on a phone; the icon is
@@ -207,8 +229,7 @@ function TopBar({ current }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
-        <a href="#/v3" aria-label="Juke v3, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
-        <span className="rounded-[4px] bg-v3-callWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-call">v3</span>
+        <a href="#/" aria-label="Juke, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
         <nav aria-label="Primary" className="ml-6 hidden h-full items-stretch gap-1 md:flex">
           {NAV.map((n) => {
             const on = n.match.includes(current)
@@ -232,7 +253,6 @@ function TopBar({ current }) {
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <Kickoff />
-          <Compare />
           <ThemeMenu />
           <Account />
         </div>
@@ -279,14 +299,14 @@ function Footer() {
         </div>
         <div className="grid content-start gap-2 text-[14px]">
           <Label>Method</Label>
-          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/how-it-works">How Juke calls it</a>
-          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/how-it-works?s=s06">The draft grade</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/how-it-works">How Juke calls it</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/how-it-works?s=s06">The draft grade</a>
         </div>
         <div className="grid content-start gap-2 text-[14px]">
           <Label>The small print</Label>
-          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/privacy">Privacy</a>
-          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/method/terms">Terms</a>
-          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/v3/account">Account and leagues</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/privacy">Privacy</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/terms">Terms</a>
+          <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/account">Account and leagues</a>
         </div>
       </div>
     </footer>
@@ -302,26 +322,39 @@ function NotFound() {
         Nothing in Juke answers to this address. Everything that does is one of the five places below.
       </p>
       <div className="flex flex-wrap gap-2">
-        <CallButton href="#/v3">Back to Now</CallButton>
-        <QuietButton href="#/v3/players">Browse players</QuietButton>
+        <CallButton href="#/">Back to Now</CallButton>
+        <QuietButton href="#/players">Browse players</QuietButton>
       </div>
     </div>
   )
 }
 
-/* The route table — every v3 address, and where each production capability
-   landed. Production → v3:
-     #/                 → #/v3                (Now)
-     #/rooms/draft      → #/v3/draft          (+ /live, /report, /insights)
-     #/drafts, #/history→ #/v3/record
-     #/rooms/prospect   → #/v3/players/rookies
-     #/rooms/strategy   → #/v3/calls/lineup
-     #/rooms/waiver     → #/v3/calls/wire
-     #/rooms/trade      → #/v3/calls/trade
-     #/my-league        → #/v3/league          (+ /team/<id>, /matchup?week=N[&team=id])
-     #/you              → #/v3/account
-     #/rooms            → gone: the rooms are calls on Now and tools behind them
-     /docs/*.html       → #/v3/method/<doc> */
+/* The route table — every address the site answers to, and where each of
+   the old ones landed. The left column is what somebody may have saved;
+   app.js's canonicalHash() is what rewrites it, and this is the map it
+   implements. Neither list is the other's source: that one runs in a
+   classic script and cannot import this file, so the two are checked
+   against each other by tests/route.spec.mjs rather than by a shared
+   constant. Move them together.
+
+     #/                  → #/                 Now
+     #/rooms             → #/                 gone: the rooms are calls on
+                                               Now and tools behind them
+     #/rooms/draft       → #/draft             (+ /live, /report, /insights)
+     #/rooms/draft?report=<id> → #/draft/report?id=<id>
+     #/rooms/prospect    → #/players/rookies
+     #/rooms/strategy    → #/calls/lineup
+     #/rooms/waiver      → #/calls/wire
+     #/rooms/trade       → #/calls/trade
+     #/rooms/league      → #/league
+     #/my-league         → #/league           (+ /team/<id>,
+                                               /matchup?week=N[&team=id])
+     #/you               → #/account
+     #/drafts, #/history → #/record
+     #/draft-room        → #/draft
+     #/draft?room=<code> → #/draft/live?room=<code>   an invite
+     #/v3/...            → #/...              the proposal's own prefix
+     /docs/*.html        → #/method/<doc> */
 function route(sub) {
   const [a = '', b, c] = (sub || '').split('/')
   if (!a) return { page: <Now /> }
@@ -344,9 +377,16 @@ function route(sub) {
 
 export default function V3App({ sub = '' }) {
   useSheetFaces()
-  // Before paint, so the first v3 frame is already in the chosen theme; and
-  // undone on the way out, so production and v2 never see the attribute.
-  useLayoutEffect(() => mountTheme(), [])
+  /* Before paint, so the first v3 frame is already in the chosen theme; and
+     undone on the way out, so v2 never sees the attribute.
+
+     /theme.js stamps the same value in <head> now that v3 is the site — a
+     layout effect runs after the module bundle has hydrated, which is far
+     too late to stop a dark reader watching a light page paint first. This
+     is what keeps the attribute answering to the CHOICE afterwards: the
+     store's listener, the System case following the device, and the Account
+     page's own control all hang off this mount. */
+  useMountEffect(() => mountTheme(), [])
   const clean = (sub || '').split('?')[0]
   const current = clean.split('/')[0]
   const { page, bare } = route(clean)

@@ -15,14 +15,14 @@ import { LIFT } from '../motion.jsx'
    a fabrication. Links go to v3's own tools rather than the live rooms. */
 
 function toV3(href) {
-  if (!href) return '#/v3'
-  if (href === '#/rooms/draft') return '#/v3/draft'
-  if (href === '#/rooms/strategy') return '#/v3/calls/lineup'
-  if (href === '#/rooms/waiver') return '#/v3/calls/wire'
-  if (href === '#/rooms/trade') return '#/v3/calls/trade'
-  return '#/v3'
+  if (!href) return '#/'
+  if (href === '#/rooms/draft') return '#/draft'
+  if (href === '#/rooms/strategy') return '#/calls/lineup'
+  if (href === '#/rooms/waiver') return '#/calls/wire'
+  if (href === '#/rooms/trade') return '#/calls/trade'
+  return '#/'
 }
-const SLUG_TO = { waiver: '#/v3/calls/wire', strategy: '#/v3/calls/lineup', trade: '#/v3/calls/trade' }
+const SLUG_TO = { waiver: '#/calls/wire', strategy: '#/calls/lineup', trade: '#/calls/trade' }
 
 function readDemo(engine) {
   const board = engine.board()
@@ -145,7 +145,7 @@ export default function LeagueDemo() {
                   {move.gap.marker ? <p className="mt-2 text-[13px] text-v3-ink3">{move.gap.marker.label}: {move.gap.marker.at} {move.gap.unit}</p> : null}
                 </div>
               ) : null}
-              <a href={SLUG_TO[move.slug] || '#/v3'} className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-[6px] border border-v3-rule px-5 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper">
+              <a href={SLUG_TO[move.slug] || '#/'} className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-[6px] border border-v3-rule px-5 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper">
                 Open the tool <Icon name="arrow" className="h-4 w-4" />
               </a>
             </Sheet>
@@ -153,7 +153,7 @@ export default function LeagueDemo() {
           {data.secondary.length ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {data.secondary.map((it) => (
-                <a key={it.title} href={SLUG_TO[it.slug] || '#/v3'} className={cx('group block rounded-[6px] border border-v3-rule bg-v3-sheet p-4 hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', LIFT)}>
+                <a key={it.title} href={SLUG_TO[it.slug] || '#/'} className={cx('group block rounded-[6px] border border-v3-rule bg-v3-sheet p-4 hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', LIFT)}>
                   <span className="flex items-center justify-between gap-2"><Label>{it.room}</Label><SampleTag /></span>
                   <span className="mt-2 block text-[15px] font-semibold leading-snug text-v3-ink">{it.title}</span>
                   <span className="mt-2"><Dots c={it.confidence} /></span>

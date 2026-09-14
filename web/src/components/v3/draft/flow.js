@@ -11,7 +11,7 @@
 
    Nothing in here. A solo draft's CPU picks and its pick clock live in
    app.js, and applyRoute() carries them on when the hash ARRIVES at
-   #/v3/draft/live — onV2LiveRoute() matches both builds' live routes. Every
+   #/draft/live — onV2LiveRoute() matches both builds' live routes. Every
    other route stops them, which is what makes leaving a pause rather than a
    discard.
 
@@ -20,12 +20,15 @@
    the hash does not change, no hashchange fires, and nothing would carry the
    draft on — so `arrive()` re-runs the router by hand in that one case. */
 
-export const LIVE_HASH = '#/v3/draft/live'
-export const REPORT_HASH = '#/v3/draft/report'
-export const LAUNCH_HASH = '#/v3/draft'
-export const INSIGHTS_HASH = '#/v3/draft/insights'
-export const RECORD_HASH = '#/v3/record'
-export const FRIENDS_HASH = '#/rooms/draft?friends=1'
+export const LIVE_HASH = '#/draft/live'
+export const REPORT_HASH = '#/draft/report'
+export const LAUNCH_HASH = '#/draft'
+export const INSIGHTS_HASH = '#/draft/insights'
+export const RECORD_HASH = '#/record'
+/* A shared room is v3's own now — live/room.js owns its address, because
+   that is the file that knows how to get into one. FRIENDS_HASH, which
+   handed rooms to the classic Draft Room, is retired rather than left
+   pointing at a screen v3 no longer sends anybody to. */
 
 function engineOf() {
   return typeof window !== 'undefined' ? window.JukeEngine : null

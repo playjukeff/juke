@@ -19,7 +19,7 @@ import LeagueDemo from './LeagueDemo.jsx'
 import { matchupHref } from './matchupData.js'
 import { CountText, LAYOUT_ROW, motion } from '../motion.jsx'
 
-/* #/v3/league — production's My League, reorganised around one question:
+/* #/league — production's My League, reorganised around one question:
    where is this season going, and how did it get here.
 
    ---- Top to bottom, the order a manager reads a season in ----
@@ -131,7 +131,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
   if (weekKey === 'draft') {
     return (
       <p className="text-[15px] leading-[1.55] text-v3-ink2">
-        Draft picks live with the draft that made them rather than in the call ledger. Your league&apos;s own draft is graded further down this page; every mock you have run is in <a href="#/v3/record" className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">your record</a>.
+        Draft picks live with the draft that made them rather than in the call ledger. Your league&apos;s own draft is graded further down this page; every mock you have run is in <a href="#/record" className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">your record</a>.
       </p>
     )
   }
@@ -169,7 +169,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
         ) : isNow ? (
           <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">
             {opp ? <>This week you play <a href={teamHref(opp)} className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a>. </> : game ? 'A bye week. ' : ''}
-            The matchup, the swap and the claim are on <a href="#/v3" className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">this week&apos;s call sheet</a>.
+            The matchup, the swap and the claim are on <a href="#/" className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">this week&apos;s call sheet</a>.
           </p>
         ) : (
           <p className="mt-2 text-[15px] text-v3-ink2">{game ? (opp ? 'No score published for this week yet.' : 'A bye week — no game.') : `${platformFor(league.provider).name} publishes no season schedule on the snapshot; the matchup page reads its pairings a week at a time.`}</p>
@@ -429,7 +429,7 @@ function SeasonEnd({ league, snapshot }) {
         {s.narrowest ? ` The closest loss was week ${s.narrowest.week}, by ${s.narrowest.margin.toFixed(1)}.` : ''}
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <QuietButton href="#/v3/draft">Mock a {snapshot.totalTeams}-team board for next year</QuietButton>
+        <QuietButton href="#/draft">Mock a {snapshot.totalTeams}-team board for next year</QuietButton>
       </div>
     </Sheet>
   )
@@ -520,7 +520,7 @@ function Connected({ league }) {
         {head}
         {status === 'loading' || status === 'none'
           ? <Sheet band={false} aria-busy="true"><Skeleton lines={8} /></Sheet>
-          : <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/v3/account">Manage leagues</QuietButton></CouldNotRead>}
+          : <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/account">Manage leagues</QuietButton></CouldNotRead>}
       </div>
     )
   }
@@ -558,7 +558,7 @@ function Connected({ league }) {
           <Facts league={league} snapshot={snapshot} />
           <DraftReport league={league} snapshot={snapshot} ready={model.ready} />
           <div className="flex flex-wrap items-center gap-3 px-1">
-            <GoLink href="#/v3">This week&apos;s call sheet</GoLink>
+            <GoLink href="#/">This week&apos;s call sheet</GoLink>
           </div>
         </div>
       </div>
@@ -588,7 +588,7 @@ export default function V3League() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <QuietButton onClick={retry}>Try again</QuietButton>
-            <QuietButton href="#/v3/draft">Start a mock draft</QuietButton>
+            <QuietButton href="#/draft">Start a mock draft</QuietButton>
           </div>
         </Sheet>
       </div>

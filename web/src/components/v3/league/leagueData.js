@@ -92,9 +92,9 @@ export function recordText(t) {
    both platforms; V3Team also accepts `ownerId`, which is what a schedule
    names a team by, so a link built from either lands. */
 export function teamHref(team) {
-  if (!team) return '#/v3/league'
+  if (!team) return '#/league'
   const id = team.rosterId !== null && team.rosterId !== undefined ? team.rosterId : team.ownerId
-  return `#/v3/league/team/${encodeURIComponent(String(id))}`
+  return `#/league/team/${encodeURIComponent(String(id))}`
 }
 
 export function findTeam(snapshot, id) {

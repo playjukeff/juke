@@ -3,6 +3,7 @@ import { useNotificationPrefs } from '../../../../hooks/useDraftNotifications.js
 import { Label, PosTag, ThemeChoice, cx } from '../../ui.jsx'
 import { LAUNCH_HASH } from '../flow.js'
 import { FOCUS, Glyph, Switch, fmtClock, useDialogFocus } from '../kit.jsx'
+import { inviteUrl, leaveRoom } from './room.js'
 
 /* The things you do TO the draft, as opposed to in it — production's draft
    menu, item for item, with the three it used to hand to the classic room
@@ -158,14 +159,54 @@ function ShortcutsPage() {
   )
 }
 
-export default function LiveMenu({ engine, header, onClose, soundOn, onSound, autopick, onAutopick, onUndo, phone, startPage = 'main' }) {
+/* Who is in the room, from the one place a phone can reach it mid-draft —
+   the header has no space for a seat list and the lobby is behind you. The
+   invite is here too, because the commonest reason to want it is that
+   somebody has not arrived yet and the draft has already begun. */
+function RoomPage({ engine, room }) {
+  const [copied, setCopied] = useState(false)
+  const url = inviteUrl(room.code)
+  return (
+    <div className="space-y-4 px-4 py-4">
+      <p className="text-[14px] leading-[1.5] text-v3-ink2">
+        {room.taken} of {room.seats.length} seats are managers; the rest are drafted by {room.isHost ? 'this browser' : "the host's browser"}.
+        {room.away ? ` ${room.away} ${room.away === 1 ? 'manager has' : 'managers have'} dropped — their seats are being drafted for until they are back.` : ''}
+      </p>
+      <ol className="divide-y divide-v3-rule overflow-hidden rounded-[4px] border border-v3-rule">
+        {room.seats.map((chair, i) => (
+          <li key={i} className={cx('flex min-h-[40px] items-center gap-3 px-3 py-1.5', chair.you ? 'bg-v3-band text-white' : 'bg-v3-sheet')}>
+            <span className={cx('w-5 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chair.you ? 'text-white' : 'text-v3-ink3')}>{i + 1}</span>
+            <span className={cx('min-w-0 flex-1 truncate text-[14px]', chair.you ? 'font-bold text-white' : 'text-v3-ink')}>
+              {chair.you ? 'You' : chair.taken ? (chair.name || 'Manager') : 'CPU'}
+            </span>
+            {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
+          </li>
+        ))}
+      </ol>
+      <div>
+        <Label className="block">The invite</Label>
+        <div className="mt-2 flex gap-2">
+          <input readOnly value={url} data-invite-link onFocus={(e) => e.target.select()} className={cx('min-h-[44px] min-w-0 flex-1 rounded-[4px] border border-v3-rule bg-v3-paper px-3 font-figure text-[16px] text-v3-ink2', FOCUS)} aria-label="Invite link" />
+          <button type="button" onClick={() => { navigator.clipboard.writeText(url).then(() => setCopied(true), () => setCopied(false)) }} className={cx('grid h-11 w-11 shrink-0 place-items-center rounded-[4px] border border-v3-rule bg-v3-sheet text-v3-ink', FOCUS)} aria-label="Copy the invite link">
+            <Glyph name={copied ? 'check' : 'copy'} className="h-4 w-4" />
+          </button>
+        </div>
+        <p role="status" className="mt-1 h-4 text-[12px] text-v3-ink3">{copied ? 'Copied.' : ''}</p>
+      </div>
+    </div>
+  )
+}
+
+export default function LiveMenu({ engine, header, room = null, blocked = null, onClose, soundOn, onSound, autopick, onAutopick, onUndo, phone, startPage = 'main' }) {
   const panel = useRef(null)
   const closeRef = useRef(null)
   const [confirm, setConfirm] = useState(null)
   const [page, setPage] = useState(startPage)
   useDialogFocus(true, onClose, panel, closeRef)
   const left = header.started ? header.total - header.picksMade : 0
-  const canPause = header.started && !header.over && engine.clockLength() > 0
+  // The host's, in a room — room.js refuses it from anybody else, and a
+  // control that cannot act must not be offered.
+  const canPause = header.started && !header.over && engine.clockLength() > 0 && (!room || room.isHost) && !blocked
   const mySlot = engine.mySlot()
   const madeOne = (engine.picks() || []).some((p) => p.slot === mySlot)
   const canUndo = header.started && !header.over && !engine.hasRoom() && madeOne
@@ -178,7 +219,7 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, au
   }
   const armedHint = (key, text, hint) => (confirm === key ? text : hint)
 
-  const title = page === 'settings' ? 'This draft' : page === 'keys' ? 'Keyboard' : 'Draft menu'
+  const title = page === 'settings' ? 'This draft' : page === 'keys' ? 'Keyboard' : page === 'room' ? 'The room' : 'Draft menu'
 
   return (
     <div className="fixed inset-0 z-[85]" role="presentation">
@@ -211,9 +252,11 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, au
         <div className="min-h-0 flex-1 overflow-y-auto">
           {page === 'settings' ? <SettingsPage engine={engine} />
             : page === 'keys' ? <ShortcutsPage />
-              : (
+              : page === 'room' && room ? <RoomPage engine={engine} room={room} />
+                : (
                 <>
                   <div className="divide-y divide-v3-rule p-1">
+                    {room && <Row icon="users" label="The room" hint={`${room.taken} of ${room.seats.length} seats · invite link`} onClick={() => setPage('room')} right={<Glyph name="chevRight" className="h-4 w-4 shrink-0 text-v3-ink3" />} />}
                     {canPause && <Row icon={header.paused ? 'play' : 'pause'} label={header.paused ? 'Resume the clock' : 'Pause the clock'} onClick={() => press('pause', () => engine.togglePause(), { keep: true })} />}
                     {header.started && !header.over && (
                       <div className="flex min-h-[52px] items-center gap-3 rounded-[4px] px-3 py-2">
@@ -234,7 +277,9 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, au
                         onClick={() => press('undo', onUndo, { confirmText: 'undo' })}
                       />
                     )}
-                    {header.started && !header.over && (
+                    {/* "The rest" in a room is nine other people's teams, so
+                        there is nothing here for this button to end. */}
+                    {header.started && !header.over && !room && (
                       <Row
                         icon="flag"
                         armed={confirm === 'end'}
@@ -247,8 +292,15 @@ export default function LiveMenu({ engine, header, onClose, soundOn, onSound, au
                     <Notifications />
                     <Row icon="sliders" label="This draft’s settings" hint="Scoring, lineup, clock and draft order" onClick={() => setPage('settings')} right={<Glyph name="chevRight" className="h-4 w-4 shrink-0 text-v3-ink3" />} />
                     <Row icon="keys" label="Keyboard shortcuts" hint="Press ? any time" onClick={() => setPage('keys')} right={<Glyph name="chevRight" className="h-4 w-4 shrink-0 text-v3-ink3" />} />
-                    <Row icon="back" label="Leave for now" hint="It stays saved and picks up where you left it" onClick={() => press('leave', () => { location.hash = LAUNCH_HASH })} />
-                    {header.started && (
+                    {room ? (
+                      <Row icon="back" label="Leave the room" hint="Your seat is drafted for until you come back — the invite link returns you to it" onClick={() => press('leaveroom', () => leaveRoom(engine))} />
+                    ) : (
+                      <Row icon="back" label="Leave for now" hint="It stays saved and picks up where you left it" onClick={() => press('leave', () => { location.hash = LAUNCH_HASH })} />
+                    )}
+                    {/* Deleting is a local act on a local save. A shared
+                        draft is nine other people's too, and there is no
+                        message that ends one. */}
+                    {header.started && !room && (
                       <Row
                         icon="trash"
                         danger

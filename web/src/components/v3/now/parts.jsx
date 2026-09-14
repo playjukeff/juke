@@ -108,7 +108,7 @@ export function SampleWeek({ week, code = 'Sample week · what Now shows', class
               </SampleRow>
             ) : null}
             {sample.swap ? (
-              <SampleRow href="#/v3/calls/lineup" label="The lineup call" aside={<Delta value={sample.swap.gain} digits={1} className="text-[18px]" />}>
+              <SampleRow href="#/calls/lineup" label="The lineup call" aside={<Delta value={sample.swap.gain} digits={1} className="text-[18px]" />}>
                 <span className="flex min-w-0 items-center gap-2">
                   <PosTag pos={sample.swap.start.pos} />
                   <span className="min-w-0 text-[15px] font-semibold leading-snug text-v3-ink">Start {sample.swap.start.name} over {sample.swap.sit.name}</span>
@@ -117,7 +117,7 @@ export function SampleWeek({ week, code = 'Sample week · what Now shows', class
               </SampleRow>
             ) : null}
             {sample.claim ? (
-              <SampleRow href="#/v3/calls/wire" label="The claim" aside={<Delta value={sample.claim.improvement} className="text-[18px]" />}>
+              <SampleRow href="#/calls/wire" label="The claim" aside={<Delta value={sample.claim.improvement} className="text-[18px]" />}>
                 <span className="flex min-w-0 items-center gap-2">
                   <PosTag pos={sample.claim.pos} />
                   <span className="min-w-0 text-[15px] font-semibold leading-snug text-v3-ink">Claim {sample.claim.player.name}</span>
@@ -125,7 +125,7 @@ export function SampleWeek({ week, code = 'Sample week · what Now shows', class
                 <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">season points over the {sample.claim.pos} he would replace</span>
               </SampleRow>
             ) : null}
-            <SampleRow href="#/v3/calls/trade" label="The trade question">
+            <SampleRow href="#/calls/trade" label="The trade question">
               <span className="block text-[15px] font-semibold text-v3-ink">Whether a deal is fair before you send it</span>
               <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">both sides priced over replacement</span>
             </SampleRow>
@@ -231,7 +231,7 @@ export function Movers({ rows, week }) {
           const m = moveOf(r)
           return (
             <li key={r.id || r.name} className="border-t border-v3-rule first:border-t-0">
-              <a href={r.id ? `#/v3/players/${encodeURIComponent(String(r.id))}` : '#/v3/players'} className="grid min-h-[56px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:px-5">
+              <a href={r.id ? `#/players/${encodeURIComponent(String(r.id))}` : '#/players'} className="grid min-h-[56px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:px-5">
                 <PosTag pos={r.pos} />
                 <span className="min-w-0">
                   <span className="block truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
@@ -281,7 +281,7 @@ export function LockerCard({ summary, compact = false, className = '' }) {
       {!ready ? <Skeleton lines={3} /> : (
         <>
           {inProgress ? (
-            <a href="#/v3/draft" className="mb-4 flex min-h-[56px] items-center justify-between gap-3 rounded-[6px] border border-v3-rule bg-v3-paper px-3 py-2.5 transition-colors hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+            <a href="#/draft" className="mb-4 flex min-h-[56px] items-center justify-between gap-3 rounded-[6px] border border-v3-rule bg-v3-paper px-3 py-2.5 transition-colors hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
               <span className="min-w-0">
                 <Label className="text-[11px]">A mock left mid-way</Label>
                 <span className="mt-0.5 block truncate text-[15px] font-semibold text-v3-ink">
@@ -313,7 +313,7 @@ export function LockerCard({ summary, compact = false, className = '' }) {
               ) : null}
             </dl>
           )}
-          <div className="mt-4"><GoLink href="#/v3/record?show=drafts">Open your record</GoLink></div>
+          <div className="mt-4"><GoLink href="#/record?show=drafts">Open your record</GoLink></div>
         </>
       )}
     </Sheet>
@@ -460,8 +460,8 @@ export function ConnectWayIn() {
   const main = <CallButton>Connect your league <Icon name="arrow" className="h-4 w-4" /></CallButton>
   return (
     <div className="flex flex-wrap gap-3">
-      {ready ? <SignUpButton mode="modal">{main}</SignUpButton> : <CallButton href="#/v3/account">Connect your league <Icon name="arrow" className="h-4 w-4" /></CallButton>}
-      <QuietButton href="#/v3/account">Log in</QuietButton>
+      {ready ? <SignUpButton mode="modal">{main}</SignUpButton> : <CallButton href="#/account">Connect your league <Icon name="arrow" className="h-4 w-4" /></CallButton>}
+      <QuietButton href="#/account">Log in</QuietButton>
     </div>
   )
 }
@@ -477,7 +477,7 @@ export function StillDrafting({ post = false }) {
           <span className="block text-[14px] leading-[1.5] text-v3-ink2">Mock drafts against tonight’s board are in Draft — free, no account, graded the moment the last pick lands.</span>
         </span>
       </span>
-      <QuietButton href="#/v3/draft" className="shrink-0">Set up a mock</QuietButton>
+      <QuietButton href="#/draft" className="shrink-0">Set up a mock</QuietButton>
     </Sheet>
   )
 }

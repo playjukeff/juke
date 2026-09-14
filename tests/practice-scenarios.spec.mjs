@@ -24,7 +24,7 @@ const CARD = (id) => `#draftroom-root [data-practice-scenario="${id}"]`;
 // draft-engine.js), so the grid is what says the screen is ready — not a
 // duration, and not the route having changed.
 async function openLobby(context) {
-  const page = await openApp(context, "#/rooms/draft");
+  const page = await openApp(context, "#/draft");
   await page.waitForSelector(CARD("guest.standard12"), { timeout: 20000 });
   return page;
 }
@@ -98,7 +98,7 @@ test.describe("Practice a scenario", () => {
     });
 
     // And it is a real draft on the real route, not a settings change.
-    expect(page.url()).toContain("#/draft-room");
+    expect(page.url()).toContain("#/draft");
     await page.close();
   });
 

@@ -818,28 +818,120 @@ function toggleRooms() {
 
 /* ---- the route ---- */
 
-/* The hash can now carry an invite code — #/draft?room=ABC — so the path
-   is read up to the query rather than compared whole. #/draft on its own
-   still means what it always did. */
-/* #/draft is retired and redirects (see applyRoute). Nothing else routes to
-   the old view any more.
+/* Always "home", and that is a statement about an address rather than a
+   simplification.
 
-   There was a second address here for a while - "draft-legacy" - opened only
-   by the test suite, because retiring #/draft would otherwise have silently
-   deleted about twenty specs written against the vanilla board. Those specs
-   have all been rewritten against the React room, so the door has no users
-   and is gone. The markup itself (#view-app) stays exactly where it is:
-   app.js is a classic script and renderHeader(), renderInvite() and a dozen
-   listeners still write into those ids on every render, so deleting it throws
-   and takes drafting down with it. Unreachable, not absent. */
+   This answered "is the retired vanilla draft view up", and its one "draft"
+   answer was the literal #/draft. That address belongs to v3's draft home
+   now (see canonicalHash below), which is a different screen with nothing to
+   do with #view-app — so reading the hash here would switch the legacy chat
+   dock, rail and draft shell on underneath it. They are inside #view-app,
+   which is hidden, so nothing would be visible; it would simply be four
+   flags quietly disagreeing with what is on screen.
+
+   It was already effectively always "home" before the cutover — applyRoute()
+   redirected #/draft away before anything could ask — so this changes no
+   behaviour, only who is allowed to be wrong about it later.
+
+   The markup itself (#view-app) stays exactly where it is: app.js is a
+   classic script and renderHeader(), renderInvite() and a dozen listeners
+   still write into those ids on every render, so deleting it throws and
+   takes drafting down with it. Unreachable, not absent. */
 function route() {
-  const path = location.hash.replace(/^#\/?/, "").split("?")[0];
-  return path === "draft" ? "draft" : "home";
+  return "home";
 }
 
-// No callers today. Kept pointing at the live route so it cannot
-// quietly resurrect the retired one if something calls it later.
-function go(where) { location.hash = where === "draft" ? "#/draft-room" : "#/"; }
+// No callers today. Kept pointing at v3's draft home so it cannot quietly
+// resurrect a retired address if something calls it later.
+function go(where) { location.hash = where === "draft" ? "#/draft" : "#/"; }
+
+/* ---- every address the site has ever answered to ---- */
+
+/* Where each production route landed in v3, as a path-to-path table. The
+   keys are the hash path with no leading "#/" and no trailing slash; the
+   values are the same, so a query can be carried across by the one caller
+   below rather than by every entry writing its own.
+
+   #/rooms has no entry of its own and is not an oversight: the rooms are
+   calls on Now and tools behind them, so the lobby's address is Now's. Any
+   #/rooms/<something> this table does not name lands there too — a room
+   that never shipped is not a reason to 404 somebody. */
+const LEGACY_ROUTES = {
+  "rooms": "",
+  "rooms/draft": "draft",
+  "rooms/waiver": "calls/wire",
+  "rooms/trade": "calls/trade",
+  "rooms/strategy": "calls/lineup",
+  "rooms/prospect": "players/rookies",
+  "rooms/league": "league",
+  "my-league": "league",
+  "you": "account",
+  "drafts": "record",
+  "history": "record",
+};
+
+/* The canonical hash for whatever address arrived, or null if it is already
+   canonical. Read by applyRoute() and nowhere else.
+
+   Three families, and the reasons differ:
+
+   - **v3's own prefix.** Every link shared while v3 was a proposal points at
+     #/v3/..., and those are real links in real conversations. The prefix is
+     simply dropped; the rest of the address is unchanged, because it was
+     designed as the canonical one all along.
+   - **The production routes**, through the table above.
+   - **An invite.** #/draft?room=ABC1 is what every invite sent before today
+     looks like, and #/draft-room?room=ABC1 is what the React room sent. Both
+     name a shared draft, which is #/draft/live here, and the code has to
+     survive the trip — a redirect that drops the query lands a guest on an
+     empty setup screen instead of in the draft they were invited to. That is
+     the whole reason the retired-route redirect carried a query before this,
+     and it is the reason this one does.
+
+   v2 is never rewritten. It is the comparison record, it costs nothing, and
+   it is the one prefix that still means what it says.
+
+   #/draft with no room code is NOT rewritten: it is v3's draft home. The two
+   readings of one address are told apart by the query rather than by which
+   of them was written first, which is why the room test comes before the
+   table and why #/draft has no entry in it. */
+function canonicalHash(hash) {
+  const raw = String(hash == null ? "" : hash);
+  /* A bare fragment is an anchor, never a route — the same test the
+     hashchange listener below already uses, and it has to be here as well
+     because the boot-time applyRoute() call is deliberately unguarded.
+     Without it "#rooms" reads as the rooms lobby and a scroll target
+     navigates the whole site. */
+  if (raw && raw.indexOf("#/") !== 0) return null;
+  const cut = raw.indexOf("?");
+  const query = cut >= 0 ? raw.slice(cut) : "";
+  const path = raw.replace(/^#\/?/, "").split("?")[0].replace(/\/+$/, "");
+
+  if (path === "v2" || path.indexOf("v2/") === 0) return null;
+  if (path === "v3") return "#/" + query;
+  if (path.indexOf("v3/") === 0) return "#/" + path.slice(3) + query;
+
+  // An invite, on either of the two shapes that have ever carried one.
+  const invited = /[?&]room=/.test(query);
+  if (invited && (path === "draft" || path === "draft-room")) return "#/draft/live" + query;
+  if (path === "draft-room") return "#/draft" + query;
+
+  /* The archive opened a frozen report at #/rooms/draft?report=<id>, and v3
+     names the same thing #/draft/report?id=<id>. Renaming one query key is
+     the whole difference, so it is done here rather than teaching v3 a
+     second spelling of its own parameter. */
+  if (path === "rooms/draft") {
+    const report = /[?&]report=([^&]+)/.exec(query);
+    if (report) return "#/draft/report?id=" + report[1];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(LEGACY_ROUTES, path)) {
+    return "#/" + LEGACY_ROUTES[path] + query;
+  }
+  if (path.indexOf("rooms/") === 0) return "#/" + query;
+
+  return null;
+}
 
 /* #/draft-room is the new React draft room (web/src/components/DraftRoom.jsx,
    mounted into #draftroom-root — see the comment beside that id in
@@ -850,8 +942,12 @@ function go(where) { location.hash = where === "draft" ? "#/draft-room" : "#/"; 
    applyRoute() from treating #/draft-room as "home" and tearing down a
    live room/clock/sim underneath it. */
 function onDraftRoomRoute() {
-  const path = location.hash.replace(/^#\/?/, "").split("?")[0];
-  return path === "draft-room";
+  /* #/draft-room is redirected at the top of applyRoute() now, so this can
+     never answer true and the React room it named renders nothing. Kept as a
+     named constant rather than inlined, because its two readers below still
+     ask two different questions and reducing them to one `false` would merge
+     decisions that are only accidentally the same answer today. */
+  return false;
 }
 
 /* #/v2/draft/live — the v2 comparison build's live draft cockpit
@@ -869,9 +965,13 @@ function onDraftRoomRoute() {
    turn. */
 function onV2LiveRoute() {
   const path = location.hash.replace(/^#\/?/, "").split("?")[0];
-  // v3's live draft (#/v3/draft/live) needs exactly the same carry-on, for
-  // the same reason: it renders inside #view-home and drives nothing itself.
-  return path === "v2/draft/live" || path === "v3/draft/live";
+  /* "draft/live" is v3's live cockpit at its own address now rather than
+     under a prefix, and it is the one this branch exists for in practice —
+     it is the site's live draft. Missing it is not a styling problem: the
+     teardown would stop the CPU timer and the pick clock on the way in and
+     nothing would restart them, so a solo draft freezes on the first CPU
+     turn, on the screen the whole product is about. */
+  return path === "draft/live" || path === "v2/draft/live";
 }
 
 /* Split out of applyRoute() so the hashchange listener's bare-anchor guard
@@ -883,54 +983,43 @@ function onV2LiveRoute() {
    here, but the point is not writing that fact down a second time next to
    this one. */
 function syncHomeVisibility() {
-  const legacyPath = location.hash.replace(/^#\/?/, "").split("?")[0];
-  /* "rooms/draft", not "drafts", as of design_handoff_v3_alive.
+  /* Never hidden, and that is the cutover in one line.
 
-     The reason this clause exists is unchanged: whichever route renders
-     the Lobby out of #draftroom-root has the same view-home problem
-     #/draft-room has -- the whole marketing page goes on rendering behind
-     it, in normal flow, adding its own height and a second scrollbar
-     nobody can attribute to anything. What moved is which route that is.
-     DraftRoom.jsx's own entry branch is #/rooms/draft now (the Draft Room
-     is a room, and it sits under #/rooms with the other five).
+     This existed because two routes rendered a whole screen out of
+     #draftroom-root while the marketing page went on rendering behind them
+     in normal flow — adding its own height and a second scrollbar nobody
+     could attribute to anything. Both of those addresses (#/draft-room and
+     #/rooms/draft) are redirected now, and every screen v3 has renders into
+     #root, which is INSIDE #view-home. Hiding it would hide the site.
 
-     #/drafts is the opposite case and must NOT be listed here: it is the
-     drafts archive, and App renders it INSIDE #view-home. Hiding view-home
-     for it would hide the screen itself. */
-  const hideHome = onDraftRoomRoute() || legacyPath === "rooms/draft";
+     #shellbar is the legacy marketing header and is display:none !important
+     regardless; it is set here rather than left alone so the pair cannot
+     drift into disagreeing about a container one of them no longer decides. */
+  const hideHome = false;
   shellbar.hidden = hideHome;
   $("view-home").hidden = hideHome;
 }
 
 function applyRoute() {
-  /* #/draft is retired. Every Draft Room feature built since the React
-     rewrite lives only on #/draft-room, so the old route was a second,
-     older product still reachable from a bookmark, a shared link, or the
-     resume banner - and it looked enough like the real thing that somebody
-     landing there would not know they were on it.
+  /* Every address the site has ever answered to lands on the one it means
+     now. canonicalHash() holds the table; this is the only place it is read.
 
      The redirect sits at the router rather than at each caller because the
-     callers are not the whole problem: a link someone saved last week is,
-     and no amount of editing this file reaches that. replace() rather than
-     assignment, so the dead route does not become a back-button trap
-     between the two rooms.
+     callers were never the whole problem: a link saved in somebody's phone
+     is, an invite sent last month is, and no amount of editing this file
+     reaches either. replace() rather than assignment, so a retired address
+     cannot become a back-button trap bouncing between two screens.
 
-     The #view-app markup stays exactly where it is. It is unreachable now,
-     not deleted - app.js is a classic script and renderHeader(),
-     renderInvite() and a dozen listeners still write into those ids on
-     every render, so deleting them throws and takes the whole boot
-     sequence with it. Unreachable is the goal; absent is a different and
-     much larger change. */
-  if (location.hash.replace(/^#\/?/, "").split("?")[0] === "draft") {
-    /* Carry the hash's own query across. An invite link is
-       "#/draft?room=ABC1" and route() strips the query to decide the path,
-       so redirecting to a bare "#/draft-room" would silently drop the room
-       code and drop a guest onto an empty setup screen instead of into the
-       draft they were invited to. Every invite sent before today is exactly
-       that shape, which is the whole reason this redirect exists. */
-    const q = location.hash.indexOf("?");
-    const tail = q >= 0 ? location.hash.slice(q) : "";
-    location.replace(location.pathname + location.search + "#/draft-room" + tail);
+     It runs here, in a classic script, rather than in React's own router,
+     and that is a decision rather than an accident. app.js is parser-blocking
+     and its boot calls applyRoute() before the module bundle executes, so
+     React reads an address that is already canonical and never renders a
+     frame of the wrong screen. Writing the same table a second time in
+     useHashRoute() to close a window that does not exist is the
+     written-down-twice failure with a route map in it. */
+  const canonical = canonicalHash(location.hash);
+  if (canonical !== null) {
+    location.replace(location.pathname + location.search + canonical);
     return;
   }
 
@@ -1065,7 +1154,7 @@ function renderHome() {
   bar.innerHTML =
     "<div><p><b>" + (done ? "Your finished draft" : "You have a draft in progress") + "</b></p>" +
     '<p class="sub">' + settingsText(saved) + " \u00b7 " + made + " of " + total + " picks</p></div>" +
-    '<div class="btnrow"><a class="cta" href="#/draft-room">' +
+    '<div class="btnrow"><a class="cta" href="#/draft">' +
     (done ? "Reopen it" : "Resume") + "</a></div>";
 }
 
@@ -2817,7 +2906,7 @@ function goHome() {
      on the setup screen rather than walking straight back in. */
   if (typeof Live !== "undefined" && Live.room()) {
     Live.disconnect();
-    if (location.hash.indexOf("room=") >= 0) location.hash = "#/draft-room";
+    if (location.hash.indexOf("room=") >= 0) location.hash = "#/draft";
     renderInvite();
     renderChat();
   }
@@ -6298,7 +6387,7 @@ function headerInfo() {
       leagueSummary: leagueSum,
       statusLine: "Draft complete",
       pickText: totalPicks() + " picks made",
-      rightLabel: "Rounds", rightValue: String(league.rounds)
+      rightLabel: "Rounds", rightValue: String(league.rounds), rightIsClock: false
     };
   }
 
@@ -6312,7 +6401,8 @@ function headerInfo() {
       statusLine: "You're on the clock!",
       pickText: "Pick " + pickCode(overall) + " (" + overall + " Overall)",
       rightLabel: state.clockLength ? (state.paused ? "Paused" : "Time left") : "Available",
-      rightValue: state.clockLength ? clockText() : String(board.filter((p) => !p.drafted).length)
+      rightValue: state.clockLength ? clockText() : String(board.filter((p) => !p.drafted).length),
+      rightIsClock: !!state.clockLength
     };
   }
 
@@ -6333,7 +6423,17 @@ function headerInfo() {
     statusLine: teamLabel(pickInfo(overall).slot) + (showClock && gap ? " · you are in " + gap : ""),
     pickText: "Pick " + pickCode(overall) + " (" + overall + " Overall)",
     rightLabel: showClock ? (state.paused ? "Paused" : "Time left") : "Your turn in",
-    rightValue: showClock ? clockText() : String(gap)
+    rightValue: showClock ? clockText() : String(gap),
+    /* Whether that slot is a COUNTDOWN or a count of picks, said as a fact
+       rather than left to be re-derived from the label. A reader of this
+       object has to know which, because a countdown is a `role="timer"`
+       whose accessible name is the number and a pick count is neither —
+       and the only other way to tell is to match "Time left"/"Paused" as
+       strings, which is this file's own written-down-twice rule with prose
+       in it. Set on every branch that fills the slot at all; the two
+       not-started branches carry no right-hand block, so falsy there is
+       the right answer rather than a gap. */
+    rightIsClock: showClock
   };
 }
 
@@ -11376,7 +11476,7 @@ window.addEventListener("hashchange", function () {
   // React locker, which owns its own hash-watching (see the note beside
   // #draftroom-root). Matching the prefix keeps #/drafts and any future
   // query on it, the same shape #/draft-room's own invite links take.
-  if (location.hash.replace(/^#\/?/, "").split("?")[0] === "drafts") reconcileIfStale();
+  if (location.hash.replace(/^#\/?/, "").split("?")[0] === "record") reconcileIfStale();
 });
 
 // Never runs synchronously at boot — Clerk has not loaded by the time this
@@ -12120,7 +12220,7 @@ $("createRoomBtn").addEventListener("click", function () {
   const code = Live.newCode();
   // The code goes in the address bar as well as the box, so the browser's
   // own share and bookmark both do the right thing.
-  location.hash = "#/draft?room=" + code;
+  location.hash = "#/draft/live?room=" + code;
   joinRoom(code, true);
 });
 
@@ -12211,7 +12311,7 @@ $("copyLinkBtn").addEventListener("click", function () {
 
 $("leaveRoomBtn").addEventListener("click", function () {
   Live.disconnect();
-  location.hash = "#/draft-room";
+  location.hash = "#/draft";
   renderInvite();
   renderChat();
   refreshSetup();
@@ -14268,7 +14368,7 @@ window.JukeEngine = {
   // on purpose (same reasoning goHome() already documents for Discard).
   leaveRoom: function () {
     Live.disconnect();
-    location.hash = "#/draft-room";
+    location.hash = "#/draft";
     renderInvite();
     renderChat();
   },

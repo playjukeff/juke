@@ -104,8 +104,8 @@ function DraftBlock() {
         </dl>
       ) : <div className="mt-4"><Skeleton lines={2} /></div>}
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <QuietButton href="#/v3/draft">Set up a mock <Icon name="arrow" className="h-4 w-4" /></QuietButton>
-        <GoLink href="#/v3/draft/insights">Your insights</GoLink>
+        <QuietButton href="#/draft">Set up a mock <Icon name="arrow" className="h-4 w-4" /></QuietButton>
+        <GoLink href="#/draft/insights">Your insights</GoLink>
       </div>
     </Sheet>
   )
@@ -131,7 +131,7 @@ function LeagueBlock() {
       </ul>
       <p className="mt-3 text-[13px] leading-[1.5] text-v3-ink3">Read-only. Juke never edits your league.</p>
       <div className="mt-5">
-        <QuietButton href="#/v3/account">{status === 'error' ? 'Check your leagues' : 'Connect a league'}</QuietButton>
+        <QuietButton href="#/account">{status === 'error' ? 'Check your leagues' : 'Connect a league'}</QuietButton>
       </div>
     </Sheet>
   )
@@ -150,7 +150,7 @@ function RecordBlock() {
           <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Best finish</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{locker.best ? `${locker.best.grade} · ${locker.best.projectedRank}` : '—'}</dd></div>
         </dl>
       )}
-      <div className="mt-auto pt-5"><GoLink href="#/v3/record">Open your record</GoLink></div>
+      <div className="mt-auto pt-5"><GoLink href="#/record">Open your record</GoLink></div>
     </Sheet>
   )
 }
@@ -168,8 +168,8 @@ function NowGuest({ season, post = false }) {
             {post ? 'The season is over, and next year’s draft is the one decision left. ' : ''}A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <CallButton href="#/v3/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
-            <QuietButton href="#/v3/players">Browse every player</QuietButton>
+            <CallButton href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
+            <QuietButton href="#/players">Browse every player</QuietButton>
           </div>
           <p className="mt-4 font-figure text-[13px] text-v3-ink3">No account needed · runs in your browser</p>
         </div>

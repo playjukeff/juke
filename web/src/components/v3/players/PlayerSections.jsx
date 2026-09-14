@@ -596,7 +596,7 @@ export function DepthSheet({ engine, d }) {
                       <span className={cx('text-center font-figure text-[12px]', x.isSelf ? 'text-v3-bandInk' : 'text-v3-ink3')}>{x.order || '–'}</span>
                       <PosTag pos={x.pos} />
                       {other ? (
-                        <a href={`#/v3/players/${encodeURIComponent(other.id)}`} className={cx(HIT, 'truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>{x.name}</a>
+                        <a href={`#/players/${encodeURIComponent(other.id)}`} className={cx(HIT, 'truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>{x.name}</a>
                       ) : (
                         <span className={cx('truncate text-[14px] font-semibold', x.isSelf ? 'text-white' : 'text-v3-ink')}>{x.name}</span>
                       )}
@@ -679,7 +679,7 @@ export function ProspectSheet({ d }) {
           <p className="mt-1 text-[14px] leading-[1.5] text-v3-ink2">{missing.join(' · ')}</p>
         </div>
       )}
-      <div className="mt-4"><GoLink href="#/v3/players/rookies">The whole rookie class</GoLink></div>
+      <div className="mt-4"><GoLink href="#/players/rookies">The whole rookie class</GoLink></div>
     </Sheet>
   )
 }

@@ -79,8 +79,8 @@ export function RookieTag({ className = '' }) {
    each is an address; ink marks the one you are on. */
 export function ViewTabs({ current }) {
   const items = [
-    { key: 'all', label: 'Every player', href: '#/v3/players' },
-    { key: 'rookies', label: 'Rookies', href: '#/v3/players/rookies' },
+    { key: 'all', label: 'Every player', href: '#/players' },
+    { key: 'rookies', label: 'Rookies', href: '#/players/rookies' },
   ]
   return (
     <nav aria-label="Players views" className="inline-flex rounded-[6px] border border-v3-rule bg-v3-sheet p-[3px]">

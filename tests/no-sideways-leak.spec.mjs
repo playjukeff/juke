@@ -36,22 +36,27 @@ import { SITE } from "./helpers.mjs";
 
 const ROUTES = [
   "#/",
-  "#/rooms",
-  "#/rooms/draft",
-  "#/drafts",
-  "#/you",
-  "#/my-league",
-  "#/rooms/waiver",
-  "#/rooms/trade",
-  "#/rooms/strategy",
-  "#/rooms/prospect",
+  "#/draft",
+  "#/draft/insights",
+  "#/players",
+  "#/players/rookies",
+  "#/league",
+  "#/record",
+  "#/account",
+  "#/calls/lineup",
+  "#/calls/wire",
+  "#/calls/trade",
+  "#/method/how-it-works",
 ];
 
-/* The one route `applyRoute()` hides `#view-home` for is `#/rooms/draft`,
-   which renders into `#draftroom-root` and mounts its own shell. A sweep
-   that looks in `#view-home` there is reading a hidden container and
-   reports nothing wrong -- which is exactly what the first version of this
-   did, on the screen that turned out to carry the defect. */
+/* Every screen renders inside `#view-home` now — the cutover made that
+   true of all of them, because `applyRoute()` no longer hides it for
+   anything. The fallback to `#draftroom-root` is kept rather than deleted,
+   and that is not tidiness: the first version of this sweep read
+   `#view-home` unconditionally and came back CLEAN on the one screen that
+   carried the defect, because it was measuring a hidden container. A sweep
+   scoped to the wrong root is a clean report about nothing, and this is the
+   line that says so. */
 const SWEEP = () => {
   const home = document.querySelector("#view-home");
   const shown = home && getComputedStyle(home).display !== "none";

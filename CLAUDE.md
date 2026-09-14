@@ -1,10 +1,21 @@
 # Juke
 
-Juke is the brand. **The Draft Room** is the first of several planned rooms
-(Waiver, Prospect, Trade, League, Strategy), and the only one that exists —
-so for now the site and the Draft Room are the same thing. Name the room in
-the app, not the brand: the header says "The Draft Room", Juke sits above it
-in the page title and the manifest.
+Juke is the brand, and as of the cutover it is also what the header says.
+**Corrected in place**: this paragraph read "**The Draft Room** is the first
+of several planned rooms (Waiver, Prospect, Trade, League, Strategy), and the
+only one that exists — so for now the site and the Draft Room are the same
+thing", which was true for the whole life of the rooms and stopped being true
+the day `#/` became Now.
+
+**There are five places rather than six rooms**, and they are named for the
+decision in front of you rather than for the room it used to live in: Now,
+League, Players, Draft, Record. The three in-season rooms are TOOLS a call
+opens (`#/calls/lineup`, `#/calls/wire`, `#/calls/trade`) rather than places
+you visit to find out whether they have anything to say. Nothing was dropped —
+every capability has an address, and `V3App.jsx`'s route table names each one.
+The Draft Room is still called The Draft Room on the screen that is one; the
+rule about naming the room in the app rather than the brand survives, it
+simply applies to one screen now instead of to the site.
 
 A fantasy football mock draft simulator, built for one specific ten-team
 league and now configurable from the setup screen: 4 to 24 teams, 8 to 20
@@ -119,6 +130,9 @@ the Stack section above, not a one-time migration hiccup.
 | `worker/store.js` | The D1 cache: Sleeper's pool and Tank01 headlines. A cache and never a source of truth, and a missing binding is a normal condition rather than a fault. |
 | `worker/migrations/` | D1 schema, applied with `wrangler d1 migrations apply`. The database is not to be shaped by hand — see the note on three variants of one schema. |
 | `web/index.html` | The real homepage entry Vite builds from. Loads the legacy files above as root-relative classic scripts, alongside Vite's own hashed module bundle for React. The Draft Room markup lives here too, hidden — see the Stack section. |
+| `web/src/components/v3/` | **The site.** Five places — Now, League, Players, Draft, Record — plus the calls, the account and the method docs. `V3App.jsx` carries the route table and is the only thing that decides which page an address draws; `app.js`'s `canonicalHash()` is what gets every older address there. The directory is still called `v3` because that is where the files live, which is now a fact about the repository rather than about the product. |
+| `web/src/components/v2/` | The comparison record, at `#/v2`, and the one prefix `canonicalHash()` never rewrites. It costs one branch in `App.jsx` and it is the only way to see what was proposed beside what shipped. Not advertised anywhere on the site — unadvertised is not the same as absent. |
+| `theme.js` | The stored theme, applied before anything paints, for **both** themes the page has: `data-theme` (the legacy pages) and `data-v3-theme` (the site). Parser-blocking in `<head>` because `app.js` is at the foot of the body and by the time it runs the flash has happened. Its v3 key and attribute are written down a second time in `web/src/components/v3/theme.js`; they must not drift. |
 | `web/src/components/phone/` | The phone-only screens, mounted below `sm` (`usePhoneWidth()`): the draft room, the floating nav pill. Each is a different screen from its desktop counterpart rather than a narrower one — see "The mobile pass" below for why that is a product decision and what it costs. **Two have left**: the homepage (`HomeAlive.jsx`) and the Mock Drafts Lobby (`DraftRoomEntry.jsx`) are one responsive screen at every width now — see "Flow v3" below for why that handoff reverses the split for those two specifically and not for the draft room. |
 | `web/src/components/decision/` | The decision system's five primitives — a KPI strip, a bar and its row, the one light stake card, the run-next card, and a confidence that is never a bare percentage. `tokens.js` holds only the few values a style prop needs at runtime; everything else is a Tailwind token. One `<StakeCard>` per route, warned about in dev. |
 | `web/src/components/insights/` | The Your Insights panel — the rail, the four views, the habits sidebar and the two data-series colours the page draws with. Draws only: every figure and every sentence on it comes off `insightsReport()`/`insightsMock()` in app.js section 11d2, so the sidebar's habit card and the centre panel's pick table are two readings of one audit and cannot disagree. Replaced the eight-card analytics grid, which is unrendered rather than deleted. |
@@ -2960,35 +2974,39 @@ way, not reasoned about.
   a light-theme fade loses its contrast on the way down. The product shot is
   the exception and fades itself, on purpose, with its own mask.
 
-- **Two views, one hash route.** `#/` is the landing page, `#/draft-room` is
-  the Draft Room. `applyRoute()` is the only thing that decides what is
-  visible; `render()` must never fight it.
+- **One app, one hash route, and `#view-home` is never hidden.** `#/` is
+  Now. `applyRoute()` is still the only thing that decides what is visible;
+  `render()` must never fight it. **Corrected in place at the cutover** —
+  this used to read "Two views: `#/` is the landing page, `#/draft-room` is
+  the Draft Room", which described a site that no longer exists. See "The
+  cutover" below for the whole map.
 
-  **`#/draft` is retired, and it was a whole second product.** It was the
-  Draft Room, and every feature built since the React rewrite — the new
-  settings screen, the Locker, Draft Fit, the Insights dashboard, the
-  horizontal desktop layout — exists only on `#/draft-room`. The old route
-  went on rendering `#view-app` perfectly happily, which is what made it
-  dangerous: somebody landing there saw a working draft room, just last
-  month's one, with nothing on screen to say so. It was still reachable from
-  a bookmark, a shared link, and — the live path — the homepage's own resume
-  banner, which pointed at it until this change. Reported as "my friend is
-  still seeing the old draft room", which is exactly what was happening.
+  **`#/draft` is not retired any more; it is v3's draft home.** That is the
+  one reversal in the address table worth stating on its own, because this
+  file argued the opposite at length and the argument was right at the time.
+  What it forbade was an address that went on rendering a second, older
+  product — `#view-app`, which somebody landing there could not tell from
+  the real thing. Reported as "my friend is still seeing the old draft
+  room". The address is not the problem; the screen behind it was, and that
+  screen is unreachable from every address now.
 
-  `applyRoute()` redirects it now. **The redirect lives at the router, not
-  at the callers**, because the callers were never the whole problem: a link
-  somebody saved last week is, and no edit to `app.js` reaches that. It uses
-  `location.replace()` so the dead route cannot become a back-button trap
-  bouncing between the two rooms.
+  **The redirect still lives at the router, not at the callers**, and there
+  are eleven of them instead of one. The callers were never the whole
+  problem: a link somebody saved last week is, and no edit to `app.js`
+  reaches that. `canonicalHash()` holds the table and `applyRoute()` is the
+  only thing that reads it. It uses `location.replace()`, so a retired
+  address cannot become a back-button trap bouncing off its own rewrite.
 
-  **And it has to carry the hash's own query.** An invite is
-  `#/draft?room=ABC1`, and `route()` strips the query to decide the path — so
-  a redirect to a bare `#/draft-room` silently drops the room code and lands
-  a guest on an empty setup screen instead of in the draft they were invited
-  to. Every invite sent before the change is that shape, which is most of the
-  reason the redirect exists at all. `tests/room.spec.mjs` keeps one guest
-  join on the **old** link shape on purpose, as the regression test for it;
-  the comment there says not to modernise it.
+  **And it has to carry the hash's own query**, which is now the thing that
+  tells two readings of `#/draft` apart rather than a detail of one
+  redirect. An invite is `#/draft?room=ABC1`; a bare `#/draft` is the
+  launcher. Redirecting the first to a room and leaving the second alone is
+  one `if`, and getting it wrong either drops a guest on a setup screen
+  instead of into the draft they were invited to, or sends everybody
+  pressing "Draft" into a room that does not exist. `tests/route.spec.mjs`
+  asserts both, and keeps **both** historical invite shapes —
+  `#/draft?room=` and `#/draft-room?room=` — because somebody's phone holds
+  each of them.
 
   **`#view-app` is unreachable, not deleted.** `app.js` is a classic script
   and `renderHeader()`, `renderInvite()` and a dozen listeners still write
@@ -5182,6 +5200,8 @@ swept rather than one screen four times.
 
 ## Claim and proof
 
+**The screens below are unreachable as of the cutover** — see "The cutover: v3 became the site". Kept rather than deleted for this file's usual reason: what is recorded here is the reasoning, and the reasoning is what the replacement had to answer to. Read it as why, not as where.
+
 Three claims down the landing page with the thing each one claims running
 beside them. It replaced three paragraphs — claims with nothing to check them
 against, which is the weakest thing a page can say about a product whose whole
@@ -5233,6 +5253,8 @@ where a `const` reading either of those would be inside their temporal dead
 zone and throw on load.
 
 ## The homepage redesign
+
+**The screens below are unreachable as of the cutover** — see "The cutover: v3 became the site". Kept rather than deleted for this file's usual reason: what is recorded here is the reasoning, and the reasoning is what the replacement had to answer to. Read it as why, not as where.
 
 A full layout and messaging pass on the marketing homepage, from an external
 design handoff — a single sticky header instead of a stacked logo/marquee/
@@ -5383,6 +5405,8 @@ pick or nineteen. It yields to the clock and only to the clock; two facts in a
 74px box is one too many and the countdown is the one being watched.
 
 ## The mobile pass: one product on a phone, another on a desk
+
+**The screens below are unreachable as of the cutover** — see "The cutover: v3 became the site". Kept rather than deleted for this file's usual reason: what is recorded here is the reasoning, and the reasoning is what the replacement had to answer to. Read it as why, not as where.
 
 The owner's instruction was "all of these changes will be for MOBILE ONLY.
 Our website should have a different offering altogether." That is a product
@@ -6145,6 +6169,8 @@ denied (which Juke cannot undo from here, so it says that instead of offering
 a switch that points at itself), and granted.
 
 ## The phone Lobby is a launcher, and the dashboard is a press away
+
+**The screens below are unreachable as of the cutover** — see "The cutover: v3 became the site". Kept rather than deleted for this file's usual reason: what is recorded here is the reasoning, and the reasoning is what the replacement had to answer to. Read it as why, not as where.
 
 The desktop Lobby is a real analytics dashboard — three KPI tiles, a
 twelve-cell tendencies grid, a recommendation engine, a heatmap and a history
@@ -7829,6 +7855,14 @@ on — and it is the constraint the connect integration gets built under rather
 than a caption somebody can quietly contradict later.
 
 ### One route became two, and the locker links had to follow
+
+**Both of those addresses are gone — see "The cutover" below.** `#/rooms/draft`
+is `#/draft` and `#/drafts` is `#/record`, and the two screens the split
+created are one Record now. What survives is the reasoning rather than the
+addresses: a launcher and an archive are different screens with different
+jobs, and "back to the locker" has to land on the one with a Start button or
+the flow `restart.spec.mjs` walks dead-ends. The section is kept because that
+argument is still the reason Record carries a Start path at all.
 
 The handoff splits what `#/drafts` used to be:
 
@@ -11238,6 +11272,406 @@ blend beats it out of sample; every bootstrap CI crosses zero), K/DST
 withholding, par averaging, the platform projection passthrough,
 `normalCdf`, the season sim's seeding and refusals, `absorbableSize`.
 
+## The cutover: v3 became the site
+
+The owner's decision, 14 September 2026. `#/` is Now, the production screens
+are unreachable, and every address the site has ever answered to lands on the
+one it means. Shared rooms landed first (their own pass); this is everything
+after that.
+
+**The order was not optional and each step protected the next.** Addresses
+first, so no saved link is ever the thing that breaks. Then the default route.
+Then the prerender, so the first paint is still a painted page. Then retire,
+and only what is provably unreachable. Then the suite — never before, because
+a re-aimed test against a half-moved app proves nothing: it would have gone
+green on `#/draft` while `#/rooms/waiver` still rendered a room.
+
+### The address table lives in a classic script, on purpose
+
+`canonicalHash()` in `app.js`, read by `applyRoute()` and by nothing else.
+Eleven production routes, both historical invite shapes, the archive's frozen
+report, and the whole `#/v3/...` prefix every link shared during the design
+pass points at.
+
+**It is in `app.js` rather than in `useHashRoute()` because of when each one
+runs.** `app.js` is parser-blocking and its boot calls `applyRoute()` before
+the module bundle executes, so React reads an address that is already
+canonical and never renders a frame of the wrong screen. Writing the table a
+second time in React to close a window that does not exist is the
+written-down-twice rule with a route map in it — and a classic script cannot
+import from `web/src`, so the two copies could only ever have drifted.
+
+**What that costs is a second reader, and `tests/route.spec.mjs` is it.**
+`V3App.jsx` carries the map as prose for a person; `canonicalHash()` carries
+it as code; the spec drives all thirty-three addresses in a real browser and
+names every row that disagrees. Same arrangement as `normalise()` in two
+languages, for the same reason: neither copy can be the other's source, so
+something has to make them agree.
+
+**Three things in that function are load-bearing and none of them is the
+table.**
+
+- **A bare fragment is an anchor, never a route.** `#rooms` and `#/rooms` are
+  one character apart. The hashchange listener already had this guard and the
+  boot-time `applyRoute()` call is deliberately unguarded, so without the
+  `#/` test at the top a scroll target navigates the whole site — silently,
+  because the page simply goes somewhere.
+- **`#/draft` is told from `#/draft?room=` by the QUERY**, not by which
+  reading was written first. Bare, it is v3's draft home; with a room code it
+  is an invite and belongs at `#/draft/live`. This is the one address in the
+  table with two honest meanings.
+- **`location.replace()`, not assignment.** Generic navigation guidance says
+  the opposite — prefer `pushState`, do not replace — and it is written for a
+  page moving between its own screens. Here the address no longer exists, so
+  pushing it puts a rewrite in the history and Back bounces off it forever.
+  `replace()` is what keeps Back working at all, and there is a test for it.
+
+### `onV2LiveRoute()` is the one that would have frozen a draft
+
+`#/draft/live` is v3's live cockpit, it renders inside `#view-home`, and it
+drives nothing itself: a solo draft's CPU picks and its pick clock both live
+in `app.js`, and every route that is not the live one stops them on the way
+in. Miss that name and `applyRoute()` tears them down and nothing restarts
+them — **the draft freezes on the first CPU turn, on the screen the whole
+product is about.** It is not a styling problem and it does not throw.
+
+`onDraftRoomRoute()` is permanently false now and `syncHomeVisibility()`
+permanently shows `#view-home`, because both of the addresses that used to
+hide it are redirected. Both are kept as named constants rather than inlined:
+their two readers ask two different questions, and reducing them to one
+`false` merges decisions that are only accidentally the same answer today.
+
+### The theme had to move into `<head>`, and that is `theme.js`'s own rule
+
+`data-v3-theme` was stamped from a React layout effect — correct while v3 was
+one route among several, and wrong the moment it became the site. A layout
+effect runs after the module bundle has fetched, parsed and hydrated, which is
+after `app.js`, which is **exactly the reason the stored-theme block is not in
+`app.js`**: by then the flash has already happened. A reader who chose dark
+would watch the page paint light first, on every single load.
+
+So `theme.js` stamps it, beside the one it already stamped. Same file rather
+than a second one: it is already "the stored theme, applied before anything
+paints", and a second parser-blocking request in `<head>` costs a round trip
+to say the same sentence. The store still owns the choice, the listener and
+the System case; this only puts the answer on the document before the first
+frame. **The key and the attribute name now exist in two files** —
+`theme.js` and `web/src/components/v3/theme.js` — and a drift between them
+does not throw, it silently paints the wrong theme. Move them together.
+
+`V3App` selects `useLayoutEffect` or `useEffect` at module scope for the same
+mount, because a layout effect cannot run during `renderToString()` and React
+warns about every one it meets there. That warning is real rather than noise:
+it says the server's markup and the client's intended markup can disagree.
+Here they cannot — what the effect writes is an attribute on `<html>` rather
+than anything in the tree — and selecting at module scope keeps the hook
+**count** identical on both sides, which is the only thing React's rules
+require.
+
+### The prerender still prerenders, and it is 32% smaller
+
+`App` renders `V3App` with no sub-path, which is Now in its guest state, which
+is what `useHashRoute()` answers with no window. **The two agree by
+construction** rather than by a guard: `null` means "not resolved yet" and
+resolves to the same page the server drew. Anything that reads `location`
+during render puts React #418 back, and a hydration failure is not scoped to
+the subtree that caused it — React discards the whole root and rebuilds it,
+which throws away the prerender on every load.
+
+Measured on a real build, medians of nine, against a static server on its own
+port with the bundle hash checked first:
+
+```
+                 FCP     DOMContentLoaded   prerendered markup
+before          160 ms        179 ms            31,321 bytes
+after           164 ms        181 ms            21,110 bytes
+```
+
+**And the risk it argues about was measured rather than reasoned.** Zero
+`#418`/`#423` across a fresh load of `#/`, and `#root` carries **21,114
+bytes** after hydration against the 21,110 this step wrote — so the server's
+markup is being hydrated rather than discarded, which is the whole claim.
+Swept alongside it: **zero console errors and zero sideways overflow across
+all twelve v3 routes at 1440 and 390**, the only errors being the ESPN CORS
+artifact this file already records as a property of the sandbox.
+
+**Now is SEASON-dependent, and that is the one thing to know before reading
+the prerendered HTML and being surprised.** Node has no engine, so
+`seasonClock()` is null here and `Now.jsx`'s offseason headline — *"Every
+call, with the math shown."* — is what gets written into `#root`. Once
+`stats.js` lands the client swaps to `NowSeason.jsx`'s *"Week N is here.
+Bring your league."* **That is not a mismatch**: the swap happens in an
+effect after hydration, the same shape as `useHashRoute()` resolving one
+tick late, which is why the count above is zero.
+
+It cost one wrong assertion before it was understood — `shell-routes.spec.mjs`
+pinned the headline it had measured at 1200ms and failed against the one the
+page actually settles on. That case names **both** acceptable headlines now,
+because pinning either alone writes today's date into an assertion, which is
+this file's own "a measurement is true of the board it was taken on" trap
+with a September board behind it.
+
+**Four milliseconds, which is inside the noise**, on a localhost measurement
+where the network is not the variable it is in life. The markup shrank by a
+third because Now's guest page is a smaller first screen than the marketing
+homepage was — fewer bytes to send and fewer to hydrate, which is a real if
+small improvement rather than a regression to explain away. Re-measure against
+the deploy before quoting either figure: this file's own rule is that a
+counterfactual proves how a browser behaves given markup and never that the
+origin serves it.
+
+### What retired, and the one thing that deliberately did not
+
+`scripts/check_dead_components.mjs` is both the measure and the gate.
+Twenty-three files lost their only caller in one commit — every production
+screen, plus the `myleague/*` panels, `icons.jsx`, `decision/Confidence.jsx`
+and `ledger/VerdictBadge.jsx`, which died the second `MyLeagueScreen` did.
+The unreachable set went 28 files and 4,863 lines to **51 files and 11,560
+lines**.
+
+**That is the shape the script exists for, at scale.** `App.jsx`'s diff
+removed seven imports; twenty-three files died. LobbyBar took four with it
+once and nobody noticed for weeks; nothing here is a prose list that can go
+stale, and the new group records the reason rather than the count.
+
+**Nothing is deleted**, which is this project's own rule: prove the
+replacement works on the running site before removing what it replaced. Every
+capability has an address in v3, so what is owed is a deploy and a look.
+
+**And `main.jsx` still mounts `AppHeader` and `DraftRoom` through
+`DeferredPortals`.** Both render nothing a reader can see — `DraftRoom` gates
+on two redirected routes and `#draftroom-root` measures zero bytes on every
+address; `AppHeader` renders into `#appbar-root`, inside a `<header>` that
+`applyRoute()` now hides unconditionally. Removing the two portals would take
+a large subtree out of the bundle and it is **not** done here, deliberately:
+they are reachable rather than dead, so the graph cannot prove them safe, and
+auditing a subtree that size in the same pass that moves every address on the
+site is changing two things at once on a site that is being moved. It is the
+next obvious thing and it wants its own measurement.
+
+### A missing import blanks the whole page, and the build says nothing
+
+`#/calls/wire` rendered **nothing at all** — an empty `#root`, a navy page,
+no layout and no error on screen. `WireTool.jsx` called `cx()` twice and
+imported it nowhere.
+
+**Every tool in the chain was happy.** Vite built it, rollup did not warn,
+the prerender ran, `copy-legacy-assets` copied eleven of eleven. JSX has no
+idea whether an identifier resolves; it is a `ReferenceError` at render, and
+React's response to a throw during render is to unmount the root — so the
+failure mode is a *blank page*, not a broken-looking one. A screenshot of it
+is indistinguishable from a screenshot of a page that has not loaded yet.
+
+**It was introduced three commits before the cutover and had never been
+visited.** No spec drove `#/v3/calls/wire`, and the guest-route sweeps listed
+the production rooms rather than the calls that replaced them. Adding
+`#/calls/lineup`, `#/calls/wire` and `#/calls/trade` to
+`no-console-errors.spec.mjs` and `no-sideways-leak.spec.mjs` is what would
+have caught it, which is the argument for those two files existing: they are
+the only checks in this project that ask whether a screen is *complaining*
+rather than whether it is correct.
+
+**A sweep for the same class found nothing else**, and that is worth saying
+because the sweep was crude on purpose — every name a v3 file calls or
+renders that appears in no import, declaration or parameter list, keywords
+and browser globals filtered by hand afterwards. Thirteen candidates, twelve
+of them prose inside a template literal or a real global (`DOMParser`,
+`DOMMatrixReadOnly`). One was the bug. A check that reports noise and one
+true thing is still worth ten minutes when the failure it catches is a blank
+page.
+
+### The suite moved on two lines, and then on about twenty files
+
+**Corrected in place**: this heading read "The suite moved on two lines,
+which is what the `data-*` rule bought", and it was written when the two
+lines were all that had been done. The claim under it is still true and it
+was true of a fifth of the work — thirty-five spec files drive this app,
+and the honest split is that the `data-*` rule saved the DRAFT specs
+entirely and saved the SHELL specs nothing at all, because a marker on a
+control cannot help a spec whose subject is a screen that no longer
+exists.
+
+What actually moved, counted rather than recalled:
+
+- **Two lines, for nineteen files.** Every spec that opens the app and
+  drafts — grade, solo, phone, news, board-card, board-marks, pool-capacity,
+  kd-timing, restart, insights, pure-grading and the rest — needed its
+  address changed and nothing else. `#/draft-room` became `#/draft`,
+  `#/rooms/draft` became `#/draft`, and every locator inside them still
+  found what it was looking for.
+- **Four files were re-aimed by hand**: `room.spec` and `lobby.spec` at
+  v3's own shared-draft lobby, `history` at `#/record`, `prospect-room` at
+  `#/players/rookies`.
+- **Two were rewritten**, because their subject retired rather than moved.
+  See below.
+
+Everything the original entry says about the draft specs stands:
+
+- **`openApp()`'s default is `#/draft`.** It was `#/draft-room`, which is now
+  a redirect — it works, and a suite exercising a redirect is testing the
+  wrong thing.
+- **`startSoloDraft()` dropped its `#draftroom-root` scope.** That container
+  is empty on every route now, so every locator inside it matched nothing,
+  `count()` was 0, every step was skipped, and the throw at the foot of the
+  function reported "no Start control was found to press" on a page whose
+  Start button was sitting there enabled. v3's launcher carries
+  `[data-start-draft]` and its room lobby carries `[data-start-room]` — the
+  attributes were already there, because the mobile pass's own rule is that
+  an attribute says what a control IS.
+
+That is the payoff for a rule this file has restated after every rename: the
+Start button has had five names, and this cutover cost it none.
+
+**What did not survive is anything that named a screen.** The three guest
+route tables (`no-sideways-leak`, `no-console-errors`, `shell-routes`) are
+lists of addresses and had to be rewritten; the live draft's four tabs became
+six views named `Pool`/`Board`/`Grade` and `Team`/`Queue`/`Picks`, matched by
+`role="tab"` and accessible name rather than by a label search.
+
+### Two specs were rewritten, because a locator cannot be aimed at nothing
+
+`rail-nav.spec.mjs` and `room-shell.spec.mjs` covered `RailNav`'s desktop
+aside, `FloatingNavPill`'s More sheet, `MyLeagueDemo`'s move cards and
+`RoomShell`'s bar. **Not one of those renders on any address now** — they
+belonged to `AppShell` and `RoomPage`, which every route that mounted them
+redirects away from, and `MyLeagueScreen` is in the unreachable set.
+
+**So they could not be re-aimed, and that is a distinction worth holding
+on to.** A spec whose subject moved takes a new address; a spec whose
+subject was deleted takes a new *subject* or it becomes the worst thing in
+this suite — a locator that matches nothing, satisfying its own
+`toHaveCount(0)` exactly as happily as a working one. This file has
+shipped that vacuity three times.
+
+**What survives is the requirement rather than the markup**, and in both
+cases the requirement is the one the original bugs were really about:
+
+- **rail-nav** asserted four fixes and three of them were one bug in
+  different clothes — a width where no nav rendered at all, a screen that
+  mounted its own shell and forgot the rail, and a nav item pointing at a
+  retired address. All three are still possible against v3's nav, so that
+  is what it asserts now: **exactly one `nav[aria-label="Primary"]` visible
+  at 390, 768, 1024 and 1440**, carrying the five places in order, on every
+  screen including the draft launcher that was the one outside `AppShell`.
+  768 is kept for its original reason — the pill was `sm:hidden` and the
+  rail `lg:flex`, so a tablet in portrait got neither, and that width is
+  what proves v3's single `md` boundary meets rather than gaps.
+- **room-shell** keeps the half that was never about a bar: **the call's
+  own subject is an H1 in the BODY and is not repeated in the chrome**,
+  and all three calls wear one shell. Asserted by what the shell OFFERS
+  rather than by comparing class strings, which was a fact about Tailwind.
+
+### The draft-room internals are the half still open, and this is the map
+
+**Said plainly rather than left to be discovered**: re-aiming the ADDRESSES
+did not re-aim the specs that read the draft room's own DOM, and there are
+about eight of them — `board-card`, `board-marks`, `draft-room-widths`,
+`grade`'s Analysis screen, `deep-board`, `news`, `phone` and
+`sheet-reachable`. Every one scopes to `#draftroom-root` and clicks a tab by
+its label, and both of those are facts about the Draft Room rather than
+about the product: the container is empty on every route and v3's cockpit
+draws its own board.
+
+**They fail by timing out on a tab click**, which reads as a broken app and
+is not one — the same shape this file records for `startSoloDraft()`'s own
+scope, one layer in.
+
+The mapping was worked out against `live/Board.jsx` rather than guessed, and
+it is worth writing down because it is three different answers rather than
+one:
+
+- **Still true, and only the selector moved.** The name is still
+  `shortName()` — an initial and a surname, a defense keeping its club. The
+  cell still carries a pick code, and a filled row is still the same height
+  as an empty one (`h-[60px]` on both). The chalk fill still carries
+  `CELL_INK`/`CELL_SUB` and **no opacity**, so the contrast sweep is still
+  exactly the check it was written to be.
+- **Still true and with a BETTER hook than it had.** The live pick is
+  `aria-current="step"` and every filled cell carries `data-overall`, so
+  "the number in the corner is the pick that cell really is" and "the ring
+  is on the pick that is on the clock" can both be asserted against an
+  attribute rather than against a class. That is the rule this file already
+  states, arriving for free.
+- **Retired, and the assertion has to say so.** There is no per-cell
+  direction arrow — v3 draws one arrow per ROUND, in the header row — so
+  "the arrow turns down on the last pick of every round" is about a mark
+  that no longer exists. And the gold seat bracket is gone: your column is
+  `bg-v3-well` on the `<td>` now. Both were real rules with real
+  measurements behind them, and neither may be quietly deleted or quietly
+  "fixed" into asserting something else.
+
+**The reason this is called out rather than half-done is the vacuity trap.**
+A spec pointed at v3's board that still asks for a mark v3 does not draw
+reports zero and passes, and this project has shipped that three times. The
+retired third of the list needs a decision about what replaces each rule,
+which is a design question and not a find-and-replace.
+
+**Four more are the same shape and are worth naming separately, because
+their subject is not the board.**
+
+- **`restart.spec.mjs`** — three of its four. The flow it walks (finish a
+  mock, go back, change the league, start another) is the one this file
+  documents `startDraft()`'s own clear for, and it is still the right flow;
+  what moved is where a finished draft's report lives. It waits on the old
+  report and times out.
+- **`prospect-room.spec.mjs`** drives `#/players/rookies` now, which is the
+  right address — and `V3Rookies.jsx` is a different screen from the
+  Prospect Room, so its rows, its refuses-to-rank sort and its position
+  filter are all asserted against markup that moved.
+- **`parity.spec.mjs`** is the interesting one, because **it is working
+  exactly as designed and its failure is a question for the owner rather
+  than a defect.** It exists so a page cannot quietly lose the sentences it
+  is built on, and it reports that **"Agility Through Analytics" is on
+  neither homepage any more**. The cutover replaced that file's copy lists
+  where the sentences had been *retired by design*; this one nobody
+  decided. Either the slogan is gone on purpose — in which case it is
+  replaced in the list, with the reason, the way the other four were — or
+  it is an accident of the rewrite, and this is the test that caught it.
+  **Do not make it pass by deleting the line.**
+
+- **`history.spec.mjs`** drives `#/record` now, which is the right address
+  — and `V3Record.jsx` is a different screen from `HistoryScreen.jsx`,
+  which is what every selector in it still describes. Seven assertions, all
+  about a ledger's filters and room pills.
+- **`bar-rows.spec.mjs`** has no v3 surface at all. It guards `<BarRow>`'s
+  wrap — the fix for a label truncated at 1440 as well as at 375 — and
+  **nothing under `web/src/components/v3` imports `Bar` or `BarRow`**,
+  which was checked rather than assumed. Its own control assertion is what
+  reports this (`the sweep found bar rows to check`, seen = 0), and that
+  control is the reason the file fails honestly instead of passing empty.
+  It is the best argument in this whole pass for writing one.
+
+  **It should retire with the `RoomPage` subtree rather than on its own.**
+  `Bar` is still *reachable* — `check_dead_components.mjs` says so — because
+  `DraftRoom`/`RoomPage` are still imported by `main.jsx` through
+  `DeferredPortals` even though they render on no address. Reachable and
+  unrenderable is exactly the state that section already flags as the next
+  obvious thing and deliberately out of scope here; this spec is a second
+  witness to it.
+
+**The tier chip has no home and is named rather than dropped.** A guest was
+told their plan in the room's bar; v3 has no bar and its tier handling moved
+to `#/account` and `callKit`'s own gate. That is a real assertion with
+nowhere to live in that file, and it is written into its header so the
+absence is a decision on the record instead of something nobody noticed.
+
+**And a `nav` that draws every item identically has stopped saying where you
+are**, which no screenshot catches, so the rewrite added what the original
+never had: exactly one item carries `aria-current`, and it is the one whose
+`href` matches the route. Asserted against the attribute rather than a class,
+because the class is styling and the attribute is the claim.
+
+**And one re-aimed assertion found a real trap rather than a stale name.**
+`solo.spec.mjs` asserts that "Auto-draft the rest" stays cut from the draft
+menu. Widening its locator off `#draftroom-root` made it match the LEGACY
+hidden button — `app.js` still writes that exact string into `#view-app` on
+every render — so the test failed on a menu that was perfectly correct.
+`:visible` is the fix, and it needed a second assertion with it: a
+`toHaveCount(0)` passes just as happily against a menu that never opened,
+which is the vacuity trap this project has now shipped three times. The
+positive it asserts first is "End draft", the item that does the same job
+honestly.
+
 ## Copy goes stale the day a feature ships, and nothing fails when it does
 
 A content audit on 2 September 2026 found the same defect in eight places,
@@ -12283,6 +12717,13 @@ remains, after a close, where there is no client-side condition to poll.
 Measured 10 September 2026, by walking the import graph from `main.jsx` and
 `entry-server.jsx` rather than by reading anything: **28 of the 190 files
 under `web/src` are unreachable, and they are 4,863 lines.**
+
+**Those two figures are the measurement that prompted this section and they
+are four days old; the cutover took the set to 51 of 298 and 11,560 lines.**
+Left standing rather than updated, because every number in this section is
+evidence for an argument about how components die and re-quoting today's
+count would only make it stale again next week — the script prints the
+current answer on every run, which is the whole point of it existing.
 
 This file kept three hand-written lists of them — the analytics grid Your
 Insights replaced, the marketing homepage Flow v3 replaced, the three

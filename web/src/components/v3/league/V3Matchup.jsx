@@ -21,7 +21,7 @@ import {
 } from './matchupData.js'
 import { retrySleeperWeeks, useSleeperWeeks } from './useSleeperWeeks.js'
 
-/* #/v3/league/matchup?week=N[&team=id] — one matchup, any week, either side.
+/* #/league/matchup?week=N[&team=id] — one matchup, any week, either side.
 
    ---- Why it lives under League, and is one page ----
 
@@ -197,7 +197,7 @@ function NameCell({ row, align, week, isCurrent }) {
         {p ? <PosTag pos={p.pos} className="hidden sm:inline-flex" /> : null}
         <span className="min-w-0">
           {p ? (
-            <a href={`#/v3/players/${encodeURIComponent(String(p.id))}`} className={cx(HIT, 'block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]')}>
+            <a href={`#/players/${encodeURIComponent(String(p.id))}`} className={cx(HIT, 'block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]')}>
               <span className="sm:hidden">{shortName(p)}</span><span className="hidden sm:inline">{p.name}</span>
             </a>
           ) : (
@@ -416,7 +416,7 @@ function ConnectedMatchup({ league, q }) {
       label={`League · matchup${ready && snapshot.name ? ` · ${snapshot.name}` : ''}`}
       title={title}
       lede={lede}
-      action={<>{extra}<QuietButton href="#/v3/league">League</QuietButton></>}
+      action={<>{extra}<QuietButton href="#/league">League</QuietButton></>}
     />
   )
 
@@ -725,9 +725,9 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
       ) : null}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-1">
-        {isCurrent && isMine ? <GoLink href="#/v3/calls/lineup">Work the lineup call</GoLink> : null}
+        {isCurrent && isMine ? <GoLink href="#/calls/lineup">Work the lineup call</GoLink> : null}
         {focus ? <GoLink href={teamHref(focus)}>{isMine ? 'Your' : `${focusName}’s`} roster and schedule</GoLink> : null}
-        <GoLink href="#/v3/league">Standings</GoLink>
+        <GoLink href="#/league">Standings</GoLink>
       </div>
     </div>
   )
@@ -775,7 +775,7 @@ function GuestMatchup() {
       label="League · matchup · sample"
       title="Every week of your season, one matchup at a time."
       lede="Last week's result with every starter's points, this week's two lineups side by side with the win probability, and who is next. Until a league is connected, this is a sample week on tonight's real players."
-      action={<><ConnectCall primary /><QuietButton href="#/v3/league">League</QuietButton></>}
+      action={<><ConnectCall primary /><QuietButton href="#/league">League</QuietButton></>}
     />
   )
   if (!priced) {

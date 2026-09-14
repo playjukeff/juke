@@ -32,7 +32,7 @@ import { openApp } from "./helpers.mjs";
 const ROW = "[data-prospect-row]";
 
 async function openProspect(context) {
-  const page = await openApp(context, "#/rooms/prospect");
+  const page = await openApp(context, "#/players/rookies");
   // The board is deferred behind the cold-load reveal, so the room draws a
   // loading block first. Wait for the condition, never for a duration.
   await page.locator(ROW).first().waitFor({ timeout: 20000 });

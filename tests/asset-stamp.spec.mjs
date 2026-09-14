@@ -43,7 +43,7 @@ test("the deferred data is stamped with the page's own version, not a second cop
   const stamps = await stampsInHtml(request);
   expect(stamps["app.js"], "index.html addresses app.js with a ?v= stamp").toBeTruthy();
 
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
 
   /* Wait for the real thing rather than reading the constant: what matters is
      the URL the browser is actually sent to, which is what a cache keys on.

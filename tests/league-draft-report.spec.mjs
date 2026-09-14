@@ -28,7 +28,7 @@ async function ready(page) {
 test.describe("the league draft report", () => {
   test("it grades every seat of a real league's draft", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await ready(page);
 
     const r = await page.evaluate((fx) => {
@@ -73,7 +73,7 @@ test.describe("the league draft report", () => {
      scoring context would be doing nothing and nobody would know. */
   test("the league's scoring actually moves the grade", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await ready(page);
 
     const r = await page.evaluate((fx) => {
@@ -102,7 +102,7 @@ test.describe("the league draft report", () => {
      trust. */
   test("a draft type it does not model is refused, not graded", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await ready(page);
 
     const r = await page.evaluate((fx) => {
@@ -118,7 +118,7 @@ test.describe("the league draft report", () => {
 
   test("reading it leaves a live draft alone", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/rooms/draft");
+    const page = await openApp(context, "#/draft");
     await ready(page);
 
     const r = await page.evaluate((fx) => {

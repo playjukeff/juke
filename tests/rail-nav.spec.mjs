@@ -1,219 +1,124 @@
-/* Juke Journey v3's rail-nav shell and My League screen, reviewed after
-   Phase 1 landed already merged. Four real bugs were found by hand and
-   fixed; this covers the ones a keyless build can reach without a real
-   Clerk instance.
+/* The primary nav, and the guarantee it exists for: every screen has a way
+   off itself, at every width.
 
-   ---- What is NOT covered here, and why ----
+   ---- What this file was, and what the cutover did to it ----
 
-   ConnectLeagueModal's tier-limit branch (a Multi-League account at its
-   6-league cap was offered a "downgrade" to Season Pass) sits behind
-   ConnectLeagueCta/LeagueSwitcher, both inside Clerk's <SignedIn> — the
-   same gap league-connect.spec.mjs's own header documents for the connect
-   dialog generally. Verified by hand instead, with the technique that file
-   already prescribes: a temporary render harness bypassing <SignedIn>
-   entirely, reverted after.
+   It covered RailNav's desktop <aside>, FloatingNavPill's phone pill and
+   its More sheet, and MyLeagueDemo's move cards. Not one of those four
+   renders on any address any more: the rail and the sheet belonged to
+   AppShell, which every route that mounted it now redirects away from, and
+   MyLeagueScreen is in check_dead_components.mjs's unreachable set. So the
+   old assertions could not be "fixed" — there is nothing left for them to
+   be about, and a locator that matches nothing passes a `toHaveCount(0)`
+   just as happily as a working one does.
 
-   The stale #/rooms/league -> #/my-league link fixes (HomeAlive.jsx,
-   YouScreen.jsx) render only for a signed-in reader with a connected
-   league — the identical gap. Verified by fetching the live dev bundle
-   and confirming the exact edited elements.
+   What survives is the REQUIREMENT rather than the markup. Three of the
+   four bugs this file was written for were the same bug wearing different
+   clothes — a width at which no nav rendered at all, a screen that mounted
+   its own shell and forgot the rail, a nav item pointing at a retired
+   address — and every one of them is still possible against v3's nav. So
+   that is what is asserted here now, against the nav v3 actually draws.
 
-   ---- CSS-hidden is still mounted, and every selector below has to know it ----
+   ---- The one fact every selector below has to know ----
 
-   Every one of the four failed on its first run, and not one failure was
-   the app: RailNav's own <aside> (hidden lg:flex) and MoreSheet's shared
-   <a href> room links both render off-screen at phone width rather than
-   not at all, and a locator that does not know that matches the invisible
-   copy right alongside the one under test — `aside` resolved to RailNav's
-   AND the legacy draft room's own #rail queue sidebar; `a[href="#/rooms/
-   trade"]` resolved to RailNav's copy alongside the sheet's. Scoped below
-   to `.z-\[70\]`, the sheet's own fixed backdrop, rather than to the page —
-   the same rule CLAUDE.md already states for two phone-shaped copies of
-   one table ("checked by counting <table> elements... exactly one"),
-   arrived at by a failing run instead of by reading it first. */
+   CSS-hidden is still mounted, which is the rule that made all four of the
+   original failures look like app bugs. V3App renders its primary nav
+   TWICE — once `hidden md:flex` in the header and once `fixed bottom-0
+   md:hidden` above the safe area — so both are in the DOM at every width
+   and exactly one is ever on screen. `nav[aria-label="Primary"]` on its own
+   is a strict-mode violation rather than a missing nav; every locator here
+   is `:visible`, and the count assertions below are what pin that it really
+   is exactly one.
+
+   ---- What is deliberately NOT covered ----
+
+   There is no More sheet in v3 and no overflow list behind one: the nav is
+   five places and they all fit at both widths, which is what the five was
+   chosen for. The old "tapping a room inside the sheet closes it" and "My
+   League is not duplicated inside the sheet" tests describe a control that
+   does not exist, so they are gone rather than skipped — a skipped test for
+   a deleted feature is a standing amber nobody reads. */
 
 import { test, expect } from "@playwright/test";
 import { openApp } from "./helpers.mjs";
 
-const SHEET = ".z-\\[70\\]";
+const NAV = 'nav[aria-label="Primary"]';
 
-test.describe("the phone bottom nav and its More sheet", () => {
-  /* Reported as a dead zone: FloatingNavPill's pill and sheets were
-     sm:hidden (640px) while RailNav, its desktop counterpart, is lg:flex
-     (1024px) — so a tablet in portrait, or any non-maximised desktop
-     window, got neither nav at all. 768px sits squarely inside that gap. */
-  test("the pill covers the width the rail does not reach yet", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
-    const page = await openApp(context, "#/rooms/waiver");
+/* The five places, in the order V3App lists them, by the address each one
+   points at rather than by its label. An attribute says what a control IS.
+   These are also exactly the addresses canonicalHash() rewrites the old
+   routes ONTO, so a stale item here would be a nav pointing at a redirect
+   — which is one of the four bugs this file was originally written for. */
+const PLACES = ["#/", "#/league", "#/players", "#/draft", "#/record"];
 
-    await expect(page.getByRole("button", { name: "More" })).toBeVisible();
-    // Excludes the legacy draft room's own #rail queue sidebar, an
-    // unrelated element sharing the tag name — see the file header.
-    await expect(page.locator("aside:not(#rail)")).toBeHidden();
+/* Every width the app is designed at, plus the one that used to fall
+   between two breakpoints and get no nav at all. 768 is not decoration:
+   the pill was sm:hidden (640) while the rail was lg:flex (1024), so a
+   tablet in portrait and every non-maximised desktop window sat in a dead
+   zone. v3's single md (768) boundary is what closes it, and this is the
+   width that proves the two halves meet rather than overlap or gap. */
+for (const width of [390, 768, 1024, 1440]) {
+  test(`exactly one nav is on screen at ${width}px, and it is the five places`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const page = await openApp(context, "#/league");
 
-    await context.close();
-  });
+    const shown = page.locator(`${NAV}:visible`);
+    await expect(shown, "one nav, never none and never both").toHaveCount(1);
 
-  test("the rail covers desktop width and the pill stands down", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    const page = await openApp(context, "#/rooms/waiver");
-
-    await expect(page.locator("aside:not(#rail)")).toBeVisible();
-    await expect(page.getByRole("button", { name: "More" })).toBeHidden();
-
-    await context.close();
-  });
-
-  /* The Draft Room's entry is the one app screen that is NOT inside
-     AppShell: applyRoute() hides #view-home for #/rooms/draft, so
-     DraftRoom.jsx renders its own shell into #draftroom-root instead. The
-     header was already mounted there for exactly that reason -- reported
-     once as "header completely missing from the Draft Room page" -- and
-     the rail was the half that never followed, so a desktop reader who
-     clicked Draft IN the rail lost the rail on landing.
-
-     The test above cannot see it: #/rooms/waiver goes through AppShell,
-     which is the code path that was never broken.
-
-     Scoped to #draftroom-root because on this route AppShell's own rail is
-     still mounted inside a hidden #view-home, and an unscoped `aside`
-     matches both -- CSS-hidden is still mounted, the rule this file's
-     header already states. */
-  test("the Draft Room's entry keeps the rail, being outside AppShell", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    const page = await openApp(context, "#/rooms/draft");
-
-    const rail = page.locator("#draftroom-root aside");
-    await expect(rail).toBeVisible();
-    /* RailNav reads the hash itself rather than being told which item is
-       on, so this also pins that it cannot disagree with the rail on the
-       screen the reader arrived from. */
-    await expect(rail.locator("[aria-current='page']")).toContainText("Draft");
+    const hrefs = await shown.locator("a").evaluateAll((as) =>
+      as.map((a) => a.getAttribute("href")),
+    );
+    expect(hrefs, "the five places, in order").toEqual(PLACES);
 
     await context.close();
   });
+}
 
-  test("and stands down for the pill on a phone there too", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await openApp(context, "#/rooms/draft");
+/* The screen that mounted its own shell is the one that lost its rail, so
+   it is the one worth naming. #/draft was #/rooms/draft, which was the
+   single route applyRoute() hid #view-home for — DraftRoomEntry rendered
+   into #draftroom-root and mounted two thirds of a shell, never RailNav,
+   and the half that was missing was the half nobody develops in. Every
+   screen renders inside one shell now, which is exactly the claim that
+   wants a test rather than a comment. */
+test("every screen carries the nav, including the draft launcher", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await openApp(context, "#/");
 
-    /* toHaveCount before toBeHidden, and that ordering is the test: a
-       locator matching NOTHING satisfies toBeHidden, so the hidden
-       assertion alone passes just as happily against a rail that was never
-       mounted here at all -- which is the very bug this file is about. */
-    await expect(page.locator("#draftroom-root aside")).toHaveCount(1);
-    await expect(page.locator("#draftroom-root aside")).toBeHidden();
-    await expect(page.locator("#draftroom-root nav")).toBeVisible();
-
-    await context.close();
-  });
-
-
-  test("My League is not duplicated inside the sheet", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await openApp(context, "#/rooms/waiver");
-
-    await page.getByRole("button", { name: "More" }).click();
-    await expect(page.getByText("ALL ROOMS")).toBeVisible();
-
-    /* My League already has its own dedicated tab in the pill, by design
-       (FloatingNavPill.jsx: "it earns a tap of its own rather than living
-       behind More"). Scoped to the sheet itself: RailNav's own hidden copy
-       of the item list carries a My League row too, off-screen but
-       mounted, so an unscoped count would pass at 2 whether or not the
-       sheet's own row had really been filtered out.
-
-       By href, not by text — confirmed the hard way. A first version of
-       this read getByText("My League", { exact: true }), which is
-       vacuously 0 whichever way the filter goes: the row's own text is
-       the glyph and the label with no space between them ("🏟My League"),
-       so the element's WHOLE text never equals "My League" exactly and
-       the assertion cannot fail. Caught by running it against the pre-fix
-       file, where it passed when it should have gone red. */
-    await expect(page.locator(SHEET).locator('a[href="#/my-league"]')).toHaveCount(0);
-
-    // The sheet still carries every room and History, unaffected by the
-    // My League filter — this is what tells "filtered correctly" apart
-    // from "rendered nothing".
-    //
-    // #/history, not #/drafts. The rail's History item pointed at the
-    // mock-draft archive for as long as there was no decision ledger to
-    // point at; the ledger shipped and railItems.js moved it, and this
-    // line was left behind — standing red from that merge until the
-    // Prospect Room's own run tripped over it. It is the stale-spec
-    // shape this project catalogues: it failed by not FINDING something,
-    // on a property (does the sheet render its third group at all) that
-    // had nothing to do with the route that moved.
-    await expect(page.locator(SHEET).locator('a[href="#/rooms/waiver"]')).toBeVisible();
-    await expect(page.locator(SHEET).locator('a[href="#/rooms/trade"]')).toBeVisible();
-    await expect(page.locator(SHEET).locator('a[href="#/history"]')).toBeVisible();
-
-    await context.close();
-  });
-
-  /* RoomPage.jsx deliberately does not unmount between two room slugs, to
-     keep its own hook count stable across e.g. Waiver -> Trade — which is
-     exactly why MoreSheet, mounted inside that same tree, survived the tap
-     unchanged and stayed open over the new room. Asserting only "the sheet
-     is gone" would also pass a version that closes the sheet without the
-     navigation actually landing, so both are checked. */
-  test("tapping another room inside the sheet closes it and lands there", async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const page = await openApp(context, "#/rooms/waiver");
-
-    await page.getByRole("button", { name: "More" }).click();
-    await expect(page.getByText("ALL ROOMS")).toBeVisible();
-
-    await page.locator(SHEET).locator('a[href="#/rooms/trade"]').click();
-
-    await expect(page.getByText("ALL ROOMS")).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Trade Room" })).toBeVisible();
-
-    await context.close();
-  });
-});
-
-test.describe("My League's demo screen", () => {
-  /* Free and guest alike get the full interactive demo (confirmed product
-     rule — Free cannot connect a real league at all), so this needs no
-     account and no stub, only the board actually landing: buildDemoData()
-     reads real players off it and the screen shows "Loading…" until it
-     has. */
-  async function openDemo(context) {
-    const page = await openApp(context, "#/my-league");
-    await page.waitForFunction(() => typeof dataReady === "function" && dataReady());
-    await expect(page.getByText("Demo league")).toBeVisible();
-    return page;
+  for (const hash of ["#/", "#/draft", "#/draft/insights", "#/players", "#/league",
+    "#/record", "#/account", "#/calls/wire", "#/method/how-it-works"]) {
+    await page.evaluate((h) => { location.hash = h; }, hash);
+    await page.waitForTimeout(400);
+    await expect(page.locator(`${NAV}:visible`), `${hash} has a nav`).toHaveCount(1);
+    /* And a way back to Now that is not the nav — the wordmark, which is
+       the control a reader reaches for first and the one that used to be
+       a logo doing two jobs and announcing neither. */
+    await expect(
+      page.locator('a[aria-label="Juke, Now"]:visible'),
+      `${hash} has the wordmark home`,
+    ).toHaveCount(1);
   }
 
-  test("the primary move card is a real navigation, not a no-op", async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await openDemo(context);
-
-    // ctaLabel and slug both come from demoData.js as fixed strings — see
-    // its own comment on why the room a recommendation names is
-    // deterministic regardless of which players land in the offsets it
-    // reads. onOpen used to be a literal no-op (`() => {}`).
-    await page.getByRole("button", { name: "Open Waiver Room" }).click();
-    await expect(page.getByRole("heading", { name: "Waiver Room" })).toBeVisible();
-
-    await context.close();
-  });
-
-  test("a secondary move is its own navigation, not a promote-to-primary swap", async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await openDemo(context);
-
-    /* Confirmed against the source rather than assumed: each card is an
-       independent <a href> into the room it names. These were plain divs
-       with no click target at all.
-
-       Disambiguated by its own copy ("Counter this week's offer...")
-       rather than by href alone: RailNav's hidden desktop copy of the
-       nav's own Trade link shares the identical href on this same page. */
-    await page.locator('a[href="#/rooms/trade"]').filter({ hasText: "Counter" }).click();
-    await expect(page.getByRole("heading", { name: "Trade Room" })).toBeVisible();
-
-    await context.close();
-  });
+  await context.close();
 });
+
+/* A nav that draws every item identically is a nav that has stopped saying
+   where you are, which is the failure `aria-current` exists to prevent and
+   the one no screenshot catches. Asserted as a RELATIONSHIP — exactly one
+   item is current, and it is the one whose href matches the route — rather
+   than against a class name, because the class is styling and the
+   attribute is the claim. */
+for (const [hash, current] of [["#/league", "#/league"], ["#/players", "#/players"],
+  ["#/record", "#/record"]]) {
+  test(`${hash} lights its own nav item and no other`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await openApp(context, hash);
+
+    const marked = await page.locator(`${NAV}:visible a[aria-current]`).evaluateAll((as) =>
+      as.map((a) => a.getAttribute("href")),
+    );
+    expect(marked, "exactly one item is current, and it is this route").toEqual([current]);
+
+    await context.close();
+  });
+}

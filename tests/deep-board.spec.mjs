@@ -128,7 +128,7 @@ test.describe("deep-bench players carry no real ADP, and say so", () => {
 
   test("the Players table marks a deep-bench player, once a draft reaches one", async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     test.skip(!(await hasDeepBench(page)),
       "no deep-bench players on this board yet -- needs a data pipeline run");
 

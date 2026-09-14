@@ -6,8 +6,9 @@ import { useLeagueFresh } from '../../v2/stores.js'
 import { scenariosFor, sublineOf } from '../../practiceScenarios.js'
 import { safe, shortAgo, useDraftEngine, useTwoTap } from '../../v2/draft/draftKit.jsx'
 import { CallButton, GoLink, Headline, Icon, Label, PageHead, PosTag, QuietButton, Sheet, Skeleton, ValueBar, cx, ordinal , HIT } from '../ui.jsx'
-import { FRIENDS_HASH, INSIGHTS_HASH, RECORD_HASH, begin, resume, setupProblem, startScenario } from './flow.js'
+import { INSIGHTS_HASH, RECORD_HASH, begin, resume, setupProblem, startScenario } from './flow.js'
 import { FOCUS, Glyph, Problem } from './kit.jsx'
+import { cleanCode, codeOf, createRoom, joinRoom, roomHref } from './live/room.js'
 import SettingsDrawer from './SettingsDrawer.jsx'
 import { CountText, LIFT, StreamText } from '../motion.jsx'
 
@@ -21,9 +22,9 @@ import { CountText, LIFT, StreamText } from '../motion.jsx'
       cobalt Start. A setupProblem() answer disables Start and prints its
       sentence beside it — a refusal is only as good as the reason it gives.
    3. The settings behind that shape, in a drawer (every production control).
-   4. Other ways in: draft with friends (handed to the classic room, which
-      owns the invite and the shared clock — and this page says so) and four
-      practice scenarios through engine.startScenario().
+   4. Other ways in: draft with friends — create a room or join one by code
+      or link, both through the engine's own doors — and four practice
+      scenarios through engine.startScenario().
    5. What you have run: five recent drafts, and what they add up to.
 
    Every row is real — historyList(), inProgressSummary(), historyStats(),
@@ -126,9 +127,10 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
 
       <div className="mt-5 flex flex-col gap-3">
         {roomActive ? (
-          /* In a room the Start button is the room's: it decides when a shared
-             draft begins, and the classic Draft Room is where it lives. */
-          <CallButton href={FRIENDS_HASH} className="w-full sm:w-auto sm:self-start">Open your draft room <Icon name="arrow" className="h-4 w-4" /></CallButton>
+          /* In a room the Start button is the room's: a shared draft begins
+             when the host says so and everybody moves on the broadcast, so
+             this is a way back to the room rather than a second Start. */
+          <CallButton href={roomHref(codeOf(engine))} className="w-full sm:w-auto sm:self-start">Open your draft room <Icon name="arrow" className="h-4 w-4" /></CallButton>
         ) : (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
             <CallButton data-start-draft onClick={onStart} disabled={!!problem} className="min-h-[52px] w-full px-7 text-[16px] sm:w-auto">
@@ -149,21 +151,90 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
   )
 }
 
-function Friends({ roomActive }) {
-  return (
-    <Sheet code="Draft with friends" aside="Classic room">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Glyph name="users" className="mt-0.5 h-6 w-6 shrink-0 text-v3-ink" />
-          <div className="min-w-0">
-            <p className="text-[16px] font-bold text-v3-ink">{roomActive ? 'Your draft room — invite or enter' : 'One board, real managers'}</p>
-            <p className="mt-1 max-w-[52ch] text-[14px] leading-[1.5] text-v3-ink2">
-              A shared draft runs in the classic Draft Room, which owns the invite link, the shared clock and the chat. This button takes you there; v3 does not redraw it.
+/* Draft with friends: make a room, or walk into one.
+
+   Both buttons go through the engine's own doors — engine.createRoom() and
+   engine.joinRoomByCode(), the exact calls the classic lobby presses, which
+   are also the only ones that register app.js's own room handler. This page
+   adds no protocol and holds no socket; it navigates, and the room screen
+   draws whatever the room broadcasts.
+
+   Creating can be refused: setupProblem() answers for a league the board
+   cannot seat, and createRoom() returns null rather than a room nobody can
+   draft in. The sentence is said here, beside the button, because a refusal
+   is only as good as the reason it gives. */
+function Friends({ engine, roomActive }) {
+  const [code, setCode] = useState('')
+  const [problem, setProblem] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const create = () => {
+    setProblem('')
+    setBusy(true)
+    const made = createRoom(engine)
+    if (!made) { setBusy(false); setProblem(setupProblem() || 'That room could not be created. Check the league settings and try again.') }
+  }
+  const join = (e) => {
+    e.preventDefault()
+    setProblem('')
+    if (!cleanCode(code)) { setProblem('That is not a room code. Paste the whole invite link, or the eight characters from it.'); return }
+    setBusy(true)
+    if (!joinRoom(engine, code)) { setBusy(false); setProblem('That room could not be joined.') }
+  }
+
+  if (roomActive) {
+    return (
+      <Sheet code="Draft with friends" aside="You are in a room">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <Glyph name="users" className="mt-0.5 h-6 w-6 shrink-0 text-v3-ink" />
+            <p className="min-w-0 max-w-[52ch] text-[14px] leading-[1.5] text-v3-ink2">
+              Your room is open. Its seats, its invite and its chat are all on the room screen — and the league is the room's while you are in it.
             </p>
           </div>
+          <QuietButton href={roomHref(codeOf(engine))} className="shrink-0">Back to the room <Icon name="arrow" className="h-4 w-4" /></QuietButton>
         </div>
-        <QuietButton href={FRIENDS_HASH} data-friends-link className="shrink-0">Go to the classic room <Glyph name="external" className="h-4 w-4" /></QuietButton>
+      </Sheet>
+    )
+  }
+
+  return (
+    <Sheet code="Draft with friends" aside="Real managers">
+      <div className="flex items-start gap-3">
+        <Glyph name="users" className="mt-0.5 h-6 w-6 shrink-0 text-v3-ink" />
+        <p className="min-w-0 max-w-[56ch] text-[14px] leading-[1.5] text-v3-ink2">
+          One board, one clock, and a chair for everybody who turns up. Empty chairs draft as CPUs, so a room of three still runs a full ten-team draft.
+        </p>
       </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          {/* Ink, not cobalt. "Start mock draft" is this page's one primary
+              action and the rule is one per view — the same second rank the
+              in-progress card's Resume already takes on this screen, rather
+              than a second call-to-action arguing with the first. */}
+          <QuietButton onClick={create} data-create-room className="w-full border-v3-ink">
+            <Glyph name="plus" className="h-4 w-4" /> {busy ? 'Opening the room…' : 'Create a room'}
+          </QuietButton>
+          <p className="mt-2 text-[13px] leading-[1.5] text-v3-ink3">Your league, your clock. You get a link to send.</p>
+        </div>
+        <form onSubmit={join}>
+          <div className="flex gap-2">
+            <label className="sr-only" htmlFor="v3-join-code">Room code or invite link</label>
+            <input
+              id="v3-join-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Code or link"
+              autoComplete="off"
+              spellCheck={false}
+              className={cx('min-h-[44px] min-w-0 flex-1 rounded-[4px] border border-v3-rule bg-v3-paper px-3 font-figure text-[16px] uppercase tracking-[0.08em] text-v3-ink placeholder:normal-case placeholder:tracking-normal placeholder:text-v3-ink3', FOCUS)}
+            />
+            <QuietButton onClick={join} data-join-room className="shrink-0 px-4">Join</QuietButton>
+          </div>
+          <p className="mt-2 text-[13px] leading-[1.5] text-v3-ink3">Somebody sent you a link? Open it, or paste it here.</p>
+        </form>
+      </div>
+      {problem && <Problem className="mt-3" text={problem} />}
     </Sheet>
   )
 }
@@ -228,7 +299,7 @@ function Scenarios({ engine, ready, tick, roomActive }) {
               <SignInButton mode="modal">
                 <button type="button" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', FOCUS)}>Sign in</button>
               </SignInButton>
-            ) : <a href="#/v3/account" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4')}>Sign in</a>}
+            ) : <a href="#/account" className={cx(HIT, 'font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4')}>Sign in</a>}
             {' to save results and get scenarios built from your drafts.'}
           </>
         )}
@@ -252,7 +323,7 @@ function Recent({ history, inProgress, onDelete }) {
           <ul className="divide-y divide-v3-rule">
             {history.slice(0, RECENT).map((e) => (
               <li key={e.id} data-rise="" className="flex items-center gap-1 pr-2">
-                <a href={`#/v3/draft/report?id=${encodeURIComponent(e.id)}`} className={cx('grid min-w-0 flex-1 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-v3-paper sm:px-5', FOCUS)}>
+                <a href={`#/draft/report?id=${encodeURIComponent(e.id)}`} className={cx('grid min-w-0 flex-1 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-v3-paper sm:px-5', FOCUS)}>
                   <span className="font-sheet text-[28px] font-black leading-none tracking-[-0.03em] text-v3-ink">{e.grade || '—'}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[15px] font-semibold text-v3-ink">
@@ -385,7 +456,7 @@ export default function V3DraftHome() {
           )}
           <NextMock engine={engine} ready={ready} roomActive={roomActive} problem={problem} startProblem={startProblem} onStart={start} onSettings={() => setSettingsOpen(true)} />
           <Scenarios engine={engine} ready={ready} tick={tick} roomActive={roomActive} />
-          <Friends roomActive={roomActive} />
+          <Friends engine={engine} roomActive={roomActive} />
         </div>
         <div className="flex min-w-0 flex-col gap-5">
           <Recent history={history} inProgress={inProgress} onDelete={(id) => { engine.deleteHistoryDraft(id); bump() }} />

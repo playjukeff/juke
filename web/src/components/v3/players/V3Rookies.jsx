@@ -93,7 +93,7 @@ function ClassRow({ rank, row, open, onToggle, note }) {
         <Fig className="text-[13px] text-v3-ink3">{String(rank).padStart(2, '0')}</Fig>
         <PlayerFace photo={row.photo} initials={row.initials} pos={p.pos} size={40} />
         <div className="min-w-0">
-          <a href={`#/v3/players/${encodeURIComponent(p.id)}`} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{p.name}</a>
+          <a href={`#/players/${encodeURIComponent(p.id)}`} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{p.name}</a>
           <div className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
             <PosTag pos={p.pos} />
             <span className="truncate font-figure text-[13px] text-v3-ink2">{[row.stat.col, p.team].filter(Boolean).join(' · ')}</span>

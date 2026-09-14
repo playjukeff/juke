@@ -91,7 +91,7 @@ for (const [label, rec, seed] of [
 ]) {
   test(`autopick matches cpuChoice() pick for pick — ${label}, seed ${seed}`, async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
 
     if (rec !== null) await page.evaluate((r) => { league.rules.rec = r; }, rec);
     await startSoloDraft(page);
@@ -114,7 +114,7 @@ for (const [label, rec, seed] of [
 test("a queued tight end past the roster cap is skipped, not drafted into an illegal roster",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     /* Four stars at a position capped at three (maxAt("TE") on the default
@@ -160,7 +160,7 @@ test("a queued tight end past the roster cap is skipped, not drafted into an ill
 test("a kicker starred in round one is taken as starred, and still only one of him",
   async ({ browser }) => {
     const context = await browser.newContext();
-    const page = await openApp(context, "#/draft-room");
+    const page = await openApp(context, "#/draft");
     await startSoloDraft(page);
 
     const starred = await page.evaluate(() => {
@@ -246,7 +246,7 @@ test("the autopicked seat's draft value is not a systematic bottom-of-room outli
 
     for (const seed of SEEDS) {
       const context = await browser.newContext();
-      const page = await openApp(context, "#/draft-room");
+      const page = await openApp(context, "#/draft");
       await startSoloDraft(page);
       // Reassigned before any pick is made, so every seat but MY_SLOT —
       // seat 0 included — plays the draft as a plain cpuChoice() chair.

@@ -166,7 +166,7 @@ function Leagues() {
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                   {on ? (
-                    <QuietButton href="#/v3/league" className="min-h-[44px] px-4 text-[14px]">Open <Icon name="arrow" className="h-4 w-4" /></QuietButton>
+                    <QuietButton href="#/league" className="min-h-[44px] px-4 text-[14px]">Open <Icon name="arrow" className="h-4 w-4" /></QuietButton>
                   ) : (
                     <QuietButton onClick={() => act(select, lg)} className="min-h-[44px] px-4 text-[14px]" aria-label={`Use ${lg.name}`}>Use</QuietButton>
                   )}
@@ -250,7 +250,7 @@ function Locker({ signedIn }) {
             />
           </dl>
           <div className="mt-4"><DraftsWhere signedIn={signedIn} sync={sync} count={s.count} /></div>
-          <div className="mt-4"><GoLink href="#/v3/record?show=drafts">Open your record</GoLink></div>
+          <div className="mt-4"><GoLink href="#/record?show=drafts">Open your record</GoLink></div>
         </>
       )}
     </Sheet>
@@ -259,10 +259,10 @@ function Locker({ signedIn }) {
 
 function Links({ signOut }) {
   const rows = [
-    { href: '#/v3/method/how-it-works', label: 'How Juke calls it', note: 'Every figure, and how it is made', icon: 'info' },
-    { href: '#/v3/method/privacy', label: 'Privacy', note: 'What is stored, and where', icon: 'doc' },
-    { href: '#/v3/method/terms', label: 'Terms', note: 'The small print', icon: 'doc' },
-    { href: '#/v3/draft', label: 'Default draft settings', note: 'League size, scoring, clock and seat', icon: 'settings' },
+    { href: '#/method/how-it-works', label: 'How Juke calls it', note: 'Every figure, and how it is made', icon: 'info' },
+    { href: '#/method/privacy', label: 'Privacy', note: 'What is stored, and where', icon: 'doc' },
+    { href: '#/method/terms', label: 'Terms', note: 'The small print', icon: 'doc' },
+    { href: '#/draft', label: 'Default draft settings', note: 'League size, scoring, clock and seat', icon: 'settings' },
   ]
   return (
     <Sheet code="Method and small print" bodyClass="">

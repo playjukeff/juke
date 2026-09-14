@@ -10,7 +10,7 @@ import LineupTool from './LineupTool.jsx'
 import WireTool from './WireTool.jsx'
 import TradeTool from './TradeTool.jsx'
 
-/* #/v3/calls/<slug> — the three tools a call on Now opens.
+/* #/calls/<slug> — the three tools a call on Now opens.
 
    In v3 the in-season rooms stop being places you visit to find out whether
    they have anything to say. Each is the TOOL behind one kind of call:
@@ -62,10 +62,10 @@ function NotFound({ slug }) {
         There is no tool called <span className="font-figure font-bold text-v3-ink">{slug}</span>. Now opens the three that exist — the lineup swap, the waiver claim and the trade question.
       </p>
       <div className="flex flex-wrap gap-2">
-        <CallButton href="#/v3">Back to Now</CallButton>
-        <QuietButton href="#/v3/calls/lineup">The lineup tool</QuietButton>
-        <QuietButton href="#/v3/calls/wire">The wire</QuietButton>
-        <QuietButton href="#/v3/calls/trade">The trade tool</QuietButton>
+        <CallButton href="#/">Back to Now</CallButton>
+        <QuietButton href="#/calls/lineup">The lineup tool</QuietButton>
+        <QuietButton href="#/calls/wire">The wire</QuietButton>
+        <QuietButton href="#/calls/trade">The trade tool</QuietButton>
       </div>
     </div>
   )

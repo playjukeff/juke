@@ -114,7 +114,7 @@ const SEEDS = [4111, 90210, 271828, 662607, 31337, 858993];
 
 test("kicker and defense timing is a distribution, not a schedule", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await runDrafts(page, SEEDS);
@@ -174,7 +174,7 @@ test("kicker and defense timing is a distribution, not a schedule", async ({ bro
    distribution check above. */
 test("the same seed draws the same appetites and the same draft", async ({ browser }) => {
   const context = await browser.newContext();
-  const page = await openApp(context, "#/draft-room");
+  const page = await openApp(context, "#/draft");
   await startSoloDraft(page);
 
   const out = await page.evaluate(() => {
