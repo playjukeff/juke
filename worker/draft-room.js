@@ -1278,8 +1278,37 @@ function espnSeason(url, state) {
   return (url.searchParams.get("season") || (state && state.season) || "").slice(0, 8);
 }
 
+/* Look a league up, optionally as somebody.
+
+   ---- Why this route has a POST ----
+
+   The connect dialog has to resolve a PRIVATE league before anything is
+   stored: ESPN's connect flow asks a second question Sleeper's does not --
+   which of these teams is yours -- and the teams only exist once the league
+   has been read. So the pair has to be usable at the lookup step, before
+   there is a stored credential to read.
+
+   It is a POST rather than two more query parameters because a credential
+   in a URL is a credential in every log between here and ESPN.
+
+   ---- And the POST needs an account, where the GET does not ----
+
+   A GET is a PUBLIC league by its id, readable signed out, and that has to
+   keep being true or the dialog cannot check a number before anybody has
+   signed in. A POST carries somebody's ESPN session and answers whether it
+   works -- which, left open, is an oracle for testing stolen ESPN cookies
+   against arbitrary leagues, on our origin and our IP. `requireUser()`
+   costs the connect flow nothing (the whole dialog is behind Clerk
+   already) and takes that away. */
 async function espnLookupRoute(request, env) {
-  if (!originAllowed(request)) {
+  const wantsPrivate = request.method === "POST";
+
+  let asUser = null;
+  if (wantsPrivate) {
+    const { user, error } = await requireUser(request, env);
+    if (error) return error;
+    asUser = user;
+  } else if (!originAllowed(request)) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403, headers: { "content-type": "application/json" }
     });
@@ -1302,12 +1331,31 @@ async function espnLookupRoute(request, env) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
 
-  /* As the reader, when they are signed in and have connected this
-     league privately. Signed out, or for a league they have not connected,
-     this is exactly the public lookup it has always been -- which is what
-     keeps the connect dialog's "check this id" step working before anybody
-     has pasted a credential. */
-  const cred = await espnCredFor(env, await optionalUser(request, env), leagueId);
+  /* Three ways this reads, in order of how specific they are.
+
+     A POST carries a pair the reader has just typed and has not stored --
+     the connect dialog's own step. A GET reads as whatever they have
+     ALREADY stored for this league, so revisiting a private league they
+     connected earlier works. Failing both, it is exactly the public lookup
+     it has always been, which is what keeps "check this id" working before
+     anybody has pasted anything. */
+  let cred = null;
+  if (wantsPrivate) {
+    let body = null;
+    try { body = await request.json(); } catch { body = null; }
+    const espnS2 = String((body && body.espnS2) || "").trim().slice(0, 2048);
+    const swid = String((body && body.swid) || "").trim().slice(0, 128);
+    /* Both halves or neither, the same rule the connect route states:
+       ESPN accepts one alone no more than it accepts none, so sending
+       half a pair fails as "private" and sends somebody back to re-copy a
+       value that was right. */
+    if (espnS2 && swid) cred = { espnS2, swid };
+    if (!cred) cred = await espnCredFor(env, asUser.id, leagueId);
+  } else {
+    cred = await espnCredFor(env, await optionalUser(request, env), leagueId);
+  }
+
+
   const found = await espnLookupLeague(
     leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred)
   );
@@ -2191,9 +2239,14 @@ const handler = {
        it may fill the player pool off the response path — see that route. */
     if (url.pathname === "/espn/league") {
       if (request.method === "OPTIONS") {
+        /* POST is named here because a verb the preflight does not name is
+           a request that never leaves the page: no log line, no error at
+           the worker, and a dialog that does nothing. The same lesson
+           PATCH on /me/leagues already cost once -- and "authorization"
+           with it, since the POST form needs an account. */
         return new Response(null, { headers: Object.assign({
-          "access-control-allow-methods": "GET",
-          "access-control-allow-headers": "content-type",
+          "access-control-allow-methods": "GET, POST",
+          "access-control-allow-headers": "content-type, authorization",
           "access-control-max-age": "86400"
         }, corsFor(request)) });
       }
