@@ -178,13 +178,11 @@ function stripItems({ total, regular, current, focus, mine, weekView, tailNote }
 function flagsOf(player, week, isCurrent) {
   if (!player) return {}
   const severity = injurySeverity(player.inj)
-  const scored = typeof player.actualPts === 'number' && Number.isFinite(player.actualPts) ? player.actualPts : null
   return {
     severity,
     code: player.inj || null,
     bye: !!week && Number(player.bye) === Number(week),
     locked: isCurrent && player.locked === true,
-    scored,
   }
 }
 
@@ -208,7 +206,7 @@ function NameCell({ row, align, week, isCurrent }) {
           <span className={cx('mt-0.5 flex min-w-0 flex-wrap items-center gap-1 font-figure text-[12px] uppercase tracking-[0.06em] text-v3-ink3', right && 'justify-end')}>
             {p ? <span className="sm:hidden">{p.pos === 'DST' ? 'D/ST' : p.pos}</span> : null}
             {p && p.team ? <span>{p.team}</span> : null}
-            {f.scored !== null ? <span className="text-v3-ink2">· already scored: {f.scored.toFixed(1)}</span> : f.locked ? <span className="text-v3-ink2">· started</span> : null}
+            {f.locked ? <span className="text-v3-ink2">· started</span> : null}
             {f.bye ? <InjuryChip onBye /> : f.severity ? <InjuryChip severity={f.severity} code={f.code} /> : null}
           </span>
         </span>
@@ -217,10 +215,22 @@ function NameCell({ row, align, week, isCurrent }) {
   )
 }
 
-function PtsCell({ value, strong, align }) {
+/* `proj` rides beside an already-scored `value` — the same "We said / he
+   got" pairing RecordSheet already uses for a season, kept side by side
+   here rather than the actual replacing the projection outright. Passed
+   only once a player has actually scored; a still-projected row shows the
+   single figure exactly as before. */
+function PtsCell({ value, proj, strong, align }) {
   return (
     <td className={cx('border-0 py-2 font-figure text-[14px] tabular-nums sm:text-[15px]', align === 'right' ? 'border-l border-v3-rule pl-2 text-left' : 'pr-2 text-right', strong ? 'font-bold text-v3-ink' : 'text-v3-ink2')}>
-      {typeof value === 'number' ? value.toFixed(1) : <span className="text-v3-ink3">—</span>}
+      {typeof value === 'number' ? (
+        <>
+          {value.toFixed(1)}
+          {typeof proj === 'number' && (
+            <span className="block text-[11px] font-normal normal-case tracking-normal text-v3-ink3">proj {proj.toFixed(1)}</span>
+          )}
+        </>
+      ) : <span className="text-v3-ink3">—</span>}
     </td>
   )
 }
@@ -248,8 +258,8 @@ function LineupTable({ left, right, leftTeam, rightTeam, week, isCurrent, captio
           {rows.map(([a, b], i) => (
             <tr key={i} className="border-b border-v3-rule last:border-b-0">
               <NameCell row={a} align="left" week={week} isCurrent={isCurrent} />
-              <PtsCell value={a ? a.pts : null} strong align="left" />
-              <PtsCell value={b ? b.pts : null} strong align="right" />
+              <PtsCell value={a ? a.pts : null} proj={a ? a.proj : null} strong align="left" />
+              <PtsCell value={b ? b.pts : null} proj={b ? b.proj : null} strong align="right" />
               <NameCell row={b} align="right" week={week} isCurrent={isCurrent} />
             </tr>
           ))}
@@ -495,12 +505,19 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
   const priced = phase !== 'final' && scorer
   /* The same branch teamWeek()/projectedTotal() already take: once a
      player has actually scored, that is the number his row shows — never
-     the stale projection beside a total that has moved past it. */
-  const ptsFor = (r) => {
+     the stale projection beside a total that has moved past it. `projFor`
+     rides alongside it rather than being lost: PtsCell draws the two side
+     by side, the same "We said / he got" pairing RecordSheet already uses
+     for a season, and answers null (nothing extra to show) for a row that
+     is still a plain projection — showing a number beside itself would be
+     the "right value, wrong column" failure with a duplicate in it. */
+  const isLive = (r) => {
     const actual = r.player && r.player.actualPts
-    return typeof actual === 'number' && Number.isFinite(actual) ? actual : r.projPts
+    return typeof actual === 'number' && Number.isFinite(actual)
   }
-  const rowsFor = (team) => (priced && team ? lineupRows(team, scorer.byId, scorer.weekPts).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) })) : [])
+  const ptsFor = (r) => (isLive(r) ? r.player.actualPts : r.projPts)
+  const projFor = (r) => (isLive(r) ? r.projPts : null)
+  const rowsFor = (team) => (priced && team ? lineupRows(team, scorer.byId, scorer.weekPts).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r), proj: projFor(r) })) : [])
   const leftRows = rowsFor(focus)
   const rightRows = opp ? rowsFor(opp) : null
   const totalL = priced && focus ? projectedTotal(focus, scorer.byId, scorer.weekPts) : null
@@ -617,8 +634,8 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
       )
     }
   } else if (g && !g.bye && priced) {
-    const benchA = benchRows(focus, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) }))
-    const benchB = opp ? benchRows(opp, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) })) : []
+    const benchA = benchRows(focus, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r), proj: projFor(r) }))
+    const benchB = opp ? benchRows(opp, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r), proj: projFor(r) })) : []
     const anyScored = isCurrent && (scoredCount || oppScoredCount)
     const note = isCurrent
       ? (source === 'all' ? `${platform}'s projection for week ${week}, under your league's scoring.` : source === 'some' ? `${platform}'s projection where it has one, Juke's for the rest.` : snapshot.rules ? "Juke's projection for this week, under your league's own scoring." : "Juke's projection — your league's scoring could not be read, so default rules.")
