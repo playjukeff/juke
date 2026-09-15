@@ -522,9 +522,75 @@ pool filled to 4,388 rows within seconds, second call `crosswalkReady true`
 with 139 of 141 resolved. A snapshot taken before the pool existed is
 deliberately **not** cached.
 
+### Private leagues
+
+ESPN publishes no OAuth for third parties, so the only way to read a private
+league is the `espn_s2` + `SWID` pair out of the reader's own browser. They
+paste it into the connect dialog; it is validated against ESPN before
+anything is stored, and stored sealed.
+
+**Set the key or the feature refuses itself.** No `LEAGUE_CRED_KEY` means
+`canSealCredentials()` is false, the connect route answers
+`private-unavailable` with a 503 **before it asks ESPN anything**, and the
+dialog says private leagues are not switched on for this deployment. It
+never falls back to storing the pair in the clear — that is the failure
+that would have looked exactly like success.
+
+Mint one (32 random bytes, base64) and set it on the worker:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+wrangler secret put LEAGUE_CRED_KEY -c worker/wrangler.toml
+```
+
+It lives where `CLERK_SECRET_KEY` does and for the same reasons: not in the
+page, not in git, not in the Pages project. For local work put it in
+`worker/.dev.vars` — and note `wrangler dev` reads that file at boot and
+hot-reloads code **without** re-reading it, so a server started before you
+added the line serves the route with no key for ever.
+
+**Rotating it invalidates every stored credential.** That is a reconnect
+rather than a loss: a credential that cannot be opened is reported as
+"reconnect this league", nothing else in the database depends on it, and
+`openCredential()` deliberately does not tell a rotated key apart from a
+tampered blob because a reader can do nothing different about either.
+
+**`0011_league_credentials.sql` has to be applied**, or the credential write
+fails and the connect is refused with the league rolled back rather than
+left connected and permanently unreadable. `npm --prefix worker run deploy`
+migrates first; see the top of this file.
+
+#### The cache, which is where this could have leaked
+
+`caches.default` keys on league and season alone. An entry written while
+reading a private league would therefore be served to **anybody** who asked
+for the same league id, with no credential, as a healthy-looking 200. So a
+credentialed read touches that cache in neither direction, on all three ESPN
+routes — and the **write** is the half that matters, which a first cut of
+this guarded on the snapshot's read and not its write.
+
+The cost is one upstream call per private reader per render instead of per
+two minutes; `snapshotStore` still dedupes on its own window. Keying the
+cache on a hash of the credential would buy that back, and it has not been
+measured, so it is not done.
+
+#### And the POST on `/espn/league`
+
+The dialog has to resolve a private league **before** anything is stored,
+because ESPN's connect asks which team is yours and the teams only exist
+once the league has been read. So that route takes a POST carrying the pair
+— a body rather than query parameters, because a credential in a URL is a
+credential in every log between here and ESPN.
+
+It is the one ESPN read behind `requireUser()` rather than `originAllowed()`.
+A route that answers "does this ESPN session work on this league" is, left
+open, an oracle for testing stolen cookies from our origin and our IP. The
+GET is untouched and still reads a public league signed out.
+
 ### Testing it
 
 ```bash
+node worker/test-credentials.mjs # offline: the sealing, real WebCrypto
 node worker/test-espn.mjs        # offline: the whole mapping, no network
 ```
 

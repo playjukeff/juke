@@ -148,6 +148,16 @@ jobs:
       - name: Verify a real signed-in token
         run: node worker/test-verified-user.mjs
 
+      # Sealing the credential a private ESPN league needs. Real WebCrypto
+      # against a real generated key -- nothing is mocked, because the
+      # properties worth asserting are cryptographic and a stub would agree
+      # with itself. It is in front of the deploy for the reason
+      # test-verified-user.mjs is: a seal that has stopped binding a blob to
+      # the account it was written for is a cross-account credential read,
+      # and it should stop a deploy rather than be discovered by one.
+      - name: Verify credential sealing
+        run: node worker/test-credentials.mjs
+
       # And the routes that read it, one layer up: /me answering
       # signedIn true at all, requireUser() letting somebody THROUGH
       # rather than only its 401, and POST /me/history answering 409 --
