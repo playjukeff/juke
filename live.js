@@ -616,13 +616,28 @@
        Four reasons rather than two, because the reader's fix differs:
        `private` is a setting they can change, `not-found` is a number to
        re-read, `offline` is a retry, and `upstream` is ours. */
-    espnLookup: function (leagueId, season) {
+    /* `cred` and `token` are the private path, and they travel together:
+       the worker's POST form needs an account, because a route that
+       answers "does this ESPN session work" would otherwise be an oracle
+       for testing stolen cookies. Without them this is the public GET it
+       has always been, which is what the dialog uses to check a number
+       before anybody has pasted anything.
+
+       The pair goes in a BODY rather than the query it would have been
+       easier to add it to: a credential in a URL is a credential in every
+       log between here and the worker. */
+    espnLookup: function (leagueId, season, cred, token) {
       const id = String(leagueId || "").trim();
       if (!id) return Promise.resolve(syncResult(false, "bad-request", { league: null }));
       const http = WORKER.replace(/^ws/, "http");
       const q = "?league=" + encodeURIComponent(id) +
                 (season ? "&season=" + encodeURIComponent(season) : "");
-      return fetch(http + "/espn/league" + q)
+      const priv = cred && cred.espnS2 && cred.swid && token;
+      return fetch(http + "/espn/league" + q, priv ? {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+        body: JSON.stringify({ espnS2: cred.espnS2, swid: cred.swid })
+      } : undefined)
         .then(function (r) {
           if (!r.ok) return syncResult(false, reasonForStatus(r.status), { league: null });
           return r.json()
@@ -727,7 +742,12 @@
         .catch(() => syncResult(false, "offline", { leagues: [] }));
     },
 
-    connectLeague: function (token, leagueId, ownerId, provider) {
+    /* `cred` is the ESPN pair for a private league, and it is sent on the
+       connect rather than stored by the lookup above: the lookup is a
+       read, and the one place a credential is written down is the one
+       request that also writes the league it belongs to. The worker
+       validates it against ESPN before storing either. */
+    connectLeague: function (token, leagueId, ownerId, provider, cred) {
       if (!token) return Promise.resolve(syncResult(false, "signed-out", { league: null }));
       const http = WORKER.replace(/^ws/, "http");
       return fetch(http + "/me/leagues", {
@@ -738,7 +758,11 @@
           ownerId: ownerId || null,
           // Absent means Sleeper, which is what every connect meant before
           // there was a second platform.
-          provider: provider || "sleeper"
+          provider: provider || "sleeper",
+          // Absent means a public league, which is what every ESPN connect
+          // meant before private ones could be read at all.
+          espnS2: (cred && cred.espnS2) || undefined,
+          swid: (cred && cred.swid) || undefined
         })
       })
         .then(function (r) {
@@ -758,6 +782,16 @@
                 cap: body && body.cap,
               }))
               .catch(() => syncResult(false, "private", { league: null }));
+          }
+          /* 503 is two different things and only one of them is weather.
+             "private-unavailable" means this deployment has no key to seal
+             a credential with, or could not store it -- which is not a
+             retry and not the reader's fault, so it may not be reported as
+             "offline". Read from the body for the same reason 403 is. */
+          if (r.status === 503) {
+            return r.json()
+              .then((body) => syncResult(false, (body && body.error) || "offline", { league: null }))
+              .catch(() => syncResult(false, "offline", { league: null }));
           }
           if (!r.ok) return syncResult(false, reasonForStatus(r.status), { league: null });
           return r.json()

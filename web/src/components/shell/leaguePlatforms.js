@@ -17,10 +17,16 @@
    is the whole argument for the file: the previous version of this change
    would have been seven edits and a missed one.
 
-   **`live` is not "we can list it", it is "connecting works today".** ESPN
-   reads a PUBLIC league by its id and cannot read a private one at all,
-   which is a real limit and belongs in `note` rather than in the flag —
-   a platform that half works is still one somebody can finish connecting.
+   **`live` is not "we can list it", it is "connecting works today".** That
+   is why `note` carries what each platform COSTS a reader rather than the
+   flag carrying it: a platform that half works is still one somebody can
+   finish connecting.
+
+   ESPN's note said "Public leagues only" and stopped being true the day
+   private leagues shipped — a private one is readable, it just takes the
+   reader's own ESPN sign-in, which is a bigger ask than a league id and
+   belongs in the one line under the button. Corrected in place rather
+   than left standing, which is the whole reason this list is one list.
 
    ---- Listed, not hidden ----
 
@@ -39,7 +45,7 @@
 
 export const PLATFORMS = [
   { key: 'sleeper', name: 'Sleeper', live: true, note: 'Username only — no password' },
-  { key: 'espn', name: 'ESPN', live: true, note: 'Public leagues only — league ID, no password' },
+  { key: 'espn', name: 'ESPN', live: true, note: 'League ID — private leagues need your ESPN sign-in' },
   { key: 'yahoo', name: 'Yahoo', live: false },
   { key: 'cbs', name: 'CBS', live: false },
 ]

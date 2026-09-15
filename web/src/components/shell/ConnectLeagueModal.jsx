@@ -97,6 +97,16 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      to infer it from, and without it every screen that says "your roster"
      has nothing to key on. */
   const [espnLeague, setEspnLeague] = useState(null)
+
+  /* The ESPN pair for a PRIVATE league.
+
+     It is held here for exactly as long as the dialog is open and is never
+     put in localStorage: the one copy that outlives this component is the
+     sealed one in the worker's database. Cleared on open with everything
+     else, for the reason that reset already gives -- this dialog is one
+     element reused for every open. */
+  const [espnS2, setEspnS2] = useState('')
+  const [swid, setSwid] = useState('')
   // Which tier's cap was hit, and what it is — filled only on a tier-limit
   // refusal, to say which plan this account is on rather than a bare
   // "you're at your limit".
@@ -113,6 +123,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setSleeperUser(null)
       setChosen(null)
       setEspnLeague(null)
+      setEspnS2('')
+      setSwid('')
       setPlatform(null)
       setTierInfo({ tier: null, cap: null })
       setEmail('')
@@ -192,6 +204,33 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
     setStatus('picking')
   }
 
+  /* Resolve a private league with the pair the reader has just typed.
+
+     Its own submit rather than a second mode of lookup() above, because
+     what it sends is a POST with a body and an account on it -- and
+     because a failure here means something different: the id was right
+     (the public lookup already said "private"), so what is wrong is the
+     pair, and the message has to say so rather than sending somebody back
+     to re-check a number. */
+  const lookupPrivate = async (e) => {
+    e.preventDefault()
+    if (!espnS2.trim() || !swid.trim()) return
+    setStatus('looking-private')
+    const l = live()
+    const res = l && l.espnLookup
+      ? await l.espnLookup(username.trim(), null, { espnS2: espnS2.trim(), swid: swid.trim() }, await token())
+      : { ok: false, reason: 'offline' }
+
+    if (!res.ok) {
+      setStatus(res.reason === 'private' ? 'private-bad'
+              : res.reason === 'not-found' ? 'not-found'
+              : 'error')
+      return
+    }
+    setEspnLeague(res.league)
+    setStatus('picking')
+  }
+
   const connect = async () => {
     if (!chosen) return
     setStatus('connecting')
@@ -202,7 +241,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
        both answer the same question — which of these rosters is theirs. */
     const res = l && l.connectLeague
       ? isEspn
-        ? await l.connectLeague(await token(), espnLeague.leagueId, chosen.teamId, 'espn')
+        ? await l.connectLeague(await token(), espnLeague.leagueId, chosen.teamId, 'espn',
+                                espnS2.trim() && swid.trim() ? { espnS2: espnS2.trim(), swid: swid.trim() } : null)
         : await l.connectLeague(await token(), chosen.leagueId, sleeperUser && sleeperUser.userId, 'sleeper')
       : { ok: false, reason: 'offline' }
 
@@ -214,7 +254,13 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       }
       // A league that stopped being public between the lookup and the
       // connect is worth naming rather than reporting as a generic failure.
-      setStatus(res.reason === 'private' ? 'private' : 'error')
+      /* "private-unavailable" is this deployment having nowhere to seal a
+         credential, which is not the reader's fault and not a retry --
+         so it may not be reported as either "private" (go and make your
+         league public) or a generic error. */
+      setStatus(res.reason === 'private-unavailable' ? 'private-unavailable'
+              : res.reason === 'private' ? 'private'
+              : 'error')
       return
     }
     setStatus('done')
@@ -292,6 +338,12 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   // ESPN has already resolved the league; what is being
                   // chosen at this step is which team in it is yours.
                   ? (isEspn ? 'Which team is yours?' : 'Which league?')
+                /* The private step asks for something else entirely, and a
+                   heading still reading "Your ESPN league ID" over two
+                   cookie fields is a heading describing the step before
+                   this one. */
+                : status === 'private-form' || status === 'looking-private' || status === 'private-bad'
+                  ? 'Sign in to ESPN'
                   : isEspn
                     ? 'Your ESPN league ID'
                     : `Your ${platform ? platform.name : 'Sleeper'} username`}
@@ -429,6 +481,93 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             <Check className="h-5 w-5 shrink-0" />
             Connected {chosen ? chosen.name : 'your league'}.
           </p>
+        ) : status === 'private-form' || status === 'looking-private' || status === 'private-bad' ? (
+          /* Reading a private league means reading it AS somebody, because
+             ESPN publishes no OAuth for third parties. So this step asks
+             for two values out of the reader's own browser -- and it is a
+             step of its own rather than two more fields on the form above,
+             because it is only reachable once ESPN has actually answered
+             "private" and because what it asks for deserves saying out
+             loud rather than sitting under an id field. */
+          <form onSubmit={lookupPrivate}>
+            <button
+              type="button"
+              onClick={() => setStatus('private')}
+              className="-ml-1 mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-meta text-ink-muted transition-colors hover:text-white"
+            >
+              <span aria-hidden="true">&#8249;</span> Back
+            </button>
+
+            <p className="mt-1.5 text-[14px] leading-[1.5] text-voidInk-body">
+              A private league can only be read as you, so Juke needs the two values your own
+              browser uses to sign in to ESPN. Juke still only ever reads &mdash; it never writes
+              to your league.
+            </p>
+
+            {/* Said plainly rather than buried, because it is the honest
+                difference between this and the public path: these are an
+                ESPN SESSION rather than a read-only token, so what happens
+                to them is the reader's business. */}
+            <p className="mt-2 text-meta text-ink-muted">
+              They are encrypted before they are stored and are removed the moment you disconnect
+              the league or delete your account. They expire on their own, and you can reconnect
+              here if this league stops loading.
+            </p>
+
+            <label className="mt-4 block text-meta text-ink-muted" htmlFor="espn-swid">SWID</label>
+            <input
+              id="espn-swid"
+              value={swid}
+              onChange={(e) => setSwid(e.target.value)}
+              placeholder="{XXXXXXXX-XXXX-...}"
+              spellCheck="false"
+              autoComplete="off"
+              className="mt-1 w-full rounded-xl border border-line-hairline bg-surface-page px-3 py-2.5 font-mono text-[13px] text-white outline-none focus:border-white/30"
+            />
+
+            <label className="mt-3 block text-meta text-ink-muted" htmlFor="espn-s2">espn_s2</label>
+            <input
+              id="espn-s2"
+              value={espnS2}
+              onChange={(e) => setEspnS2(e.target.value)}
+              placeholder="AEB..."
+              spellCheck="false"
+              autoComplete="off"
+              className="mt-1 w-full rounded-xl border border-line-hairline bg-surface-page px-3 py-2.5 font-mono text-[13px] text-white outline-none focus:border-white/30"
+            />
+
+            <details className="mt-3">
+              <summary className="cursor-pointer text-meta text-ink-muted hover:text-white">
+                Where do I find these?
+              </summary>
+              <p className="mt-2 text-meta leading-[1.6] text-voidInk-body">
+                On a desktop browser, sign in at fantasy.espn.com. Open your browser&apos;s
+                developer tools, go to Application (or Storage) &rarr; Cookies &rarr;
+                espn.com, and copy the values of <span className="font-mono text-white">SWID</span>
+                {' '}and <span className="font-mono text-white">espn_s2</span>. Paste them above.
+              </p>
+            </details>
+
+            {status === 'private-bad' ? (
+              <p className="mt-3 text-meta text-flow-rose">
+                ESPN did not accept those. Copy both values again &mdash; espn_s2 is long, so check
+                nothing was cut off &mdash; and make sure you are signed in to the account that is
+                in this league.
+              </p>
+            ) : null}
+            {status === 'error' ? (
+              <p className="mt-3 text-meta text-flow-rose">Could not reach ESPN just now.</p>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={!espnS2.trim() || !swid.trim() || status === 'looking-private'}
+              className="mt-4 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01] disabled:opacity-40"
+              style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
+            >
+              {status === 'looking-private' ? 'Checking…' : 'Find my league'}
+            </button>
+          </form>
         ) : status === 'picking' || status === 'connecting' ? (
           <>
             <p className="mt-2 text-[14px] leading-[1.5] text-voidInk-body">
@@ -537,8 +676,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               {isEspn ? (
                 <>
                   The number in your league&apos;s own URL — <span className="font-mono text-meta text-white">
-                  leagueId=</span> on fantasy.espn.com. The league has to be public for Juke to read
-                  it, and nothing is ever written back.
+                  leagueId=</span> on fantasy.espn.com. A private league takes one more step, and
+                  nothing is ever written back.
                 </>
               ) : (
                 <>
@@ -576,10 +715,32 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             ) : null}
             {/* The one failure with a fix the reader can carry out, so it
                 says what the fix is rather than "could not read it". */}
+            {/* Two ways out of this, and the second one is why this is no
+                longer a dead end. It used to say "make the league public"
+                and stop, which is advice a reader in somebody else's work
+                league cannot take. */}
             {status === 'private' ? (
+              <>
+                <p className="mt-2 text-meta text-flow-rose">
+                  That league is private, so ESPN will not let Juke read it without signing in as
+                  you.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStatus('private-form')}
+                  className="mt-2 w-full rounded-full border border-line-hairline px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-white/5"
+                >
+                  Connect it with my ESPN sign-in
+                </button>
+                <p className="mt-2 text-meta text-ink-muted">
+                  Or, if it is your league, set visibility to public in League Settings and try
+                  again.
+                </p>
+              </>
+            ) : null}
+            {status === 'private-unavailable' ? (
               <p className="mt-2 text-meta text-flow-rose">
-                That league is private, so ESPN will not let Juke read it. In the ESPN app, open
-                League Settings and set visibility to public, then try again.
+                Private leagues are not switched on for this deployment yet. Nothing was stored.
               </p>
             ) : null}
             {status === 'error' ? (
