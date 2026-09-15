@@ -96,7 +96,7 @@ function SettingsPage({ engine }) {
   }
   return (
     <div className="space-y-4 px-4 py-4">
-      <p className="text-[14px] leading-[1.5] text-v3-ink2">Fixed once a draft starts, the way production locks them. Change the next mock’s shape from the launcher.</p>
+      <p className="text-[15px] leading-[1.5] text-v3-ink2">Fixed once a draft starts, the way production locks them. Change the next mock’s shape from the launcher.</p>
       <dl className="grid grid-cols-2 gap-2">
         {[
           ['Scoring', names[league.scoring] || league.scoring],
@@ -132,7 +132,7 @@ function SettingsPage({ engine }) {
             {order.map((r) => (
               <li key={r.slot} className={cx('flex min-h-[40px] items-center gap-3 px-3 py-1.5', r.you ? 'bg-v3-band text-white' : 'bg-v3-sheet')}>
                 <span className={cx('w-6 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', r.you ? 'text-white' : 'text-v3-ink3')}>{r.slot + 1}</span>
-                <span className={cx('min-w-0 flex-1 truncate text-[14px]', r.you ? 'font-bold text-white' : 'text-v3-ink')}>{r.you ? 'You' : r.name}</span>
+                <span className={cx('min-w-0 flex-1 truncate text-[15px]', r.you ? 'font-bold text-white' : 'text-v3-ink')}>{r.you ? 'You' : r.name}</span>
                 {r.firstPick && <span className={cx('shrink-0 font-figure text-[12px]', r.you ? 'text-v3-bandInk' : 'text-v3-ink3')}>first pick #{r.firstPick}</span>}
               </li>
             ))}
@@ -146,12 +146,12 @@ function SettingsPage({ engine }) {
 function ShortcutsPage() {
   return (
     <div className="px-4 py-4">
-      <p className="text-[14px] leading-[1.5] text-v3-ink2">Single keys, ignored while you are typing in a field. Every one of them has a button too.</p>
+      <p className="text-[15px] leading-[1.5] text-v3-ink2">Single keys, ignored while you are typing in a field. Every one of them has a button too.</p>
       <dl className="mt-3 divide-y divide-v3-rule rounded-[4px] border border-v3-rule">
         {SHORTCUTS.map(([k, what]) => (
           <div key={k} className="flex min-h-[44px] items-center gap-3 px-3 py-1.5">
             <dt className="w-12 shrink-0"><kbd className="inline-grid h-7 min-w-[28px] place-items-center rounded-[4px] border border-v3-rule bg-v3-paper px-1.5 font-figure text-[13px] font-bold text-v3-ink">{k}</kbd></dt>
-            <dd className="text-[14px] text-v3-ink">{what}</dd>
+            <dd className="text-[15px] text-v3-ink">{what}</dd>
           </div>
         ))}
       </dl>
@@ -168,7 +168,7 @@ function RoomPage({ engine, room }) {
   const url = inviteUrl(room.code)
   return (
     <div className="space-y-4 px-4 py-4">
-      <p className="text-[14px] leading-[1.5] text-v3-ink2">
+      <p className="text-[15px] leading-[1.5] text-v3-ink2">
         {room.taken} of {room.seats.length} seats are managers; the rest are drafted by {room.isHost ? 'this browser' : "the host's browser"}.
         {room.away ? ` ${room.away} ${room.away === 1 ? 'manager has' : 'managers have'} dropped — their seats are being drafted for until they are back.` : ''}
       </p>
@@ -176,7 +176,7 @@ function RoomPage({ engine, room }) {
         {room.seats.map((chair, i) => (
           <li key={i} className={cx('flex min-h-[40px] items-center gap-3 px-3 py-1.5', chair.you ? 'bg-v3-band text-white' : 'bg-v3-sheet')}>
             <span className={cx('w-5 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chair.you ? 'text-white' : 'text-v3-ink3')}>{i + 1}</span>
-            <span className={cx('min-w-0 flex-1 truncate text-[14px]', chair.you ? 'font-bold text-white' : 'text-v3-ink')}>
+            <span className={cx('min-w-0 flex-1 truncate text-[15px]', chair.you ? 'font-bold text-white' : 'text-v3-ink')}>
               {chair.you ? 'You' : chair.taken ? (chair.name || 'Manager') : 'CPU'}
             </span>
             {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}

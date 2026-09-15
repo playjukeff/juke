@@ -98,7 +98,7 @@ function NotFound({ doc }) {
     <div className="grid min-h-[40vh] content-center gap-6">
       <Label>Method · no such document</Label>
       <Headline>That page isn&apos;t in the method.</Headline>
-      <p className="max-w-[56ch] text-[17px] leading-[1.55] text-v3-ink2">
+      <p className="max-w-[56ch] text-[18px] leading-[1.55] text-v3-ink2">
         There is no document called <span className="font-figure text-v3-ink">{String(doc).slice(0, 40)}</span>. The method is three pages, and all three are here.
       </p>
       <div className="flex flex-wrap gap-2">
@@ -138,7 +138,7 @@ function DocSwitch({ current }) {
    h2, block for h3), the section number sits above as a label, tables sit in
    scroll wrappers on white, and the measure stays readable. */
 const PROSE = [
-  'max-w-[68ch] text-[17px] leading-[1.7] text-v3-ink2',
+  'max-w-[68ch] text-[18px] leading-[1.7] text-v3-ink2',
   '[&_p]:mt-4 [&_.doc-intro]:mt-0 [&_.doc-intro]:text-[20px] [&_.doc-intro]:leading-[1.55] [&_.doc-intro]:text-v3-ink',
   '[&_h2]:mt-16 [&_h2]:scroll-mt-[68px] md:[&_h2]:scroll-mt-[60px] lg:[&_h2]:scroll-mt-[20px] [&_h2]:font-sheet [&_h2]:text-[clamp(1.6rem,3vw,2.25rem)] [&_h2]:font-black [&_h2]:leading-[1.05] [&_h2]:tracking-[-0.025em] [&_h2]:text-v3-ink [&_h2]:[text-wrap:balance]',
   '[&_h2_.no]:mb-2 [&_h2_.no]:block [&_h2_.no]:font-figure [&_h2_.no]:text-[12px] [&_h2_.no]:font-semibold [&_h2_.no]:uppercase [&_h2_.no]:tracking-[0.12em] [&_h2_.no]:text-v3-ink3',
@@ -148,8 +148,8 @@ const PROSE = [
   '[&_ul]:mt-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_li]:marker:text-v3-ink3',
   '[&_.formula]:mt-5 [&_.formula]:overflow-x-auto [&_.formula]:rounded-[6px] [&_.formula]:border [&_.formula]:border-v3-rule [&_.formula]:bg-v3-well [&_.formula]:p-4 [&_.formula]:font-figure [&_.formula]:text-[15px] [&_.formula]:leading-[1.7] [&_.formula]:text-v3-ink',
   '[&_.formula>div]:pl-4 [&_.formula>div]:-indent-4',
-  '[&_.note]:mt-5 [&_.note]:rounded-[6px] [&_.note]:border [&_.note]:border-v3-rule [&_.note]:border-l-[4px] [&_.note]:border-l-v3-band [&_.note]:bg-v3-sheet [&_.note]:px-4 [&_.note]:py-3.5 [&_.note]:text-[16px] [&_.note]:leading-[1.6]',
-  '[&_.worked]:mt-5 [&_.worked]:overflow-hidden [&_.worked]:rounded-[6px] [&_.worked]:border [&_.worked]:border-v3-rule [&_.worked]:bg-v3-sheet [&_.worked]:px-4 [&_.worked]:pb-4 [&_.worked]:pt-0 [&_.worked]:text-[16px]',
+  '[&_.note]:mt-5 [&_.note]:rounded-[6px] [&_.note]:border [&_.note]:border-v3-rule [&_.note]:border-l-[4px] [&_.note]:border-l-v3-band [&_.note]:bg-v3-sheet [&_.note]:px-4 [&_.note]:py-3.5 [&_.note]:text-[15px] [&_.note]:leading-[1.6]',
+  '[&_.worked]:mt-5 [&_.worked]:overflow-hidden [&_.worked]:rounded-[6px] [&_.worked]:border [&_.worked]:border-v3-rule [&_.worked]:bg-v3-sheet [&_.worked]:px-4 [&_.worked]:pb-4 [&_.worked]:pt-0 [&_.worked]:text-[15px]',
   '[&_.worked-title]:-mx-4 [&_.worked-title]:!mt-0 [&_.worked-title]:mb-3 [&_.worked-title]:bg-v3-band [&_.worked-title]:px-4 [&_.worked-title]:py-2.5 [&_.worked-title]:font-figure [&_.worked-title]:text-[12px] [&_.worked-title]:font-bold [&_.worked-title]:uppercase [&_.worked-title]:tracking-[0.14em] [&_.worked-title]:text-white',
   '[&_.doc-table]:mt-5 [&_.doc-table]:max-w-full [&_.doc-table]:overflow-x-auto [&_.doc-table]:rounded-[6px] [&_.doc-table]:border [&_.doc-table]:border-v3-rule [&_.doc-table]:bg-v3-sheet',
   '[&_table]:w-full [&_table]:border-0 [&_table]:bg-v3-sheet [&_table]:text-[15px] [&_table]:leading-[1.5] [&_table]:rounded-none',
@@ -178,7 +178,7 @@ function Contents({ toc, active, onJump, phone, className = '' }) {
               onClick={() => { setOpen(false); onJump(t.id) }}
               aria-current={on ? 'location' : undefined}
               className={cx(
-                '-ml-px flex min-h-[40px] w-full items-start gap-2.5 border-l-[3px] py-2 pl-3 pr-2 text-left text-[14px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call',
+                '-ml-px flex min-h-[40px] w-full items-start gap-2.5 border-l-[3px] py-2 pl-3 pr-2 text-left text-[15px] leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call',
                 on ? 'border-v3-ink font-semibold text-v3-ink' : 'border-transparent text-v3-ink2 hover:text-v3-ink',
               )}
             >
@@ -208,7 +208,7 @@ function Contents({ toc, active, onJump, phone, className = '' }) {
         className="flex min-h-[48px] w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call"
       >
         <Label as="span" className="shrink-0 text-[11px]">Contents</Label>
-        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-v3-ink">
+        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-v3-ink">
           {current.no ? <span className="mr-2 font-figure text-[12px] text-v3-ink3">{current.no}</span> : null}{current.text}
         </span>
         <XIcon name="chevron" className={cx('h-5 w-5 shrink-0 text-v3-ink2 transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
@@ -355,7 +355,7 @@ export default function V3Method({ doc = 'how-it-works' }) {
           {state.status === 'loading' ? <Skeleton lines={12} className="max-w-[68ch]" /> : null}
           {state.status === 'error' ? (
             <div className="max-w-[68ch] rounded-[6px] border border-v3-rule bg-v3-sheet p-5" role="alert">
-              <p className="text-[16px] leading-[1.55] text-v3-ink2">
+              <p className="text-[15px] leading-[1.55] text-v3-ink2">
                 The document didn&apos;t load. The same page is also served on its own at{' '}
                 <a className="font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4" href={DOCS[doc].file}>{DOCS[doc].file}</a>.
               </p>

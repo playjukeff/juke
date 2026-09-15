@@ -110,7 +110,7 @@ export function ViewTabs({ current }) {
             aria-current={on ? 'page' : undefined}
             className={cx(
               TOUCH,
-              'inline-flex min-h-[38px] items-center justify-center rounded-[4px] px-4 text-[14px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+              'inline-flex min-h-[38px] items-center justify-center rounded-[4px] px-4 text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
               on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
             )}
           >
@@ -158,7 +158,7 @@ export function SelectField({ id, label, value, onChange, children, className = 
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[16px] text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+        className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
       >
         {children}
       </select>

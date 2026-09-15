@@ -97,7 +97,7 @@ function ConnectLeague({ primary = false, children }) {
 function PlatformMark({ provider }) {
   const p = platformFor(provider)
   return (
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[6px] border border-v3-rule bg-v3-well font-sheet text-[16px] font-black text-v3-ink" aria-hidden="true">
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[6px] border border-v3-rule bg-v3-well font-sheet text-[15px] font-black text-v3-ink" aria-hidden="true">
       {p.mark}
     </span>
   )
@@ -156,7 +156,7 @@ function Leagues() {
                 <PlatformMark provider={lg.provider} />
                 <div className="min-w-0 flex-1 basis-[180px]">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[16px] font-bold text-v3-ink">{lg.name}</span>
+                    <span className="truncate text-[15px] font-bold text-v3-ink">{lg.name}</span>
                     {on ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">In use</span> : null}
                   </div>
                   <div className="mt-0.5 truncate font-figure text-[13px] text-v3-ink3">
@@ -166,9 +166,9 @@ function Leagues() {
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                   {on ? (
-                    <QuietButton href="#/league" className="min-h-[44px] px-4 text-[14px]">Open <Icon name="arrow" className="h-4 w-4" /></QuietButton>
+                    <QuietButton href="#/league" className="min-h-[44px] px-4 text-[15px]">Open <Icon name="arrow" className="h-4 w-4" /></QuietButton>
                   ) : (
-                    <QuietButton onClick={() => act(select, lg)} className="min-h-[44px] px-4 text-[14px]" aria-label={`Use ${lg.name}`}>Use</QuietButton>
+                    <QuietButton onClick={() => act(select, lg)} className="min-h-[44px] px-4 text-[15px]" aria-label={`Use ${lg.name}`}>Use</QuietButton>
                   )}
                   <ArmedButton
                     busy={busy}
@@ -185,7 +185,7 @@ function Leagues() {
           })}
         </ul>
         {failed ? (
-          <p className="border-t border-v3-rule px-4 py-3 text-[14px] text-v3-warn sm:px-5" role="alert">
+          <p className="border-t border-v3-rule px-4 py-3 text-[15px] text-v3-warn sm:px-5" role="alert">
             {failed === 'not-connected' ? 'That league is no longer connected to this account.' : 'Could not reach your account just now. Nothing changed.'}
           </p>
         ) : null}
@@ -224,7 +224,7 @@ function Plan() {
             <p className="mt-3 text-[15px] leading-[1.5] text-v3-ink2">Free cannot connect a league. Mock drafts are unlimited on every plan.</p>
           ) : (
             <>
-              <p className="mt-3 font-figure text-[14px] text-v3-ink2"><span className="font-bold text-v3-ink">{used}</span> of {cap} {cap === 1 ? 'league slot' : 'league slots'} in use</p>
+              <p className="mt-3 font-figure text-[15px] text-v3-ink2"><span className="font-bold text-v3-ink">{used}</span> of {cap} {cap === 1 ? 'league slot' : 'league slots'} in use</p>
               <ValueBar value={used} max={cap} tone="neutral" className="mt-2" />
             </>
           )}
@@ -292,7 +292,7 @@ function Appearance() {
   return (
     <Sheet code="Appearance" aside="This browser">
       <ThemeChoice />
-      <p className="mt-3 text-[14px] leading-[1.5] text-v3-ink2">
+      <p className="mt-3 text-[15px] leading-[1.5] text-v3-ink2">
         System follows your device's own setting, so a phone that goes dark at night takes the sheet with it. The same switch sits behind the sun or moon in the top bar.
       </p>
     </Sheet>
@@ -361,7 +361,7 @@ function GuestAccount({ ready }) {
           <Sheet code="What an account adds" aside="Free">
           <ul className="grid gap-3">
             {adds.map((a) => (
-              <li key={a.icon} className="flex items-start gap-3 text-[16px] leading-[1.5] text-v3-ink2">
+              <li key={a.icon} className="flex items-start gap-3 text-[15px] leading-[1.5] text-v3-ink2">
                 <Icon name={a.icon} className="mt-0.5 h-5 w-5 shrink-0 text-v3-ink" />{a.text}
               </li>
             ))}
@@ -377,7 +377,7 @@ function GuestAccount({ ready }) {
             )}
           </div>
           {!ready ? (
-            <p className="mt-3 text-[14px] leading-[1.5] text-v3-ink3">Sign-in is not set up on this build, so accounts cannot be created here. Everything else on the site works without one.</p>
+            <p className="mt-3 text-[15px] leading-[1.5] text-v3-ink3">Sign-in is not set up on this build, so accounts cannot be created here. Everything else on the site works without one.</p>
           ) : null}
           </Sheet>
           <Locker signedIn={false} />

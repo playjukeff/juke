@@ -106,7 +106,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
           This week you play <a href={teamHref(opp)} className="font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a>
           <span className="font-figure text-[15px] text-v3-ink2"> · {recordText(opp)}</span>.
         </p>
-        <p className="mt-2 text-[14px] leading-[1.5] text-v3-ink2">Your lineup as set projects {sheet.total !== null ? <Fig className="font-bold text-v3-ink">{sheet.total.toFixed(1)}</Fig> : '—'}. {platform} publishes the pairing a week at a time; the matchup page prices both lineups and the win probability.</p>
+        <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">Your lineup as set projects {sheet.total !== null ? <Fig className="font-bold text-v3-ink">{sheet.total.toFixed(1)}</Fig> : '—'}. {platform} publishes the pairing a week at a time; the matchup page prices both lineups and the win probability.</p>
         <div className="mt-4"><GoLink href={matchupHref(week)}>Both lineups, side by side</GoLink></div>
       </Sheet>
     )
@@ -152,7 +152,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
       </div>
       <div className="mt-5 border-t border-v3-rule pt-4">
         {winProb === null ? (
-          <p className="text-[14px] leading-[1.5] text-v3-ink2">
+          <p className="text-[15px] leading-[1.5] text-v3-ink2">
             {total === null || oppTotal === null
               ? 'No win probability: a starter on one side has no projection, and Juke only prices a matchup when both lineups can be.'
               : 'No win probability yet: the weekly spread it needs is measured once the board has loaded.'}
@@ -161,8 +161,8 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
           <>
             <div className="flex items-baseline justify-between gap-3">
               <Label>Win probability</Label>
-              <span className={cx('font-figure text-[26px] font-bold tabular-nums', read === 'favoured' ? 'text-v3-gain' : read === 'behind' ? 'text-v3-cost' : 'text-v3-ink')}>
-                <CountText text={pct(winProb)} /> {word ? <span className="text-[14px] font-semibold uppercase tracking-[0.08em]">{word}</span> : null}
+              <span className={cx('font-figure text-[28px] font-bold tabular-nums', read === 'favoured' ? 'text-v3-gain' : read === 'behind' ? 'text-v3-cost' : 'text-v3-ink')}>
+                <CountText text={pct(winProb)} /> {word ? <span className="text-[15px] font-semibold uppercase tracking-[0.08em]">{word}</span> : null}
               </span>
             </div>
             <WinBar p={winProb} read={read} className="mt-1" />
@@ -271,7 +271,7 @@ function WeekCall({ sheet, week }) {
             <PosTag pos={call.pos} className="mt-1.5" />
             <p className="min-w-0 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">{call.title}</p>
           </div>
-          <p className="mt-2 font-figure text-[14px] text-v3-ink2">{call.figure}</p>
+          <p className="mt-2 font-figure text-[15px] text-v3-ink2">{call.figure}</p>
         </>
       ) : (
         <>
@@ -279,7 +279,7 @@ function WeekCall({ sheet, week }) {
           <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">No swap on your bench clears a point, nothing on the wire beats what you hold, and every starter is available. Your lineup stands.</p>
         </>
       )}
-      {also.length ? <p className="mt-2 text-[14px] leading-[1.5] text-v3-ink2">Also this week: {also.join(' · ')}.</p> : null}
+      {also.length ? <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">Also this week: {also.join(' · ')}.</p> : null}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
         {call ? <CallButton href={call.href}>{call.button} <Icon name="arrow" className="h-4 w-4" /></CallButton> : null}
         <GoLink href={matchupHref(matchWeek)}>{matchText}</GoLink>
@@ -310,10 +310,10 @@ function LineupCall({ sheet, primary }) {
           <div className="flex items-start gap-3">
             <PosTag pos={best.start.pos} className="mt-1" />
             <div className="min-w-0">
-              <div className="text-[19px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">
+              <div className="text-[20px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">
                 Start <PlayerLink player={best.start} /> over <PlayerLink player={best.sit} />
               </div>
-              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 font-figure text-[14px] text-v3-ink2">
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 font-figure text-[15px] text-v3-ink2">
                 <span><Delta value={best.gain} digits={1} className="text-[18px]" /> this week</span>
                 {total !== null ? <span>{total.toFixed(1)} as set → <span className="font-bold text-v3-ink">{(total + best.gain).toFixed(1)}</span> with the swap</span> : null}
                 {best.replacing ? <span className="text-v3-cost">that slot scores 0 as set</span> : null}
@@ -325,9 +325,9 @@ function LineupCall({ sheet, primary }) {
               <li><Label className="text-[11px]">Or instead — alternatives, not additions</Label></li>
               {swaps.slice(1, 3).map((s) => (
                 <li key={s.sit.id + ':' + s.start.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_7rem_3.5rem]">
-                  <span className="truncate text-[14px] text-v3-ink2"><span className="text-v3-ink">{s.start.name}</span> over {s.sit.name}</span>
+                  <span className="truncate text-[15px] text-v3-ink2"><span className="text-v3-ink">{s.start.name}</span> over {s.sit.name}</span>
                   <ValueBar value={s.gain} max={best.gain} className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                  <Delta value={s.gain} digits={1} className="text-right text-[14px]" />
+                  <Delta value={s.gain} digits={1} className="text-right text-[15px]" />
                 </li>
               ))}
             </ol>
@@ -362,10 +362,10 @@ function WireCall({ sheet, snapshot, platform, primary }) {
           <div className="flex items-start gap-3">
             <PosTag pos={top[0].pos} className="mt-1" />
             <div className="min-w-0">
-              <div className="text-[19px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">
+              <div className="text-[20px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">
                 Claim <PlayerLink player={top[0].best.player} />
               </div>
-              <div className="mt-1.5 font-figure text-[14px] text-v3-ink2">
+              <div className="mt-1.5 font-figure text-[15px] text-v3-ink2">
                 <Delta value={top[0].improvement} className="text-[18px]" /> over your best {top[0].pos}
                 {top[0].held === null ? ' — you hold nobody rankable there' : `, who is ${Math.round(top[0].held)} over replacement`}
               </div>
@@ -375,9 +375,9 @@ function WireCall({ sheet, snapshot, platform, primary }) {
             <li><Label className="text-[11px]">Every position a claim would help</Label></li>
             {top.map((g) => (
               <li key={g.pos} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_7rem_3.5rem]">
-                <span className="flex min-w-0 items-center gap-2 text-[14px] text-v3-ink2"><PosTag pos={g.pos} /><span className="truncate text-v3-ink">{g.best.player.name}</span></span>
+                <span className="flex min-w-0 items-center gap-2 text-[15px] text-v3-ink2"><PosTag pos={g.pos} /><span className="truncate text-v3-ink">{g.best.player.name}</span></span>
                 <ValueBar value={g.improvement} max={max} className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                <Delta value={g.improvement} className="text-right text-[14px]" />
+                <Delta value={g.improvement} className="text-right text-[15px]" />
               </li>
             ))}
           </ol> : null}
@@ -413,7 +413,7 @@ function TradeCall({ sheet, snapshot }) {
   const chip = sheet.chips[0] || null
   return (
     <Sheet code="Trade · season value" aside={aside} className="flex w-full flex-col" bodyClass="flex flex-1 flex-col p-4 sm:p-5">
-      <p className="text-[16px] font-bold leading-snug text-v3-ink">
+      <p className="text-[15px] font-bold leading-snug text-v3-ink">
         {w.state === 'open'
           ? left ? <>Trading closes in <Fig>{left.compact}</Fig></> : w.week !== null ? <>Trading closes after week <Fig>{w.week}</Fig></> : 'The deadline has not passed.'
           : w.state === 'passed' ? 'The trade deadline has passed.'
@@ -509,7 +509,7 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
             {next.map((g) => {
               const opp = teams.find((t) => String(t.ownerId) === String(g.opponentId))
               return (
-                <li key={g.week} className="flex min-h-[44px] items-center gap-3 border-b border-v3-rule text-[14px] last:border-b-0">
+                <li key={g.week} className="flex min-h-[44px] items-center gap-3 border-b border-v3-rule text-[15px] last:border-b-0">
                   <a href={matchupHref(g.week)} aria-label={`Week ${g.week} matchup`} className="inline-flex min-h-[44px] w-12 shrink-0 items-center font-figure text-v3-ink2 underline decoration-v3-rule underline-offset-4 hover:text-v3-ink hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">W{g.week}</a>
                   <span className="text-v3-ink3">{g.home ? 'vs' : 'at'}</span>
                   {opp ? <a href={teamHref(opp)} className="min-w-0 truncate font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
@@ -710,7 +710,7 @@ export default function NowConnected({ plan = null }) {
         <section aria-labelledby="v3-calls" className="grid gap-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <Headline as="h2" size="section" id="v3-calls">This week&apos;s calls</Headline>
-            <p className="max-w-[52ch] text-[14px] leading-[1.5] text-v3-ink3">
+            <p className="max-w-[52ch] text-[15px] leading-[1.5] text-v3-ink3">
               Ranked inside each lane, never across them: a point this week and a point of season value are different units.
             </p>
           </div>

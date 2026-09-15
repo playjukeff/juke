@@ -22,7 +22,7 @@ const TH = 'whitespace-nowrap border-b border-v3-rule bg-v3-paper px-2.5 py-2 fo
 const TD = 'whitespace-nowrap border-b border-v3-rule px-2.5 py-2 font-figure tabular-nums'
 
 function Empty({ children }) {
-  return <p className="px-1 py-6 text-center text-[14px] text-v3-ink2">{children}</p>
+  return <p className="px-1 py-6 text-center text-[15px] text-v3-ink2">{children}</p>
 }
 
 function Box({ label, children, note, className = '' }) {
@@ -40,7 +40,7 @@ function Meter({ name, score, label, why, caution }) {
   return (
     <div className="rounded-[4px] border border-v3-rule bg-v3-sheet p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[14px] font-bold text-v3-ink">{name}</span>
+        <span className="text-[15px] font-bold text-v3-ink">{name}</span>
         <span className={cx('font-figure text-[13px] font-bold', caution ? 'text-v3-warn' : 'text-v3-ink')}>{label}</span>
       </div>
       <div className="mt-2 flex gap-1" role="img" aria-label={`${name}: ${label}`}>
@@ -66,25 +66,25 @@ export function OurRead({ engine, player }) {
           <Label>Juke score</Label>
           {r.unranked ? <span className="text-[15px] font-bold text-v3-ink2">Not rated</span> : (
             <span className="flex items-baseline gap-2">
-              <span className="font-figure text-[36px] font-bold leading-none tabular-nums text-v3-ink">{r.score}</span>
+              <span className="font-figure text-[34px] font-bold leading-none tabular-nums text-v3-ink">{r.score}</span>
               <span className="text-[13px] font-semibold text-v3-ink2">{r.label}</span>
             </span>
           )}
         </div>
-        {r.unranked ? <p className="mt-2 text-[14px] leading-relaxed text-v3-ink2">{r.unrankedNote}</p> : (
+        {r.unranked ? <p className="mt-2 text-[15px] leading-relaxed text-v3-ink2">{r.unrankedNote}</p> : (
           <>
             {near && (
-              <p className="mt-2 text-[14px] leading-relaxed text-v3-ink2">
+              <p className="mt-2 text-[15px] leading-relaxed text-v3-ink2">
                 <span className="font-bold text-v3-ink">About replacement level</span> — this is roughly what a freely available {player.pos} is worth, because startable {player.pos} territory runs to <span className="font-bold text-v3-ink">{r.replacementRank}</span> on this board. The projected points are real; a low score here means you can wait rather than spend a pick, not that the player is bad.
               </p>
             )}
             {below && (
-              <p className="mt-2 text-[14px] leading-relaxed text-v3-ink2">
+              <p className="mt-2 text-[15px] leading-relaxed text-v3-ink2">
                 <span className="font-bold text-v3-ink">Below replacement</span> — <Delta value={r.gap} /> points against a replacement starter, where startable {player.pos} territory begins at <span className="font-bold text-v3-ink">{r.replacementRank}</span> on this board. A score of 0 is a floor, not a verdict: about a third of the players who scored zero on one season&apos;s actuals were above replacement the next.
               </p>
             )}
             {above && (
-              <p className="mt-2 text-[14px] leading-relaxed text-v3-ink2">
+              <p className="mt-2 text-[15px] leading-relaxed text-v3-ink2">
                 <Delta value={r.gap} /> points above a replacement starter — startable {player.pos} territory begins at <span className="font-bold text-v3-ink">{r.replacementRank}</span> on this board.
               </p>
             )}
@@ -100,7 +100,7 @@ export function OurRead({ engine, player }) {
         </div>
       )}
       {r.priorScore !== null && r.priorSeason && (
-        <p className="rounded-[4px] border border-v3-rule bg-v3-sheet px-3 py-2.5 text-[14px] text-v3-ink2">
+        <p className="rounded-[4px] border border-v3-rule bg-v3-sheet px-3 py-2.5 text-[15px] text-v3-ink2">
           Scored <span className="font-figure font-bold text-v3-ink">{r.priorScore}</span> on {r.priorSeason} actuals
           {r.priorGames !== null && <span className="text-v3-ink3"> ({r.priorGames} game{r.priorGames === 1 ? '' : 's'})</span>}.
         </p>
@@ -139,7 +139,7 @@ export function DraftFit({ fit, player }) {
         )}
       </div>
       {survives !== null && (
-        <p className="rounded-[4px] border border-v3-rule bg-v3-paper px-3 py-2.5 text-[14px] leading-relaxed text-v3-ink2">
+        <p className="rounded-[4px] border border-v3-rule bg-v3-paper px-3 py-2.5 text-[15px] leading-relaxed text-v3-ink2">
           His ADP is {adp.toFixed(1)} and your next pick is {nextOverall}. {survives ? 'On average he lasts that long — though ADP is an average, and no single draft looks like one.' : 'On average he is gone before then, so waiting is a real risk.'}
         </p>
       )}
@@ -294,7 +294,7 @@ export function Depth({ engine, player }) {
           <Label className="block">{g.group}</Label>
           <div className="mt-2 flex flex-col gap-1">
             {g.players.map((p) => (
-              <div key={p.name} className={cx('flex items-center gap-2.5 rounded-[4px] border px-3 py-2 text-[14px]', p.isSelf ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet')}>
+              <div key={p.name} className={cx('flex items-center gap-2.5 rounded-[4px] border px-3 py-2 text-[15px]', p.isSelf ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet')}>
                 <span className={cx('w-4 shrink-0 text-center font-figure text-[12px]', p.isSelf ? 'text-v3-bandInk' : 'text-v3-ink3')}>{p.order || '–'}</span>
                 <PosTag pos={p.pos} />
                 <span className={cx('min-w-0 flex-1 truncate', p.isSelf ? 'font-bold text-white' : 'text-v3-ink')}>{p.name}</span>

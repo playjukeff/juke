@@ -62,7 +62,7 @@ function FilterBar({ board, f, set, counts, total, priorYear, phone }) {
   // on the search row: a mid-pick screen spends its height on players.
   const [open, setOpen] = useState(false)
   // 16px on a phone: iOS zooms any field smaller than that on focus.
-  const sel = cx('h-10 rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[14px]', FOCUS)
+  const sel = cx('h-10 rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[15px] text-v3-ink sm:text-[15px]', FOCUS)
   const narrowed = f.team !== 'ALL' || f.tenure !== 'all' || f.season !== 'projected' || f.showDrafted
   const extras = (
     <>
@@ -96,7 +96,7 @@ function FilterBar({ board, f, set, counts, total, priorYear, phone }) {
         <label className="relative min-w-0 flex-1 basis-[180px]">
           <span className="sr-only">Search players</span>
           <Glyph name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-v3-ink3" />
-          <input id="v3-pool-search" type="search" value={f.search} onChange={(e) => set({ search: e.target.value })} placeholder="Search players" className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet pl-9 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 sm:text-[14px]', FOCUS)} />
+          <input id="v3-pool-search" type="search" value={f.search} onChange={(e) => set({ search: e.target.value })} placeholder="Search players" className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet pl-9 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 sm:text-[15px]', FOCUS)} />
         </label>
         {!phone && extras}
         {phone && (
@@ -211,7 +211,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
   const more = remaining > 0 && (
     <div className="flex items-center justify-between gap-3 border-t border-v3-rule px-3 py-3">
       <span className="font-figure text-[12px] tabular-nums text-v3-ink2">Showing {playersSeen} of {players.length}</span>
-      <button type="button" onClick={() => setShown((n) => n + PAGE)} className={cx('min-h-[44px] rounded-[4px] border border-v3-rule bg-v3-sheet px-4 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+      <button type="button" onClick={() => setShown((n) => n + PAGE)} className={cx('min-h-[44px] rounded-[4px] border border-v3-rule bg-v3-sheet px-4 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
         Show {Math.min(PAGE, remaining)} more
       </button>
     </div>
@@ -219,7 +219,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
   const empty = !players.length && (
     <div className="px-4 py-12 text-center">
       <span className="block text-[18px] font-extrabold text-v3-ink">Nobody matches</span>
-      <span className="mt-1 block text-[14px] text-v3-ink2">Clear the search or widen a filter.</span>
+      <span className="mt-1 block text-[15px] text-v3-ink2">Clear the search or widen a filter.</span>
     </div>
   )
 
@@ -262,7 +262,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
                     {stats.map(({ c, raw }) => (
                       <div key={c.key}>
                         <dt className="font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{c.label}</dt>
-                        <dd className="text-[14px]"><Cell col={c} raw={raw} /></dd>
+                        <dd className="text-[15px]"><Cell col={c} raw={raw} /></dd>
                       </div>
                     ))}
                   </dl>
@@ -329,7 +329,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
                         <Headshot src={engine.photoUrl(p)} name={p.name} size={30} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
-                            <span className={cx('truncate text-[14px] font-semibold', p.drafted ? 'text-v3-ink3 line-through' : 'text-v3-ink')}>{p.name}</span>
+                            <span className={cx('truncate text-[15px] font-semibold', p.drafted ? 'text-v3-ink3 line-through' : 'text-v3-ink')}>{p.name}</span>
                             <InjuryTag code={p.inj} />
                             {p.deep && <DeepTag />}
                           </span>

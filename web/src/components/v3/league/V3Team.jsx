@@ -37,7 +37,7 @@ import { matchupHref } from './matchupData.js'
 
 function PlayerCell({ player, id }) {
   if (!player) {
-    return <span className="text-[14px] text-v3-ink3">{id} · not on the board</span>
+    return <span className="text-[15px] text-v3-ink3">{id} · not on the board</span>
   }
   const sev = injurySeverity(player.inj)
   return (
@@ -110,11 +110,11 @@ function RosterTable({ team, pricing, snapshot }) {
                       <PlayerCell player={p} id={id} />
                     </span>
                   </td>
-                  <td className={cx('border-0 px-2 py-2.5 text-right font-figure text-[14px] tabular-nums', bench ? 'text-v3-ink2' : 'font-bold text-v3-ink')}>
+                  <td className={cx('border-0 px-2 py-2.5 text-right font-figure text-[15px] tabular-nums', bench ? 'text-v3-ink2' : 'font-bold text-v3-ink')}>
                     {typeof pts === 'number' ? pts.toFixed(1) : '—'}
                   </td>
                   <td className="border-0 py-2.5 pl-2 pr-4 text-right sm:pr-5">
-                    {season === null ? <span className="font-figure text-[14px] text-v3-ink3">—</span> : <Delta value={season} className="text-[14px]" />}
+                    {season === null ? <span className="font-figure text-[15px] text-v3-ink3">—</span> : <Delta value={season} className="text-[15px]" />}
                   </td>
                 </tr>,
               ]
@@ -123,11 +123,11 @@ function RosterTable({ team, pricing, snapshot }) {
           <tfoot>
             <tr className="border-t-2 border-v3-ink">
               <td className="border-0 py-3 pl-4 sm:pl-5" />
-              <td className="border-0 py-3 pr-2 text-[14px] font-semibold text-v3-ink">
+              <td className="border-0 py-3 pr-2 text-[15px] font-semibold text-v3-ink">
                 Starters, as set{value ? <span className="block text-[12px] font-normal text-v3-ink3">Season: {value.priced} of {value.held} priced</span> : null}
               </td>
-              <td className="border-0 px-2 py-3 text-right font-figure text-[16px] font-bold tabular-nums text-v3-ink">{wk.total === null ? '—' : wk.total.toFixed(1)}</td>
-              <td className="border-0 py-3 pl-2 pr-4 text-right sm:pr-5">{value ? <Delta value={value.total} className="text-[16px]" /> : <span className="font-figure text-v3-ink3">—</span>}</td>
+              <td className="border-0 px-2 py-3 text-right font-figure text-[15px] font-bold tabular-nums text-v3-ink">{wk.total === null ? '—' : wk.total.toFixed(1)}</td>
+              <td className="border-0 py-3 pl-2 pr-4 text-right sm:pr-5">{value ? <Delta value={value.total} className="text-[15px]" /> : <span className="font-figure text-v3-ink3">—</span>}</td>
             </tr>
           </tfoot>
         </table>
@@ -258,7 +258,7 @@ export default function V3Team({ teamId }) {
             <ul className="mt-3 flex flex-wrap gap-2">
               {others.map((t) => (
                 <li key={t.rosterId ?? t.ownerId}>
-                  <a href={teamHref(t)} className="inline-flex min-h-[40px] items-center rounded-[6px] border border-v3-rule px-3 text-[14px] font-medium text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+                  <a href={teamHref(t)} className="inline-flex min-h-[40px] items-center rounded-[6px] border border-v3-rule px-3 text-[15px] font-medium text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
                     {t.teamName}{league.ownerId && String(t.ownerId) === String(league.ownerId) ? ' · you' : ''}
                   </a>
                 </li>

@@ -15,7 +15,9 @@ import { AnimatePresence, LayoutGroup, MotionConfig, animate, motion, useReduced
      Sleeper                         v3
      sub-copy written word by word   StreamText: a short plain sentence,
                                      blurred to sharp, one word at a time
-     sections rise as they enter     useReveal: a Sheet rises 12px, once
+     sections rise as they enter     useReveal: the first viewport of a
+                                     page rises 12px on arrival, once --
+                                     and NOT as sections scroll past
      the product plays itself        SampleBoard (draft/): shotPicks() on a
                                      loop-free, pausable sample grid
      numbers tick, bars fill         CountUp / CountText / BarFill
@@ -308,19 +310,43 @@ function clearNow(el) {
   el.style.willChange = ''
 }
 
-/* A Sheet rises as it enters, once, and the items in it marked data-rise
-   follow in a short stagger. Imperative on purpose: a Sheet can hold a
-   whole page's worth of rows, and re-rendering them to move one transform
-   would cost more than the motion is worth. Styles are cleared when it
-   lands, so no transform is left behind to trap a sticky child or a
-   fixed drawer. */
+/* A Sheet rises once, on ARRIVAL, and the items in it marked data-rise
+   follow in a short stagger.
+
+   Arrival only, and that is the whole rule: a route change plays the new
+   page's first viewport and nothing else. A Sheet below the fold is
+   simply THERE when the reader reaches it — it does not fade and rise as
+   it scrolls into view.
+
+   That was the earlier behaviour and it is the one entrance pattern worth
+   naming as a mistake. A page of 7 to 12 sections each fading and rising
+   as it enters is the generic default — it reads as a template rather
+   than as this product, it puts motion in front of a reader who is
+   scrolling BECAUSE they want to read the next thing, and it makes every
+   section equally important by giving them all the same gesture. One
+   orchestrated moment per navigation lands harder than a dozen scattered
+   ones, and it costs the reader nothing when they are hunting for a
+   number further down the page.
+
+   What is kept is the moment that answers something the reader did: they
+   opened this page, so its first screen assembles once. Everything below
+   is at rest. The value primitives (CountUp, BarFill) still wait to be
+   seen before they run, because those animate a number IN PLACE rather
+   than moving a section — they show what a figure is, which is the kind
+   of motion worth having.
+
+   Imperative on purpose: a Sheet can hold a whole page's worth of rows,
+   and re-rendering them to move one transform would cost more than the
+   motion is worth. Styles are cleared when it lands, so no transform is
+   left behind to trap a sticky child or a fixed drawer. */
 export function useReveal(ref, { y = RISE, disabled = false, items = true } = {}) {
   const ok = useMotionOK()
   useIsoLayoutEffect(() => {
     const el = ref.current
     if (!el || disabled || !ok) return undefined
-    const g = gateFor(el)
-    if (g === 'rest') return undefined
+    // 'play' only: 'wait' (below the fold) and 'rest' (a cold load) are
+    // both at rest now, so only a route change's first viewport animates.
+    if (gateFor(el) !== 'play') return undefined
     const kids = items ? [...el.querySelectorAll('[data-rise]')].slice(0, 16) : []
     hideNow(el, y)
     kids.forEach((k) => hideNow(k, RISE_ITEM))
@@ -341,10 +367,9 @@ export function useReveal(ref, { y = RISE, disabled = false, items = true } = {}
       clearNow(el)
       kids.forEach(clearNow)
     }
-    const stop = g === 'play' ? (play(), () => {}) : whenSeen(el, play)
+    play()
     return () => {
       alive = false
-      stop()
       cancelAll(running)
       clearNow(el)
       kids.forEach(clearNow)

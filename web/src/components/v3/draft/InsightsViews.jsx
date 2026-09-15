@@ -26,7 +26,7 @@ export function Kpi({ kpi }) {
     <div className="min-w-0 rounded-[6px] border border-v3-rule bg-v3-sheet p-4">
       <Label className="block text-[11px]">{kpi.label}</Label>
       <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
-        <span className="font-figure text-[30px] font-bold leading-none tabular-nums text-v3-ink">{kpi.value}</span>
+        <span className="font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink">{kpi.value}</span>
         {kpi.delta && <span className={cx('font-figure text-[13px] font-semibold tabular-nums', (/[1-9]/.test(kpi.delta) && TONE_TEXT[kpi.tone]) || 'text-v3-ink2')}>{kpi.delta}</span>}
       </div>
       <p className="mt-1.5 text-[13px] leading-[1.45] text-v3-ink2">{kpi.note}</p>
@@ -84,7 +84,7 @@ export function ViewLeft({ report, mock, selectedId, hover, onHover, onSelect })
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-t border-v3-rule pt-4">
         <div className="min-w-0">
           <Label>Pick by pick · {mock.label}</Label>
-          <p className="mt-1.5 max-w-[60ch] text-[14px] leading-[1.55] text-v3-ink2">Every pick against the best value still on the board at that slot, each alternative counted once. Zero means you took the top of the board.</p>
+          <p className="mt-1.5 max-w-[60ch] text-[15px] leading-[1.55] text-v3-ink2">Every pick against the best value still on the board at that slot, each alternative counted once. Zero means you took the top of the board.</p>
         </div>
         <div className="text-right">
           <span className="block text-[40px] leading-none"><Delta value={-mock.total} /></span>
@@ -104,7 +104,7 @@ export function ViewLeft({ report, mock, selectedId, hover, onHover, onSelect })
               <li key={p.code + p.you.name} data-pick-row className="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_140px_60px]">
                 <span className="font-figure text-[12px] font-bold tabular-nums text-v3-ink3">{p.code}</span>
                 <span className="min-w-0">
-                  <span className="flex min-w-0 items-center gap-2"><PosTag pos={p.you.pos} /><span className={cx('truncate text-[14px] text-v3-ink', cost && 'font-bold')}>{p.you.name}</span></span>
+                  <span className="flex min-w-0 items-center gap-2"><PosTag pos={p.you.pos} /><span className={cx('truncate text-[15px] text-v3-ink', cost && 'font-bold')}>{p.you.name}</span></span>
                   {/* On a phone the best-available column folds under the pick
                       rather than vanishing — "over whom" is the whole point. */}
                   <span className="mt-0.5 block truncate text-[12px] text-v3-ink2 sm:hidden">{p.best ? <>over <span className="font-semibold text-v3-ink">{p.best.name}</span> ({p.best.pos === 'DST' ? 'D/ST' : p.best.pos})</> : 'top of the board'}</span>
@@ -148,10 +148,10 @@ export function ViewLeverage({ mock, onOpen }) {
                   <span className="min-w-0">
                     <Label className="text-[11px]">{f.code} · {f.mockLabel}</Label>
                     <span className="mt-1.5 block text-[18px] font-extrabold leading-tight text-v3-ink">{f.title}</span>
-                    <span className="mt-1.5 block text-[14px] leading-[1.5] text-v3-ink2">{f.note}</span>
+                    <span className="mt-1.5 block text-[15px] leading-[1.5] text-v3-ink2">{f.note}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-[30px] leading-none"><Delta value={f.winDelta} digits={1} /></span>
+                    <span className="block text-[28px] leading-none"><Delta value={f.winDelta} digits={1} /></span>
                     <Label className="text-[11px]">Win % swing</Label>
                   </span>
                 </span>
@@ -209,7 +209,7 @@ export function ViewField({ report, hover, onHover, onOpen }) {
               aria-label={`${r.name}: you at round ${r.you.toFixed(1)}, the room at ${r.field.toFixed(1)}${r.cliff === null ? ', tier never emptied' : `, tier empties at ${r.cliff.toFixed(1)}`}. ${r.note}.`}
               className={cx('grid w-full grid-cols-[56px_minmax(0,1fr)] items-center gap-3 rounded-[4px] border-b border-v3-rule px-2.5 py-3 text-left sm:grid-cols-[164px_minmax(0,1fr)_160px]', FOCUS, hover === r.pos && 'bg-v3-paper')}
             >
-              <span className="flex min-w-0 items-center gap-2"><PosTag pos={r.pos} /><span className="hidden truncate text-[14px] text-v3-ink sm:inline">{r.name}</span></span>
+              <span className="flex min-w-0 items-center gap-2"><PosTag pos={r.pos} /><span className="hidden truncate text-[15px] text-v3-ink sm:inline">{r.name}</span></span>
               <span className="relative block h-[28px]">
                 <span className="absolute inset-x-0 top-[13px] h-0.5 bg-v3-well" />
                 {r.cliff !== null && <span className="absolute top-1 h-5 w-0.5 bg-v3-warn" style={{ left: at(r.cliff) }} />}
@@ -314,13 +314,13 @@ export function Habits({ report, roomActive, onRun, onOpenHabit }) {
       {top && (
         <Sheet code="Costliest habit" aside={top.frequency}>
           <p className="text-[20px] font-extrabold leading-[1.2] tracking-[-0.01em] text-v3-ink">{top.title}</p>
-          <p className="mt-2.5 text-[14px] leading-[1.55] text-v3-ink2">{top.evidence}</p>
+          <p className="mt-2.5 text-[15px] leading-[1.55] text-v3-ink2">{top.evidence}</p>
           <dl className="mt-3.5 grid grid-cols-2 gap-2">
             <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[11px]">Cost</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={-Math.round(top.costPoints)} unit="pts" /></dd></div>
             <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[11px]">Win %</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={top.winPct} digits={1} /></dd></div>
           </dl>
           {run && (
-            <button type="button" onClick={() => onRun(run.scoring, run.seat)} disabled={roomActive} className={cx('mt-3.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[6px] border border-v3-ink bg-v3-sheet px-4 text-[14px] font-semibold text-v3-ink hover:bg-v3-band hover:text-white disabled:cursor-not-allowed disabled:border-v3-rule disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}>
+            <button type="button" onClick={() => onRun(run.scoring, run.seat)} disabled={roomActive} className={cx('mt-3.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[6px] border border-v3-ink bg-v3-sheet px-4 text-[15px] font-semibold text-v3-ink hover:bg-v3-band hover:text-white disabled:cursor-not-allowed disabled:border-v3-rule disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}>
               {roomActive ? 'Not available in a room' : run.label}
             </button>
           )}
@@ -344,8 +344,8 @@ export function Habits({ report, roomActive, onRun, onOpenHabit }) {
         <ul>
           {report.failures.map((f) => (
             <li key={f.key} className="flex items-start gap-3 border-t border-v3-rule py-3 first:border-t-0">
-              <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold text-v3-ink">{f.title}</span><span className="mt-0.5 block text-[13px] leading-[1.5] text-v3-ink2">{f.note}</span></span>
-              <span className={cx('shrink-0 font-figure text-[14px] font-bold tabular-nums', f.tone === 'bad' ? 'text-v3-cost' : f.tone === 'warn' ? 'text-v3-warn' : 'text-v3-ink')}>{f.value}</span>
+              <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-v3-ink">{f.title}</span><span className="mt-0.5 block text-[13px] leading-[1.5] text-v3-ink2">{f.note}</span></span>
+              <span className={cx('shrink-0 font-figure text-[15px] font-bold tabular-nums', f.tone === 'bad' ? 'text-v3-cost' : f.tone === 'warn' ? 'text-v3-warn' : 'text-v3-ink')}>{f.value}</span>
             </li>
           ))}
         </ul>

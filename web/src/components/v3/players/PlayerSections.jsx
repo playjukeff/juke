@@ -186,7 +186,7 @@ export function JukeSheet({ d }) {
   return (
     <Sheet code="Juke score" aside={`${d.scoring} · ${r.teams}-team league`} aria-label="Juke score">
       {noProjection ? (
-        <p className="text-[16px] leading-[1.55] text-v3-ink2">
+        <p className="text-[15px] leading-[1.55] text-v3-ink2">
           No projection for this player yet, so there is nothing to score him on. The nightly data refresh fills this in for anyone Sleeper carries.
         </p>
       ) : r.unranked ? (
@@ -195,7 +195,7 @@ export function JukeSheet({ d }) {
             <span className="text-[28px] font-black tracking-[-0.02em] text-v3-ink">Not rated</span>
             <Label>{posWord(p.pos)} · withheld</Label>
           </div>
-          <p className="max-w-[64ch] text-[16px] leading-[1.55] text-v3-ink2">{r.unrankedNote}</p>
+          <p className="max-w-[64ch] text-[15px] leading-[1.55] text-v3-ink2">{r.unrankedNote}</p>
           <p className="max-w-[64ch] text-[15px] leading-[1.55] text-v3-ink">
             {p.pos === 'DST' ? 'This defense is' : 'He is'} projected for <Fig className="font-bold">{Math.round(p.projPts)}</Fig> points under {d.scoring}; what Juke will not do is say where that puts {p.pos === 'DST' ? 'it among defenses' : 'him among kickers'}.
           </p>
@@ -209,19 +209,19 @@ export function JukeSheet({ d }) {
             </div>
             <div className="grid gap-2">
               {above && (
-                <p className="text-[16px] leading-[1.55] text-v3-ink">
+                <p className="text-[15px] leading-[1.55] text-v3-ink">
                   <Delta value={r.gap} unit="pts" /> above a replacement starter — startable {posWord(p.pos)} territory runs to{' '}
                   <strong className="font-semibold">{r.replacementRank}</strong> on this board.
                 </p>
               )}
               {near && (
-                <p className="text-[16px] leading-[1.55] text-v3-ink">
+                <p className="text-[15px] leading-[1.55] text-v3-ink">
                   <strong className="font-semibold">About replacement level</strong> — roughly what a freely available {posWord(p.pos)} is worth, because startable territory runs to{' '}
                   <strong className="font-semibold">{r.replacementRank}</strong> on this board. The projected points are real; a low score means you can wait rather than spend a pick, not that he is bad.
                 </p>
               )}
               {below && (
-                <p className="text-[16px] leading-[1.55] text-v3-ink">
+                <p className="text-[15px] leading-[1.55] text-v3-ink">
                   <strong className="font-semibold">Below replacement</strong> — <Delta value={r.gap} unit="pts" /> against a replacement starter, where startable {posWord(p.pos)} territory begins at{' '}
                   <strong className="font-semibold">{r.replacementRank}</strong>. A score of 0 is a floor, not a verdict: about a third of the players who scored zero on one season&apos;s actuals were above replacement the next.
                 </p>
@@ -237,17 +237,17 @@ export function JukeSheet({ d }) {
                 <Step n={1} title="Project the season" sub={`under ${d.scoring}, from raw stats`}>
                   <div className="grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-3">
                     <ValueBar value={proj} max={scale} tone="neutral" />
-                    <Fig className="text-right text-[14px] font-bold text-v3-ink">{proj}</Fig>
+                    <Fig className="text-right text-[15px] font-bold text-v3-ink">{proj}</Fig>
                   </div>
                 </Step>
                 <Step n={2} title={`Find the replaceable ${posWord(p.pos)}`} sub={`startable territory runs to ${r.replacementRank} on this board`}>
                   <div className="grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-3">
                     <ValueBar value={replacement} max={scale} tone="neutral" />
-                    <Fig className="text-right text-[14px] font-bold text-v3-ink">{replacement}</Fig>
+                    <Fig className="text-right text-[15px] font-bold text-v3-ink">{replacement}</Fig>
                   </div>
                 </Step>
                 <Step n={3} title="Measure the gap over that line">
-                  <p className="text-[14px] leading-[1.5] text-v3-ink2">
+                  <p className="text-[15px] leading-[1.5] text-v3-ink2">
                     <Fig>{proj} − {replacement} =</Fig> <Delta value={r.gap} unit="pts" />. Against the biggest gap on the board, that is a Juke score of <Fig className="font-bold text-v3-ink">{r.score}</Fig> — never below 0, never above 100.
                   </p>
                 </Step>
@@ -258,7 +258,7 @@ export function JukeSheet({ d }) {
       )}
 
       {r.deep && (
-        <p className="mt-5 rounded-[6px] border border-v3-rule bg-v3-well px-4 py-3 text-[14px] leading-[1.55] text-v3-ink2">
+        <p className="mt-5 rounded-[6px] border border-v3-rule bg-v3-well px-4 py-3 text-[15px] leading-[1.55] text-v3-ink2">
           <strong className="font-semibold text-v3-ink">Deep board</strong> — {r.deepNote}
         </p>
       )}
@@ -282,7 +282,7 @@ export function JukeSheet({ d }) {
       )}
 
       {r.priorScore !== null && r.priorSeason && (
-        <p className="mt-4 text-[14px] text-v3-ink2">
+        <p className="mt-4 text-[15px] text-v3-ink2">
           Scored <Fig className="font-bold text-v3-ink">{r.priorScore}</Fig> on {r.priorSeason} actuals
           {r.priorGames !== null ? <> ({r.priorGames} game{r.priorGames === 1 ? '' : 's'})</> : null}.
         </p>
@@ -307,7 +307,7 @@ export function ProjectionSheet({ d }) {
   return (
     <Sheet code="Projection" aside={`2026 · ${d.scoring}`} aria-label="Projection">
       {!s ? (
-        <p className="text-[16px] text-v3-ink2">No projection stored for this player yet.</p>
+        <p className="text-[15px] text-v3-ink2">No projection stored for this player yet.</p>
       ) : (
         <div className="grid gap-5">
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -336,7 +336,7 @@ export function ProjectionSheet({ d }) {
                 {s.stats.map((st) => (
                   <div key={st.key} className="rounded-[4px] border border-v3-rule px-2 py-2 text-center">
                     <dt className="font-figure text-[11px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{st.label}</dt>
-                    <dd className="mt-0.5 font-figure text-[16px] font-bold tabular-nums text-v3-ink">{st.value}</dd>
+                    <dd className="mt-0.5 font-figure text-[15px] font-bold tabular-nums text-v3-ink">{st.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -350,8 +350,8 @@ export function ProjectionSheet({ d }) {
                 <li key={f.format} className="grid grid-cols-[3.25rem_minmax(0,1fr)_3.5rem_4.5rem] items-center gap-3">
                   <span className={cx('font-figure text-[13px] font-bold uppercase tracking-[0.06em]', f.format === d.live ? 'text-v3-ink' : 'text-v3-ink3')}>{FORMAT_LABEL[f.format]}</span>
                   <ValueBar value={f.pts} max={maxPts} tone="neutral" />
-                  <Fig className="text-right text-[14px] font-bold text-v3-ink">{f.pts === null ? '—' : Math.round(f.pts)}</Fig>
-                  <span className="text-right text-[14px]"><Delta value={f.vorp} /></span>
+                  <Fig className="text-right text-[15px] font-bold text-v3-ink">{f.pts === null ? '—' : Math.round(f.pts)}</Fig>
+                  <span className="text-right text-[15px]"><Delta value={f.vorp} /></span>
                 </li>
               ))}
             </ul>
@@ -487,7 +487,7 @@ export function LogsSheet({ engine, player }) {
                 <td
                   key={j}
                   className={cx(
-                    'whitespace-nowrap px-3 py-1.5 font-figure text-[14px] tabular-nums',
+                    'whitespace-nowrap px-3 py-1.5 font-figure text-[15px] tabular-nums',
                     j === 0 ? 'text-left' : 'text-right',
                     row.blank ? 'text-v3-ink3' : j === 1 && row.tone === 'hi' ? 'font-bold text-v3-gain' : j === 1 && row.tone === 'lo' ? 'text-v3-cost' : j === 1 ? 'font-semibold text-v3-ink' : 'text-v3-ink2',
                   )}
@@ -541,7 +541,7 @@ export function NewsSheet({ engine, player }) {
             <li key={n.url}>
               <a href={n.url} target="_blank" rel="noopener noreferrer" className="block rounded-[6px] border border-v3-rule p-3 hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
                 <span className="block text-[15px] font-semibold leading-snug text-v3-ink">{n.title}</span>
-                {n.summary && <span className="mt-1 block text-[14px] leading-[1.5] text-v3-ink2">{n.summary}</span>}
+                {n.summary && <span className="mt-1 block text-[15px] leading-[1.5] text-v3-ink2">{n.summary}</span>}
                 <span className="mt-1.5 block font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{n.source}{n.when ? ` · ${n.when}` : ''}</span>
               </a>
             </li>
@@ -573,7 +573,7 @@ export function DepthSheet({ engine, d }) {
             {RANK_LABELS.filter(([k]) => ranks[k]).map(([k, label]) => (
               <div key={k} className="rounded-[4px] bg-v3-paper px-2 py-2">
                 <dt className="truncate font-figure text-[11px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{label}</dt>
-                <dd className="mt-0.5 font-figure text-[16px] font-bold text-v3-ink">{ordinal(ranks[k].rank)}</dd>
+                <dd className="mt-0.5 font-figure text-[15px] font-bold text-v3-ink">{ordinal(ranks[k].rank)}</dd>
               </div>
             ))}
           </dl>
@@ -596,9 +596,9 @@ export function DepthSheet({ engine, d }) {
                       <span className={cx('text-center font-figure text-[12px]', x.isSelf ? 'text-v3-bandInk' : 'text-v3-ink3')}>{x.order || '–'}</span>
                       <PosTag pos={x.pos} />
                       {other ? (
-                        <a href={`#/players/${encodeURIComponent(other.id)}`} className={cx(HIT, 'truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>{x.name}</a>
+                        <a href={`#/players/${encodeURIComponent(other.id)}`} className={cx(HIT, 'truncate text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}>{x.name}</a>
                       ) : (
-                        <span className={cx('truncate text-[14px] font-semibold', x.isSelf ? 'text-white' : 'text-v3-ink')}>{x.name}</span>
+                        <span className={cx('truncate text-[15px] font-semibold', x.isSelf ? 'text-white' : 'text-v3-ink')}>{x.name}</span>
                       )}
                       <span className={cx('font-figure text-[12px]', x.isSelf ? 'text-v3-bandInk' : 'text-v3-ink3')}>ADP {x.adp.toFixed(1)}</span>
                     </li>
@@ -668,15 +668,15 @@ export function ProspectSheet({ d }) {
       <dl className="grid gap-1.5">
         {known.map((k) => (
           <div key={k.label} className="flex items-baseline justify-between gap-4 border-b border-v3-rule pb-1.5 last:border-b-0">
-            <dt className="text-[14px] text-v3-ink2">{k.label}</dt>
-            <dd className="min-w-0 text-right font-figure text-[14px] font-semibold text-v3-ink">{k.value}</dd>
+            <dt className="text-[15px] text-v3-ink2">{k.label}</dt>
+            <dd className="min-w-0 text-right font-figure text-[15px] font-semibold text-v3-ink">{k.value}</dd>
           </div>
         ))}
       </dl>
       {missing.length > 0 && (
         <div className="mt-4">
           <Label>Not known</Label>
-          <p className="mt-1 text-[14px] leading-[1.5] text-v3-ink2">{missing.join(' · ')}</p>
+          <p className="mt-1 text-[15px] leading-[1.5] text-v3-ink2">{missing.join(' · ')}</p>
         </div>
       )}
       <div className="mt-4"><GoLink href="#/players/rookies">The whole rookie class</GoLink></div>

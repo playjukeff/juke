@@ -99,7 +99,7 @@ function DraftBlock() {
       {shape ? (
         <dl className="mt-4 grid grid-cols-4 gap-2 rounded-[6px] bg-v3-paper p-3">
           {[['Teams', shape.teams], ['Rounds', shape.rounds], ['Seat', shape.seat ? ordinal(shape.seat) : '—'], ['Scoring', shape.format]].map(([k, v]) => (
-            <div key={k} className="min-w-0"><dt><Label className="text-[11px]">{k}</Label></dt><dd className="mt-0.5 truncate font-figure text-[16px] font-bold text-v3-ink">{v}</dd></div>
+            <div key={k} className="min-w-0"><dt><Label className="text-[11px]">{k}</Label></dt><dd className="mt-0.5 truncate font-figure text-[15px] font-bold text-v3-ink">{v}</dd></div>
           ))}
         </dl>
       ) : <div className="mt-4"><Skeleton lines={2} /></div>}

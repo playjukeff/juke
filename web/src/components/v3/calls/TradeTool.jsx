@@ -87,7 +87,7 @@ function TradeWindowStrip({ snapshot }) {
       className={cx('flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[6px] border border-v3-rule bg-v3-sheet px-4 py-3', shut && 'border-l-[4px] border-l-v3-cost')}
     >
       <Label className={shut ? 'text-v3-cost' : 'text-v3-ink'}>{head}</Label>
-      <span className="text-[14px] leading-[1.5] text-v3-ink2">{body}</span>
+      <span className="text-[15px] leading-[1.5] text-v3-ink2">{body}</span>
     </div>
   )
 }
@@ -243,7 +243,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <Label>Swing for you, over the season</Label>
-              <p className="mt-1 text-[16px] font-semibold text-v3-ink">{verdict}</p>
+              <p className="mt-1 text-[15px] font-semibold text-v3-ink">{verdict}</p>
             </div>
             {swing.priced
               ? <Signed value={swing.you} tone={Math.round(swing.you) > 0 ? 'gain' : Math.round(swing.you) < 0 ? 'cost' : null} className="text-[56px] font-extrabold leading-none" />
@@ -267,7 +267,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
                     <div key={s.who} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]">
                       <span className="truncate text-[13px] text-v3-ink2">{s.who}</span>
                       <ValueBar value={s.v} max={swingMax} zero tone={Math.round(s.v) > 0 ? 'gain' : Math.round(s.v) < 0 ? 'cost' : 'neutral'} className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                      <Signed value={s.v} tone={Math.round(s.v) > 0 ? 'gain' : Math.round(s.v) < 0 ? 'cost' : null} className="text-right text-[14px]" />
+                      <Signed value={s.v} tone={Math.round(s.v) > 0 ? 'gain' : Math.round(s.v) < 0 ? 'cost' : null} className="text-right text-[15px]" />
                     </div>
                   ))}
                 </div>
@@ -330,7 +330,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
                 type="button"
                 aria-pressed={on}
                 onClick={() => { setPartnerId(t.rosterId); setGet([]) }}
-                className={cx('min-h-[44px] max-w-full truncate rounded-[6px] border px-3 text-[14px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', on ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:border-v3-ink3 hover:text-v3-ink')}
+                className={cx('min-h-[44px] max-w-full truncate rounded-[6px] border px-3 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', on ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:border-v3-ink3 hover:text-v3-ink')}
               >
                 {t.teamName}
               </button>
@@ -356,7 +356,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
           ) : <Empty>Pick a manager to trade with.</Empty>}
           {partner && teamHref(partner) && !sample ? (
             <div className="border-t border-v3-rule px-1 py-3">
-              <a href={teamHref(partner)} className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">
+              <a href={teamHref(partner)} className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">
                 {partner.teamName}’s team page <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
             </div>

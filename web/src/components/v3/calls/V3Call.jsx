@@ -58,7 +58,7 @@ function NotFound({ slug }) {
     <div className="grid min-h-[50vh] content-center gap-6">
       <Label>404 · no such call</Label>
       <Headline>That call isn&apos;t on the sheet.</Headline>
-      <p className="max-w-[56ch] text-[17px] leading-[1.55] text-v3-ink2">
+      <p className="max-w-[56ch] text-[18px] leading-[1.55] text-v3-ink2">
         There is no tool called <span className="font-figure font-bold text-v3-ink">{slug}</span>. Now opens the three that exist — the lineup swap, the waiver claim and the trade question.
       </p>
       <div className="flex flex-wrap gap-2">

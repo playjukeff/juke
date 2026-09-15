@@ -98,7 +98,7 @@ export function TheCall() {
         <div className="mt-5"><Skeleton lines={6} /></div>
       ) : call.agree ? (
         <div className="mt-5 grid gap-4">
-          <p className="text-[17px] leading-[1.5] text-v3-ink">
+          <p className="text-[18px] leading-[1.5] text-v3-ink">
             At {posWord} under this scoring, the market and the points agree tonight: <strong>{call.market.name}</strong> first, <strong>{call.other.name}</strong> after him.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -142,14 +142,14 @@ function Arithmetic({ call, posWord }) {
             <div>
               <div className="text-[15px] font-bold text-v3-ink">{row.what} <span className="font-normal text-v3-ink2">— {row.sub}</span></div>
               {row.same ? (
-                <div className="mt-1 font-figure text-[14px] text-v3-ink2"><CountUp value={typeof j.replacement === 'number' ? j.replacement : null} format={(v) => v.toFixed(decimals(j.replacement))} className="font-bold tabular-nums text-v3-ink" /> pts, the same line for both</div>
+                <div className="mt-1 font-figure text-[15px] text-v3-ink2"><CountUp value={typeof j.replacement === 'number' ? j.replacement : null} format={(v) => v.toFixed(decimals(j.replacement))} className="font-bold tabular-nums text-v3-ink" /> pts, the same line for both</div>
               ) : (
                 <div className="mt-2 grid gap-1.5">
                   {[{ p: m, v: row.a }, { p: j, v: row.b }].map((x) => (
                     <div key={x.p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,9rem)_1fr_3.5rem]">
                       <span className="truncate text-[13px] text-v3-ink2">{x.p.name}</span>
                       <ValueBar value={x.v} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
-                      <CountUp value={typeof x.v === 'number' ? x.v : null} format={(v) => v.toFixed(decimals(x.v))} className="text-right font-figure text-[14px] font-bold tabular-nums text-v3-ink" />
+                      <CountUp value={typeof x.v === 'number' ? x.v : null} format={(v) => v.toFixed(decimals(x.v))} className="text-right font-figure text-[15px] font-bold tabular-nums text-v3-ink" />
                     </div>
                   ))}
                 </div>
@@ -161,7 +161,7 @@ function Arithmetic({ call, posWord }) {
           <span className="grid h-7 w-7 place-items-center rounded-full bg-v3-band font-figure text-[13px] font-bold text-white">3</span>
           <div>
             <div className="text-[15px] font-bold text-v3-ink">The gap over that line is the call</div>
-            <div className="mt-1 font-figure text-[14px] text-v3-ink2">
+            <div className="mt-1 font-figure text-[15px] text-v3-ink2">
               {j.name.split(' ').slice(-1)[0]} <Delta value={j.vorp} count /> · {m.name.split(' ').slice(-1)[0]} <Delta value={m.vorp} count /> · difference <Delta value={call.gap} count />
             </div>
           </div>

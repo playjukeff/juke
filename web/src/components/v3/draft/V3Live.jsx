@@ -110,7 +110,7 @@ function EmptyState({ engine }) {
       <div className="mx-auto flex min-h-full max-w-[720px] flex-col justify-center px-5 py-16">
         <Label>The Draft Room · live</Label>
         <Headline className="mt-3">{saved ? 'Your draft is waiting.' : 'No draft on the clock.'}</Headline>
-        <p className="mt-4 max-w-[60ch] text-[17px] leading-[1.55] text-v3-ink2">
+        <p className="mt-4 max-w-[60ch] text-[18px] leading-[1.55] text-v3-ink2">
           {saved
             ? `${saved.leagueType} from the ${saved.pickPosition} seat — ${saved.made} of ${saved.total} picks made. It picks up exactly where you left it.`
             : 'Start a mock from the launcher — it runs entirely in your browser, against CPU drafters on tonight’s board.'}
@@ -121,7 +121,7 @@ function EmptyState({ engine }) {
             : <CallButton href={LAUNCH_HASH}>Set up a mock draft <Glyph name="arrow" className="h-4 w-4" /></CallButton>}
           <QuietButton href="#/">Back to Now</QuietButton>
         </div>
-        {problem && <p role="status" className="mt-3 text-[14px] text-v3-warn">{problem}</p>}
+        {problem && <p role="status" className="mt-3 text-[15px] text-v3-warn">{problem}</p>}
       </div>
     </div>
   )
@@ -455,7 +455,7 @@ function V3LiveRoom() {
 
   const toast = notice && (
     <div role="status" className={cx('pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4', phone ? 'bottom-[104px]' : 'bottom-6')}>
-      <span className="rounded-[6px] border border-v3-warn/40 bg-v3-warnWash px-4 py-2.5 text-[14px] font-semibold text-v3-warn shadow-[0_8px_24px_-12px_rgb(var(--v3-shade)/0.35)]">{notice}</span>
+      <span className="rounded-[6px] border border-v3-warn/40 bg-v3-warnWash px-4 py-2.5 text-[15px] font-semibold text-v3-warn shadow-[0_8px_24px_-12px_rgb(var(--v3-shade)/0.35)]">{notice}</span>
     </div>
   )
   const overlays = (

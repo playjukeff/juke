@@ -159,9 +159,9 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
             <div className="mt-3 grid gap-2">
               {[{ name: 'You', v: game.points }, { name: opp ? opp.teamName : 'Opponent', v: game.opponentPoints, team: opp }].map((r) => (
                 <div key={r.name} className="grid grid-cols-[minmax(0,8rem)_1fr_3.5rem] items-center gap-3">
-                  {r.team ? <a href={teamHref(r.team)} className="truncate text-[14px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="truncate text-[14px] font-semibold text-v3-ink">{r.name}</span>}
+                  {r.team ? <a href={teamHref(r.team)} className="truncate text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>}
                   <ValueBar value={r.v} max={max} tone="neutral" />
-                  <Fig className="text-right text-[14px] font-bold text-v3-ink">{r.v.toFixed(1)}</Fig>
+                  <Fig className="text-right text-[15px] font-bold text-v3-ink">{r.v.toFixed(1)}</Fig>
                 </div>
               ))}
             </div>
@@ -294,7 +294,7 @@ function Standings({ snapshot, ownerId, odds }) {
                    relative to everybody else. Keyed on the roster, so the
                    row is the team and not the slot. */
                 <motion.tr {...LAYOUT_ROW} key={rowKey(t, i)} data-team-row={rowKey(t, i)} className={cx('border-b border-v3-rule last:border-b-0 [&>td]:bg-inherit', you ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : 'bg-v3-sheet', jumped.has(rowKey(t, i)) && 'relative z-[2]')}>
-                  <td className="border-0 py-3 pl-3 pr-0 font-figure text-[14px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
+                  <td className="border-0 py-3 pl-3 pr-0 font-figure text-[15px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
                   <td className="border-0 max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
                       <a href={teamHref(t)} className="min-w-0 truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
@@ -302,14 +302,14 @@ function Standings({ snapshot, ownerId, odds }) {
                     </span>
                     {t.manager && t.manager !== t.teamName ? <span className="mt-0.5 block truncate text-[13px] text-v3-ink3">{t.manager}</span> : null}
                   </td>
-                  <td className="border-0 px-1 py-3 text-right font-figure text-[14px] tabular-nums text-v3-ink sm:px-2">{recordText(t)}</td>
-                  <td className="border-0 px-1 py-3 text-right font-figure text-[14px] tabular-nums text-v3-ink2 sm:px-2">{(t.pointsFor || 0).toFixed(1)}</td>
-                  <td className={cx('border-0 py-3 pl-1 text-right font-figure text-[14px] tabular-nums text-v3-ink2 sm:pl-2', hasOdds ? 'pr-1 sm:pr-2' : 'pr-3 sm:pr-5')}>{(t.pointsAgainst || 0).toFixed(1)}</td>
+                  <td className="border-0 px-1 py-3 text-right font-figure text-[15px] tabular-nums text-v3-ink sm:px-2">{recordText(t)}</td>
+                  <td className="border-0 px-1 py-3 text-right font-figure text-[15px] tabular-nums text-v3-ink2 sm:px-2">{(t.pointsFor || 0).toFixed(1)}</td>
+                  <td className={cx('border-0 py-3 pl-1 text-right font-figure text-[15px] tabular-nums text-v3-ink2 sm:pl-2', hasOdds ? 'pr-1 sm:pr-2' : 'pr-3 sm:pr-5')}>{(t.pointsAgainst || 0).toFixed(1)}</td>
                   {hasOdds ? (
                     <td className="border-0 py-3 pl-1 pr-3 sm:pl-2 sm:pr-5">
                       <span className="flex items-center justify-end gap-2">
                         <ValueBar value={p} max={1} tone="neutral" className="hidden w-[96px] sm:block" />
-                        <CountText text={pct(p)} className="text-right font-figure text-[14px] font-bold tabular-nums text-v3-ink" />
+                        <CountText text={pct(p)} className="text-right font-figure text-[15px] font-bold tabular-nums text-v3-ink" />
                       </span>
                     </td>
                   ) : null}
@@ -347,7 +347,7 @@ function DisconnectButton({ league }) {
         type="button"
         onClick={press}
         disabled={busy}
-        className={cx('inline-flex min-h-[44px] items-center rounded-[6px] border px-4 text-[14px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', armed ? 'border-v3-cost bg-v3-costWash text-v3-cost' : 'border-v3-rule text-v3-ink2 hover:text-v3-ink')}
+        className={cx('inline-flex min-h-[44px] items-center rounded-[6px] border px-4 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', armed ? 'border-v3-cost bg-v3-costWash text-v3-cost' : 'border-v3-rule text-v3-ink2 hover:text-v3-ink')}
       >
         {busy ? 'Disconnecting…' : armed ? `Press again to disconnect ${league.name}` : 'Disconnect this league'}
       </button>
@@ -376,8 +376,8 @@ function Facts({ league, snapshot }) {
       <dl className="mt-3 divide-y divide-v3-rule">
         {rows.map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between gap-3 py-2">
-            <dt className="text-[14px] text-v3-ink2">{k}</dt>
-            <dd className="text-right font-figure text-[14px] font-semibold tabular-nums text-v3-ink">{v}</dd>
+            <dt className="text-[15px] text-v3-ink2">{k}</dt>
+            <dd className="text-right font-figure text-[15px] font-semibold tabular-nums text-v3-ink">{v}</dd>
           </div>
         ))}
       </dl>
@@ -468,9 +468,9 @@ function DraftReport({ league, snapshot, ready }) {
               return (
                 <tr key={s.teamId} className={cx('border-t border-v3-rule', s.mine ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
                   <td className="border-0 max-w-0 px-4 py-2.5 sm:px-5">
-                    {team ? <a href={teamHref(team)} className="block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span className="block truncate text-[14px] font-semibold text-v3-ink">{s.name}</span>}
+                    {team ? <a href={teamHref(team)} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span className="block truncate text-[15px] font-semibold text-v3-ink">{s.name}</span>}
                   </td>
-                  <td className="border-0 whitespace-nowrap px-4 py-2.5 text-right font-figure text-[14px] font-bold text-v3-ink sm:px-5">
+                  <td className="border-0 whitespace-nowrap px-4 py-2.5 text-right font-figure text-[15px] font-bold text-v3-ink sm:px-5">
                     {s.grade || '—'}{s.rank ? <span className="font-medium text-v3-ink2"> · {ordinal(s.rank)}</span> : null}
                   </td>
                 </tr>

@@ -118,7 +118,7 @@ export function PlayerRow({ player, name, pos, meta, right, dim = false, lead })
    screens a 0 is a real and very different projection. */
 export function Pts({ value, digits = 1, className = '' }) {
   if (value === null || value === undefined || Number.isNaN(value)) return <span className={cx('font-figure text-[15px] text-v3-ink3', className)}>—</span>
-  return <Fig className={cx('text-[16px] font-bold text-v3-ink', className)}>{Number(value).toFixed(digits)}</Fig>
+  return <Fig className={cx('text-[15px] font-bold text-v3-ink', className)}>{Number(value).toFixed(digits)}</Fig>
 }
 
 /* A signed whole-number value with a real minus, no sign on zero, and the
@@ -203,7 +203,7 @@ export function StepBars({ rows, max, digits = 1 }) {
               />
             </span>
           </span>
-          <Fig className="text-right text-[14px] font-bold text-v3-ink">
+          <Fig className="text-right text-[15px] font-bold text-v3-ink">
             {r.value === null || r.value === undefined ? '—' : r.signed ? (r.value > 0 ? '+' : r.value < 0 ? '−' : '') + Math.abs(r.value).toFixed(digits) : Number(r.value).toFixed(digits)}
           </Fig>
         </div>
@@ -243,7 +243,7 @@ export function Loading({ lines = 6 }) {
 export function CouldNotRead({ reason, onRetry }) {
   return (
     <Sheet code="Your league" aside="Not read" role="alert">
-      <p className="text-[17px] font-bold text-v3-ink">We could not read your league.</p>
+      <p className="text-[18px] font-bold text-v3-ink">We could not read your league.</p>
       <p className="mt-2 max-w-[58ch] text-[15px] leading-[1.55] text-v3-ink2">
         {reason === 'not-found'
           ? 'That league no longer answers. It may have been deleted, or made private.'
@@ -325,12 +325,12 @@ export function TierGate({ need, title, children }) {
       <div aria-hidden="true" inert="" className="pointer-events-none select-none blur-[4px]">{children}</div>
       <div className="absolute inset-0 flex items-start justify-center p-4 pt-10">
         <Sheet code={`Locked · ${tierLabel(need)}`} aside={<Icon name="lock" className="h-4 w-4" />} className="w-full max-w-[460px]">
-          <p className="text-[19px] font-black leading-tight tracking-[-0.01em] text-v3-ink">{title}</p>
-          <p className="mt-2 text-[14px] leading-[1.55] text-v3-ink2">
+          <p className="text-[20px] font-black leading-tight tracking-[-0.01em] text-v3-ink">{title}</p>
+          <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">
             It is real and it is behind {tierLabel(need)} — which is not on sale yet. Leave an email and we will tell you when it is.
           </p>
           {state === 'success' ? (
-            <p className="mt-4 text-[14px] font-semibold text-v3-gain" role="status">You are on the list. Nothing else to do.</p>
+            <p className="mt-4 text-[15px] font-semibold text-v3-gain" role="status">You are on the list. Nothing else to do.</p>
           ) : (
             <form onSubmit={submit} noValidate className="mt-4 flex flex-wrap gap-2">
               <label className="sr-only" htmlFor={`v3-upgrade-${need}`}>Email address</label>
