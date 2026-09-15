@@ -998,6 +998,143 @@ def join_rows(adp_rows, sleeper, indexes):
     return players[:KEEP], unmatched
 
 
+BASELINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, "data", "baselines")
+
+
+def preseason_adp(season):
+    """The frozen preseason ADP, per format, as {format: {id: {adp, sd, td}}}.
+
+    Answers {} when nobody has frozen this season, which is the normal state
+    of a preseason run and of any season whose baseline does not exist yet.
+    That is a real operational dependency and it is loud rather than silent:
+    the run says so in its own output and falls back to tonight's sample.
+    """
+    path = os.path.join(BASELINE_DIR, str(season), "preseason", "baseline.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with io.open(path, encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (ValueError, OSError):
+        print(f"  ! {path} could not be read; ADP stays tonight's live sample")
+        return {}
+    out = {}
+    for fmt, block in (payload.get("formats") or {}).items():
+        rows = {}
+        for row in block.get("players") or []:
+            player_id = str(row.get("id") or "")
+            adp = row.get("adp")
+            if player_id and isinstance(adp, (int, float)) and adp > 0:
+                rows[player_id] = {
+                    "adp": float(adp),
+                    "sd": float(row.get("sd") or 0),
+                    "td": int(row.get("td") or 0),
+                }
+        if rows:
+            out[fmt] = rows
+    return out
+
+
+def hold_preseason_adp(players, frozen, sleeper, team_byes):
+    """Draft order from the frozen preseason snapshot; everything else live.
+
+    ---- Why this exists ----
+
+    FFC's ADP is sourced from real recorded drafts, and people stop running
+    mock drafts once the season starts. The sample collapses. Measured on the
+    committed boards, real ADP rows across all three sets: 668 on 8 September
+    2026, 654 on the 9th, 373 on the 14th. On that last half-PPR board 426 of
+    480 rows were synthetic deep-bench filler and fifty-four carried real ADP,
+    against a preseason norm of 223 to 271.
+
+    buildBoard() sorts by ADP and numbers `overall` off that order, which is
+    correct and stayed correct -- zero inversions in the top sixty, checked.
+    But with fifty-four real rows every real-ADP kicker and defense sits
+    inside them: the Rams defense at board rank 41, Brandon Aubrey at 52. So
+    cpuChoice() took a kicker in ROUND FIVE and defenses at picks 42 to 47,
+    against this project's own measurements of 103-128 and 72-89. A September
+    mock draft visibly takes kickers five rounds early.
+
+    ---- What it does ----
+
+    Once a season is being played, a player's ADP, its dispersion and its
+    sample size come from the frozen preseason baseline rather than from
+    tonight's fetch. Everything else stays live: his team, his bye, his
+    injury code, his projection, and every number derived from them. A player
+    traded in October still shows his new club; what does not move is where
+    the market drafted him, because nobody is drafting any more.
+
+    That is the honest reading of what a mock draft IS in October. It is a
+    rehearsal of a draft, and a draft happens in August -- so August's market
+    is the right market to rehearse against, and a September sample of a
+    handful of recorded drafts is not a better answer, it is a worse one.
+
+    A player the freeze priced and tonight's sample no longer returns is ADDED
+    back, and that is most of the collapse: not rows that moved, rows that
+    stopped being returned at all.
+
+    ---- What it deliberately does not do ----
+
+    It does not invent an ADP for anybody. A player who arrived after the
+    freeze -- a rookie signed in October, somebody called up off a practice
+    squad -- has no preseason market price and does not get one. He falls to
+    extend_deep_bench() and is tagged `deep`, which is exactly what he is: a
+    player no real draft has ever priced. Inventing a number for him would be
+    this pipeline recording an opinion, which is the line it does not cross
+    for a kicker's short field goals either.
+
+    It also touches nothing out of season: the caller gates on live_season(),
+    so a preseason run is byte-identical to what it was.
+    """
+    if not frozen:
+        return players, 0, 0
+
+    by_id = {p["id"]: p for p in players if p["id"]}
+
+    held = 0
+    for player_id, row in frozen.items():
+        hit = by_id.get(player_id)
+        if hit is not None:
+            hit["adp"] = round(row["adp"], 1)
+            hit["sd"] = round(row["sd"], 2)
+            hit["td"] = row["td"]
+            held += 1
+
+    restored = 0
+    for player_id, row in frozen.items():
+        if player_id in by_id:
+            continue
+        entry = sleeper.get(player_id)
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("position") not in FANTASY_POSITIONS:
+            continue
+        position = POSITION_MAP.get(entry.get("position"))
+        # The free-agent trap extend_deep_bench() already documents: Sleeper
+        # stamps an unsigned player "FA", which is truthy and has no bye.
+        team = clean_team(entry.get("team"))
+        if team not in NFL_TEAMS:
+            continue
+        if position == "DST":
+            name = f"{TEAM_CITIES.get(team, team)} Defense"
+        else:
+            name = entry.get("full_name") or \
+                f"{entry.get('first_name', '')} {entry.get('last_name', '')}".strip()
+        players.append({
+            "id": player_id, "name": name, "pos": position, "team": team,
+            "bye": team_byes.get(team, 0),
+            "adp": round(row["adp"], 1),
+            "sd": round(row["sd"], 2),
+            "td": row["td"],
+            "inj": injury_code(entry), "_entry": entry,
+        })
+        restored += 1
+
+    players.sort(key=lambda p: p["adp"])
+    return players[:KEEP], held, restored
+
+
 def extend_deep_bench(players, sleeper, team_byes, target):
     """Top up one format's real-ADP list with Sleeper's own deeper pool.
 
@@ -2670,12 +2807,25 @@ def main():
     # ---- join every ADP set to Sleeper records ----
     indexes = index_sleeper(sleeper)
 
+    # Once a season is being played, FFC's sample has collapsed and the board
+    # tips over -- see hold_preseason_adp() for the measurement. Out of season
+    # `live` is None and `frozen` is never consulted, so nothing changes.
+    frozen_adp = preseason_adp(ADP_YEAR) if live else {}
+    if live and not frozen_adp:
+        print(f"  ! no frozen {ADP_YEAR} preseason baseline; ADP is tonight's "
+              f"in-season sample, which is thin and drafts kickers early")
+
     sets, unmatched = {}, []
     for key in ADP_FORMATS:
         if key not in adp_raw:
             print(f"  ! no {key} ADP, that set will be missing from players.js")
             continue
         joined, missed = join_rows(adp_raw[key], sleeper, indexes)
+        if frozen_adp.get(key):
+            joined, held, restored = hold_preseason_adp(
+                joined, frozen_adp[key], sleeper, team_byes)
+            print(f"  {key:<9} preseason ADP held on {held}, {restored} priced "
+                  f"players restored")
         real_count = len(joined)
         joined = extend_deep_bench(joined, sleeper, team_byes, DEEP_TARGET)
         sets[key] = joined

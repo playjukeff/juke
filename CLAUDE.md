@@ -4016,7 +4016,8 @@ anything about the code.
 ### Real ADP dries up once the season starts, and the board tips over
 
 Found 14 September 2026, by four specs going red at once and none of them
-being stale. **OPEN — this is a live product defect with no fix decided.**
+being stale. **Fixed the same day by holding the frozen preseason snapshot —
+see "The board drafts off the last market that existed" below.**
 
 FFC's ADP is sourced from real recorded drafts, which the section above
 already says, and the consequence nobody had followed through is that
@@ -4066,20 +4067,68 @@ the standing-red trap this file already records, reached from the other
 side. They are red because the board is wrong, and they are the only thing
 that said so.
 
-**The fix is a product decision and has not been made.** Three shapes were
-visible at the point of writing and none is obviously right: hold the last
-preseason ADP snapshot and draft off that all season; fall back to
-projection order for the deep tail only, keeping real ADP wherever it still
-exists; or refuse to extend past real coverage and let the board be as
-short as the data honestly is, which `setupProblem()` would then start
-refusing deep leagues against. Each changes what a September mock draft
-*is*, which is why none of them is a tidy-up.
+**The fix was a product decision and the owner made it.** Three shapes were
+visible at the point of writing: hold the last preseason ADP snapshot and
+draft off that all season; fall back to projection order for the deep tail
+only, keeping real ADP wherever it still exists; or refuse to extend past
+real coverage and let the board be as short as the data honestly is, which
+`setupProblem()` would then start refusing deep leagues against. Each
+changes what a September mock draft *is*, which is why none was a tidy-up.
+**The first one shipped**, and the section below is what it does.
 
 **And the general lesson is the one this file keeps arriving at.** Every
 figure in the board-depth section above was measured in August, on a
 preseason board, and each was true. None of them was a claim about what
 happens in week 6. A measurement is true of the board it was taken on —
 including the measurements that establish what "normal" looks like.
+
+### The board drafts off the last market that existed
+
+`hold_preseason_adp()` in `scripts/build_players.py`, gated on
+`live_season()`. Once a season is being played, a player's `adp`, `sd` and
+`td` come from `data/baselines/<ADP_YEAR>/preseason/baseline.json` rather
+than from tonight's FFC fetch. **Everything else stays live** — team, bye,
+injury code, projection, and every number derived from them — so a player
+traded in October shows his new club. What does not move is where the market
+drafted him, because nobody is drafting any more.
+
+**That is the honest reading of what a mock draft IS in October.** It is a
+rehearsal of a draft, and a draft happens in August, so August's market is
+the right market to rehearse against. A September sample of a handful of
+recorded drafts is not a better answer; it is a worse one.
+
+**Most of the collapse is rows that stopped being RETURNED, not rows that
+moved**, so a player the freeze priced and tonight's sample no longer
+carries is added back. Measured against a deliberately collapsed 40-row
+sample and the real frozen half-PPR set: **40 held, 192 restored, 232 real
+rows** — the preseason count exactly, against the 54 the 14 September board
+shipped with. On that restored board the first K sits at board rank **136**
+and the first DST at **81**, against the fifty-four-row board's 52 and 41,
+which is what puts `cpuChoice()` back inside its documented 103–128 and
+72–89.
+
+**It invents an ADP for nobody.** A player who arrived after the freeze — a
+rookie signed in October, somebody off a practice squad — has no preseason
+market price and does not get one. He falls to `extend_deep_bench()` and is
+tagged `deep`, which is exactly what he is: a player no real draft has ever
+priced. Inventing a number for him would be this pipeline recording an
+opinion, the same line it refuses to cross for a kicker's short field goals.
+
+**The frozen directory is read and never written**, which is the one thing
+this change could have got wrong. `freeze_baseline.mjs` still refuses to run
+twice and nothing here opens the file for writing; the baseline's whole
+value is that it can be proved untouched after the fact.
+
+**It is per SEASON, and that is a real operational dependency.**
+`data/baselines/2027/preseason/` will not exist until somebody freezes it,
+and an in-season 2027 run without it falls back to the live sample. It says
+so in its own output rather than quietly shipping a thin board — the loud
+half of the rule this file already states about a merged-but-not-migrated
+worker.
+
+**A preseason run is byte-identical.** `live` is None out of season, the
+frozen set is never consulted, and the four specs above are the check that
+it stayed that way.
 
 ## The board card
 
