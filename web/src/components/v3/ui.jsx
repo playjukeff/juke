@@ -46,6 +46,32 @@ export function cx(...parts) {
   return parts.filter(Boolean).join(' ')
 }
 
+/* ---- Which of the two faces a thing is set in ----
+
+   font-figure (Inconsolata) is for a FIGURE or a CODE: a number, a pick,
+   a clock, a team abbreviation, FINAL, a formula, a tracked-out label like
+   the ones on a band. Those want one width per character so a column of
+   them lines up, and they are read as marks rather than as sentences.
+
+   font-sheet (Schibsted Grotesk) is the reading face, and it is the v3
+   root's own default -- so PROSE gets it by writing no font class at all.
+   A sub-line under a call ("points this week", "both sides priced over
+   replacement"), a promise ("Read-only: Juke never edits your league"),
+   anything that is a sentence: leave the face alone.
+
+   The line is what the words ARE, not how small they are. Both faces are
+   used at 12px, and a 12px sentence in a mono face is the harder of the
+   two to read, not the more precise-looking one -- Inconsolata's x-height
+   is smaller and its even widths remove the word-shapes a reader scans by.
+   A mono face on prose is also one of the commonest tells of a generated
+   page, which is the other half of why the split is worth keeping.
+
+   Measured 15 September 2026: ten places had a sentence in the figure
+   face, one of them (the League demo's read-only line) additionally set in
+   tracked-out caps. The board's own codes -- "NE", "at", "FINAL", the
+   college-and-club meta, every draft setting under its big number -- were
+   correct throughout and are deliberately untouched. */
+
 /* A small uppercase label in the figure face. The page's quietest type,
    never lighter than ink3 (5.2:1 on the darkest ground). */
 /* Rest props are forwarded, so a caller can put an id or a data-* on a

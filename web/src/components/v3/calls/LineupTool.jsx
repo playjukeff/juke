@@ -323,7 +323,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     <PosTag pos={s.start.pos} />
                     <span className="min-w-0">
                       <a href={playerHref(s.start)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>Start {s.start.name}</a>
-                      <span className="block truncate font-figure text-[12px] text-v3-ink3">over {s.sit.name}{s.replacing ? ' · that slot scores 0 as set' : ''}</span>
+                      <span className="block truncate text-[12px] text-v3-ink3">over {s.sit.name}{s.replacing ? ' · that slot scores 0 as set' : ''}</span>
                     </span>
                     <Delta value={s.gain} digits={1} className="text-[15px]" />
                     <ValueBar value={s.gain} max={swapMax} tone="gain" className="col-span-3" />

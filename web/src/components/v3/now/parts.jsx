@@ -113,7 +113,7 @@ export function SampleWeek({ week, code = 'Sample week · what Now shows', class
                   <PosTag pos={sample.swap.start.pos} />
                   <span className="min-w-0 text-[15px] font-semibold leading-snug text-v3-ink">Start {sample.swap.start.name} over {sample.swap.sit.name}</span>
                 </span>
-                <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">points this week</span>
+                <span className="mt-0.5 block text-[12px] text-v3-ink3">points this week</span>
               </SampleRow>
             ) : null}
             {sample.claim ? (
@@ -122,12 +122,12 @@ export function SampleWeek({ week, code = 'Sample week · what Now shows', class
                   <PosTag pos={sample.claim.pos} />
                   <span className="min-w-0 text-[15px] font-semibold leading-snug text-v3-ink">Claim {sample.claim.player.name}</span>
                 </span>
-                <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">season points over the {sample.claim.pos} he would replace</span>
+                <span className="mt-0.5 block text-[12px] text-v3-ink3">season points over the {sample.claim.pos} he would replace</span>
               </SampleRow>
             ) : null}
             <SampleRow href="#/calls/trade" label="The trade question">
               <span className="block text-[15px] font-semibold text-v3-ink">Whether a deal is fair before you send it</span>
-              <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">both sides priced over replacement</span>
+              <span className="mt-0.5 block text-[12px] text-v3-ink3">both sides priced over replacement</span>
             </SampleRow>
           </ul>
           <p className="border-t border-v3-rule px-4 py-3 text-[13px] leading-[1.5] text-v3-ink3 sm:px-5">
@@ -416,7 +416,7 @@ export function PassCard({ week, primary = false, inSeason = false }) {
         {pro} reads {one === 1 ? 'one league' : `${one} leagues`}; {multi} reads up to {many} and adds what every rival is short of. Neither is on sale yet — leave an email and Juke will tell you when it is.
       </p>
       <div className="mt-4"><NotifyForm need="pro" primary={primary} /></div>
-      <p className="mt-3 font-figure text-[12px] text-v3-ink3">Read-only: Juke never edits your league. {PLATFORM_LINE}.</p>
+      <p className="mt-3 text-[12px] text-v3-ink3">Read-only: Juke never edits your league. {PLATFORM_LINE}.</p>
     </Sheet>
   )
 }

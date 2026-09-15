@@ -51,7 +51,7 @@ export default function NowSeason({ season }) {
             Juke reads your league and makes the week’s calls — who to start, who to claim, whether a trade is fair — each with the arithmetic printed beside it. This is what that looks like on a sample league, on tonight’s real players.
           </p>
           <div className="mt-7"><ConnectWayIn /></div>
-          <p className="mt-4 max-w-[46ch] font-figure text-[13px] leading-[1.5] text-v3-ink3">
+          <p className="mt-4 max-w-[46ch] text-[13px] leading-[1.5] text-v3-ink3">
             Read-only: Juke never edits your league. {PLATFORM_LINE}. Connecting needs a free account and {tierLabel('pro')}, which is not on sale yet.
           </p>
         </div>
