@@ -151,6 +151,36 @@ test.describe("deep-bench players carry no real ADP, and say so", () => {
 
        It still pages, which is the point of walking rather than reading
        once: the walk IS the reader's path to it. */
+
+    /* ---- Why the Preseason mode is selected first ----
+
+       The divider is a fact about the BOARD'S OWN ORDER, and V3Players
+       says so at the line that draws it: "the deep-bench line only means
+       something in the board's own order: in any other sort deep and real
+       players interleave, and the per-row tag carries the fact instead."
+
+       Once a season is being played, seasonModes() opens the index in
+       'ros' — rest of season — which is NOT board order, so the index
+       correctly withholds the divider. Out of season there is one mode,
+       it IS board order, and the control is not rendered at all. So the
+       press is conditional on the control existing rather than on a
+       season check here: a second copy of "is a season being played"
+       would drift from the one in seasonModes().
+
+       Matched case-insensitively. Seg uppercases its labels in CSS while
+       the source says "Preseason", and innerText returns what is painted
+       — the trap this project has now hit six times.
+
+       The Deep TAG is asserted in whatever mode the index opens in,
+       below, because that is the half of the rule that holds in every
+       order. Asserting both in one mode would test half the product. */
+    const modeGroup = page.locator('[role="group"][aria-label="Ranked by"]');
+    if (await modeGroup.count()) {
+      const pre = modeGroup.getByRole("button", { name: /preseason/i });
+      await pre.click();
+      await expect(pre).toHaveAttribute("aria-pressed", "true");
+    }
+
     const r = await page.evaluate(async () => {
       const root = document.getElementById("view-home");
       const seen = () => root.textContent.includes("Real ADP ends here");
