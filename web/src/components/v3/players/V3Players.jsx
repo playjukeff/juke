@@ -427,7 +427,7 @@ export default function V3Players() {
   return (
     <div className="grid gap-8">
       <PageHead
-        label={situation ? `Players · ${situation.players} on tonight's board${situation.refreshed ? ` · refreshed ${situation.refreshed}` : ''}` : 'Players'}
+        label={situation ? `Players · ${situation.players} on tonight's board${situation.refreshed ? ` · refreshed ${situation.refreshed}` : ''}` : null}
         title="Every player on the board, priced."
         lede={season
           ? `Week ${season.week} of the ${season.season} season. Rank them by the weeks that are left, by what they have actually scored, or by the preseason board they were drafted off — three orders, never blended into one number.`

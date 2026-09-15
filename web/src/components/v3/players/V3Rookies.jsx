@@ -62,7 +62,7 @@ function Notice({ c }) {
   const anything = c.drafted || c.undrafted || c.withCollege
   return (
     <Sheet code="What is known, and what is not" aside="Read this first" aria-label="What is known, and what is not">
-      <p className="max-w-[78ch] text-[16px] leading-[1.6] text-v3-ink">
+      <p className="max-w-[78ch] text-[15px] leading-[1.6] text-v3-ink">
         {anything ? (
           <>
             Where <Fig className="font-bold">{c.drafted}</Fig> of these {c.rows.length} players went in the NFL draft, and what{' '}
@@ -74,7 +74,7 @@ function Notice({ c }) {
           <>No draft class has been read yet, so nothing below carries a draft position or a college line. That fills on the next nightly rebuild — a fact about the pipeline rather than about this year&apos;s rookies.</>
         )}
       </p>
-      <p className="mt-3 max-w-[78ch] text-[14px] leading-[1.55] text-v3-ink2">
+      <p className="mt-3 max-w-[78ch] text-[15px] leading-[1.55] text-v3-ink2">
         So Juke ranks this class and keeps its confidence low. Each row says how much of its ranking stands on evidence — a count of what is known, never a percentage dressed up to look uncertain.
       </p>
     </Sheet>
@@ -101,13 +101,13 @@ function ClassRow({ rank, row, open, onToggle, note }) {
         </div>
         <div className="hidden text-right sm:block">
           <Label className="block text-[11px] sm:sr-only">NFL draft</Label>
-          <Fig className="text-[14px] font-semibold text-v3-ink">
+          <Fig className="text-[15px] font-semibold text-v3-ink">
             {d ? `Rd ${d.round} · #${d.overall}` : row.prospect && row.prospect.undrafted ? 'Undrafted' : '—'}
           </Fig>
         </div>
         <div className="text-right">
           <Label className="block text-[11px] sm:sr-only">Over repl.</Label>
-          {row.value === null ? <Fig className="text-[16px] text-v3-ink3">—</Fig> : <Delta value={row.value} className="text-[16px]" />}
+          {row.value === null ? <Fig className="text-[15px] text-v3-ink3">—</Fig> : <Delta value={row.value} className="text-[15px]" />}
         </div>
         <button
           type="button"
@@ -128,8 +128,8 @@ function ClassRow({ rank, row, open, onToggle, note }) {
             <dl className="mt-1.5 grid gap-1">
               {known.map((k) => (
                 <div key={k.label} className="flex items-baseline justify-between gap-4">
-                  <dt className="text-[14px] text-v3-ink2">{k.label}</dt>
-                  <dd className="min-w-0 text-right font-figure text-[14px] font-semibold text-v3-ink">{k.value}</dd>
+                  <dt className="text-[15px] text-v3-ink2">{k.label}</dt>
+                  <dd className="min-w-0 text-right font-figure text-[15px] font-semibold text-v3-ink">{k.value}</dd>
                 </div>
               ))}
             </dl>
@@ -137,7 +137,7 @@ function ClassRow({ rank, row, open, onToggle, note }) {
           <div>
             <Label>Not known</Label>
             <ul className="mt-1.5 grid gap-1">
-              {missing.map((m) => <li key={m} className="text-[14px] text-v3-ink2">{m}</li>)}
+              {missing.map((m) => <li key={m} className="text-[15px] text-v3-ink2">{m}</li>)}
             </ul>
           </div>
           {note && <p className="text-[13px] leading-[1.55] text-v3-ink3 sm:col-span-2">{note}</p>}
@@ -223,7 +223,7 @@ function CollegeView({ engine }) {
   if (!rows.length) {
     return (
       <Sheet code="In college" aside="Nothing yet">
-        <p className="text-[16px] text-v3-ink">No college board yet.</p>
+        <p className="text-[15px] text-v3-ink">No college board yet.</p>
         <p className="mt-2 max-w-[60ch] text-[15px] leading-[1.55] text-v3-ink2">This fills from College Football Data on the next nightly rebuild. Until then there is nothing to show — a fact about the pipeline rather than about this year&apos;s class.</p>
       </Sheet>
     )
@@ -235,7 +235,7 @@ function CollegeView({ engine }) {
   return (
     <div className="grid gap-5">
       <Sheet code="Not drafted yet" aside={meta ? `${meta.season} season` : ''} aria-label="About the college board">
-        <p className="max-w-[78ch] text-[16px] leading-[1.6] text-v3-ink">
+        <p className="max-w-[78ch] text-[15px] leading-[1.6] text-v3-ink">
           Every player here is still in college and has never been drafted, so none of them can be queued or drafted in a mock, and none has a page of his own yet. They arrive on the real board the season an NFL team takes one.
           {meta ? <> Production is their <Fig className="font-bold">{meta.season}</Fig> season; class years are from the {meta.roster} rosters, and the next draft they can enter is <Fig className="font-bold">{meta.draft}</Fig>.</> : null}{' '}
           There is no combine testing and no draft position for any of them yet — nobody has measured or picked them.
@@ -261,7 +261,7 @@ function CollegeView({ engine }) {
                   <div className="truncate font-figure text-[13px] text-v3-ink2">{row.school} · {classLabel(row.classYear)}</div>
                   <div className="mt-0.5 truncate font-figure text-[13px] text-v3-ink sm:hidden">{line || '—'}</div>
                 </div>
-                <div className="hidden text-right font-figure text-[14px] text-v3-ink sm:block">{line || '—'}</div>
+                <div className="hidden text-right font-figure text-[15px] text-v3-ink sm:block">{line || '—'}</div>
               </li>
             )
           })}
@@ -296,7 +296,7 @@ export default function V3Rookies() {
   return (
     <div className="grid gap-8">
       <PageHead
-        label={c ? `Players · rookies · ${c.rows.length} in their first season` : 'Players · rookies'}
+        label={c ? `Players · rookies · ${c.rows.length} in their first season` : null}
         title="The rookie class, and what we don't know yet."
         lede="Every first-year player on the board, ranked by points over the player a league your size would start instead — and, for each, what is on file and what is not. Behind them, the players still in college."
         action={<ViewTabs current="rookies" />}

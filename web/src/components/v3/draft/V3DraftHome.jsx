@@ -55,7 +55,7 @@ function InProgress({ summary, onResume, onDiscard, armed, problem }) {
             type="button"
             onClick={onDiscard}
             aria-label={armed ? 'Press again to discard this draft' : 'Discard this draft'}
-            className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-[6px] border px-3.5 text-[14px] font-semibold transition-colors', FOCUS, armed ? 'border-v3-warn bg-v3-warnWash text-v3-warn' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:text-v3-ink')}
+            className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-[6px] border px-3.5 text-[15px] font-semibold transition-colors', FOCUS, armed ? 'border-v3-warn bg-v3-warnWash text-v3-warn' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:text-v3-ink')}
           >
             <Glyph name="trash" className="h-4 w-4" /> {armed ? 'Press again to discard' : 'Discard'}
           </button>
@@ -69,7 +69,7 @@ function InProgress({ summary, onResume, onDiscard, armed, problem }) {
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <Label>Your roster so far</Label>
           {summary.recentPicks.map((p) => (
-            <span key={p.name} className="flex items-center gap-1.5"><PosTag pos={p.pos} /><span className="text-[14px] text-v3-ink2">{p.name}</span></span>
+            <span key={p.name} className="flex items-center gap-1.5"><PosTag pos={p.pos} /><span className="text-[15px] text-v3-ink2">{p.name}</span></span>
           ))}
         </div>
       )}
@@ -133,7 +133,7 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
           <CallButton href={roomHref(codeOf(engine))} className="w-full sm:w-auto sm:self-start">Open your draft room <Icon name="arrow" className="h-4 w-4" /></CallButton>
         ) : (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <CallButton data-start-draft onClick={onStart} disabled={!!problem} className="min-h-[52px] w-full px-7 text-[16px] sm:w-auto">
+            <CallButton data-start-draft onClick={onStart} disabled={!!problem} className="min-h-[52px] w-full px-7 text-[15px] sm:w-auto">
               <Glyph name="play" className="h-4 w-4" filled /> Start mock draft
             </CallButton>
             {shown && <Problem text={shown} className="flex-1" />}
@@ -143,7 +143,7 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
           <QuietButton onClick={onSettings}><Glyph name="gear" className="h-4 w-4" /> Draft settings</QuietButton>
           <GoLink href={INSIGHTS_HASH}>Your insights</GoLink>
         </div>
-        <p className="font-figure text-[12px] text-v3-ink3">
+        <p className="text-[12px] text-v3-ink3">
           {roomActive ? 'A room fixes the league for every seat.' : 'No account needed · runs in your browser · graded the moment it ends'}
         </p>
       </div>
@@ -188,7 +188,7 @@ function Friends({ engine, roomActive }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <Glyph name="users" className="mt-0.5 h-6 w-6 shrink-0 text-v3-ink" />
-            <p className="min-w-0 max-w-[52ch] text-[14px] leading-[1.5] text-v3-ink2">
+            <p className="min-w-0 max-w-[52ch] text-[15px] leading-[1.5] text-v3-ink2">
               Your room is open. Its seats, its invite and its chat are all on the room screen — and the league is the room's while you are in it.
             </p>
           </div>
@@ -202,7 +202,7 @@ function Friends({ engine, roomActive }) {
     <Sheet code="Draft with friends" aside="Real managers">
       <div className="flex items-start gap-3">
         <Glyph name="users" className="mt-0.5 h-6 w-6 shrink-0 text-v3-ink" />
-        <p className="min-w-0 max-w-[56ch] text-[14px] leading-[1.5] text-v3-ink2">
+        <p className="min-w-0 max-w-[56ch] text-[15px] leading-[1.5] text-v3-ink2">
           One board, one clock, and a chair for everybody who turns up. Empty chairs draft as CPUs, so a room of three still runs a full ten-team draft.
         </p>
       </div>
@@ -269,7 +269,7 @@ function Scenarios({ engine, ready, tick, roomActive }) {
 
   return (
     <Sheet code="Practice a scenario" aside="4 presets">
-      <p className="mb-3 text-[14px] text-v3-ink2">{data.rightLabel}. Each card starts a real mock with its settings already chosen — they become your league.</p>
+      <p className="mb-3 text-[15px] text-v3-ink2">{data.rightLabel}. Each card starts a real mock with its settings already chosen — they become your league.</p>
       <div className="grid grid-cols-1 gap-2.5 min-[480px]:grid-cols-2">
         {data.scenarios.map((s) => (
           <button
@@ -380,7 +380,7 @@ function InsightsTeaser({ engine, ready }) {
             <CountText text={kpi.value} className="font-figure text-[40px] font-bold leading-none tabular-nums text-v3-ink" />
             {kpi.delta && <span className="font-figure text-[13px] text-v3-ink2">{kpi.delta}</span>}
           </div>
-          <StreamText as="p" text="Points of starter value you leave on the board per draft." className="mt-1.5 text-[14px] leading-[1.5] text-v3-ink2" />
+          <StreamText as="p" text="Points of starter value you leave on the board per draft." className="mt-1.5 text-[15px] leading-[1.5] text-v3-ink2" />
         </>
       ) : (
         <>
@@ -390,7 +390,7 @@ function InsightsTeaser({ engine, ready }) {
             ))}
             <span className="ml-2 font-figure text-[13px] tabular-nums text-v3-ink2">{have} of {want}</span>
           </div>
-          <p className="mt-2 text-[14px] leading-[1.5] text-v3-ink2">
+          <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">
             {report.reason === 'loading' ? 'Reading your board.' : `Run ${Math.max(0, want - have)} more and Juke starts auditing what each draft left on the board.`}
           </p>
         </>
@@ -438,7 +438,6 @@ export default function V3DraftHome() {
   return (
     <div className="grid grid-cols-1 gap-8">
       <PageHead
-        label="Draft · mock drafts"
         title="Draft against tonight's board."
         lede="A full mock against CPU managers drafting off real ADP. It runs in your browser, needs no account, and is graded the moment the last pick is in."
       />

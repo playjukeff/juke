@@ -23,7 +23,7 @@ export function RosterPanel({ engine, slot, onSlot, roster, counts, onOpen }) {
       {player ? (
         <button type="button" onClick={() => onOpen(player)} className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-[4px] text-left', FOCUS)}>
           <PosTag pos={player.pos} />
-          <span className="min-w-0 flex-1 truncate text-[14px] text-v3-ink">{player.name}</span>
+          <span className="min-w-0 flex-1 truncate text-[15px] text-v3-ink">{player.name}</span>
           <span className="shrink-0 font-figure text-[11px] tabular-nums text-v3-ink3">{player.team}{player.bye ? ` · ${player.bye}` : ''}</span>
         </button>
       ) : <span className="text-[13px] text-v3-ink3">Empty</span>}
@@ -33,7 +33,7 @@ export function RosterPanel({ engine, slot, onSlot, roster, counts, onOpen }) {
     <Sheet code={mine ? 'Your roster' : 'Roster'} aside={`${filled} of ${size}`} bodyClass="p-3">
       <label className="block">
         <span className="sr-only">Show roster for</span>
-        <select value={slot} onChange={(e) => onSlot(Number(e.target.value))} className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[14px]', FOCUS)}>
+        <select value={slot} onChange={(e) => onSlot(Number(e.target.value))} className={cx('h-10 w-full rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[15px]', FOCUS)}>
           {Array.from({ length: league.teams }, (_, s) => (
             <option key={s} value={s}>{s === mySlot ? `Your team · seat ${s + 1}` : `${engine.teamLabel(s)} · seat ${s + 1}`}</option>
           ))}

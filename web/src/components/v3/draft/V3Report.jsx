@@ -147,7 +147,7 @@ function Vorp({ rep }) {
             <span className="font-figure text-[12px] font-bold uppercase tracking-[0.06em] text-v3-ink">{r.slotLabel === 'DST' ? 'D/ST' : r.slotLabel}</span>
             <span className="flex min-w-0 items-center gap-2">
               {r.pos && <span className="hidden sm:inline-flex"><PosTag pos={r.pos} /></span>}
-              <span className={cx('truncate text-[14px]', r.name ? 'text-v3-ink' : 'text-v3-ink3')}>{r.name || 'Empty'}</span>
+              <span className={cx('truncate text-[15px]', r.name ? 'text-v3-ink' : 'text-v3-ink3')}>{r.name || 'Empty'}</span>
             </span>
             {r.name && r.gap !== null ? <ValueBar value={r.gap} max={max} zero /> : <span className="relative block h-2"><span className="absolute inset-y-0 left-1/2 w-px bg-v3-ink3" /></span>}
             <span className="text-right text-[13px]">{!r.name || r.gap === null ? <span className="font-figure text-v3-ink3">—</span> : <Delta value={r.gap} />}</span>
@@ -165,13 +165,13 @@ function Timeline({ rep }) {
   const max = Math.max(1, ...rep.timeline.map((t) => Math.abs(t.gap)))
   return (
     <Sheet code="Value timeline" aside="unit: picks">
-      <p className="mb-3 text-[14px] text-v3-ink2">Where each pick landed against the board — right means he fell to {rep.isMe ? 'you' : 'them'}.</p>
+      <p className="mb-3 text-[15px] text-v3-ink2">Where each pick landed against the board — right means he fell to {rep.isMe ? 'you' : 'them'}.</p>
       <ul className="space-y-2">
         {rep.timeline.map((t, i) => (
           <li key={t.overall ?? i} className="grid grid-cols-[30px_40px_minmax(0,1fr)_minmax(56px,30%)_40px] items-center gap-1.5 sm:grid-cols-[32px_40px_minmax(0,1fr)_minmax(80px,36%)_44px] sm:gap-2">
             <span className="font-figure text-[12px] font-bold text-v3-ink3">R{t.round}</span>
             <PosTag pos={t.pos} />
-            <span className="truncate text-[14px] text-v3-ink">{t.name}</span>
+            <span className="truncate text-[15px] text-v3-ink">{t.name}</span>
             <span role="img" aria-label={`${t.name}: ${t.gap >= 0 ? `${t.gap} picks late` : `${Math.abs(t.gap)} picks early`}`}><ValueBar value={t.gap} max={max} zero /></span>
             <span className="text-right text-[13px]"><Delta value={t.gap} /></span>
           </li>
@@ -191,7 +191,7 @@ function Standings({ rep, onPick }) {
           const inner = (
             <>
               <span className={cx('w-6 shrink-0 text-right font-figure text-[12px] tabular-nums', on ? 'text-v3-bandInk' : 'text-v3-ink3')}>{t.rank}</span>
-              <span className={cx('min-w-0 flex-1 truncate text-[14px]', t.isMine && 'font-bold', on ? 'text-white' : 'text-v3-ink')}>{t.isMine ? 'Your team' : t.teamName}</span>
+              <span className={cx('min-w-0 flex-1 truncate text-[15px]', t.isMine && 'font-bold', on ? 'text-white' : 'text-v3-ink')}>{t.isMine ? 'Your team' : t.teamName}</span>
               <span className={cx('w-9 shrink-0 text-center font-sheet text-[20px] font-black leading-none', on ? 'text-white' : 'text-v3-ink')}>{t.grade}</span>
             </>
           )
@@ -367,7 +367,7 @@ export default function V3Report() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <div className="border-b border-v3-rule p-5 sm:p-6 lg:border-b-0 lg:border-r">
             <GradeFace grade={rep.grade} rank={rep.rank} teams={rep.teams} />
-            <p className="mt-4 text-[14px] leading-[1.5] text-v3-ink2">The letter is the finishing position in this room. It is not a score out of a hundred, and none is printed beside it.</p>
+            <p className="mt-4 text-[15px] leading-[1.5] text-v3-ink2">The letter is the finishing position in this room. It is not a score out of a hundred, and none is printed beside it.</p>
           </div>
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <dl className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -401,7 +401,7 @@ export default function V3Report() {
 
       <Sheet code="The one that got away" aside={rep.missed ? 'points forgone' : 'none'}>
         <div className="flex flex-wrap items-center gap-5">
-          <p className="min-w-0 flex-1 basis-[320px] text-[16px] leading-[1.6] text-v3-ink">{missedSentence(rep)}</p>
+          <p className="min-w-0 flex-1 basis-[320px] text-[15px] leading-[1.6] text-v3-ink">{missedSentence(rep)}</p>
           {rep.missed && (
             <div className="shrink-0 text-right">
               <span className="block text-[52px] leading-none"><Delta value={-Math.round(rep.missed.delta)} count /></span>

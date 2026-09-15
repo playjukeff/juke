@@ -111,9 +111,9 @@ export default function PlayerDrawer({ engine, player, onClose, canDraft, draftR
             </dl>
 
             {pick ? (
-              <p className="mt-3 rounded-[4px] bg-v3-paper px-3 py-2 text-[14px] text-v3-ink2">Taken at pick {pick.overall} by {pick.slot === engine.mySlot() ? 'you' : engine.teamLabel(pick.slot)}.</p>
+              <p className="mt-3 rounded-[4px] bg-v3-paper px-3 py-2 text-[15px] text-v3-ink2">Taken at pick {pick.overall} by {pick.slot === engine.mySlot() ? 'you' : engine.teamLabel(pick.slot)}.</p>
             ) : survival != null && nextOverall != null ? (
-              <p className={cx('mt-3 rounded-[4px] px-3 py-2 text-[14px]', survival < 0.4 ? 'bg-v3-warnWash text-v3-warn' : 'bg-v3-paper text-v3-ink2')}>
+              <p className={cx('mt-3 rounded-[4px] px-3 py-2 text-[15px]', survival < 0.4 ? 'bg-v3-warnWash text-v3-warn' : 'bg-v3-paper text-v3-ink2')}>
                 {survival < 0.4 ? `Gone before pick ${nextOverall} in ${Math.round((1 - survival) * 100)}% of boards.` : `Still there at pick ${nextOverall} in ${Math.round(survival * 100)}% of boards.`}
               </p>
             ) : null}
@@ -130,7 +130,7 @@ export default function PlayerDrawer({ engine, player, onClose, canDraft, draftR
 
           <div role="tablist" aria-label="Research" className="sticky top-0 z-10 flex overflow-x-auto border-b border-v3-rule bg-v3-sheet [scrollbar-width:none]">
             {tabs.map((t) => (
-              <button key={t} type="button" role="tab" aria-selected={current === t} onClick={() => setTab(t)} className={cx('relative min-h-[44px] shrink-0 whitespace-nowrap px-3.5 text-[14px] font-semibold', FOCUS, current === t ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
+              <button key={t} type="button" role="tab" aria-selected={current === t} onClick={() => setTab(t)} className={cx('relative min-h-[44px] shrink-0 whitespace-nowrap px-3.5 text-[15px] font-semibold', FOCUS, current === t ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
                 {t}
                 {current === t && <span className="absolute inset-x-3 bottom-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
               </button>

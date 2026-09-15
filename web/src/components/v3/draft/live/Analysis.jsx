@@ -23,7 +23,7 @@ function Band({ part }) {
     return (
       <div className="rounded-[4px] border border-v3-rule bg-v3-sheet p-3.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[14px] font-bold text-v3-ink">{part.label}</span>
+          <span className="text-[15px] font-bold text-v3-ink">{part.label}</span>
           <span className="font-figure text-[12px] text-v3-ink3" title="Not enough of the room has drafted yet to compare this.">— vs room</span>
         </div>
         <p className="mt-1 text-[13px] text-v3-ink2">{part.detail}</p>
@@ -35,7 +35,7 @@ function Band({ part }) {
   return (
     <div className="rounded-[4px] border border-v3-rule bg-v3-sheet p-3.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[14px] font-bold text-v3-ink">{part.label}</span>
+        <span className="text-[15px] font-bold text-v3-ink">{part.label}</span>
         <span className="flex items-baseline gap-2">
           <span className="font-figure text-[11px] text-v3-ink3">×{Math.round(part.weight * 100)}% · {part.scaled ? 'vs room' : 'own scale'}</span>
           <span className="font-figure text-[22px] font-bold leading-none tabular-nums text-v3-ink">{part.pct.toFixed(1)}</span>
@@ -86,7 +86,7 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
               {rows.map(([label, weight, detail]) => (
                 <li key={label} className="flex gap-3 px-4 py-3">
                   <span className="w-11 shrink-0 font-figure text-[15px] font-bold tabular-nums text-v3-ink">{weight != null ? `${Math.round(weight * 100)}%` : '—'}</span>
-                  <span><span className="block text-[14px] font-bold text-v3-ink">{label}</span><span className="block text-[13px] text-v3-ink2">{detail}</span></span>
+                  <span><span className="block text-[15px] font-bold text-v3-ink">{label}</span><span className="block text-[13px] text-v3-ink2">{detail}</span></span>
                 </li>
               ))}
             </ul>
@@ -109,13 +109,13 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
             <Label>{a.over ? 'Final grade' : 'Grade so far'} · {who}</Label>
             <div className="mt-1 flex items-end gap-4">
               <span className="font-sheet text-[80px] font-black leading-[0.82] tracking-[-0.04em] text-v3-ink">{a.grade}</span>
-              <span className="pb-1 font-figure text-[16px] font-bold tabular-nums text-v3-ink">{ordinal(a.rank)} of {a.teams}</span>
+              <span className="pb-1 font-figure text-[15px] font-bold tabular-nums text-v3-ink">{ordinal(a.rank)} of {a.teams}</span>
             </div>
-            <p className="mt-2 max-w-[62ch] text-[14px] text-v3-ink2">The letter is where this roster would finish in the room right now. It moves after every pick.</p>
+            <p className="mt-2 max-w-[62ch] text-[15px] text-v3-ink2">The letter is where this roster would finish in the room right now. It moves after every pick.</p>
           </div>
           <label>
             <span className="sr-only">Grade for</span>
-            <select value={slot} onChange={(e) => onSlot(Number(e.target.value))} className={cx('h-11 rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[14px]', FOCUS)}>
+            <select value={slot} onChange={(e) => onSlot(Number(e.target.value))} className={cx('h-11 rounded-[4px] border border-v3-rule bg-v3-sheet px-2.5 text-[16px] text-v3-ink sm:text-[15px]', FOCUS)}>
               {a.standings.slice().sort((x, y) => x.slot - y.slot).map((t) => <option key={t.slot} value={t.slot}>{t.slot === mySlot ? 'Your team' : t.name}</option>)}
             </select>
           </label>
@@ -140,9 +140,9 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
                 <p className="mt-1 text-[13px] text-v3-ink2">At {Math.round(a.fix.part.pct)} it is {Math.round(a.fix.part.median - a.fix.part.pct)} below the room median, at {Math.round(a.fix.part.weight * 100)}% weight.</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[4px] bg-v3-paper px-3 py-2.5">
                   <PosTag pos={a.fix.upgrade.player.pos} />
-                  <span className="text-[14px] font-bold text-v3-ink">{a.fix.upgrade.player.name}</span>
+                  <span className="text-[15px] font-bold text-v3-ink">{a.fix.upgrade.player.name}</span>
                   <span className="font-figure text-[12px] text-v3-ink3">{a.fix.upgrade.player.team}{a.fix.upgrade.player.bye ? ` · bye ${a.fix.upgrade.player.bye}` : ''}</span>
-                  <span className="ml-auto font-figure text-[14px] font-bold tabular-nums text-v3-gain">{Math.round(a.fix.part.pct)} → {a.fix.upgrade.after}</span>
+                  <span className="ml-auto font-figure text-[15px] font-bold tabular-nums text-v3-gain">{Math.round(a.fix.part.pct)} → {a.fix.upgrade.after}</span>
                 </div>
               </Sheet>
             )}
@@ -151,7 +151,7 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
           <div className="flex min-w-0 flex-col gap-4">
             {(a.bargain || a.reach) && (
               <Sheet code="Value callouts" bodyClass="p-4">
-                <dl className="space-y-2 text-[14px]">
+                <dl className="space-y-2 text-[15px]">
                   {a.bargain && <div className="flex items-baseline justify-between gap-2"><dt className="text-v3-ink2">Best value</dt><dd className="min-w-0 truncate text-right font-semibold text-v3-ink">{a.bargain.name}{a.bargain.gap > 0 && <span className="ml-1.5 font-figure text-[12px] text-v3-gain">+{a.bargain.gap} late</span>}</dd></div>}
                   {a.reach && <div className="flex items-baseline justify-between gap-2"><dt className="text-v3-ink2">Biggest reach</dt><dd className="min-w-0 truncate text-right font-semibold text-v3-ink">{a.reach.name}<span className="ml-1.5 font-figure text-[12px] text-v3-cost">{Math.abs(a.reach.gap)} early</span></dd></div>}
                 </dl>
@@ -161,7 +161,7 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
               <ol>
                 {a.standings.map((t) => (
                   <li key={t.slot}>
-                    <button type="button" onClick={() => onSlot(t.slot)} aria-current={t.slot === slot ? 'true' : undefined} className={cx('flex min-h-[44px] w-full items-center gap-2.5 rounded-[4px] px-2 text-left text-[14px]', FOCUS, t.slot === slot ? 'bg-v3-band text-white' : 'hover:bg-v3-paper')}>
+                    <button type="button" onClick={() => onSlot(t.slot)} aria-current={t.slot === slot ? 'true' : undefined} className={cx('flex min-h-[44px] w-full items-center gap-2.5 rounded-[4px] px-2 text-left text-[15px]', FOCUS, t.slot === slot ? 'bg-v3-band text-white' : 'hover:bg-v3-paper')}>
                       <span className={cx('w-6 shrink-0 text-right font-figure text-[12px] tabular-nums', t.slot === slot ? 'text-v3-bandInk' : 'text-v3-ink3')}>{t.rank}</span>
                       <span className={cx('min-w-0 flex-1 truncate', t.slot === mySlot ? 'font-bold' : '', t.slot === slot ? 'text-white' : 'text-v3-ink')}>{t.slot === mySlot ? 'Your team' : t.name}</span>
                       <span className={cx('w-9 shrink-0 text-center font-sheet text-[18px] font-black', t.slot === slot ? 'text-white' : 'text-v3-ink')}>{t.grade}</span>
@@ -171,9 +171,9 @@ export default function Analysis({ engine, slot, onSlot, phone }) {
               </ol>
             </Sheet>
             <details className="group rounded-[6px] border border-v3-rule bg-v3-sheet [&_summary::-webkit-details-marker]:hidden">
-              <summary className={cx('flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-2 px-4 text-[14px] font-bold text-v3-ink', FOCUS)}>
+              <summary className={cx('flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-2 px-4 text-[15px] font-bold text-v3-ink', FOCUS)}>
                 How the grade is built
-                <span className="font-figure text-[16px] text-v3-ink2 transition-transform group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+                <span className="font-figure text-[15px] text-v3-ink2 transition-transform group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
               </summary>
               <p className="px-4 pb-4 text-[13px] leading-[1.6] text-v3-ink2">
                 Starter strength ({Math.round(a.weights.starters * 100)}%) is projected points over replacement — {a.replacementText} in a league that starts {a.lineupText} — scored against par for your seat. Draft value ({Math.round(a.weights.value * 100)}%) is how far each pick fell past the board, kickers and defenses aside. Roster construction ({Math.round(a.weights.build * 100)}%) docks empty starting slots and missing cover. Bye safety ({Math.round(a.weights.byes * 100)}%) charges every week with more than two starters idle. Three of the four are scaled against this room, so 0 and 100 are its worst and best.

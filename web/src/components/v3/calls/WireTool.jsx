@@ -397,7 +397,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
                       <li key={d.pos} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-v3-rule py-2.5 last:border-b-0">
                         <PosTag pos={d.pos} />
                         <span className="text-[15px] text-v3-ink2">{d.count === 1 ? '1 rival needs' : `${d.count} rivals need`} a {d.pos}</span>
-                        <Fig className="text-[16px] font-bold text-v3-ink">{d.count}</Fig>
+                        <Fig className="text-[15px] font-bold text-v3-ink">{d.count}</Fig>
                       </li>
                     ))}
                   </ul>

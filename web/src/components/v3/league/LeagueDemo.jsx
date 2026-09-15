@@ -72,10 +72,10 @@ export default function LeagueDemo() {
       <div className="flex flex-col gap-5 rounded-[6px] border border-v3-rule bg-v3-sheet p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="min-w-0">
           <div className="flex items-center gap-2"><SampleTag /><Label>Demo league</Label></div>
-          <p className="mt-2 max-w-[64ch] text-[16px] leading-[1.55] text-v3-ink">
+          <p className="mt-2 max-w-[64ch] text-[15px] leading-[1.55] text-v3-ink">
             {data.leagueName}, {data.meta}. The players are tonight&apos;s real board; the record, the calls and every delta are invented to show the page working.
           </p>
-          <p className="mt-1.5 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{PLATFORM_LINE} · read-only, Juke never edits your league</p>
+          <p className="mt-1.5 text-[12px] text-v3-ink3">Read-only: Juke never edits your league. {PLATFORM_LINE}.</p>
         </div>
         <ConnectCall primary className="shrink-0" label="Connect a real league" />
       </div>
@@ -85,15 +85,14 @@ export default function LeagueDemo() {
           <Label>Sample team</Label>
           <Headline as="h2" size="section" className="mt-1">{data.teamName}</Headline>
         </div>
-        <p className="font-figure text-[14px] text-v3-ink2">{data.leagueName} · {data.record} · {data.standing}</p>
+        <p className="font-figure text-[15px] text-v3-ink2">{data.leagueName} · {data.record} · {data.standing}</p>
       </div>
 
       <KpiGrid
         items={data.kpis.map((k) => ({
           label: k.label,
           value: k.value,
-          tag: <SampleTag />,
-          delta: k.delta ? <span className={cx('font-figure text-[14px] font-semibold', k.deltaSign === 'cost' ? 'text-v3-cost' : 'text-v3-gain')}>{k.deltaSign === 'cost' ? '−' : '+'}{k.delta}</span> : null,
+          delta: k.delta ? <span className={cx('font-figure text-[15px] font-semibold', k.deltaSign === 'cost' ? 'text-v3-cost' : 'text-v3-gain')}>{k.deltaSign === 'cost' ? '−' : '+'}{k.delta}</span> : null,
           note: k.note,
         }))}
       />
@@ -136,9 +135,9 @@ export default function LeagueDemo() {
                   <div className="mt-3 grid gap-2.5">
                     {rows.map((r) => (
                       <div key={r.label} className="grid grid-cols-[88px_minmax(0,1fr)_48px] items-center gap-3">
-                        <span className="truncate text-[14px] text-v3-ink2">{r.label}</span>
+                        <span className="truncate text-[15px] text-v3-ink2">{r.label}</span>
                         <ValueBar value={r.value} max={max} tone={r.sign === 'cost' ? 'cost' : 'gain'} />
-                        <span className="text-right font-figure text-[14px] font-bold text-v3-ink">{r.value > 0 ? '+' : ''}{r.value}</span>
+                        <span className="text-right font-figure text-[15px] font-bold text-v3-ink">{r.value > 0 ? '+' : ''}{r.value}</span>
                       </div>
                     ))}
                   </div>
@@ -166,12 +165,12 @@ export default function LeagueDemo() {
           {data.habit ? (
             <Sheet code="Costing you most" aside="Sample">
               <Headline as="h3" size="block">{data.habit.title}</Headline>
-              <p className="mt-3 flex flex-wrap items-baseline gap-x-3 font-figure text-[26px] font-bold leading-none">
+              <p className="mt-3 flex flex-wrap items-baseline gap-x-3 font-figure text-[28px] font-bold leading-none">
                 <span className="text-v3-cost">{data.habit.cost}</span>
                 {data.habit.gain ? <span className="text-v3-gain">{data.habit.gain}</span> : null}
               </p>
               <p className="mt-3 text-[15px] leading-[1.55] text-v3-ink2">{data.habit.body}</p>
-              <a href={toV3(data.habit.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
+              <a href={toV3(data.habit.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
                 Open the lineup tool <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
             </Sheet>
@@ -180,7 +179,7 @@ export default function LeagueDemo() {
             <Sheet code="Run this next" aside="Sample">
               <Headline as="h3" size="block">{data.runNext.title}</Headline>
               <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">{data.runNext.body}</p>
-              <a href={toV3(data.runNext.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
+              <a href={toV3(data.runNext.action.href)} className={cx(TOUCH, 'mt-4 inline-flex items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>
                 Set up a mock <Icon name="arrow" className="h-3.5 w-3.5" />
               </a>
             </Sheet>

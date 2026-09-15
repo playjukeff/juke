@@ -69,7 +69,7 @@ function Poll({ poll, id, onVote, blocked }) {
   const closed = poll.endsAt != null && Date.now() >= poll.endsAt
   return (
     <div className="mt-1 rounded-[4px] border border-v3-rule bg-v3-sheet p-2.5">
-      <p className="text-[14px] font-semibold text-v3-ink">{poll.question}</p>
+      <p className="text-[15px] font-semibold text-v3-ink">{poll.question}</p>
       <ul className="mt-2 space-y-1.5">
         {poll.options.map((o, i) => {
           const pct = total ? Math.round((o.count / total) * 100) : 0
@@ -113,7 +113,7 @@ function Said({ entry, view, engine, grouped, onReact, blocked }) {
             <span className="shrink-0 font-figure text-[11px] tabular-nums text-v3-ink3">{timeOf(entry.at)}</span>
           </p>
         )}
-        {entry.text && <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.45] text-v3-ink2">{entry.text}</p>}
+        {entry.text && <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.45] text-v3-ink2">{entry.text}</p>}
         {gif && <img src={gif} alt="" loading="lazy" className="mt-1 max-h-[180px] rounded-[4px]" />}
         {entry.type === 'photo' && media && <img src={media} alt="A photo sent to the room" loading="lazy" className="mt-1 max-h-[220px] rounded-[4px]" />}
         {entry.type === 'voice' && media && (
@@ -262,7 +262,7 @@ export default function RoomChat({ engine, view, className = '' }) {
       </div>
 
       <ul ref={log} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pb-2" aria-live="off">
-        {!stream.length && <li className="px-3 py-6 text-center text-[14px] text-v3-ink2">Nothing said yet. Every pick lands here too.</li>}
+        {!stream.length && <li className="px-3 py-6 text-center text-[15px] text-v3-ink2">Nothing said yet. Every pick lands here too.</li>}
         {stream.map((entry, i) => {
           if (entry.kind === 'pick') { last = null; return <Pick key={`p${entry.overall}`} entry={entry} view={view} engine={engine} /> }
           if (entry.kind === 'system') {

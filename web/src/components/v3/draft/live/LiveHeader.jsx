@@ -74,7 +74,7 @@ function ClockReadout({ engine, header, phone }) {
   return (
     <div role="timer" aria-label={`${fmtClock(timeLeft)} left${paused ? ', paused' : ''}`} className={cx('shrink-0 rounded-[4px] px-2 py-1', phone ? 'text-right' : '', caution ? 'bg-v3-warnWash' : '')}>
       <Label className={cx('block text-[11px]', caution && 'text-v3-warn')}>{paused ? 'Paused' : urgent ? 'Hurry' : 'Time left'}</Label>
-      <span className={cx('block font-figure font-bold leading-none tabular-nums', phone ? 'text-[26px]' : 'text-[30px]', caution ? 'text-v3-warn' : 'text-v3-ink')}>{fmtClock(timeLeft)}</span>
+      <span className={cx('block font-figure font-bold leading-none tabular-nums', phone ? 'text-[28px]' : 'text-[28px]', caution ? 'text-v3-warn' : 'text-v3-ink')}>{fmtClock(timeLeft)}</span>
     </div>
   )
 }
@@ -169,11 +169,11 @@ export default function LiveHeader({ engine, header, phone, room = null, autopic
                so the draft keeps moving without you, and the invite link
                brings you back to the same seat. A link that only changed the
                hash would leave a socket open on a screen nobody is on. */
-            <button type="button" onClick={() => leaveRoom(engine)} data-leave-room title="Leave the room — your seat is drafted for until you come back" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+            <button type="button" onClick={() => leaveRoom(engine)} data-leave-room title="Leave the room — your seat is drafted for until you come back" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
               <Glyph name="back" className="h-4 w-4" /> Leave
             </button>
           ) : (
-            <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+            <a href={LAUNCH_HASH} title="Leave the draft — it stays saved and picks up where you left it" className={cx('inline-flex h-11 shrink-0 items-center gap-1.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
               <Glyph name="back" className="h-4 w-4" /> Leave
             </a>
           )}

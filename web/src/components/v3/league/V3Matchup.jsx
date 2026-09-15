@@ -199,11 +199,11 @@ function NameCell({ row, align, week, isCurrent }) {
         {p ? <PosTag pos={p.pos} className="hidden sm:inline-flex" /> : null}
         <span className="min-w-0">
           {p ? (
-            <a href={`#/players/${encodeURIComponent(String(p.id))}`} className={cx(HIT, 'block truncate text-[14px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]')}>
+            <a href={`#/players/${encodeURIComponent(String(p.id))}`} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[15px]')}>
               <span className="sm:hidden">{shortName(p)}</span><span className="hidden sm:inline">{p.name}</span>
             </a>
           ) : (
-            <span className="block truncate text-[14px] text-v3-ink3">{row.empty ? 'Empty slot' : 'Not on Juke’s board'}</span>
+            <span className="block truncate text-[15px] text-v3-ink3">{row.empty ? 'Empty slot' : 'Not on Juke’s board'}</span>
           )}
           <span className={cx('mt-0.5 flex min-w-0 flex-wrap items-center gap-1 font-figure text-[12px] uppercase tracking-[0.06em] text-v3-ink3', right && 'justify-end')}>
             {p ? <span className="sm:hidden">{p.pos === 'DST' ? 'D/ST' : p.pos}</span> : null}
@@ -224,7 +224,7 @@ function NameCell({ row, align, week, isCurrent }) {
    single figure exactly as before. */
 function PtsCell({ value, proj, strong, align }) {
   return (
-    <td className={cx('border-0 py-2 font-figure text-[14px] tabular-nums sm:text-[15px]', align === 'right' ? 'border-l border-v3-rule pl-2 text-left' : 'pr-2 text-right', strong ? 'font-bold text-v3-ink' : 'text-v3-ink2')}>
+    <td className={cx('border-0 py-2 font-figure text-[15px] tabular-nums sm:text-[15px]', align === 'right' ? 'border-l border-v3-rule pl-2 text-left' : 'pr-2 text-right', strong ? 'font-bold text-v3-ink' : 'text-v3-ink2')}>
       {typeof value === 'number' ? (
         <>
           {value.toFixed(1)}
@@ -269,9 +269,9 @@ function LineupTable({ left, right, leftTeam, rightTeam, week, isCurrent, captio
         {totals ? (
           <tfoot>
             <tr className="border-t-2 border-v3-ink">
-              <td className="border-0 py-3 pl-3 pr-2 text-[14px] font-semibold text-v3-ink sm:pl-5">{totals.label}</td>
-              <td className="border-0 py-3 pr-2 text-right font-figure text-[16px] font-bold tabular-nums text-v3-ink">{typeof totals.left === 'number' ? totals.left.toFixed(1) : '—'}</td>
-              <td className="border-0 py-3 pl-2 text-left font-figure text-[16px] font-bold tabular-nums text-v3-ink">{right ? (typeof totals.right === 'number' ? totals.right.toFixed(1) : '—') : ''}</td>
+              <td className="border-0 py-3 pl-3 pr-2 text-[15px] font-semibold text-v3-ink sm:pl-5">{totals.label}</td>
+              <td className="border-0 py-3 pr-2 text-right font-figure text-[15px] font-bold tabular-nums text-v3-ink">{typeof totals.left === 'number' ? totals.left.toFixed(1) : '—'}</td>
+              <td className="border-0 py-3 pl-2 text-left font-figure text-[15px] font-bold tabular-nums text-v3-ink">{right ? (typeof totals.right === 'number' ? totals.right.toFixed(1) : '—') : ''}</td>
               <td className="border-0 py-3 pl-2 pr-3 sm:pr-5" />
             </tr>
           </tfoot>
@@ -292,9 +292,9 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
     <div className={cx('min-w-0', right && 'text-right')}>
       <div className={cx('flex min-w-0 items-center gap-2', right && 'flex-row-reverse')}>
         {team && link ? (
-          <a href={teamHref(team)} className="min-w-0 truncate text-[17px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
-        ) : team ? <span className="min-w-0 truncate text-[17px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
-          : <span className="text-[17px] font-extrabold text-v3-ink3 sm:text-[20px]">—</span>}
+          <a href={teamHref(team)} className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
+        ) : team ? <span className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
+          : <span className="text-[18px] font-extrabold text-v3-ink3 sm:text-[20px]">—</span>}
         {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
       </div>
       <p className="mt-1 font-figure text-[13px] text-v3-ink2">
@@ -302,8 +302,8 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
       </p>
       <div className={cx('mt-3 flex items-baseline gap-2', right && 'justify-end')}>
         {typeof value === 'number'
-          ? <CountUp value={value} format={(v) => v.toFixed(1)} className="font-figure text-[30px] font-bold leading-none tabular-nums text-v3-ink sm:text-[40px]" />
-          : <span className="font-figure text-[30px] font-bold leading-none text-v3-ink3 sm:text-[40px]">—</span>}
+          ? <CountUp value={value} format={(v) => v.toFixed(1)} className="font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink sm:text-[40px]" />
+          : <span className="font-figure text-[28px] font-bold leading-none text-v3-ink3 sm:text-[40px]">—</span>}
       </div>
       <p className="mt-1 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{valueLabel}</p>
     </div>
@@ -312,15 +312,15 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
 
 function ProbabilityBlock({ winProb, read, meanA, sd, framing }) {
   if (winProb === null || winProb === undefined) {
-    return <p className="text-[14px] leading-[1.5] text-v3-ink2">{framing.none}</p>
+    return <p className="text-[15px] leading-[1.5] text-v3-ink2">{framing.none}</p>
   }
   const word = read === 'favoured' ? 'Favoured' : read === 'behind' ? 'Behind' : 'Close'
   return (
     <>
       <div className="flex items-baseline justify-between gap-3">
         <Label>Win probability</Label>
-        <span className={cx('font-figure text-[26px] font-bold tabular-nums', read === 'favoured' ? 'text-v3-gain' : read === 'behind' ? 'text-v3-cost' : 'text-v3-ink')}>
-          {pct(winProb)} <span className="text-[14px] font-semibold uppercase tracking-[0.08em]">{word}</span>
+        <span className={cx('font-figure text-[28px] font-bold tabular-nums', read === 'favoured' ? 'text-v3-gain' : read === 'behind' ? 'text-v3-cost' : 'text-v3-ink')}>
+          {pct(winProb)} <span className="text-[15px] font-semibold uppercase tracking-[0.08em]">{word}</span>
         </span>
       </div>
       <WinBar p={winProb} read={read} className="mt-1" />
@@ -366,7 +366,7 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
                   className={cx('grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 sm:gap-4 sm:px-5', !sample && 'transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call', on ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}
                 >
                   <span className="min-w-0">
-                    <span className={cx('block truncate text-[14px] sm:text-[15px]', aWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{a.team ? a.team.teamName : '—'}</span>
+                    <span className={cx('block truncate text-[15px] sm:text-[15px]', aWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{a.team ? a.team.teamName : '—'}</span>
                     <span className="block truncate font-figure text-[12px] text-v3-ink3">{a.team ? recordText(a.team) : ''}{yours && sameTeam(a.team, mine) ? ' · you' : ''}</span>
                   </span>
                   <span className="flex items-center gap-2 font-figure text-[15px] tabular-nums">
@@ -375,7 +375,7 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
                     <span className={bWon ? 'font-bold text-v3-ink' : 'text-v3-ink2'}>{typeof sb === 'number' ? sb.toFixed(1) : '—'}</span>
                   </span>
                   <span className="min-w-0 text-right">
-                    <span className={cx('block truncate text-[14px] sm:text-[15px]', bWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{b.team ? b.team.teamName : '—'}</span>
+                    <span className={cx('block truncate text-[15px] sm:text-[15px]', bWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{b.team ? b.team.teamName : '—'}</span>
                     <span className="block truncate font-figure text-[12px] text-v3-ink3">{b.team ? recordText(b.team) : ''}{yours && sameTeam(b.team, mine) ? ' · you' : ''}</span>
                   </span>
                 </Row>

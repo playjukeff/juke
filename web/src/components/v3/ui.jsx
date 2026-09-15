@@ -46,6 +46,63 @@ export function cx(...parts) {
   return parts.filter(Boolean).join(' ')
 }
 
+/* ---- The type scale ----
+
+   Eight steps, and a new rule picks one of them rather than a number that
+   looked right in the box it was written for:
+
+     11  a micro label, where 12 will not fit
+     12  Label -- the standard uppercase label, and the commonest step here
+     13  meta and secondary text: a caption, a sub-line, a note
+     15  BODY. The default for anything a person reads a sentence of
+     18  a lede, and the largest body step
+     20  a block title (Headline size="block")
+     24 / 28 / 34   figures, by how much room the number has earned
+     clamp()  the two Headline steps, which scale with the viewport
+
+   16px survives in exactly one place: a form FIELD, because iOS zooms the
+   page in on any field smaller than that and does not zoom back out.
+   style.css carries the same floor under `(pointer: coarse)`. Never shrink
+   one, and a new field is 16.
+
+   Measured 15 September 2026: v3 had 26 distinct sizes, and SIX of them
+   (13, 14, 15, 16, 17, 18) were prose, spanning five pixels. Every one was
+   defensible where it was written and the set was not -- which is exactly
+   what style.css's own scale note already records about the legacy side,
+   arrived at a second time from a clean start. 14, 17, 19, 26, 30, 32 and
+   36 are gone (269 occurrences), prose is 13 / 15 / 18, and a page now
+   renders 7 to 12 distinct sizes against 9 to 14.
+
+   What is deliberately NOT collapsed: 22 and 24 both survive as figure
+   steps, and the live draft keeps its own large display sizes (40 to 132)
+   because a clock and a pick number on a board are sized to the board.
+
+   ---- Which of the two faces a thing is set in ----
+
+   font-figure (Inconsolata) is for a FIGURE or a CODE: a number, a pick,
+   a clock, a team abbreviation, FINAL, a formula, a tracked-out label like
+   the ones on a band. Those want one width per character so a column of
+   them lines up, and they are read as marks rather than as sentences.
+
+   font-sheet (Schibsted Grotesk) is the reading face, and it is the v3
+   root's own default -- so PROSE gets it by writing no font class at all.
+   A sub-line under a call ("points this week", "both sides priced over
+   replacement"), a promise ("Read-only: Juke never edits your league"),
+   anything that is a sentence: leave the face alone.
+
+   The line is what the words ARE, not how small they are. Both faces are
+   used at 12px, and a 12px sentence in a mono face is the harder of the
+   two to read, not the more precise-looking one -- Inconsolata's x-height
+   is smaller and its even widths remove the word-shapes a reader scans by.
+   A mono face on prose is also one of the commonest tells of a generated
+   page, which is the other half of why the split is worth keeping.
+
+   Measured 15 September 2026: ten places had a sentence in the figure
+   face, one of them (the League demo's read-only line) additionally set in
+   tracked-out caps. The board's own codes -- "NE", "at", "FINAL", the
+   college-and-club meta, every draft setting under its big number -- were
+   correct throughout and are deliberately untouched. */
+
 /* A small uppercase label in the figure face. The page's quietest type,
    never lighter than ink3 (5.2:1 on the darkest ground). */
 /* Rest props are forwarded, so a caller can put an id or a data-* on a
@@ -107,10 +164,12 @@ export function PosTag({ pos, className = '' }) {
    right. A sheet without a band is allowed — `band={false}` — for the plain
    white panels a page needs between the called blocks. */
 export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', rise = true, ...rest }) {
-  // A Sheet below the fold rises as it enters, once (motion.jsx useReveal);
-  // one in view on a cold load is simply there. `rise={false}` for a Sheet
-  // that is re-mounted as a control changes, where a rise would read as a
-  // reload rather than an arrival.
+  // A Sheet rises once on ARRIVAL -- a route change plays the new page's
+  // first viewport (motion.jsx useReveal). One in view on a cold load is
+  // simply there, and so is one below the fold: sections do not rise as
+  // they scroll past. `rise={false}` for a Sheet that is re-mounted as a
+  // control changes, where a rise would read as a reload rather than an
+  // arrival.
   const ref = useRef(null)
   useReveal(ref, { disabled: !rise })
   return (
@@ -164,7 +223,7 @@ export const HIT = "relative [@media(pointer:coarse)]:after:absolute [@media(poi
 
 export function GoLink({ href, children, className = '' }) {
   return (
-    <a href={href} className={cx(TOUCH, 'inline-flex items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', className)}>
+    <a href={href} className={cx(TOUCH, 'inline-flex items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink', className)}>
       {children} <Icon name="arrow" className="h-3.5 w-3.5" />
     </a>
   )
@@ -229,8 +288,8 @@ export function PageHead({ label, title, lede, action }) {
     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-[760px]">
         {label && <Label>{label}</Label>}
-        <Headline className="mt-2">{title}</Headline>
-        {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[17px] leading-[1.55] text-v3-ink2" />}
+        <Headline className={label ? 'mt-2' : ''}>{title}</Headline>
+        {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2" />}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>

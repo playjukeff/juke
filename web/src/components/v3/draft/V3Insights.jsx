@@ -53,7 +53,7 @@ function NotYet({ report, onStart, problem }) {
           </div>
         </div>
         <div>
-          <p className="max-w-[52ch] text-[16px] leading-[1.6] text-v3-ink2">
+          <p className="max-w-[52ch] text-[15px] leading-[1.6] text-v3-ink2">
             Run {want - have} more mock{want - have === 1 ? '' : 's'} and Juke can start telling you what each draft left on the board, which picks actually moved your projected win rate, and how you compare to the rooms you drafted against. Until then every number here would be a claim about a sample too small to carry it.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -110,7 +110,7 @@ export default function V3Insights() {
   return (
     <div className="grid grid-cols-1 gap-7">
       <div>
-        <a href={LAUNCH_HASH} className={cx('-ml-1 mb-3 inline-flex items-center gap-1 rounded-[4px] px-1 py-1 text-[14px] font-semibold text-v3-ink2 hover:text-v3-ink', FOCUS)}>
+        <a href={LAUNCH_HASH} className={cx('-ml-1 mb-3 inline-flex items-center gap-1 rounded-[4px] px-1 py-1 text-[15px] font-semibold text-v3-ink2 hover:text-v3-ink', FOCUS)}>
           <Glyph name="back" className="h-4 w-4" /> Mock drafts
         </a>
         <PageHead
@@ -149,7 +149,7 @@ export default function V3Insights() {
                   return (
                     <button key={v.key} type="button" onClick={() => selectView(v.key)} aria-pressed={on} data-ins-view={v.key} className={cx('w-[220px] shrink-0 rounded-[6px] border px-4 py-3 text-left xl:w-auto', FOCUS, on ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet hover:border-v3-ink3')}>
                       <span className={cx('block font-figure text-[12px] font-bold tracking-[0.14em]', on ? 'text-v3-bandInk' : 'text-v3-ink3')}>{v.num}</span>
-                      <span className={cx('mt-1 block text-[16px] font-extrabold leading-tight', on ? 'text-white' : 'text-v3-ink')}>{v.title}</span>
+                      <span className={cx('mt-1 block text-[15px] font-extrabold leading-tight', on ? 'text-white' : 'text-v3-ink')}>{v.title}</span>
                       <span className={cx('mt-1 hidden text-[13px] leading-[1.45] xl:block', on ? 'text-v3-bandInk' : 'text-v3-ink2')}>{v.sub}</span>
                     </button>
                   )
@@ -157,7 +157,7 @@ export default function V3Insights() {
               </nav>
               {report.runNext && (
                 <Sheet code="Run this next" bodyClass="p-4">
-                  <p className="text-[14px] leading-[1.5] text-v3-ink2">{report.runNext.line}</p>
+                  <p className="text-[15px] leading-[1.5] text-v3-ink2">{report.runNext.line}</p>
                   {roomActive ? <p className="mt-3 text-[13px] text-v3-ink2">Not available in a room — seat and scoring are the room’s.</p>
                     : <CallButton onClick={() => runAt(report.runNext.scoring, report.runNext.seat)} className="mt-3 w-full">{report.runNext.label}</CallButton>}
                   {problem && <Problem className="mt-3" text={problem} />}
@@ -167,7 +167,7 @@ export default function V3Insights() {
 
             <Sheet code={`${VIEWS.find((v) => v.key === view).num} · ${head.badge}`} aside={view === 'left' || view === 'leverage' ? (mock ? mock.label : '') : `last ${report.mocks} mocks`} className="min-w-0 flex-1" aria-labelledby="v3-ins-view">
               <div className="mb-5">
-                <h2 id="v3-ins-view" className="font-sheet text-[26px] font-black leading-[1.1] tracking-[-0.02em] text-v3-ink sm:text-[30px]">{head.title}</h2>
+                <h2 id="v3-ins-view" className="font-sheet text-[28px] font-black leading-[1.1] tracking-[-0.02em] text-v3-ink sm:text-[28px]">{head.title}</h2>
                 <p className="mt-1.5 text-[15px] leading-[1.5] text-v3-ink2">{sub}</p>
               </div>
               <div data-ins-body className="min-h-[340px]">

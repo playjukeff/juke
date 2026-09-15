@@ -125,18 +125,18 @@ function Account() {
       <>
         <SignedOut>
           <SignInButton mode="modal">
-            <button type="button" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Log in</button>
+            <button type="button" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 text-[15px] font-semibold text-v3-ink hover:bg-v3-well')}>Log in</button>
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <a href="#/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
+          <a href="#/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[15px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
           <UserButton />
         </SignedIn>
       </>
     )
   }
   return (
-    <a href="#/account" aria-label="Account" className={cx(TOUCH, 'inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[14px] font-semibold text-v3-ink hover:bg-v3-well')}>
+    <a href="#/account" aria-label="Account" className={cx(TOUCH, 'inline-flex min-h-[40px] items-center gap-2 rounded-[6px] px-3 text-[15px] font-semibold text-v3-ink hover:bg-v3-well')}>
       <Icon name="account" className="h-5 w-5" />
       <span className="hidden sm:inline">{signedIn ? 'Account' : 'Log in'}</span>
     </a>
@@ -212,7 +212,7 @@ function ThemeMenu() {
               >
                 <Icon name={THEME_ICON[c.value]} className="h-5 w-5 shrink-0 text-v3-ink2" />
                 <span className="min-w-0 flex-1">
-                  <span className={cx('block text-[14px] text-v3-ink', on ? 'font-bold' : 'font-medium')}>{c.label}</span>
+                  <span className={cx('block text-[15px] text-v3-ink', on ? 'font-bold' : 'font-medium')}>{c.label}</span>
                   {c.value === 'system' && <span className="block text-[12px] text-v3-ink3">Follows your device · {resolved} now</span>}
                 </span>
                 {on && <Icon name="check" className="h-4 w-4 shrink-0 text-v3-ink" />}
@@ -293,16 +293,16 @@ function Footer() {
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <JukeLogo size={16} onLight color="rgb(var(--v3-ink))" />
-          <p className="mt-3 max-w-[46ch] text-[14px] leading-[1.6] text-v3-ink2">
+          <p className="mt-3 max-w-[46ch] text-[15px] leading-[1.6] text-v3-ink2">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere. Connecting a league is read-only; Juke never edits it.
           </p>
         </div>
-        <div className="grid content-start gap-2 text-[14px]">
+        <div className="grid content-start gap-2 text-[15px]">
           <Label>Method</Label>
           <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/how-it-works">How Juke calls it</a>
           <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/how-it-works?s=s06">The draft grade</a>
         </div>
-        <div className="grid content-start gap-2 text-[14px]">
+        <div className="grid content-start gap-2 text-[15px]">
           <Label>The small print</Label>
           <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/privacy">Privacy</a>
           <a className={cx(TOUCH, 'inline-flex items-center text-v3-ink hover:underline')} href="#/method/terms">Terms</a>
@@ -318,7 +318,7 @@ function NotFound() {
     <div className="grid min-h-[50vh] content-center gap-6">
       <Label>404 · incomplete pass</Label>
       <Headline>That play isn&apos;t on the sheet.</Headline>
-      <p className="max-w-[52ch] text-[17px] leading-[1.55] text-v3-ink2">
+      <p className="max-w-[52ch] text-[18px] leading-[1.55] text-v3-ink2">
         Nothing in Juke answers to this address. Everything that does is one of the five places below.
       </p>
       <div className="flex flex-wrap gap-2">
