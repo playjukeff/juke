@@ -153,3 +153,31 @@ test('a connect that fails keeps the team you picked', async ({ page }) => {
   // And NOT back on the address step.
   await expect(page.getByRole('button', { name: /find my league/i })).toHaveCount(0)
 })
+
+test('the CBS step offers the bookmarklet, and says what to do with it', async ({ page }) => {
+  /* The manual path is developer tools -> Application -> Cookies, which is a
+     real barrier in front of the one thing a subscriber is trying to do. The
+     drag target is the easy path and has to actually be there. */
+  await openDialog(page)
+  await page.getByRole('button', { name: /^CBS/ }).click()
+
+  const bm = page.getByRole('link', { name: /copy my cbs key/i })
+  await expect(bm).toBeVisible()
+
+  /* It has to be a javascript: href -- that is the whole mechanism. A
+     bookmark cannot carry a newline either, so the one-lining matters. */
+  const href = await bm.getAttribute('href')
+  expect(href.startsWith('javascript:')).toBe(true)
+  expect(href).not.toContain(String.fromCharCode(10))
+  expect(href).toContain('pid=')
+
+  /* Clicking it HERE is refused by this page's own CSP, so the click has to
+     say what to do rather than appear to do nothing -- a control that
+     cannot act must not merely fail. */
+  await bm.click()
+  await expect(page.getByText(/drag it up to your bookmarks bar/i)).toBeVisible()
+
+  // And the manual route is still reachable for a phone, where dragging a
+  // bookmark is not a thing anybody can do.
+  await expect(page.getByText(/or find it by hand/i)).toBeVisible()
+})

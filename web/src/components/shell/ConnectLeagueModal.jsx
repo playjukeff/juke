@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { X, Check, Lock } from 'lucide-react'
 import { PLATFORMS, LIVE_PLATFORMS } from './leaguePlatforms.js'
+import { CBS_BOOKMARKLET, CBS_BOOKMARKLET_LABEL } from './cbsKeyBookmarklet.js'
 import { tierLabel } from '../../lib/tiers.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -120,6 +121,9 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      Held here for as long as the dialog is open and never in localStorage,
      the same rule the ESPN pair above follows. */
   const [pid, setPid] = useState('')
+  /* Clicking the bookmarklet on THIS page is refused by our own CSP, so
+     the click explains the drag rather than appearing to do nothing. */
+  const [dragHint, setDragHint] = useState(false)
   /* Why the CONNECT failed, kept apart from `status`.
 
      A failure at this step used to be written into `status`, and none of
@@ -153,6 +157,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setEspnS2('')
       setSwid('')
       setPid('')
+      setDragHint(false)
       setPlatform(null)
       setTierInfo({ tier: null, cap: null })
       setConnectError(null)
@@ -836,9 +841,51 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   own — disconnecting is what ends it.
                 </p>
 
+                {/* The easy path, first.
+
+                    Dragged to the bookmarks bar and clicked on the reader's
+                    own league page, this copies `pid` and nothing else. It
+                    exists because the alternative below — developer tools,
+                    Application, Cookies — is a real barrier in front of the
+                    one thing somebody is trying to do.
+
+                    It is a DRAG target rather than a button: clicking it
+                    here would do nothing, because this page's own CSP has
+                    no `unsafe-inline` in `script-src` and a `javascript:`
+                    href is refused. So the click says what to do instead of
+                    failing silently, which is this project's own rule about
+                    a control that cannot act. */}
+                <div className="mt-4 rounded-xl border border-line-hairline bg-surface-page p-3">
+                  <p className="text-meta text-ink-muted">
+                    Easiest way — drag this to your bookmarks bar, then click it while
+                    you&apos;re on your CBS league page:
+                  </p>
+                  <a
+                    href={CBS_BOOKMARKLET}
+                    draggable="true"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setDragHint(true)
+                    }}
+                    className="mt-2 inline-flex cursor-grab items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-[14px] font-semibold text-white active:cursor-grabbing"
+                  >
+                    <span aria-hidden="true">&#8595;</span> {CBS_BOOKMARKLET_LABEL}
+                  </a>
+                  {dragHint ? (
+                    <p className="mt-2 text-meta text-voidInk-body">
+                      Drag it up to your bookmarks bar rather than clicking it here — it
+                      only works on a CBS page. On a phone, use the manual steps below.
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-meta text-ink-muted">
+                    It reads one cookie and copies it. It sends nothing anywhere, and it
+                    reads nothing else in your CBS account.
+                  </p>
+                </div>
+
                 <details className="mt-3">
                   <summary className="cursor-pointer text-meta text-ink-muted hover:text-white">
-                    Where do I find this?
+                    Or find it by hand
                   </summary>
                   <p className="mt-2 text-meta leading-[1.6] text-voidInk-body">
                     On a desktop browser, sign in and open your league. Open your browser&apos;s
