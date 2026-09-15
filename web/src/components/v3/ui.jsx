@@ -229,7 +229,7 @@ export function PageHead({ label, title, lede, action }) {
     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-[760px]">
         {label && <Label>{label}</Label>}
-        <Headline className="mt-2">{title}</Headline>
+        <Headline className={label ? 'mt-2' : ''}>{title}</Headline>
         {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[17px] leading-[1.55] text-v3-ink2" />}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}

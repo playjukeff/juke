@@ -296,7 +296,7 @@ export default function V3Rookies() {
   return (
     <div className="grid gap-8">
       <PageHead
-        label={c ? `Players · rookies · ${c.rows.length} in their first season` : 'Players · rookies'}
+        label={c ? `Players · rookies · ${c.rows.length} in their first season` : null}
         title="The rookie class, and what we don't know yet."
         lede="Every first-year player on the board, ranked by points over the player a league your size would start instead — and, for each, what is on file and what is not. Behind them, the players still in college."
         action={<ViewTabs current="rookies" />}

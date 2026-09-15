@@ -438,7 +438,6 @@ export default function V3DraftHome() {
   return (
     <div className="grid grid-cols-1 gap-8">
       <PageHead
-        label="Draft · mock drafts"
         title="Draft against tonight's board."
         lede="A full mock against CPU managers drafting off real ADP. It runs in your browser, needs no account, and is graded the moment the last pick is in."
       />

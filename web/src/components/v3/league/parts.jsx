@@ -23,9 +23,18 @@ export function pct(p) {
   return typeof p === 'number' ? `${Math.round(p * 100)}%` : '—'
 }
 
-/* SAMPLE, on every card that carries an invented figure — not only in a
-   banner the reader has scrolled past. Warn, because it is a caution about
-   the number beside it. */
+/* SAMPLE, on an invented figure the reader could meet without the notice
+   that explains it — a block further down the page, or one that re-mounts
+   as a control changes. Warn, because it is a caution about the number
+   beside it.
+
+   Deliberately NOT on every card. It was, and on the League demo that put
+   seven SAMPLE badges in one viewport: one per KPI, plus the eyebrow, plus
+   the band, plus the notice card directly above them that already says it
+   in a full sentence. A caution repeated past the point of being read is
+   decoration, and it costs the badge its force in the places further down
+   where the notice really has been scrolled past. The rule is the reader's
+   distance from the explanation, not the card. */
 export function SampleTag({ className = '' }) {
   return (
     <span className={cx('inline-flex shrink-0 items-center rounded-[4px] bg-v3-warnWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-warn', className)}>

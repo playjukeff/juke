@@ -75,7 +75,7 @@ export default function LeagueDemo() {
           <p className="mt-2 max-w-[64ch] text-[16px] leading-[1.55] text-v3-ink">
             {data.leagueName}, {data.meta}. The players are tonight&apos;s real board; the record, the calls and every delta are invented to show the page working.
           </p>
-          <p className="mt-1.5 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{PLATFORM_LINE} · read-only, Juke never edits your league</p>
+          <p className="mt-1.5 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">Read-only: Juke never edits your league. {PLATFORM_LINE}.</p>
         </div>
         <ConnectCall primary className="shrink-0" label="Connect a real league" />
       </div>
@@ -92,7 +92,6 @@ export default function LeagueDemo() {
         items={data.kpis.map((k) => ({
           label: k.label,
           value: k.value,
-          tag: <SampleTag />,
           delta: k.delta ? <span className={cx('font-figure text-[14px] font-semibold', k.deltaSign === 'cost' ? 'text-v3-cost' : 'text-v3-gain')}>{k.deltaSign === 'cost' ? '−' : '+'}{k.delta}</span> : null,
           note: k.note,
         }))}

@@ -572,7 +572,7 @@ export default function V3League() {
   if (status === 'loading') {
     return (
       <div className="grid gap-10">
-        <PageHead label="League" title="League" lede="Checking which league is yours…" />
+        <PageHead title="League" lede="Checking which league is yours…" />
         <Sheet band={false} aria-busy="true"><Skeleton lines={6} /></Sheet>
       </div>
     )
@@ -581,7 +581,7 @@ export default function V3League() {
   if (status === 'error') {
     return (
       <div className="grid gap-10">
-        <PageHead label="League" title="League" />
+        <PageHead title="League" />
         <Sheet code="Could not load your leagues" role="alert">
           <p className="max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2">
             Nothing has been disconnected and your leagues are still on your account — this page could not reach it to read them. Mock drafts are unaffected and need no account.
