@@ -31,6 +31,32 @@ import { openApp } from "./helpers.mjs";
 
 const ROW = "[data-prospect-row]";
 
+/* The name, read off the one element that IS the name.
+ *
+ * It used to be `span.truncate`, and the cutover moved the name into
+ * `<a class="block truncate">` while leaving a `span.truncate` on the row
+ * carrying the college and the club. So the old selector went on matching —
+ * it simply started returning a different fact, and every assertion built on
+ * it reported the room as broken. An attribute (here, where the link GOES)
+ * says what an element is; a utility class says what it currently looks
+ * like. CLAUDE.md states that rule about `span.font-plex` and it is the same
+ * trap, one class along. */
+const NAME_IN_ROW = 'a[href^="#/players/"]';
+
+/* The class list pages at 25 with a "Show N more" button, where production's
+ * Prospect Room had a "Big Board" tab that drew the lot. Anything asserting
+ * an ORDER over every rookie has to open the whole list first, or it is
+ * asserting an order over the first page — which would pass while a buried
+ * kicker sat on page two. */
+async function showEveryRow(page) {
+  for (let guard = 0; guard < 40; guard += 1) {
+    const more = page.getByRole("button", { name: /^Show \d+ more$/ });
+    if ((await more.count()) === 0) return;
+    await more.first().click();
+  }
+  throw new Error("the class list never stopped paging");
+}
+
 async function openProspect(context) {
   const page = await openApp(context, "#/players/rookies");
   // The board is deferred behind the cold-load reveal, so the room draws a
@@ -57,9 +83,9 @@ test.describe("the prospect room", () => {
     /* Every row on screen is somebody in their first NFL season, checked
        against the engine rather than against the markup — a list that
        merely LOOKS like rookies is the failure, and it renders fine. */
-    const allRookies = await page.evaluate(() => {
+    const allRookies = await page.evaluate((sel) => {
       const names = [...document.querySelectorAll("[data-prospect-row]")].map((el) =>
-        el.querySelector("span.truncate").textContent.trim()
+        el.querySelector(sel).textContent.trim()
       );
       const e = window.JukeEngine;
       return names.every((n) => {
@@ -67,7 +93,7 @@ test.describe("the prospect room", () => {
         const s = p && e.statOf(p);
         return !!s && s.exp === 0;
       });
-    });
+    }, NAME_IN_ROW);
     expect(allRookies, "every row is a first-year player").toBe(true);
   });
 
@@ -131,20 +157,24 @@ test.describe("the prospect room", () => {
        shown them nothing to replace it. */
     const positions = page.locator("button[aria-pressed]");
     const labels = await positions.allInnerTexts();
-    const unranked = labels.find((l) => l.trim() === "K" || l.trim() === "DST");
+    /* The defense chip reads "D/ST" rather than "DST" — posWord() spells it
+       the way the sport does. Both spellings are accepted rather than the
+       new one alone, because this is a probe for whether the class HAS one
+       and a miss silently skips the whole test. */
+    const unranked = labels.find((l) => ["K", "DST", "D/ST"].includes(l.trim()));
     test.skip(!unranked, "this class has no kicker or defense in it");
 
-    // Whole board, so ordering is over every rookie rather than a page.
-    await page.getByRole("button", { name: "Big Board", exact: true }).click();
+    // Whole list, so ordering is over every rookie rather than the first page.
+    await showEveryRow(page);
 
-    const order = await page.evaluate(() => {
+    const order = await page.evaluate((sel) => {
       const e = window.JukeEngine;
       return [...document.querySelectorAll("[data-prospect-row]")].map((el) => {
-        const name = el.querySelector("span.truncate").textContent.trim();
+        const name = el.querySelector(sel).textContent.trim();
         const p = e.board().find((x) => x.name === name);
         return { name, ranked: p ? e.replacementGap(p) !== null : true };
       });
-    });
+    }, NAME_IN_ROW);
     const lastRanked = order.map((r) => r.ranked).lastIndexOf(true);
     const firstUnranked = order.map((r) => r.ranked).indexOf(false);
     test.skip(firstUnranked === -1, "nobody on this board is unranked");
@@ -172,10 +202,10 @@ test.describe("the prospect room", () => {
     test.skip((await qb.count()) === 0, "this class has no quarterback in it");
     await qb.first().click();
 
-    const allQb = await page.evaluate(() => {
+    const allQb = await page.evaluate((sel) => {
       const e = window.JukeEngine;
       const names = [...document.querySelectorAll("[data-prospect-row]")].map((el) =>
-        el.querySelector("span.truncate").textContent.trim()
+        el.querySelector(sel).textContent.trim()
       );
       return (
         names.length > 0 &&
@@ -184,7 +214,7 @@ test.describe("the prospect room", () => {
           return p && p.pos === "QB";
         })
       );
-    });
+    }, NAME_IN_ROW);
     expect(allQb, "the filter shows quarterbacks and only quarterbacks").toBe(true);
   });
 });
