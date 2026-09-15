@@ -130,6 +130,18 @@ jobs:
       # and a code only one side knows is a player silently not flagged.
       - name: ESPN parse and join
         run: node worker/test-espn.mjs
+
+      # Sealing the credential a private ESPN league needs. Real WebCrypto
+      # against a real generated key -- nothing is mocked, because the
+      # properties worth asserting are cryptographic and a stub would agree
+      # with itself. A seal that has stopped binding a blob to the account
+      # it was written for is a cross-account credential read, and a
+      # missing key falling back to plaintext is a stored ESPN session in
+      # the clear -- neither of which fails anything visible, which is why
+      # they are asserted here rather than left to the deploy gate.
+      - name: Verify credential sealing
+        run: node worker/test-credentials.mjs
+
       - name: Live injury vocabulary
         run: node worker/test-status.mjs
 

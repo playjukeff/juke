@@ -54,7 +54,10 @@ for chunk in re.findall(r'sql:((?:\s*"[^"]*"\s*\+?)+),', wblock + ','):
 print('write rungs found in store.js:', len(writes))
 assert len(writes) >= 1, writes
 
-MIGRATIONS = ['0005_leagues.sql', '0006_active_league.sql', '0008_draft_time.sql']
+MIGRATIONS = ['0005_leagues.sql', '0006_active_league.sql', '0008_draft_time.sql',
+              # 0011 adds the credential table, which deleteLeague() now
+              # names -- see the block at the foot of this file.
+              '0011_league_credentials.sql']
 
 def db_at(level):
     """A database with the first `level` league migrations applied."""
@@ -183,6 +186,78 @@ for sql in reads:
     except sqlite3.OperationalError:
         pass
 check('no connected_leagues table -> every rung refuses, caller answers []', survived)
+
+
+# ---- deleteLeague()'s own ladder, added with 0011 -------------------------
+#
+# That function used to be one statement and is now a batch of two: the
+# credential first, then the league. A batch throws WHOLE on a database
+# without 0011, so without the fallback in its catch a disconnect would fail
+# outright on exactly the window this file exists for -- an outage for a
+# feature that has nothing to do with credentials.
+#
+# Read out of store.js rather than restated, for this file's own reason: a
+# copy here would agree with itself while the shipped statement was broken.
+dl = src[src.index('export async function deleteLeague'):]
+dl = dl[:dl.index('\n}\n')]
+del_sqls = re.findall(r'"(DELETE FROM [^"]+)"', dl)
+check('deleteLeague still clears both tables', len(del_sqls) >= 2)
+check('and the credential is one of them',
+      any('league_credentials' in q for q in del_sqls))
+
+# Not next(), which raises StopIteration and ABORTS -- taking every check
+# below it with it, in silence. Caught once by mutating the statement above
+# out of store.js: it reported one named failure and then simply stopped,
+# which reads as a shorter pass rather than as a suite that gave up.
+cred_del = next((q for q in del_sqls if 'league_credentials' in q), None)
+league_del = next((q for q in del_sqls if 'connected_leagues' in q), None)
+if not cred_del or not league_del:
+    check('deleteLeague names both tables, so the rest of this block can run', False)
+    cred_del = cred_del or "DELETE FROM league_credentials WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+    league_del = league_del or "DELETE FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+
+# Pre-0011 the credential statement must FAIL, which is what makes the
+# fallback load-bearing rather than belt and braces.
+db = db_at(3)
+threw = False
+try:
+    db.execute(cred_del, ('u1', 'espn', '65142363'))
+except sqlite3.OperationalError:
+    threw = True
+check('pre-0011 -> the credential DELETE really does throw', threw)
+
+db = db_at(3)
+db.execute(league_del, ('u1', 'espn', '65142363'))
+left = db.execute("SELECT COUNT(*) FROM connected_leagues").fetchone()[0]
+check('pre-0011 -> the fallback rung still disconnects the league', left == 0)
+
+# With 0011 both work, and the credential goes WITH the league rather than
+# outliving the one gesture a reader believes removed it.
+# Guarded, because an OperationalError here would abort the run rather than
+# name a check -- and every assertion below this line would then be skipped
+# in silence, which reads as a shorter pass rather than a failure.
+try:
+    db = db_at(4)
+    db.execute("INSERT INTO league_credentials VALUES ('u1','espn','65142363','v1.x.y',1)")
+    db.execute(cred_del, ('u1', 'espn', '65142363'))
+    db.execute(league_del, ('u1', 'espn', '65142363'))
+    n_cred = db.execute("SELECT COUNT(*) FROM league_credentials").fetchone()[0]
+    n_lg = db.execute("SELECT COUNT(*) FROM connected_leagues").fetchone()[0]
+    check('0011 -> disconnecting takes the credential with it', n_cred == 0 and n_lg == 0)
+except sqlite3.OperationalError as err:
+    check('0011 -> disconnecting takes the credential with it (%s)' % err, False)
+
+# And it is scoped to its owner: another account disconnecting the same
+# league id must not reach this row.
+try:
+    db = db_at(4)
+    db.execute("INSERT INTO users VALUES ('u2')")
+    db.execute("INSERT INTO league_credentials VALUES ('u1','espn','65142363','v1.x.y',1)")
+    db.execute(cred_del, ('u2', 'espn', '65142363'))
+    n_cred = db.execute("SELECT COUNT(*) FROM league_credentials").fetchone()[0]
+    check("another account cannot delete this one's credential", n_cred == 1)
+except sqlite3.OperationalError as err:
+    check("another account cannot delete this one's credential (%s)" % err, False)
 
 print('\nFAIL' if failures else '\nOK — the schema ladder')
 sys.exit(1 if failures else 0)
