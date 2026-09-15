@@ -4,7 +4,7 @@
    — everything here exists because something in a shared draft was once
    broken and nothing said so. What is different is only which screen the
    clicks land on: v3 draws the lobby, the room and the chat itself now
-   (#/v3/draft/live?room=CODE) rather than handing a room to the classic
+   (#/draft/live?room=CODE) rather than handing a room to the classic
    Draft Room, and every one of those controls goes through the SAME
    live.js/room.js protocol. So this asserts the protocol is still the one
    being used, not that a second one works.
@@ -28,8 +28,15 @@
 import { test, expect } from "@playwright/test";
 import { openApp, roomView, sent, waitForRoom, pickGaps, median, perSeat } from "./helpers.mjs";
 
-const LAUNCHER = "#/v3/draft";
-const ROOM = "#/v3/draft/live";
+/* The cutover made v3 the site, so these two addresses lost their prefix:
+   `#/v3/draft` is `#/draft` and `#/v3/draft/live` is `#/draft/live`.
+   canonicalHash() still redirects the old pair, so every navigation in this
+   file worked throughout — what failed is the two `page.url()` assertions,
+   which read the address AFTER the redirect and so were comparing the
+   canonical address against the retired one. A spec that exercises a
+   redirect is testing the wrong thing (CLAUDE.md, openApp()'s own default). */
+const LAUNCHER = "#/draft";
+const ROOM = "#/draft/live";
 
 /* The launcher's own Create button, and then the two facts that make a room
    usable rather than merely existing.
