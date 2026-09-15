@@ -57,11 +57,43 @@ const KEY_BYTES = 32;  // AES-256
 
 /* Is this deployment configured to hold credentials at all?
 
-   Read by the connect route BEFORE it asks ESPN anything, so a deployment
-   with no key refuses the private branch up front instead of validating
-   somebody's cookies and then discovering it has nowhere to put them. */
+   Read by the connect route BEFORE it asks ESPN or CBS anything, so a
+   deployment with no usable key refuses the private branch up front instead
+   of validating somebody's session and then discovering it has nowhere to
+   put it.
+
+   ---- It counted CHARACTERS, and the unit is BYTES ----
+
+   This was `LEAGUE_CRED_KEY.length >= 40`, which is a test on the base64
+   STRING rather than on what it decodes to. A 32-byte key is 44 characters,
+   so the bound was roughly right and admitted anything longer -- and a key
+   of the wrong length therefore passed this guard, reached importKey(), and
+   failed there.
+
+   Which is precisely the job this function claims in its own first
+   paragraph and was not doing. Measured 15 September 2026 on the live
+   deployment: a mis-pasted key let a real CBS connect resolve the league,
+   send the reader's `pid` upstream to CBS, seal nothing, and roll back --
+   reported honestly as `private-unavailable`, storing nothing, and having
+   already spent the one thing the up-front refusal exists to protect.
+
+   So it decodes. `importKey()` keeps its own length check rather than
+   trusting this one: that is where the console line naming the real size
+   comes from, and a guard that is only reachable through another guard is
+   one nobody can rely on. Two checks on purpose, the same way the grade
+   computes points over replacement itself rather than calling a function
+   that would refuse a kicker. */
 export function canSealCredentials(env) {
-  return !!(env && typeof env.LEAGUE_CRED_KEY === "string" && env.LEAGUE_CRED_KEY.length >= 40);
+  const b64 = env && env.LEAGUE_CRED_KEY;
+  if (typeof b64 !== "string" || !b64) return false;
+  try {
+    return bytesFromBase64(b64.trim()).length === KEY_BYTES;
+  } catch {
+    /* Not base64 at all -- a stray character or a line break came with the
+       paste. Refused here rather than at the point of use, and importKey()
+       is what says so in the log. */
+    return false;
+  }
 }
 
 function bytesFromBase64(b64) {

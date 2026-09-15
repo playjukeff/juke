@@ -74,12 +74,33 @@ check("sealing without a key answers null", await sealCredential(pair, scope, {}
 check("opening without a key answers null", await openCredential(sealed, scope, {}), null);
 
 console.log("\n--- a key of the wrong length is refused rather than quietly weakened ---");
-/* 48 real bytes, base64-clean and long enough to pass canSealCredentials,
-   so this reaches the KEY_BYTES guard rather than tripping the decoder on
-   the way -- the first version of this line was rejected as "Invalid
-   character" and passed for a reason it was not about. */
+/* 48 real bytes, base64-clean and long enough to pass the old character
+   count, so this reaches the KEY_BYTES guard rather than tripping the
+   decoder on the way -- the first version of this line was rejected as
+   "Invalid character" and passed for a reason it was not about. */
 check("a valid base64 key of the wrong length", await sealCredential(pair, scope, { LEAGUE_CRED_KEY: keyOf(48) }), null);
 check("and not base64 at all", await sealCredential(pair, scope, { LEAGUE_CRED_KEY: "!".repeat(48) }), null);
+
+/* And the UP-FRONT guard has to refuse those too, which is a different
+   assertion from the two above rather than a restatement of them.
+
+   `canSealCredentials()` is read by the connect route BEFORE it contacts
+   ESPN or CBS, so that a deployment with no usable key never spends
+   somebody's session finding out. It counted characters (`length >= 40`),
+   which a 48-byte key passes -- so a real CBS connect on the live worker
+   sent the reader's cookie upstream, validated it, and only then failed to
+   seal. Nothing was stored, and the cookie had already travelled.
+
+   These are the assertions that would have caught it. */
+console.log("\n--- and the up-front guard refuses them too, before anything is sent ---");
+check("48 real bytes is not a 32-byte key", canSealCredentials({ LEAGUE_CRED_KEY: keyOf(48) }), false);
+check("nor is 16", canSealCredentials({ LEAGUE_CRED_KEY: keyOf(16) }), false);
+check("nor is something that is not base64", canSealCredentials({ LEAGUE_CRED_KEY: "!".repeat(48) }), false);
+check("a 32-byte key is one", canSealCredentials({ LEAGUE_CRED_KEY: keyOf(32) }), true);
+/* Pasting from a terminal picks up whitespace, which is a mis-paste rather
+   than a wrong key -- the bytes are right either side of the trim. */
+check("and surrounding whitespace does not disqualify it",
+  canSealCredentials({ LEAGUE_CRED_KEY: "  " + keyOf(32) + "\n" }), true);
 
 console.log(failures ? `\nFAIL — ${failures} failing` : "\nOK — sealing a platform credential");
 process.exit(failures ? 1 : 0);
