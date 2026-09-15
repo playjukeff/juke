@@ -93,28 +93,24 @@ function useLineupModel(league, snapshot) {
 function noteFor(row, platformName) {
   if (!row.player) return 'Not on Juke’s board, so he cannot be priced'
   const p = row.player
-  // A locked player with no actual yet just started — the platform's own
-  // score for him has not landed. Locked AND scored is the fact worth
-  // saying, so it replaces the bare "locked" note rather than sitting
-  // beside it.
-  const playedNote = typeof p.actualPts === 'number'
-    ? `already scored: ${p.actualPts.toFixed(1)}`
-    : p.locked ? 'locked — his game has started' : null
-  return [p.team || 'FA', p.bye ? `bye ${p.bye}` : null, playedNote].filter(Boolean).join(' · ')
+  return [p.team || 'FA', p.bye ? `bye ${p.bye}` : null, p.locked ? 'locked — his game has started' : null].filter(Boolean).join(' · ')
 }
 
-// The figure a row shows: what he has already scored once his game has
-// kicked off, else the projection exactly as before.
-function pointsFor(row) {
+/* What a row shows: the projection alone until a game kicks off, then both
+ * — the actual bold and on top, the projection small underneath, the same
+ * "We said / he got" pairing RecordSheet already uses for a season. Kept
+ * side by side rather than one replacing the other, so a reader can see
+ * how a player is running against what was expected without losing either
+ * number. */
+function RowPts({ row }) {
   const actual = row.player && row.player.actualPts
-  return typeof actual === 'number' ? actual : row.projPts
-}
-
-// A small, neutral chip — not a gain or a cost, a fact about the clock.
-function LiveMark() {
+  if (typeof actual !== 'number' || !Number.isFinite(actual)) return <Pts value={row.projPts} />
   return (
-    <span className="rounded-[4px] bg-v3-well px-1.5 py-0.5 font-figure text-[10px] font-bold uppercase tracking-[0.1em] text-v3-ink2">
-      Live
+    <span className="flex flex-col items-end leading-tight">
+      <Pts value={actual} />
+      <Fig className="text-[11px] font-normal normal-case tracking-normal text-v3-ink3">
+        proj {typeof row.projPts === 'number' ? row.projPts.toFixed(1) : '—'}
+      </Fig>
     </span>
   )
 }
@@ -279,11 +275,10 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     meta={noteFor(row, platformName)}
                     right={
                       <span className="flex items-center gap-3">
-                        {row.player && typeof row.player.actualPts === 'number' ? <LiveMark /> : null}
                         {row.player && row.player.inj ? (
                           <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase', injurySeverity(row.player.inj) === 'out' ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>{row.player.inj}</span>
                         ) : null}
-                        <Pts value={pointsFor(row)} />
+                        <RowPts row={row} />
                       </span>
                     }
                   />
@@ -301,12 +296,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     key={row.id}
                     player={row.player}
                     meta={noteFor(row, platformName)}
-                    right={
-                      <span className="flex items-center gap-3">
-                        {row.player && typeof row.player.actualPts === 'number' ? <LiveMark /> : null}
-                        <Pts value={pointsFor(row)} />
-                      </span>
-                    }
+                    right={<RowPts row={row} />}
                   />
                 ))}
               </ul>

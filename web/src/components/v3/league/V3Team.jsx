@@ -90,11 +90,15 @@ function RosterTable({ team, pricing, snapshot }) {
               const p = byId.get(id)
               const bench = !starting.has(id)
               // Once he has actually scored, that is the number this column
-              // shows — never a projection a total elsewhere has moved past.
+              // leads with — never a projection a total elsewhere has moved
+              // past — with the projection kept alongside rather than lost,
+              // the same "We said / he got" pairing RecordSheet already uses
+              // for a season.
               const actual = p && p.actualPts
-              const pts = typeof actual === 'number' && Number.isFinite(actual)
-                ? actual
-                : p && weekPts ? weekPts(p) : null
+              const live = typeof actual === 'number' && Number.isFinite(actual)
+              const projected = p && weekPts ? weekPts(p) : null
+              const pts = live ? actual : projected
+              const proj = live ? projected : null
               const season = p ? valueOf(p, gapOf) : null
               return [
                 bench && n > 0 && starting.has(ids[n - 1]) ? (
@@ -111,7 +115,14 @@ function RosterTable({ team, pricing, snapshot }) {
                     </span>
                   </td>
                   <td className={cx('border-0 px-2 py-2.5 text-right font-figure text-[15px] tabular-nums', bench ? 'text-v3-ink2' : 'font-bold text-v3-ink')}>
-                    {typeof pts === 'number' ? pts.toFixed(1) : '—'}
+                    {typeof pts === 'number' ? (
+                      <>
+                        {pts.toFixed(1)}
+                        {typeof proj === 'number' && (
+                          <span className="block text-[11px] font-normal normal-case tracking-normal text-v3-ink3">proj {proj.toFixed(1)}</span>
+                        )}
+                      </>
+                    ) : '—'}
                   </td>
                   <td className="border-0 py-2.5 pl-2 pr-4 text-right sm:pr-5">
                     {season === null ? <span className="font-figure text-[15px] text-v3-ink3">—</span> : <Delta value={season} className="text-[15px]" />}
