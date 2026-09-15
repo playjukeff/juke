@@ -202,7 +202,7 @@ export function Slate({ games, kickoffAt }) {
           press away: sixteen rows is a screen and a half of scrolling past
           before anything else on the page. Two columns hold all of them. */}
       {rows.length > PHONE_SLATE && !all ? (
-        <button type="button" onClick={() => setAll(true)} className="flex min-h-[48px] w-full items-center justify-center gap-2 border-b border-v3-rule text-[14px] font-semibold text-v3-ink hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:hidden">
+        <button type="button" onClick={() => setAll(true)} className="flex min-h-[48px] w-full items-center justify-center gap-2 border-b border-v3-rule text-[15px] font-semibold text-v3-ink hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:hidden">
           All {rows.length} games <Icon name="arrow" className="h-4 w-4 rotate-90" />
         </button>
       ) : null}
@@ -288,7 +288,7 @@ export function LockerCard({ summary, compact = false, className = '' }) {
                   <Fig>{inProgress.made}</Fig> of <Fig>{inProgress.total}</Fig> picks · {inProgress.pickPosition} seat{inProgress.leagueType ? ` · ${inProgress.leagueType}` : ''}
                 </span>
               </span>
-              <span className="shrink-0 text-[14px] font-semibold text-v3-ink">Resume <Icon name="arrow" className="inline h-4 w-4" /></span>
+              <span className="shrink-0 text-[15px] font-semibold text-v3-ink">Resume <Icon name="arrow" className="inline h-4 w-4" /></span>
             </a>
           ) : null}
           {stats.count === 0 ? (
@@ -412,7 +412,7 @@ export function PassCard({ week, primary = false, inSeason = false }) {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-[14px] leading-[1.55] text-v3-ink2">
+      <p className="mt-4 text-[15px] leading-[1.55] text-v3-ink2">
         {pro} reads {one === 1 ? 'one league' : `${one} leagues`}; {multi} reads up to {many} and adds what every rival is short of. Neither is on sale yet — leave an email and Juke will tell you when it is.
       </p>
       <div className="mt-4"><NotifyForm need="pro" primary={primary} /></div>
@@ -473,8 +473,8 @@ export function StillDrafting({ post = false }) {
       <span className="flex items-start gap-3">
         <Icon name="draft" className="mt-0.5 h-5 w-5 shrink-0 text-v3-ink" />
         <span>
-          <span className="block text-[16px] font-bold text-v3-ink">{post ? 'Next year’s draft is the one decision left' : 'Still drafting?'}</span>
-          <span className="block text-[14px] leading-[1.5] text-v3-ink2">Mock drafts against tonight’s board are in Draft — free, no account, graded the moment the last pick lands.</span>
+          <span className="block text-[15px] font-bold text-v3-ink">{post ? 'Next year’s draft is the one decision left' : 'Still drafting?'}</span>
+          <span className="block text-[15px] leading-[1.5] text-v3-ink2">Mock drafts against tonight’s board are in Draft — free, no account, graded the moment the last pick lands.</span>
         </span>
       </span>
       {/* data-hero-cta: the guest homepage's draft door IN SEASON.

@@ -27,7 +27,7 @@ const POS_NAME = { QB: 'Quarterback', RB: 'Running back', WR: 'Wide receiver', T
 
 function BackLink() {
   return (
-    <a href="#/players" className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-[6px] text-[14px] font-semibold text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+    <a href="#/players" className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-[6px] text-[15px] font-semibold text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
       <Icon name="back" className="h-4 w-4" /> Every player
     </a>
   )
@@ -65,13 +65,13 @@ function Header({ d, fit, engine }) {
     <header className="grid gap-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-10">
         <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:gap-x-6">
-          <PlayerFace photo={d.photo} initials={d.initials} pos={p.pos} size={112} fluid className="h-[72px] w-[72px] border border-v3-rule text-[22px] sm:row-span-2 sm:h-[112px] sm:w-[112px] sm:text-[32px]" />
+          <PlayerFace photo={d.photo} initials={d.initials} pos={p.pos} size={112} fluid className="h-[72px] w-[72px] border border-v3-rule text-[22px] sm:row-span-2 sm:h-[112px] sm:w-[112px] sm:text-[34px]" />
           <Label className="sm:self-end">{POS_NAME[p.pos] || p.pos} · {p.team || 'Free agent'}{p.bye ? ` · bye week ${p.bye}` : ''}</Label>
           <div className="col-span-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:self-start">
             <Headline className="break-words">{p.name}</Headline>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <PosTag pos={p.pos} />
-              <span className="font-figure text-[14px] font-semibold text-v3-ink2">{p.team || 'FA'}</span>
+              <span className="font-figure text-[15px] font-semibold text-v3-ink2">{p.team || 'FA'}</span>
               {p.inj && <InjuryTag code={p.inj} full />}
               {rookie && <RookieTag />}
               {p.deep && <DeepTag />}

@@ -133,7 +133,7 @@ export function fmtClock(sec) {
 export function Problem({ text, className = '' }) {
   if (!text) return null
   return (
-    <p role="status" className={cx('flex gap-2 rounded-[4px] border border-v3-warn/40 bg-v3-warnWash px-3 py-2.5 text-[14px] leading-[1.5] text-v3-warn', className)}>
+    <p role="status" className={cx('flex gap-2 rounded-[4px] border border-v3-warn/40 bg-v3-warnWash px-3 py-2.5 text-[15px] leading-[1.5] text-v3-warn', className)}>
       <Glyph name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
       <span>{text}</span>
     </p>
@@ -272,7 +272,7 @@ export function StarButton({ on, onClick, name, className = 'h-10 w-10' }) {
    asking for. `row` is ink outline. Disabled carries its reason in a title
    and in the accessible name, rather than as a grey nobody reads. */
 export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'md', label = 'Draft', who = '', className = '', ...rest }) {
-  const dims = size === 'sm' ? 'min-h-[36px] px-3 text-[13px]' : size === 'lg' ? 'min-h-[48px] px-5 text-[15px]' : 'min-h-[40px] px-4 text-[14px]'
+  const dims = size === 'sm' ? 'min-h-[36px] px-3 text-[13px]' : size === 'lg' ? 'min-h-[48px] px-5 text-[15px]' : 'min-h-[40px] px-4 text-[15px]'
   const live = rank === 'call'
     ? 'bg-v3-call text-v3-onCall hover:bg-v3-callDeep'
     : 'border border-v3-ink bg-v3-sheet text-v3-ink hover:bg-v3-band hover:text-white'

@@ -140,7 +140,7 @@ function Lead({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, queue
         <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 flex-1 items-center gap-3 rounded-[4px] text-left', FOCUS)}>
           <Headshot src={engine.photoUrl(p)} name={p.name} size={compact ? 40 : 48} />
           <span className="min-w-0">
-            <span className={cx('block truncate font-extrabold leading-tight tracking-[-0.01em] text-v3-ink', compact ? 'text-[17px]' : 'text-[20px]')}>{p.name}</span>
+            <span className={cx('block truncate font-extrabold leading-tight tracking-[-0.01em] text-v3-ink', compact ? 'text-[18px]' : 'text-[20px]')}>{p.name}</span>
             <span className="mt-1 flex items-center gap-1.5">
               <PosTag pos={p.pos} />
               <span className="truncate font-figure text-[12px] tabular-nums text-v3-ink3">{p.team || 'FA'} · bye {p.bye || '—'}</span>
@@ -162,7 +162,7 @@ function Lead({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, queue
         )}
       </dl>
       {!myTurn && <div className="mt-3"><LastsLine c={c} nextOverall={nextOverall} myTurn={myTurn} big /></div>}
-      <p className="mt-3 text-[14px] font-semibold leading-[1.45] text-v3-ink">{reasonOf(c)}</p>
+      <p className="mt-3 text-[15px] font-semibold leading-[1.45] text-v3-ink">{reasonOf(c)}</p>
       {costs && <p className="mt-1 text-[13px] leading-[1.5] text-v3-ink2"><span className="font-semibold text-v3-ink">What it costs: </span>{costs}</p>}
       {myTurn && (
         <DraftButton id="v3-call-draft" rank="call" size="lg" disabled={!canDraft} reason={draftReason} onClick={() => onDraft(p)} label={`Draft ${surname(p.name)}`} who={p.name} className="mt-3 w-full" />
@@ -180,7 +180,7 @@ function Alternate({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, 
         <PosTag pos={p.pos} />
         <span className="min-w-0">
           <span className="block truncate font-figure text-[11px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{c.label}</span>
-          <span className="block truncate text-[14px] font-bold leading-tight text-v3-ink">{p.name}</span>
+          <span className="block truncate text-[15px] font-bold leading-tight text-v3-ink">{p.name}</span>
           <span className="block truncate font-figure text-[12px] tabular-nums text-v3-ink2">
             <Delta value={c.vorp} className="text-[12px]" /> vs repl
             {nextOverall ? <> · <span className={w.tone}>{pct(c.survival)}</span> lasts</> : null}
@@ -256,7 +256,7 @@ export function CallCard({ engine, decide, header, canDraft, draftReason, onDraf
       </div>
       <ClockDrain engine={engine} />
       {!cands.length ? (
-        <p className="p-4 text-[14px] text-v3-ink2">Nothing left on the board worth ranking.</p>
+        <p className="p-4 text-[15px] text-v3-ink2">Nothing left on the board worth ranking.</p>
       ) : (
         <>
           <div ref={lead}>
@@ -305,7 +305,7 @@ export function Forecast({ engine, decide, nextOverall, onOpen, limit = 6 }) {
                 <button type="button" onClick={() => onOpen(s.player)} className={cx('grid min-h-[44px] w-full grid-cols-[auto_minmax(0,1fr)_minmax(48px,28%)_40px] items-center gap-2.5 rounded-[4px] px-2 text-left hover:bg-v3-paper', FOCUS)}>
                   <PosTag pos={s.player.pos} />
                   <span className="min-w-0">
-                    <span className="block truncate text-[14px] font-semibold text-v3-ink">{s.player.name}</span>
+                    <span className="block truncate text-[15px] font-semibold text-v3-ink">{s.player.name}</span>
                     <span className="block truncate font-figure text-[12px]"><span className={w.tone}>{w.label}</span> <span className="text-v3-ink3">·</span> <Delta value={s.vorp} className="text-[12px]" /></span>
                   </span>
                   <span className="relative h-2 overflow-hidden rounded-full bg-v3-well" aria-hidden="true">
@@ -387,7 +387,7 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
           <span className="block text-[15px] font-bold text-v3-ink">Autopick is on</span>
           <span className="block truncate text-[13px] text-v3-ink2">Juke drafts your picks — your queue first.</span>
         </span>
-        <button type="button" onClick={() => onAutopick(false)} className={cx('min-h-[44px] shrink-0 rounded-[6px] border border-v3-ink bg-v3-sheet px-4 text-[14px] font-semibold text-v3-ink', FOCUS)}>Turn off</button>
+        <button type="button" onClick={() => onAutopick(false)} className={cx('min-h-[44px] shrink-0 rounded-[6px] border border-v3-ink bg-v3-sheet px-4 text-[15px] font-semibold text-v3-ink', FOCUS)}>Turn off</button>
       </div>
     )
   } else if (myTurn && lead) {
@@ -401,7 +401,7 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
               <Label className="shrink-0 text-[11px] text-v3-ink">The call</Label>
               <Glyph name="chevUp" className="h-3.5 w-3.5 shrink-0 text-v3-ink2" />
             </span>
-            <span className="block truncate text-[16px] font-extrabold leading-tight text-v3-ink">{p.name}</span>
+            <span className="block truncate text-[15px] font-extrabold leading-tight text-v3-ink">{p.name}</span>
             <span className="block truncate font-figure text-[12px] tabular-nums text-v3-ink3">{p.pos === 'DST' ? 'D/ST' : p.pos} · <Delta value={lead.vorp} className="text-[12px]" />{lead.survival != null ? ` · ${pct(lead.survival)} lasts` : ''}</span>
           </span>
         </button>

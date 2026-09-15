@@ -112,7 +112,7 @@ export function MoreFooter({ shown, total, step, onMore, noun = '' }) {
         <button
           type="button"
           onClick={onMore}
-          className="inline-flex min-h-[44px] items-center rounded-[6px] border border-v3-rule bg-v3-sheet px-4 text-[14px] font-semibold text-v3-ink transition-colors hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+          className="inline-flex min-h-[44px] items-center rounded-[6px] border border-v3-rule bg-v3-sheet px-4 text-[15px] font-semibold text-v3-ink transition-colors hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
         >
           Show {Math.min(step, total - shown)} more
         </button>
@@ -125,7 +125,7 @@ export function MoreFooter({ shown, total, step, onMore, noun = '' }) {
    the page's own words. Warn only when something is actually wrong. */
 export function Where({ icon, title, text, warn }) {
   return (
-    <p className={cx('flex items-start gap-2.5 text-[14px] leading-[1.5]', warn ? 'text-v3-warn' : 'text-v3-ink2')}>
+    <p className={cx('flex items-start gap-2.5 text-[15px] leading-[1.5]', warn ? 'text-v3-warn' : 'text-v3-ink2')}>
       <XIcon name={warn ? 'warn' : icon} className="mt-[2px] h-[18px] w-[18px] shrink-0" />
       <span><strong className={cx('font-semibold', warn ? 'text-v3-warn' : 'text-v3-ink')}>{title}.</strong> {text}</span>
     </p>

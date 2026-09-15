@@ -43,7 +43,7 @@ function Seat({ chair, index, held, canOrder, canClaim, onClaim, onHold, hostSea
   const body = (
     <>
       <span className={cx('w-5 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chair.you ? 'text-white' : 'text-v3-ink3')}>{index + 1}</span>
-      <span className="min-w-0 flex-1 truncate text-[14px]">
+      <span className="min-w-0 flex-1 truncate text-[15px]">
         <span className={cx(chair.taken ? 'font-semibold' : '')}>{who}</span>
         {index === hostSeat && <span className={cx('ml-1.5 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-ink3')}>host</span>}
       </span>
@@ -103,7 +103,7 @@ function Invite({ code }) {
           value={url}
           data-invite-link
           onFocus={(e) => e.target.select()}
-          className={cx('min-h-[44px] min-w-0 flex-1 rounded-[4px] border border-v3-rule bg-v3-paper px-3 font-figure text-[16px] text-v3-ink2', FOCUS)}
+          className={cx('min-h-[44px] min-w-0 flex-1 rounded-[4px] border border-v3-rule bg-v3-paper px-3 font-figure text-[15px] text-v3-ink2', FOCUS)}
         />
         <QuietButton onClick={copy} className="shrink-0 px-4">
           <Glyph name={copied ? 'check' : 'copy'} className="h-4 w-4" /> {copied ? 'Copied' : 'Copy'}
@@ -212,7 +212,7 @@ export default function RoomLobby({ engine, view }) {
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
           <div className="order-2 grid gap-5 lg:order-1">
             <Sheet code="Seats" aside={`${view.taken} of ${view.seats.length}`} rise={false}>
-              <p className="mb-3 text-[14px] leading-[1.5] text-v3-ink2">
+              <p className="mb-3 text-[15px] leading-[1.5] text-v3-ink2">
                 {canOrder
                   ? held === null
                     ? 'Tap a seat, then tap the one to swap it with. The order is the snake, so it is fixed once the first pick lands.'
@@ -246,12 +246,12 @@ export default function RoomLobby({ engine, view }) {
                     data-start-room
                     onClick={() => engine.startDraft({})}
                     disabled={!!refusal}
-                    className="min-h-[52px] w-full px-7 text-[16px] sm:w-auto"
+                    className="min-h-[52px] w-full px-7 text-[15px] sm:w-auto"
                   >
                     <Glyph name="play" className="h-4 w-4" filled /> Start for everyone
                   </CallButton>
                   {refusal ? <Problem text={refusal} className="flex-1" /> : (
-                    <p className="flex-1 text-[14px] leading-[1.5] text-v3-ink2">
+                    <p className="flex-1 text-[15px] leading-[1.5] text-v3-ink2">
                       Every empty chair drafts as a CPU from your browser, so it keeps moving whether or not all {view.seats.length} seats fill.
                     </p>
                   )}
@@ -282,7 +282,7 @@ export default function RoomLobby({ engine, view }) {
                 screen where the host is standing rather than discovered when
                 the board stops. */}
             <Sheet code="How a shared room works" band rise={false}>
-              <ul className="grid gap-2.5 text-[14px] leading-[1.5] text-v3-ink2">
+              <ul className="grid gap-2.5 text-[15px] leading-[1.5] text-v3-ink2">
                 {/* ui.jsx's Icon, not kit.jsx's Glyph: kit's set has no
                     clock, and a name it does not carry draws an empty path
                     rather than throwing — a missing icon that renders. */}

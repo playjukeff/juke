@@ -226,7 +226,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     : `a FLEX may allow more, but ${sample ? 'a league' : platformName} does not say which slot is one`}
                 />
                 <Step n={3} what={after !== null ? `${best.replacing ? `Counting ${best.sit.name} at 0, your` : 'Your'} lineup goes from ${nowTotal.toFixed(1)} to ${after.toFixed(1)}` : 'The gap is the call'} sub={winAfter !== null && winProb !== null ? `win probability ${Math.round(winProb * 100)}% → ${Math.round(winAfter * 100)}%` : null}>
-                  <p className="font-figure text-[14px] text-v3-ink2">
+                  <p className="font-figure text-[15px] text-v3-ink2">
                     {startPts.toFixed(1)} − {sitPts.toFixed(1)} = <Delta value={best.gain} digits={1} />
                   </p>
                 </Step>
@@ -404,7 +404,7 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
       <dl className="mt-5 grid grid-cols-3 gap-2">
         <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">You</Label></dt><dd className="mt-1"><Pts value={total} /></dd></div>
         <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Them</Label></dt><dd className="mt-1"><Pts value={oppTotal} /></dd></div>
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Margin</Label></dt><dd className="mt-1"><Delta value={margin} digits={1} className="text-[16px]" /></dd></div>
+        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Margin</Label></dt><dd className="mt-1"><Delta value={margin} digits={1} className="text-[15px]" /></dd></div>
       </dl>
       <p className="mt-4 text-[13px] leading-[1.55] text-v3-ink2">
         {pct !== null && mineWeek

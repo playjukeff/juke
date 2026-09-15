@@ -119,11 +119,11 @@ function DraftRow({ e, onDelete }) {
         {/* The letter beside its finishing position, never a /100: the
             letter IS the finishing position, read against the room. */}
         <span className="row-span-2 flex flex-col lg:row-span-1">
-          <span className="font-sheet text-[30px] font-black leading-none tracking-[-0.03em] text-v3-ink">{e.grade || '—'}</span>
+          <span className="font-sheet text-[28px] font-black leading-none tracking-[-0.03em] text-v3-ink">{e.grade || '—'}</span>
           <span className="mt-1 font-figure text-[13px] font-semibold tabular-nums text-v3-ink2">{hasFinish ? `${ordinal(e.rank)} of ${e.teams}` : 'Not graded'}</span>
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[16px] font-bold text-v3-ink">{e.leagueType}</span>
+          <span className="block truncate text-[15px] font-bold text-v3-ink">{e.leagueType}</span>
           <span className="mt-0.5 block truncate font-figure text-[13px] text-v3-ink3">{when} · seat {e.seat}</span>
         </span>
         <span className="flex min-w-0 items-center gap-2">
@@ -131,16 +131,16 @@ function DraftRow({ e, onDelete }) {
           {e.round1Pick ? (
             <>
               {e.round1PickPos ? <PosTag pos={e.round1PickPos} /> : null}
-              <span className="truncate text-[14px] text-v3-ink2">{e.round1Pick}</span>
+              <span className="truncate text-[15px] text-v3-ink2">{e.round1Pick}</span>
             </>
-          ) : <span className="text-[14px] text-v3-ink3">—</span>}
+          ) : <span className="text-[15px] text-v3-ink3">—</span>}
         </span>
         <span className="hidden min-w-0 lg:block">
           <ValueBar value={ahead} max={1} tone="neutral" />
           <span className="mt-1 block font-figure text-[12px] text-v3-ink3">{!hasFinish ? '—' : e.rank === 1 ? 'ahead of the whole room' : e.rank === e.teams ? 'behind the whole room' : `ahead of ${e.teams - e.rank} of ${e.teams - 1}`}</span>
         </span>
         <span className="hidden text-right lg:block">
-          <Delta value={e.rosterVorp} className="text-[16px]" />
+          <Delta value={e.rosterVorp} className="text-[15px]" />
           <span className="mt-0.5 block font-figure text-[11px] text-v3-ink3">lineup over repl.</span>
         </span>
       </a>
@@ -192,7 +192,7 @@ function DraftsSection({ locker, mode, onSeeAll }) {
           {mode === 'peek' ? (
             list.length > PEEK ? (
               <div className="border-t border-v3-rule px-4 py-3 sm:px-5">
-                <button type="button" onClick={onSeeAll} className="inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+                <button type="button" onClick={onSeeAll} className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
                   See all {list.length} drafts <Icon name="arrow" className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -251,7 +251,7 @@ function CallRow({ d }) {
   const cell = (label, text, strong) => (
     <div className="min-w-0">
       <Label as="span" className="text-[11px] lg:hidden">{label}</Label>
-      <p className={cx('break-words', strong ? 'text-[15px] font-semibold leading-[1.4] text-v3-ink' : 'text-[14px] leading-[1.45] text-v3-ink2', !text && 'text-v3-ink3')}>{text || '—'}</p>
+      <p className={cx('break-words', strong ? 'text-[15px] font-semibold leading-[1.4] text-v3-ink' : 'text-[15px] leading-[1.45] text-v3-ink2', !text && 'text-v3-ink3')}>{text || '—'}</p>
     </div>
   )
   return (
@@ -372,7 +372,7 @@ function CallsSection({ dec, mode, onSeeAll, signedIn, leagueStatus }) {
         <ul data-call-rows>{decisions.slice(0, PEEK).map((d) => <CallRow key={d.id} d={d} />)}</ul>
         {decisions.length > PEEK ? (
           <div className="border-t border-v3-rule px-4 py-3 sm:px-5">
-            <button type="button" onClick={onSeeAll} className="inline-flex min-h-[44px] items-center gap-1.5 text-[14px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+            <button type="button" onClick={onSeeAll} className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
               See all {decisions.length} calls, with filters <Icon name="arrow" className="h-3.5 w-3.5" />
             </button>
           </div>

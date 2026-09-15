@@ -77,7 +77,7 @@ function DivisorInput({ rule, disabled, onCommit }) {
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-      className={cx('h-10 w-16 rounded-[4px] border border-v3-rule bg-v3-sheet px-2 text-right font-figure text-[16px] tabular-nums text-v3-ink disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}
+      className={cx('h-10 w-16 rounded-[4px] border border-v3-rule bg-v3-sheet px-2 text-right font-figure text-[15px] tabular-nums text-v3-ink disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}
     />
   )
 }
@@ -106,7 +106,7 @@ function ScoringEditor({ engine, locked, onChange }) {
             {g.rules.map((rule) => (
               <label key={rule.key} className="flex items-center justify-between gap-3 bg-v3-sheet px-3 py-2">
                 <span className="min-w-0">
-                  <span className="block text-[14px] text-v3-ink">{rule.label}</span>
+                  <span className="block text-[15px] text-v3-ink">{rule.label}</span>
                   {rule.historyOnly && <span className="block text-[12px] leading-snug text-v3-ink3">Scores past seasons; does not move this projection</span>}
                 </span>
                 {rule.perYard ? (
@@ -119,7 +119,7 @@ function ScoringEditor({ engine, locked, onChange }) {
                   <input
                     type="number" step="0.5" min="-99" max="99" value={rule.value} disabled={locked}
                     onChange={(e) => { engine.setScoringRule(rule.key, e.target.value); onChange() }}
-                    className={cx('h-10 w-20 shrink-0 rounded-[4px] border border-v3-rule bg-v3-sheet px-2 text-right font-figure text-[16px] tabular-nums text-v3-ink disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}
+                    className={cx('h-10 w-20 shrink-0 rounded-[4px] border border-v3-rule bg-v3-sheet px-2 text-right font-figure text-[15px] tabular-nums text-v3-ink disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}
                   />
                 )}
               </label>
@@ -173,7 +173,7 @@ function DraftOrderList({ engine, league, onChange }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-[40ch] flex-1 text-[13px] leading-[1.5] text-v3-ink2">{hint}</p>
         {canOrder && (
-          <button type="button" onClick={randomize} className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[4px] border border-v3-rule bg-v3-sheet px-3 text-[14px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
+          <button type="button" onClick={randomize} className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[4px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink hover:border-v3-ink3', FOCUS)}>
             <Glyph name="shuffle" className="h-4 w-4" /> Randomize
           </button>
         )}
@@ -206,7 +206,7 @@ function DraftOrderList({ engine, league, onChange }) {
                 <span className={cx('w-6 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chosen ? 'text-white' : 'text-v3-ink3')}>{r.slot + 1}</span>
                 <Glyph name={r.you ? 'person' : 'cpu'} className={cx('h-5 w-5 shrink-0', chosen ? 'text-white' : 'text-v3-ink3')} />
                 <span className="min-w-0 flex-1">
-                  <span className={cx('block truncate text-[14px] font-semibold', chosen ? 'text-white' : 'text-v3-ink')}>{r.name}</span>
+                  <span className={cx('block truncate text-[15px] font-semibold', chosen ? 'text-white' : 'text-v3-ink')}>{r.name}</span>
                   <span className={cx('block font-figure text-[12px]', chosen ? 'text-v3-bandInk' : 'text-v3-ink3')}>
                     Position {r.slot + 1}{r.firstPick ? ` · first pick #${r.firstPick}` : ''}
                   </span>
@@ -347,7 +347,7 @@ export default function SettingsDrawer({ open, engine, onClose, onChange }) {
                       {on && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                     </span>
                     <span className="min-w-0">
-                      <span className={cx('block text-[14px] font-semibold', on ? 'text-white' : 'text-v3-ink')}>{names[key]}</span>
+                      <span className={cx('block text-[15px] font-semibold', on ? 'text-white' : 'text-v3-ink')}>{names[key]}</span>
                       {on && preset && preset.note && <span className="mt-1 block text-[13px] leading-[1.45] text-v3-bandInk">{preset.note}</span>}
                     </span>
                   </button>
@@ -390,12 +390,12 @@ export default function SettingsDrawer({ open, engine, onClose, onChange }) {
                   {['FLEX', 'SFLEX', 'BN'].includes(r.key) ? (
                     <span className="inline-grid h-[22px] min-w-[34px] place-items-center rounded-[4px] border border-v3-rule bg-v3-well px-1.5 font-figure text-[12px] font-bold text-v3-ink">{r.key === 'SFLEX' ? 'SF' : r.key}</span>
                   ) : <PosTag pos={r.key} />}
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-v3-ink">{SLOT_LABEL[r.key]}</span>
+                  <span className="min-w-0 flex-1 truncate text-[15px] text-v3-ink">{SLOT_LABEL[r.key]}</span>
                   <Stepper label={SLOT_LABEL[r.key]} value={r.value} max={r.max === undefined ? 9 : r.max} disabled={locked} onAdd={() => r.set(r.value + 1)} onRemove={() => r.set(r.value - 1)} />
                 </li>
               ))}
             </ul>
-            <p className="mt-3 flex items-baseline gap-2 text-[14px] text-v3-ink2">
+            <p className="mt-3 flex items-baseline gap-2 text-[15px] text-v3-ink2">
               <span className="font-figure text-[24px] font-bold tabular-nums text-v3-ink">{league.rounds}</span>
               roster spots, so the draft runs {league.rounds} rounds.
             </p>
@@ -415,7 +415,7 @@ export default function SettingsDrawer({ open, engine, onClose, onChange }) {
             >
               <Glyph name="chevDown" className={cx('h-4 w-4 shrink-0 text-v3-ink transition-transform motion-reduce:transition-none', showRules ? '' : '-rotate-90')} />
               <span className="min-w-0 flex-1">
-                <span className="block text-[14px] font-semibold text-v3-ink">Edit all {ruleCount} scoring rules</span>
+                <span className="block text-[15px] font-semibold text-v3-ink">Edit all {ruleCount} scoring rules</span>
                 <span className="block text-[13px] text-v3-ink2">Every number rescores the board as you type it.</span>
               </span>
             </button>

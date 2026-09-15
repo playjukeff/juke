@@ -114,10 +114,10 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
           </p>
           <div className="mt-7 flex flex-wrap gap-3">{actions}</div>
           {leagueFailed ? (
-            <p className="mt-4 max-w-[46ch] text-[14px] leading-[1.5] text-v3-ink2" role="alert">Juke could not check whether you have a league connected, so it is not going to guess and ask you to connect one you may already have.</p>
+            <p className="mt-4 max-w-[46ch] text-[15px] leading-[1.5] text-v3-ink2" role="alert">Juke could not check whether you have a league connected, so it is not going to guess and ask you to connect one you may already have.</p>
           ) : null}
           {audience === 'unknown' && tierStatus === 'error' ? (
-            <p className="mt-4 max-w-[46ch] text-[14px] leading-[1.5] text-v3-ink2" role="status">
+            <p className="mt-4 max-w-[46ch] text-[15px] leading-[1.5] text-v3-ink2" role="status">
               Juke could not read your plan just now.{' '}
               <button type="button" onClick={onRetryTier} className="inline-flex min-h-[44px] items-center font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">Try again</button>
             </p>

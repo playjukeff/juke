@@ -190,7 +190,7 @@ export default function Board({ engine, version, onOpen, phone }) {
         </table>
       </div>
       {!follow && !over && (
-        <button type="button" onClick={() => setFollow(true)} className={cx('absolute bottom-3 right-3 z-20 inline-flex min-h-[44px] items-center gap-2 rounded-[6px] border border-v3-ink bg-v3-sheet px-3.5 text-[14px] font-semibold text-v3-ink shadow-[0_8px_24px_-12px_rgb(var(--v3-shade)/0.4)]', FOCUS)}>
+        <button type="button" onClick={() => setFollow(true)} className={cx('absolute bottom-3 right-3 z-20 inline-flex min-h-[44px] items-center gap-2 rounded-[6px] border border-v3-ink bg-v3-sheet px-3.5 text-[15px] font-semibold text-v3-ink shadow-[0_8px_24px_-12px_rgb(var(--v3-shade)/0.4)]', FOCUS)}>
           <Glyph name="target" className="h-4 w-4" /> Jump to the live pick
         </button>
       )}
