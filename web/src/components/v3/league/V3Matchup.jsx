@@ -178,13 +178,11 @@ function stripItems({ total, regular, current, focus, mine, weekView, tailNote }
 function flagsOf(player, week, isCurrent) {
   if (!player) return {}
   const severity = injurySeverity(player.inj)
-  const scored = typeof player.actualPts === 'number' && Number.isFinite(player.actualPts) ? player.actualPts : null
   return {
     severity,
     code: player.inj || null,
     bye: !!week && Number(player.bye) === Number(week),
     locked: isCurrent && player.locked === true,
-    scored,
   }
 }
 
@@ -208,7 +206,7 @@ function NameCell({ row, align, week, isCurrent }) {
           <span className={cx('mt-0.5 flex min-w-0 flex-wrap items-center gap-1 font-figure text-[12px] uppercase tracking-[0.06em] text-v3-ink3', right && 'justify-end')}>
             {p ? <span className="sm:hidden">{p.pos === 'DST' ? 'D/ST' : p.pos}</span> : null}
             {p && p.team ? <span>{p.team}</span> : null}
-            {f.scored !== null ? <span className="text-v3-ink2">· already scored: {f.scored.toFixed(1)}</span> : f.locked ? <span className="text-v3-ink2">· started</span> : null}
+            {f.locked ? <span className="text-v3-ink2">· started</span> : null}
             {f.bye ? <InjuryChip onBye /> : f.severity ? <InjuryChip severity={f.severity} code={f.code} /> : null}
           </span>
         </span>
