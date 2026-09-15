@@ -1454,17 +1454,34 @@ function poolSize() { return adpSet().length; }
    grew out from under the number chosen to illustrate it. A measurement is true
    of the board it was taken on, and this project regenerates the board nightly.
 
-   **It is a necessary condition and not a sufficient one, which is a real
-   limit rather than a rounding error.** This is an aggregate ceiling: it says
-   how many players the room could hold if every pick went to a seat that could
-   still use it. A snake draft is greedy and strands scarce positions late, so
-   a league can clear this bar and still waste picks — measured across all 44
-   shapes the screen offers, at the largest bench each still allows, sixteen of
-   them land 7 to 19 picks on somebody unstartable even though capacity said
-   yes. What holds everywhere is the part that breaks a roster rather than
-   merely wasting a bench spot: every draft completes, and **no seat is ever
-   short of the kicker or defense its format starts** (0 across all 44). See
-   tests/pool-capacity.spec.mjs, which asserts exactly that split.
+   **This is an aggregate ceiling — it says how many players the room could
+   hold if every pick went to a seat that could still use it — and it used to
+   be a necessary condition rather than a sufficient one.** That paragraph is
+   corrected in place 15 September 2026 rather than left standing: it read
+   that a snake draft is greedy and strands scarce positions late, so a league
+   could clear this bar and still waste picks, sixteen of the 44 shapes
+   landing 7 to 19 on somebody unstartable. The greed was never what did it.
+   The waste was this function counting ruled-out rows as capacity, and it is
+   gone with them:
+
+     all 44 shapes, largest bench each allows, seed 8919
+                              before      after
+     every draft completes    44 of 44    44 of 44
+     seats short a K or DST          0           0
+     shapes wasting a pick   28 of 44           0
+     worst waste in a draft         35           0
+
+   The before column is the same sweep run against this function without the
+   isRuledOut() line, on the same board the same afternoon — the control, so
+   that a clean report is evidence rather than a check that stopped looking.
+   (It is 28 and 35 where the retired note says 16 and 19 because that note
+   was measured on the 1 September board; the in-season ADP collapse made the
+   same defect worse before anything fixed it.)
+
+   See tests/pool-capacity.spec.mjs, which asserts the split that matters:
+   every draft completes, and no seat is ever short of the kicker or defense
+   its format starts. Its waste bound is now headroom over zero rather than a
+   residue anybody is living with.
 
    Per position, because that is where the ceiling is: holdCap() is exactly the
    count above which needFromCount() refuses, so this is the board filtered

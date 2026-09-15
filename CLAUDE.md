@@ -1868,27 +1868,47 @@ is greedy and does not achieve that ceiling — it strands the scarce positions
 late, and a seat whose remaining legal positions have run dry takes somebody it
 can never start.
 
-Measured across all 44 shapes the screen offers, each at the largest bench
-`setupProblem()` still allows — the tightest corner there is:
+**Re-measured 15 September 2026, and the residue is gone rather than
+bounded.** The table below used to read 16 of 44 shapes wasting and a worst
+draft of 19 picks, measured on the 1 September board. Both halves of that are
+retired: the waste was `absorbableSize()` counting ruled-out rows (see the
+correction below), and with them excluded there is none left to bound.
+
+All 44 shapes the screen offers, each at the largest bench `setupProblem()`
+still allows — the tightest corner there is — on the 15 September board, seed
+8919:
 
 ```
-every draft completes                     44 of 44
-seats short a mandatory K or DST           0
-shapes wasting a pick on the unstartable  16 of 44
-worst waste in one draft                  19 picks
-any waste below 18 teams                   0
+                              before      after
+every draft completes         44 of 44    44 of 44
+seats short a K or DST               0           0
+shapes wasting a pick         28 of 44           0
+worst waste in one draft            35           0
+lowest team count wasting           12           —
 ```
 
-So the guard closes the gross case and leaves a bounded residue at the deep end.
-The split worth holding on to is between **the thing that breaks a roster and
-the thing that wastes a bench spot on it**: nobody is ever left without the
-kicker or defense their format starts, and no league anybody actually plays
-wastes a pick at all.
+**The before column is a control rather than a memory.** It is the same sweep
+against the same board with the one `isRuledOut()` line taken back out, run
+the same afternoon — because a sweep reporting zero is only evidence if a
+dirty run would have reported something, and this project has shipped a check
+that stopped looking three times. It reported 28 rows and named every one.
 
-`tests/pool-capacity.spec.mjs` asserts exactly that split — the first three
-exactly, the last as a bound with headroom — rather than asserting zero waste
-everywhere, which is a property this guard was never able to give and which
-would have stood red.
+**It says 28 and 35 where the retired note says 16 and 19 because that note
+was measured on the 1 September board.** The in-season ADP collapse made the
+same defect materially worse — from twelve teams up rather than eighteen —
+before anything fixed it, which is this file's own rule that a measurement is
+true of the board it was taken on, landing on a figure that was itself
+describing a bug.
+
+The split worth holding on to is still between **the thing that breaks a
+roster and the thing that wastes a bench spot on it**: nobody is ever left
+without the kicker or defense their format starts, and now nobody wastes a
+pick either.
+
+`tests/pool-capacity.spec.mjs` asserts the first three exactly and the last as
+a bound. **That bound is deliberately left where it is** — it is headroom over
+zero now rather than a residue anybody is living with, and it is the mechanism
+that noticed this in the first place.
 
 **This residue was written up as a greedy-snake failure in `cpuChoice()`, and
 it was the conservation law the whole time — measured against a capacity
