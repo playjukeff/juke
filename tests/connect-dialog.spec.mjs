@@ -33,7 +33,7 @@ const LEAGUE = {
   ],
 }
 
-async function openDialog(page) {
+async function openDialog(page, opts = {}) {
   await page.addInitScript(() => {
     window.JukeAuth = {
       isSignedIn: true, userId: 'u_test',
@@ -44,7 +44,7 @@ async function openDialog(page) {
   // live.js assigns window.Live wholesale at boot, so the stubs go on
   // AFTER it lands rather than in an init script that it overwrites.
   await page.waitForFunction(() => !!window.Live)
-  await page.evaluate((lg) => {
+  await page.evaluate(({ lg, connectFails }) => {
     window.__LEAGUE = lg
     window.__calls = []
     const ok = (extra) => Object.assign({ ok: true, reason: null }, extra)
@@ -59,10 +59,11 @@ async function openDialog(page) {
     }
     window.Live.connectLeague = (token, leagueId, ownerId, provider, cred) => {
       window.__calls.push({ fn: 'connectLeague', leagueId, ownerId, provider, pid: cred && cred.pid })
+      if (connectFails) return Promise.resolve({ ok: false, reason: connectFails })
       return Promise.resolve(ok({ league: window.__LEAGUE }))
     }
     window.dispatchEvent(new Event('juke:auth'))
-  }, LEAGUE)
+  }, { lg: LEAGUE, connectFails: opts.connectFails || null })
   await page.getByRole('button', { name: /connect a league/i }).first().click()
 }
 
@@ -122,4 +123,33 @@ test('the other two platforms are untouched by it', async ({ page }) => {
   await page.getByRole('button', { name: /^Sleeper/ }).click()
   await expect(page.getByRole('heading', { name: /sleeper username/i })).toBeVisible()
   await expect(page.locator('#cbs-pid')).toHaveCount(0)
+})
+
+test('a connect that fails keeps the team you picked', async ({ page }) => {
+  /* The deployment having no usable key is not the reader's fault and not a
+     retry -- but it used to be written into `status`, which the picking step
+     does not render, so the dialog fell back to the address form and threw
+     away the team. Reported from the live site.
+
+     What this asserts is that the press and its answer stay on one screen. */
+  await openDialog(page, { connectFails: 'private-unavailable' })
+
+  await page.getByRole('button', { name: /^CBS/ }).click()
+  await page.locator('input[placeholder*="cbssports.com"]')
+    .fill('sanctuaryfootballleague.football.cbssports.com')
+  await page.locator('#cbs-pid').fill('GOODPID')
+  await page.getByRole('button', { name: /find my league/i }).click()
+
+  await page.getByRole('radio', { name: 'Team Four CHASE' }).click()
+  await page.getByRole('button', { name: /connect this team/i }).click()
+
+  await expect(page.getByText(/not switched on for this deployment/i)).toBeVisible()
+
+  // Still on the picking step: the league, the chosen team and the button
+  // that was pressed are all still there.
+  await expect(page.getByText('Sanctuary Football League')).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'Team Four CHASE' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /connect this team/i })).toBeVisible()
+  // And NOT back on the address step.
+  await expect(page.getByRole('button', { name: /find my league/i })).toHaveCount(0)
 })

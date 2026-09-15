@@ -120,6 +120,20 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      Held here for as long as the dialog is open and never in localStorage,
      the same rule the ESPN pair above follows. */
   const [pid, setPid] = useState('')
+  /* Why the CONNECT failed, kept apart from `status`.
+
+     A failure at this step used to be written into `status`, and none of
+     the values it wrote are ones the picking step renders — so the dialog
+     fell through to the address form and the reader lost the team they had
+     just chosen, on a screen that had already resolved their league.
+     Reported from the live site, with the address and the cookie still
+     filled in and the error above a "Find my league" button that had
+     nothing left to find.
+
+     The press happened on the picking step, so the message belongs there.
+     `status` goes back to 'picking' and this carries the reason. */
+  const [connectError, setConnectError] = useState(null)
+
   // Which tier's cap was hit, and what it is — filled only on a tier-limit
   // refusal, to say which plan this account is on rather than a bare
   // "you're at your limit".
@@ -141,6 +155,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setPid('')
       setPlatform(null)
       setTierInfo({ tier: null, cap: null })
+      setConnectError(null)
       setEmail('')
       setNotifyStatus('idle')
       // Always the first step, never the one it was left on: this dialog
@@ -283,6 +298,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
 
   const connect = async () => {
     if (!chosen) return
+    setConnectError(null)
     setStatus('connecting')
     const l = live()
     /* What identifies the reader inside the league differs by platform:
@@ -304,15 +320,22 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
         setStatus('tier-limit')
         return
       }
-      // A league that stopped being public between the lookup and the
-      // connect is worth naming rather than reporting as a generic failure.
-      /* "private-unavailable" is this deployment having nowhere to seal a
-         credential, which is not the reader's fault and not a retry --
-         so it may not be reported as either "private" (go and make your
-         league public) or a generic error. */
-      setStatus(res.reason === 'private-unavailable' ? 'private-unavailable'
-              : res.reason === 'private' ? 'private'
-              : 'error')
+      /* Back to 'picking', with the reason beside the button that was
+         pressed -- rather than into a status the picking step does not
+         render, which drops the reader onto the address form and discards
+         the team they chose. The tier-limit branch above is the one real
+         exception: it replaces the whole dialog on purpose, because the
+         answer is not "try again" but "you are at your plan's limit".
+
+         A league that stopped being public between the lookup and the
+         connect is worth naming rather than reporting as generic, and
+         "private-unavailable" is this deployment having nowhere to seal a
+         credential -- not the reader's fault, not a retry, and not
+         something to report as "go and make your league public". */
+      setConnectError(res.reason === 'private-unavailable' ? 'private-unavailable'
+                    : res.reason === 'private' ? 'private'
+                    : 'error')
+      setStatus('picking')
       return
     }
     setStatus('done')
@@ -704,6 +727,16 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               </ul>
             )}
 
+            {connectError ? (
+              <p className="mt-4 text-meta text-flow-rose">
+                {connectError === 'private-unavailable'
+                  ? 'Private leagues are not switched on for this deployment yet. Nothing was stored.'
+                  : connectError === 'private'
+                    ? `${platform ? platform.name : 'That platform'} would not let Juke read that league as you. Your sign-in may have expired — go back and paste it again.`
+                    : `Could not reach ${platform ? platform.name : 'the platform'} just now. Try again in a moment.`}
+              </p>
+            ) : null}
+
             <button
               type="button"
               onClick={connect}
@@ -862,11 +895,6 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   again.
                 </p>
               </>
-            ) : null}
-            {status === 'private-unavailable' ? (
-              <p className="mt-2 text-meta text-flow-rose">
-                Private leagues are not switched on for this deployment yet. Nothing was stored.
-              </p>
             ) : null}
             {status === 'error' ? (
               <p className="mt-2 text-meta text-flow-rose">
