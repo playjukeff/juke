@@ -41,7 +41,11 @@ const near = (name, got, want, tol) =>
    below is exercised against numbers the app really produces. */
 const CV = { QB: 0.44, RB: 0.583, WR: 0.645, TE: 0.635, K: 0.483, DST: 0.721 };
 
-const row = (pos, projPts) => ({ id: pos + projPts, player: { id: pos, pos }, projPts });
+const row = (pos, projPts, actualPts) => {
+  const r = { id: pos + projPts, player: { id: pos, pos }, projPts };
+  if (actualPts !== undefined) r.player.actualPts = actualPts;
+  return r;
+};
 
 /* Nine seats, which is the default lineup this project is built around. */
 const LINEUP = [
@@ -71,6 +75,57 @@ const LINEUP = [
     `stdev ${t.stdev}, naive sum ${sumOfSpreads}`
   );
   is("it reports how many seats it counted", t.starters, 9);
+}
+
+// ---- an already-scored row has no variance left ----------------------------
+{
+  // Same nine seats, with the QB and one WR already having played: their
+  // rows carry actualPts, the rest are still projections.
+  const MIXED = [
+    row("QB", 20, 24.6), row("RB", 15), row("RB", 12), row("WR", 14, 9.1), row("WR", 11),
+    row("WR", 9), row("TE", 8), row("K", 8), row("DST", 7),
+  ];
+  const t = teamWeek(MIXED, CV);
+  const wantMean = 24.6 + 15 + 12 + 9.1 + 11 + 9 + 8 + 8 + 7;
+  near("an already-scored row's actual replaces his projection in the mean", t.mean, wantMean, 0.001);
+  const stillProjected = MIXED.filter((r) => typeof r.player.actualPts !== "number");
+  const wantVariance = stillProjected.reduce((a, r) => a + (CV[r.player.pos] * r.projPts) ** 2, 0);
+  near(
+    "variance sums only the squared sd of still-projected rows -- an actual contributes zero",
+    t.stdev,
+    Math.sqrt(wantVariance),
+    0.001
+  );
+  is("every seat still counts, whichever way it was priced", t.starters, 9);
+}
+
+{
+  // The branch order matters: an already-scored row must be accepted
+  // BEFORE either refusal below runs, because neither refusal is about a
+  // player who has already played.
+  const partial = Object.fromEntries(Object.entries(CV).filter(([k]) => k !== "QB"));
+  const noCv = [
+    row("QB", 20, 24.6), row("RB", 15), row("RB", 12), row("WR", 14), row("WR", 11),
+    row("WR", 9), row("TE", 8), row("K", 8), row("DST", 7),
+  ];
+  const t1 = teamWeek(noCv, partial);
+  check(
+    "an already-scored row with no cv entry for his position is still counted, not refused",
+    !!t1 && t1.starters === 9,
+    `got ${JSON.stringify(t1)}`
+  );
+
+  const noProj = [
+    { id: "QBnull", player: { id: "QB", pos: "QB", actualPts: 24.6 }, projPts: null },
+    row("RB", 15), row("RB", 12), row("WR", 14), row("WR", 11),
+    row("WR", 9), row("TE", 8), row("K", 8), row("DST", 7),
+  ];
+  const t2 = teamWeek(noProj, CV);
+  check(
+    "and one with no projection at all is still counted, not refused",
+    !!t2 && t2.starters === 9,
+    `got ${JSON.stringify(t2)}`
+  );
 }
 
 // ---- every refusal ---------------------------------------------------------

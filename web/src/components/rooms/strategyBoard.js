@@ -271,6 +271,34 @@ export function withLiveStatus(byId, status, week) {
   return out
 }
 
+/* The board's players with each rostered player's ALREADY-SCORED points laid
+ * over them, once a game has kicked off.
+ *
+ * Same contract as `withLiveStatus()` and for the same reason: `board`'s
+ * rows are the Draft Room's rows too, so this returns a COPY rather than
+ * writing `actualPts` onto a shared player object. Callers chain the two —
+ * `withLiveActuals(withLiveStatus(byId, snapshot.status, week), snapshot.actuals, week)`
+ * — so a row carries both facts by the time `lineupRows()`/`teamWeek()` see
+ * it, with no second lookup structure to keep aligned by id.
+ *
+ * A stale week is refused exactly as `platformScorer()`/`withLiveStatus()`
+ * already refuse one: an actuals map stamped for another week is not an
+ * answer about this one. */
+export function withLiveActuals(byId, actuals, week) {
+  const players = actuals && actuals.players
+  if (!byId || !players || typeof players !== 'object') return byId
+  if (week && actuals.week && Number(actuals.week) !== Number(week)) return byId
+  const out = new Map(byId)
+  for (const id of Object.keys(players)) {
+    const live = players[id]
+    const player = byId.get(String(id))
+    if (!player || !live) continue
+    if (typeof live.points !== 'number' || !Number.isFinite(live.points)) continue
+    out.set(String(id), { ...player, actualPts: live.points })
+  }
+  return out
+}
+
 /* What one swap would add.
  *
  * ---- Same position only, and that is a correctness constraint ----
@@ -355,12 +383,25 @@ export function bestSwaps(team, byId, weekPts, week, limit) {
  * decision attached.
  *
  * An empty lineup is null too, not 0: nothing has been set, which is a
- * different fact from a lineup worth nothing. */
+ * different fact from a lineup worth nothing.
+ *
+ * ---- An already-scored starter counts his actual, not his projection ----
+ *
+ * `teamWeek()` in lib/matchup.js takes the identical branch, and it has to:
+ * this is the headline total a screen prints beside win probability's own
+ * mean, and the two disagreeing the moment any starter is locked-and-scored
+ * is the "two numbers for one quantity" failure this project has shipped
+ * and fixed before. There is no MIN_STARTERS floor here to match — this
+ * function has always had to answer for an early, partial roster, and that
+ * is unchanged — so the branch is written here on its own rather than by
+ * sharing code with teamWeek(). */
 export function projectedTotal(team, byId, weekPts) {
   const rows = lineupRows(team, byId, weekPts)
   if (!rows.length) return null
   let total = 0
   for (const row of rows) {
+    const actual = row.player && row.player.actualPts
+    if (typeof actual === 'number' && Number.isFinite(actual)) { total += actual; continue }
     if (row.projPts === null) return null
     total += row.projPts
   }

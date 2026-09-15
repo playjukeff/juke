@@ -437,6 +437,31 @@ export function weekProjection(player, season, week) {
   return null;
 }
 
+/* ESPN's own points for one player in one week THAT HAS ALREADY BEEN
+   PLAYED -- weekProjection()'s sibling, reading the row that function's own
+   comment already names and skips: statSourceId 0, "what actually
+   happened -- present for players whose game has kicked off."
+
+   Same four fields pick the row, with the source flipped. No match means
+   the game has not kicked off yet -- the row's mere presence on ESPN's
+   response is already the evidence, per the comment above, so there is no
+   separate lock check to make here. Returns null on no match, matching
+   weekProjection()'s own convention exactly, so a caller never has to
+   check two different shapes for "nothing here yet". A genuinely scored
+   zero is preserved: `Number.isFinite(0)` is true. */
+export function weekActual(player, season, week) {
+  if (!player || !week) return null;
+  const stats = Array.isArray(player.stats) ? player.stats : [];
+  for (const s of stats) {
+    if (!s || Number(s.statSourceId) !== 0 || Number(s.statSplitTypeId) !== 1) continue;
+    if (Number(s.scoringPeriodId) !== Number(week)) continue;
+    if (season && s.seasonId != null && Number(s.seasonId) !== Number(season)) continue;
+    const pts = Number(s.appliedTotal);
+    return Number.isFinite(pts) ? Math.round(pts * 10000) / 10000 : null;
+  }
+  return null;
+}
+
 /* Resolve one league's rostered players to Sleeper ids.
 
    `lookup` is injected rather than imported, so this file never touches D1
@@ -684,6 +709,11 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
   const projSeason = Number(league.seasonId || season) || null;
   const projected = {};
   let projectedCount = 0;
+  /* What each rostered player has ALREADY scored this week, off the same
+     row weekProjection() reads -- see weekActual(). A live win-probability
+     card wants this ahead of the projection once a game has kicked off. */
+  const actual = {};
+  let actualCount = 0;
   /* Each rostered player's status as ESPN reports it right now -- see
      status.js for why the rooms stopped reading the nightly board for this.
      `lineupLocked` is ESPN's own flag that a player's game has kicked off:
@@ -711,6 +741,8 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
       players.push(id);
       const pts = weekProjection(p, projSeason, week);
       if (pts !== null) { projected[id] = pts; projectedCount += 1; }
+      const actualPts = weekActual(p, projSeason, week);
+      if (actualPts !== null) { actual[id] = actualPts; actualCount += 1; }
       const pe = e.playerPoolEntry || {};
       const inj = injuryCode(p.injuryStatus != null ? p.injuryStatus : e.injuryStatus);
       live[id] = { inj: inj === null ? "" : inj, locked: pe.lineupLocked === true };
@@ -772,6 +804,18 @@ export async function leagueSnapshot(leagueId, season, base, resolve) {
          whose rosters carry no projection yet. */
       projections: week && projectedCount
         ? { week, source: "espn", points: projected }
+        : null,
+      /* What each rostered player has ALREADY scored this week -- the
+         actual line beside the projection row, both read off the same
+         mRoster entry. Null before any game this week has kicked off, and
+         per player rather than per lineup: a starter whose game has not
+         started yet carries no entry here at all, never a zero standing in
+         for "not yet". Stamped with when it was read, matching status --
+         how fresh an in-progress score is matters exactly as much as how
+         fresh an injury designation is. */
+      actuals: week && actualCount
+        ? { week, source: "espn", at: Date.now(),
+            players: Object.fromEntries(Object.entries(actual).map(([id, points]) => [id, { points }])) }
         : null,
       /* Live injury designation and lineup lock per rostered player, stamped
          with when it was read so a screen can say how fresh it is. See

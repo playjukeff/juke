@@ -298,6 +298,27 @@ function lockedClubs(schedule, week) {
   return out;
 }
 
+/* Every player's already-scored points for one week, flattened out of
+   sleeperWeek()'s per-side starters/bench arrays. A CANDIDATE only -- see
+   the locked gate in leagueSnapshot() for why a candidate here is not yet
+   an actual: sleeperWeek()'s own docstring says a "live" week reports a
+   literal 0.0 for a player whose own game has not started, and 0 is not a
+   score. */
+function sleeperWeekPoints(view) {
+  const out = new Map();
+  if (!view || !Array.isArray(view.games)) return out;
+  view.games.forEach((g) => {
+    (g.teams || []).forEach((side) => {
+      (side.starters || []).concat(side.bench || []).forEach((row) => {
+        if (row && row.id && typeof row.points === "number" && Number.isFinite(row.points)) {
+          out.set(row.id, row.points);
+        }
+      });
+    });
+  });
+  return out;
+}
+
 export async function leagueSnapshot(leagueId, base) {
   const id = encodeURIComponent(leagueId);
   const [league, rosters, users, state, drafts] = await Promise.all([
@@ -368,11 +389,17 @@ export async function leagueSnapshot(leagueId, base) {
   const season = String(league.season || (state && state.season) || "");
   let feed = null;
   let schedule = null;
+  let matchupRows = null;
   if (week && regular && season) {
     const fb = feedBase(base);
-    [feed, schedule] = await Promise.all([
+    /* The matchups endpoint is under /v1, like every /league/ route -- base,
+       never feedBase(). It rides on the same round trip as the projection
+       and the schedule rather than a fourth call: nothing here depends on
+       it, and it costs nothing if it fails (see the actuals gate below). */
+    [feed, schedule, matchupRows] = await Promise.all([
       getJson(projectionPath(season, week), fb),
       getJson("/schedule/nfl/regular/" + encodeURIComponent(season), fb),
+      getJson("/league/" + id + "/matchups/" + encodeURIComponent(String(week)), base),
     ]);
   }
   const rostered = new Set();
@@ -404,6 +431,34 @@ export async function leagueSnapshot(leagueId, base) {
     if (inj !== null) entry.inj = inj;
     live[id] = entry;
   });
+
+  /* What each rostered player has ALREADY scored this week -- Sleeper's own
+     precomputed points off the matchups endpoint, never a Juke recomputation.
+     Gated on the SAME `locked` flag `live` already carries, built from the
+     same `lockedClubs(schedule, week)` set: sleeperWeek()'s own docstring
+     states that a "live" week reports every rostered player a real number,
+     with a player whose own game has not kicked off showing a literal 0.0
+     -- not null, not omitted. Treating that 0.0 as an already-scored,
+     zero-variance actual would be exactly the "treat 0 from a feed as
+     missing" failure this project has a rule against, so a candidate here
+     is included only once his own club is confirmed locked. A candidate
+     with no entry in `live` at all -- a player the projections feed never
+     carried a row for -- is left out rather than guessed at. */
+  let actuals = null;
+  if (Array.isArray(matchupRows)) {
+    const view = sleeperWeek(league, state, matchupRows, week);
+    if (view && (view.phase === "live" || view.phase === "final")) {
+      const gated = {};
+      let gatedCount = 0;
+      sleeperWeekPoints(view).forEach((pts, pid) => {
+        if (live[pid] && live[pid].locked === true) {
+          gated[pid] = { points: pts };
+          gatedCount += 1;
+        }
+      });
+      if (gatedCount) actuals = { week, source: "sleeper", at: Date.now(), players: gated };
+    }
+  }
 
   const draft = pickDraft(drafts, league.season);
   const scoring = rulesFromSleeper(league.scoring_settings);
@@ -448,6 +503,11 @@ export async function leagueSnapshot(leagueId, base) {
     projections: week && scored
       ? { week, source: "sleeper", points }
       : null,
+    /* What each rostered player has ALREADY scored this week -- see the
+       gate above. Null before any game this week has kicked off, and per
+       player rather than per lineup: a starter whose game has not started
+       carries no entry here, never a zero standing in for "not yet". */
+    actuals,
     /* Live designation and game lock per rostered player -- see status.js. */
     status: week && rows.size
       ? { week, source: "sleeper", at: Date.now(), players: live }
