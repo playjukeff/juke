@@ -213,6 +213,13 @@ jobs:
 
       - name: Verify the ESPN adapter
         run: node worker/test-espn.mjs
+
+      # CBS, whose whole surface is behind a session, so there is no public
+      # league to re-check this against the way espn.js is re-checked. The
+      # fixture is shaped from real captured payloads and CLAUDE.md's CBS
+      # section carries the date they were taken on.
+      - name: Verify the CBS adapter
+        run: node worker/test-cbs.mjs
       - name: Verify the live injury vocabulary
         run: node worker/test-status.mjs
 
