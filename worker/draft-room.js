@@ -55,6 +55,10 @@ import {
   leagueSnapshot as espnLeagueSnapshot, leagueTransactions as espnLeagueTransactions,
   espnSource, ESPN_API
 } from "./espn.js";
+import {
+  cbsSlug, cbsSource,
+  lookupLeague as cbsLookupLeague, leagueSnapshot as cbsLeagueSnapshot
+} from "./cbs.js";
 
 /* Sealing the credential a private league needs. Kept out of store.js for
    the reason auth.js is: that file owns D1 and this owns the key, and a
@@ -1268,10 +1272,10 @@ async function sleeperMatchupsRoute(request, env) {
    have told them directly — and the origin check is what stops this being a
    general-purpose proxy. Same reasoning the Sleeper pair is written under. */
 
-function espnSeason(url, state) {
+function connectedSeason(url, state) {
   /* The season Sleeper says it is in, not one derived from the clock.
 
-     Two providers, one notion of "now": deriving ESPN's season separately
+     Three providers, one notion of "now": deriving a second season
      would let the app ask ESPN about 2027 while every other screen is on
      2026, which is the "written down twice" failure with a year in it. The
      caller can override for somebody connecting an old league. */
@@ -1326,7 +1330,7 @@ async function espnLookupRoute(request, env) {
   }
 
   const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
-  const season = espnSeason(url, state);
+  const season = connectedSeason(url, state);
   if (!season) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
@@ -1388,7 +1392,7 @@ async function espnTransactionsRoute(request, env, ctx) {
   }
 
   const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
-  const season = espnSeason(url, state);
+  const season = connectedSeason(url, state);
   if (!season) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
@@ -1454,7 +1458,7 @@ async function espnSnapshotRoute(request, env, ctx) {
   }
 
   const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
-  const season = espnSeason(url, state);
+  const season = connectedSeason(url, state);
   if (!season) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
@@ -1515,6 +1519,160 @@ async function espnSnapshotRoute(request, env, ctx) {
      rosters to anybody who asked for the same league id, with no
      credential, as a healthy-looking 200. The read guard above does not
      close that on its own -- the write is the leak. */
+  if (out.snapshot.crosswalkReady && !cred) {
+    await cache.put(key, new Response(body, {
+      headers: { "content-type": "application/json", "cache-control": "public, max-age=" + SNAPSHOT_TTL }
+    }));
+  }
+  return new Response(body, { headers });
+}
+
+
+/* ---- CBS ----
+
+   Two routes again, and one difference from ESPN that shapes both: **there
+   is no public CBS league.** Every endpoint that says who is in a league or
+   what they hold answers "User not signed in" anonymously, so unlike
+   `/espn/league` there is no signed-out lookup that can ever succeed.
+
+   A GET is kept anyway and reads as whatever the caller has ALREADY stored,
+   which is what makes revisiting a connected league work. Signed out it
+   answers `private`, which is the truth about CBS rather than a refusal
+   this route invented.
+
+   The other difference is the id. A CBS league IS its subdomain -- every
+   endpoint requires a `league_id` parameter and then ignores it -- so the
+   id here is a slug that becomes a hostname, and `cbsSlug()` is what stops
+   that being an open proxy. It is validated before a URL is built, because
+   a URL that parses is not a URL that points where you meant. */
+
+async function cbsCredFor(env, clerkId, leagueId) {
+  if (!clerkId) return null;
+  const blob = await leagueCredentialBlob(env, clerkId, "cbs", leagueId);
+  if (!blob) return null;
+  return await openCredential(blob, { clerkId, provider: "cbs", leagueId }, env);
+}
+
+/* The lookup, and its POST is the connect dialog's own step.
+
+   Same split as ESPN's and for the same reason: a POST carries a session
+   the reader has just copied out of their own browser and answers whether
+   it works, which left open is an oracle for testing stolen cookies on our
+   origin and our IP. `requireUser()` takes that away and costs the dialog
+   nothing, because the whole of it is behind Clerk already. */
+async function cbsLookupRoute(request, env) {
+  const wantsPrivate = request.method === "POST";
+
+  let asUser = null;
+  if (wantsPrivate) {
+    const { user, error } = await requireUser(request, env);
+    if (error) return error;
+    asUser = user;
+  } else if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+  const url = new URL(request.url);
+
+  /* A league URL is what a reader actually has, so this takes either -- and
+     `cbsSlug()` refuses anything that is not a CBS fantasy host rather than
+     trusting the first label of whatever was pasted. */
+  const slug = cbsSlug((url.searchParams.get("league") || "").trim().slice(0, 200));
+  if (!slug) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
+  const season = connectedSeason(url, state);
+  if (!season) {
+    return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
+  }
+
+  let cred = null;
+  if (wantsPrivate) {
+    let body = null;
+    try { body = await request.json(); } catch { body = null; }
+    /* One cookie, measured by elimination against a real league: 51 in a
+       signed-in browser, removed one at a time, and exactly one required.
+       `auth_state`, `ppid`, `userId` and `minUnifiedSessionToken10` all
+       look like candidates and every one of them is droppable. */
+    const pid = String((body && body.pid) || "").trim().slice(0, 2048);
+    if (pid) cred = { pid };
+    if (!cred) cred = await cbsCredFor(env, asUser.id, slug);
+  } else {
+    cred = await cbsCredFor(env, await optionalUser(request, env), slug);
+  }
+
+  const found = await cbsLookupLeague(slug, season, cbsSource(env.CBS_BASE || null, cred));
+  return new Response(JSON.stringify(Object.assign({ season }, found)), { headers });
+}
+
+/* The league's rosters, crosswalked, in the one vocabulary every room reads.
+
+   The edge-cache guard below is the same one the ESPN snapshot carries, and
+   it is worth reading with CBS's own fact beside it: every CBS read is
+   credentialed, so in practice this cache never fires at all. It is kept
+   rather than dropped because the guard is the thing that must not be
+   forgotten -- this key is league and season alone, so writing a
+   credentialed read here would serve one reader's rosters to anybody who
+   asked for the same slug, as a healthy-looking 200.
+
+   What that costs is one upstream call per render rather than per two
+   minutes, bounded on the client by snapshotStore's own window. A private
+   ESPN league has had exactly that property since it shipped, and the cost
+   is stated rather than bought back with a key nobody has measured. */
+async function cbsSnapshotRoute(request, env, ctx) {
+  if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+  const url = new URL(request.url);
+  const slug = cbsSlug((url.searchParams.get("league") || "").trim().slice(0, 200));
+  if (!slug) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
+  const season = connectedSeason(url, state);
+  if (!season) {
+    return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
+  }
+
+  const cred = await cbsCredFor(env, await optionalUser(request, env), slug);
+
+  const cache = caches.default;
+  const key = new Request(
+    "https://juke.internal/cbs/snapshot?league=" + slug + "&season=" + season,
+    { method: "GET" }
+  );
+  if (!cred) {
+    const hit = await cache.match(key);
+    if (hit) return new Response(await hit.text(), { headers });
+  }
+
+  const resolve = (wanted) => resolveSleeperIds(env, wanted);
+  const out = await cbsLeagueSnapshot(slug, season, cbsSource(env.CBS_BASE || null, cred), resolve);
+
+  if (!out.snapshot) {
+    const status = out.reason === "private" ? 403 : out.reason === "not-found" ? 404 : 503;
+    return new Response(JSON.stringify({ error: out.reason }), { status, headers });
+  }
+
+  // Same as the ESPN snapshot: the pool is what the crosswalk reads, and on
+  // a fresh deployment it is empty until the nightly cron first runs.
+  if (!out.snapshot.crosswalkReady) {
+    after(ctx, syncPlayerPool(env).then((n) => {
+      if (n) console.log("player pool filled on demand:", n);
+    }));
+  }
+
+  const body = JSON.stringify(out.snapshot);
   if (out.snapshot.crosswalkReady && !cred) {
     await cache.put(key, new Response(body, {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=" + SNAPSHOT_TTL }
@@ -1619,6 +1777,23 @@ async function refreshActiveLeague(env, clerkId, league) {
       if (!found.league) return;
       await refreshLeagueCache(env, clerkId, Object.assign({}, found.league, {
         provider: "espn",
+        leagueId: league.leagueId
+      }));
+      return;
+    }
+
+    if (league.provider === "cbs") {
+      const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
+      const season = String(league.season || (state && state.season) || "");
+      if (!season) return;
+      /* Always as the reader, because there is no other way to read CBS at
+         all -- without the credential this answers "private" every hour
+         and the cached name and draft time go stale for ever. */
+      const cred = await cbsCredFor(env, clerkId, league.leagueId);
+      const found = await cbsLookupLeague(league.leagueId, season, cbsSource(env.CBS_BASE || null, cred));
+      if (!found.league) return;
+      await refreshLeagueCache(env, clerkId, Object.assign({}, found.league, {
+        provider: "cbs",
         leagueId: league.leagueId
       }));
       return;
@@ -1748,11 +1923,6 @@ async function meLeaguesRoute(request, env, ctx) {
     return new Response(JSON.stringify({ error: "bad-json" }), { status: 400, headers });
   }
 
-  const leagueId = String((body && body.leagueId) || "").slice(0, 40);
-  if (!/^[0-9]{6,32}$/.test(leagueId)) {
-    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
-  }
-
   /* Which platform, defaulting to the one that was the only one.
 
      Every connect posted before ESPN existed carried no provider at all, so
@@ -1761,8 +1931,30 @@ async function meLeaguesRoute(request, env, ctx) {
      sent, because this value is a primary key column and a caller could
      otherwise invent a provider nothing can ever read back. */
   const provider = String((body && body.provider) || "sleeper").slice(0, 16);
-  if (provider !== "sleeper" && provider !== "espn") {
+  if (provider !== "sleeper" && provider !== "espn" && provider !== "cbs") {
     return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  /* An id is not one shape across three platforms, so this had to move
+     BELOW the provider rather than staying a single regex above it.
+     Sleeper's and ESPN's are integers; CBS's is the subdomain its league
+     lives on, which is a slug.
+
+     It is canonicalised rather than merely accepted: a reader who pastes
+     the whole league URL and one who types the slug are connecting the
+     same league, and `leagueId` is a primary key column, so taking either
+     as sent is how one league becomes two rows nothing can reconcile. */
+  let leagueId = String((body && body.leagueId) || "").slice(0, 200);
+  if (provider === "cbs") {
+    leagueId = cbsSlug(leagueId) || "";
+    if (!leagueId) {
+      return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+    }
+  } else {
+    leagueId = leagueId.slice(0, 40);
+    if (!/^[0-9]{6,32}$/.test(leagueId)) {
+      return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+    }
   }
 
   /* The label is re-read from the platform rather than taken from the client.
@@ -1867,6 +2059,66 @@ async function meLeaguesRoute(request, env, ctx) {
     } else {
       failure = found.reason || "not-found";
     }
+  } else if (provider === "cbs") {
+    const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
+    const season = String((body && body.season) || (state && state.season) || "").slice(0, 8);
+    if (!season) {
+      return new Response(JSON.stringify({ ok: false, error: "upstream" }), { status: 503, headers });
+    }
+
+    /* CBS has no public half at all, so unlike ESPN there is no version of
+       this that works without a credential: a connect with no `pid` can
+       only ever resolve to "private". It is refused up front rather than
+       after a round trip that cannot succeed. */
+    const pid = String((body && body.pid) || "").trim().slice(0, 2048);
+    if (!pid) {
+      return new Response(JSON.stringify({ ok: false, error: "private" }), { status: 403, headers });
+    }
+
+    /* Same up-front refusal as ESPN's, and it matters more here: a
+       deployment with no LEAGUE_CRED_KEY has nowhere to put this and the
+       one thing it must never do is keep it in the clear. Checked before
+       CBS is asked, so a session we have nowhere to store is never sent
+       upstream at all. */
+    if (!canSealCredentials(env)) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "private-unavailable" }),
+        { status: 503, headers }
+      );
+    }
+
+    const cred = { pid };
+    const found = await cbsLookupLeague(leagueId, season, cbsSource(env.CBS_BASE || null, cred));
+    if (found.league) {
+      // Checked against the league's own teams, exactly as ESPN's is: an
+      // ownerId naming a team that is not in this league is a roster no
+      // screen can find, which renders as a connected league with nothing
+      // in it.
+      const teamId = String((body && body.ownerId) || "").slice(0, 16);
+      const known = found.league.teams.some((t) => t.teamId === teamId);
+      league = {
+        provider: "cbs",
+        leagueId: found.league.leagueId,
+        ownerId: known ? teamId : null,
+        name: found.league.name,
+        season: found.league.season,
+        totalTeams: found.league.totalTeams,
+        draftAt: found.league.draftAt || null,
+        draftStatus: found.league.draftStatus || null
+      };
+
+      sealedCred = await sealCredential(
+        cred, { clerkId: user.id, provider: "cbs", leagueId: found.league.leagueId }, env
+      );
+      if (!sealedCred) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "private-unavailable" }),
+          { status: 503, headers }
+        );
+      }
+    } else {
+      failure = found.reason || "not-found";
+    }
   } else {
     const snapshot = await leagueSnapshot(leagueId, env.SLEEPER_BASE || SLEEPER_API);
     if (snapshot) {
@@ -1936,9 +2188,18 @@ async function meLeaguesRoute(request, env, ctx) {
      The likely cause is a database that has not had 0011 applied, which
      is a real window: the worker ships separately from its migrations. */
   if (ok && sealedCred) {
-    const kept = await putLeagueCredential(env, user.id, "espn", league.leagueId, sealedCred);
+    /* `league.provider`, and never the literal "espn" it was written as.
+
+       The credential is SEALED against (clerkId, provider, leagueId) as
+       additional data, so a blob stored under the wrong provider cannot
+       even be opened again -- a CBS league would connect, report success,
+       and answer "private" on every screen behind it for ever, with the
+       session sitting in the table under another platform's key. And the
+       rollback would delete an ESPN row that does not exist while leaving
+       the CBS one standing. Both halves silent. */
+    const kept = await putLeagueCredential(env, user.id, league.provider, league.leagueId, sealedCred);
     if (!kept) {
-      await deleteLeague(env, user.id, "espn", league.leagueId);
+      await deleteLeague(env, user.id, league.provider, league.leagueId);
       return new Response(
         JSON.stringify({ ok: false, error: "private-unavailable" }),
         { status: 503, headers }
@@ -2273,6 +2534,32 @@ const handler = {
         }, corsFor(request)) });
       }
       return espnSnapshotRoute(request, env, ctx);
+    }
+
+    /* CBS's two. The lookup names POST for the reason /espn/league's own
+       preflight does -- a verb a preflight does not name is a request that
+       never leaves the page, with no log line and a dialog that does
+       nothing. */
+    if (url.pathname === "/cbs/league") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET, POST",
+          "access-control-allow-headers": "content-type, authorization",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return cbsLookupRoute(request, env);
+    }
+
+    if (url.pathname === "/cbs/snapshot") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET",
+          "access-control-allow-headers": "content-type",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return cbsSnapshotRoute(request, env, ctx);
     }
 
     if (url.pathname === "/me/leagues") {

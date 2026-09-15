@@ -236,3 +236,146 @@ export function rulesFromSleeper(scoringSettings) {
   }
   return { rules, unmapped: [] };
 }
+
+
+/* ----------------------------------------------------------
+   CBS
+   ---------------------------------------------------------- */
+
+/* CBS names its own categories, so there is no id table to derive and none
+ * of ESPN's subset hazard. `league/scoring/rules` answers 24 entries, each
+ * with a `name`, a flat `points`, optional `ranges` (per-unit scoring) and
+ * optional `bonuses` (a base rate plus a step). Measured against a real
+ * league 15 September 2026.
+ *
+ * ---- The names are unambiguous; the BANDS are where it stops ----
+ *
+ * Fifteen offensive and nine defensive categories translate one to one, and
+ * that half needed no judgement at all. What does not translate is every
+ * rule CBS expresses as a range whose edges disagree with Juke's:
+ *
+ *   points allowed   CBS 0-1 / 2-6 / 7-13 / 14-17 / 28-34 / 35-45 / 46-60
+ *                    Juke   0 / 1-6 / 7-13 / 14-20 / 21-27 / 28-34 / 35+
+ *
+ * Two align exactly (7-13 and 28-34) and the rest do not. CBS pays NOTHING
+ * for 18 to 27 allowed, which is a common scoreline, so mapping its 14-17
+ * band onto Juke's 14-20 would pay a point for three scorelines the league
+ * does not pay for -- and 35+ is two CBS bands against Juke's one, so
+ * either choice is wrong above 45.
+ *
+ * **So only the exact bands are mapped and the rest are reported.** An
+ * approximation nobody measured is an opinion, which is the line this
+ * project already refuses to cross for a kicker's short field goals. The
+ * cost is real and is stated rather than hidden: a defence scores nothing
+ * for the tiers left out, which is visible and reportable, where a band
+ * silently off by a point is neither.
+ *
+ * Yards allowed has no Juke rule in any band, exactly as it has none for
+ * ESPN, so the whole category is reported.
+ *
+ * ---- A range IS the rate for the per-unit rules ----
+ *
+ * ReYd/RuYd/PaYd carry no flat `points` at all; the number is inside
+ * `ranges[0]` as points-per-`per`. Reading `points` for those would score
+ * every yardage rule at zero, silently, which is the shape of failure this
+ * file exists to prevent. */
+const CBS_FLAT = {
+  // Offence
+  ReTD: "rec_td", Re2P: "rec_2pt", RuTD: "rush_td", Ru2P: "rush_2pt",
+  PaTD: "pass_td", Pa2P: "pass_2pt", PaInt: "pass_int", FL: "fum_lost",
+  Recpt: "rec", XP: "xpm", MFG: "fgmiss",
+  // Defence / special teams
+  DTD: "def_td", DFR: "fum_rec", SACK: "sack", STY: "safe", Int: "int",
+};
+
+// Per-unit: the rate lives in ranges[0].points over ranges[0].per.
+const CBS_PER_UNIT = { ReYd: "rec_yd", RuYd: "rush_yd", PaYd: "pass_yd" };
+
+/* Points allowed, only where CBS's band is byte-identical to Juke's. Keyed
+ * "from-to" off CBS's own range so a league with different edges simply
+ * does not match rather than matching approximately. */
+const CBS_PTS_ALLOW = { "7-13": "pts_allow_7_13", "28-34": "pts_allow_28_34" };
+
+/* A made field goal is a base rate plus distance steps, which is the one
+ * place CBS is MORE expressive than a flat rule and Juke can still hold it:
+ * every band is its own rule, so base+bonus lands exactly. */
+const CBS_FG_BANDS = [
+  ["fgm_0_19", 0, 19], ["fgm_20_29", 20, 29], ["fgm_30_39", 30, 39],
+  ["fgm_40_49", 40, 49], ["fgm_50_59", 50, 59], ["fgm_60p", 60, 99],
+];
+
+const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+
+export function rulesFromCbs(scoringRules) {
+  const cats = scoringRules && Array.isArray(scoringRules.categories)
+    ? scoringRules.categories : null;
+  if (!cats) return { rules: null, unmapped: [] };
+
+  const rules = {};
+  const unmapped = [];
+
+  for (const c of cats) {
+    if (!c || !c.name) continue;
+    const name = String(c.name);
+    const ranges = Array.isArray(c.ranges) ? c.ranges.filter((r) => r && num(r.points) !== null) : [];
+
+    if (CBS_FLAT[name]) {
+      const pts = num(c.points);
+      if (pts !== null) { rules[CBS_FLAT[name]] = pts; continue; }
+      unmapped.push(name);
+      continue;
+    }
+
+    if (CBS_PER_UNIT[name]) {
+      const r = ranges[0];
+      const pts = r ? num(r.points) : null;
+      const per = r ? (num(r.per) || 1) : 1;
+      if (pts !== null && per) { rules[CBS_PER_UNIT[name]] = pts / per; continue; }
+      unmapped.push(name);
+      continue;
+    }
+
+    if (name === "FG") {
+      const base = num(c.points);
+      if (base === null) { unmapped.push(name); continue; }
+      const bonuses = Array.isArray(c.bonuses) ? c.bonuses : [];
+      for (const [key, lo] of CBS_FG_BANDS) {
+        /* Matched on the band's LOWER edge, which is the only edge the two
+           vocabularies agree about. CBS states 40-49 / 50-59 / 60-69 and
+           Juke's top band is 60+, so containment cannot be the test -- and
+           the first version of this tried to be clever about that and paid
+           a 60-yard kick the 40-49 bonus, coming out at 4 where the league
+           pays 6. Plausible, silent, and wrong by two points a kick. */
+        const b = bonuses.find((x) => {
+          const from = num(x.from), to = num(x.to);
+          return from !== null && lo >= from && (to === null || lo <= to);
+        });
+        rules[key] = base + (b ? (num(b.points) || 0) : 0);
+      }
+      continue;
+    }
+
+    if (name === "DSTPA") {
+      let matched = 0;
+      for (const r of ranges) {
+        const key = CBS_PTS_ALLOW[`${num(r.from)}-${num(r.to)}`];
+        if (key) { rules[key] = num(r.points); matched++; }
+      }
+      /* Reported whenever ANY band could not be placed, which is the
+         honest signal: "points allowed is partly represented" is not a
+         thing a reader can act on, and the count of bands is not the
+         reader's problem. */
+      if (matched < ranges.length) unmapped.push(name);
+      continue;
+    }
+
+    /* Everything left is a category Juke has no rule for at any band:
+       YDS (yards allowed), ST2PT and STY1PT among them. Reported rather
+       than approximated, and reported by NAME because CBS's names are its
+       own vocabulary and a reader can look one up. */
+    const scores = num(c.points) !== 0 && num(c.points) !== null || ranges.length > 0;
+    if (scores) unmapped.push(name);
+  }
+
+  return { rules, unmapped: unmapped.sort() };
+}

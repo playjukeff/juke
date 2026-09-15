@@ -124,7 +124,7 @@ the Stack section above, not a one-time migration hiccup.
 | `room.js` | One shared draft: seats, picks, the clock. Pure, and time is always passed in rather than read. Loaded by the worker only; the page consumes the view it sends. Not copied into `web/dist/` — nothing client-side ever references it. |
 | `live.js` | The client end of a room: one socket, the invite code, and the messages. Knows nothing about the board or how anything is drawn. |
 | `worker/` | The Cloudflare Durable Object behind an invite link, plus every proxied route whose key or quota may not be in the page (`/giphy`, `/news`, `/media`, the two league adapters) and its `wrangler.toml`. Deployed to `juke-draft-room.jukeff.workers.dev`. **`.github/workflows/deploy-worker.yml` ships it on a push to `main`** touching anything under `worker/`, or `room.js`, or `draft-engine.js` — the code half of the deploy gap is closed; **D1 migrations are still manual and deliberately so**. `npm --prefix worker run deploy` is the by-hand path and migrates first. See `worker/README.md` and the system section above. |
-| `worker/espn.js`, `worker/sleeper.js` | The two league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A third platform is a third file here, not a fourth vocabulary in the UI. |
+| `worker/espn.js`, `worker/sleeper.js`, `worker/cbs.js` | The three league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A fourth platform is a fourth file here, not a second vocabulary in the UI. |
 | `worker/status.js` | A player's live injury designation in the pipeline's own codes, from either platform's words. **The vocabulary exists in two languages** — `build_players.py` has the other — and `worker/test-status.mjs` reads that table and fails on any drift. |
 | `worker/names.js` | `normalise()`, the JavaScript half of the name crosswalk. **It exists in two languages and they must not drift** — `build_players.py` has the other one, and `test_engine.py` is the only suite that asserts they agree. A drift does not throw; it stops matching. |
 | `worker/store.js` | The D1 cache: Sleeper's pool and Tank01 headlines. A cache and never a source of truth, and a missing binding is a normal condition rather than a fault. |
@@ -10100,15 +10100,18 @@ demands an `access_token` for everything. A league's own subdomain —
 for part of its surface:
 
 ```
-league/rules     roster positions, the WHOLE scoring system,      anonymous
-                 waiver and trade policy, player pool, fees
-players/list     the player universe, with CBS ids                anonymous
+league/rules     roster positions, waiver and trade policy,       anonymous
+                 the playoff schedule, fees, player pool
+players/list     4,910 players: CBS id, name, position, club,     anonymous
+                 bye week, elias id
 league/details   the league, its teams, who is in it              "User not signed in"
 league/teams     ditto                                            "User not signed in"
 league/rosters   ditto                                            "User not signed in"
 league/standings/overall                                          "User not signed in"
 league/schedules                                                  "User not signed in"
 league/draft/results                                              "User not signed in"
+league/scoring/rules   the per-stat scoring values                "User not signed in"
+league/stats           ditto                                      "User not signed in"
 ```
 
 **A 400 means the endpoint exists and wants a `league_id`; a 404 means it
@@ -10127,19 +10130,176 @@ So the mint was retired and the check was not: a token exists as a concept
 with nothing left that issues one. A credential would have to come out of a
 logged-in browser session, which is the ESPN cookie question again.
 
-**The upside is real and is the reason to do CBS next rather than Yahoo.**
-`league/rules` hands over the league's entire scoring system, pre-named and
-anonymously. That is the part of ESPN that cost a 319-player cross-reference
-to derive statIds from, with **28 rules still unrepresentable** and one
-(`rec_40p: 38`) mapped to the wrong stat for a while because the derivation
-could not reject a subset. CBS gives it away.
+### ~~The upside is the scoring~~ — wrong, and corrected the same day
 
-**Nothing CBS-shaped is built.** What exists that it will reuse:
-`league_credentials` is keyed by provider already, `sealCredential()` takes
-an arbitrary value shape, and `platformFor()` answers for a provider this
-build does not know about. So the credential half is done; what is not is an
-adapter, a crosswalk from CBS player ids, and the answer to where a session
-legitimately comes from.
+**The first version of this section said `league/rules` "hands over the
+league's entire scoring system, pre-named and anonymously", and it does
+not.** That claim was read off the KEY NAME — the payload has a
+`scoring_system` key and a `scoring_system_rows` key — without opening
+either. Opened:
+
+- `scoring_system` is prose about the FORMAT: `{"scoring_system":
+  "Head-to-Head, Points", "type": "h2h", "win_determination": "points",
+  ...}`.
+- `scoring_system_rows` is `["scoring_system", "scoring_period",
+  "matchup_tiebreaker"]` — which rows to DISPLAY, not what anything scores.
+
+The whole rules payload contains **zero** occurrences of "touchdown",
+"reception", "yard" or "fumble". There are no per-stat numbers in it at all.
+
+The real endpoint is `league/scoring/rules`, it exists — 400 "Missing
+league_id" rather than 404 — and it answers **"User not signed in"**. So
+scoring is on the far side of the credential with everything else, and the
+reason to do CBS ahead of Yahoo is weaker than this file claimed for a day.
+
+**It is the same error as `posRank` standing in for value**, which this file
+already has a section about: a name read as its contents. It was written
+into this file, a commit message and a merged PR body before anybody opened
+the object, and the correction cost one `json.load` and a `grep`. **Open the
+payload.** A key called `scoring_system` is a claim about a key.
+
+### What IS free, and it is the crosswalk
+
+`players/list` is anonymous, 4,910 rows, and carries CBS id, full name,
+first/last, position, pro team, bye week and an `elias_id`. That is enough
+to join CBS to the board with no session at all, and it was measured against
+the real list and the 15 September board rather than estimated:
+
+```
+                        rows   joined   unmatched
+every fantasy row        480     470       10
+REAL-ADP rows            230     230        0      <- the ones that matter
+deep-bench rows          250     240       10
+```
+
+**100% of the players a connected league can actually be about**, against
+139 of 141 for ESPN. The ten misses are all deep-bench rows — Roethlisberger,
+Jack Doyle, Eric Ebron — players Sleeper's master still carries and CBS has
+dropped, which is the correct answer rather than a gap.
+
+Four tiers, each one earned by a measurement:
+
+1. **normalised name + position** — 460 of 480 on its own.
+2. **a normalised name that is unique in the pool** — 3 more.
+3. **the CLUB, for a defense, never the name.** CBS stores the nickname
+   ("49ers") where the pipeline stores "San Francisco Defense" and neither
+   normalises to the other. Exactly the rule `espn.js` already states. Worth
+   19 rows.
+4. **surname + position + club, and only when EXACTLY ONE candidate
+   matches.** Worth the last 2 real-ADP rows, both nickname mismatches:
+   `Kenny Gainwell -> Kenneth Gainwell` and
+   `Andy Borregales -> Andres Borregales`. The uniqueness requirement is
+   not caution for its own sake — **60 of 2,046 surname|position|club keys
+   in the CBS pool are ambiguous**, so a tier that took the first candidate
+   would silently mismatch about 3% of what it touched.
+
+**CBS spells Jacksonville `JAC` and the pipeline spells it `JAX`.** One
+alias, and every other club code agrees exactly. Found by a defense
+reconciling to nothing, which is the third time that is how a club alias
+has surfaced here — `TEAM_ALIASES` already carries nflverse calling the
+Rams `LA`.
+
+**And the surname tier measured 0 before it measured 2**, which is the
+warning worth keeping. The probe split `normalise(name)` on a space, and
+`normalise()` strips spaces — so it returned the whole token, matched
+nothing, and reported a confident zero that read as "the tier is not worth
+having". Splitting the RAW name before normalising is what exercised it.
+**A tier that resolves nothing is a question about the probe first.**
+
+### The league site is behind CBS's central login
+
+`https://<league>.football.cbssports.com/` 302s to
+`www.cbssports.com/login?product_abbrev=mgmt&master_product=41403`, so the
+whole thing is a session on `.cbssports.com` rather than anything
+league-scoped. Anonymously that host sets `pid` and `anon=TRUE`; whatever
+carries the actual sign-in only appears once signed in, which is why **which
+cookie the API honours is not answerable from outside** and is the one thing
+still open.
+
+There is a Swagger document at `api/docs?version=4.0` — the only resource
+with a v4 at all — and its `paths` object is empty, so it names nothing.
+
+### It is built, and the session turned out to be one cookie
+
+**Corrected in place**: this section ended "nothing CBS-shaped is built"
+and "do not build the adapter against a guess at the roster payload". The
+second sentence is why the first stopped being true — the payloads were
+measured rather than guessed, and `worker/cbs.js` is written against what
+they actually answered.
+
+**Auth is one cookie: `pid`.** Found by elimination against the real league
+rather than by reading anything: 51 cookies out of a signed-in browser,
+dropped one at a time, keeping each drop that still authenticated. Exactly
+one is required, and `auth_state`, `ppid`, `userId` and
+`minUnifiedSessionToken10` all look like candidates and are all droppable.
+The minimiser ran on the owner's machine and printed names only.
+
+**It is set with `expires` in 2037**, which is the one place CBS's copy may
+not inherit ESPN's. `espn_s2` rotates, so that dialog can honestly say the
+credential expires on its own; this one does not, so **disconnecting is the
+only revocation Juke can offer** and the dialog, the platform list's note
+and the privacy policy each say so in their own words.
+
+**`team_id=all` is what makes it one request.** Without the parameter
+`league/rosters` answers only the signed-in reader's OWN team — which reads
+as a one-team league rather than as an error, and is the shape of failure
+this file is most full of.
+
+**`roster_status`, not `roster_pos`.** The bug that cost the most here and
+the reason `worker/test-cbs.mjs` exists: `roster_pos` carries a player's
+ELIGIBLE slot, so a benched receiver reads "WR" exactly as a starting one
+does. Every one of sixteen players on a real roster came back a starter, in
+a league that starts nine. `roster_status` is the assignment — measured as
+A x9, RS x6, I x1, and the nine are exactly the nine slots the league's own
+rules ask for. Same error as reading `scoring_system` off its key name.
+
+**The scoring bands are where the translation stops, and it is stated
+rather than approximated.** CBS pays on 0-1 / 2-6 / 7-13 / 14-17 / 28-34 /
+35-45 / 46-60 points allowed and Juke on 0 / 1-6 / 7-13 / 14-20 / 21-27 /
+28-34 / 35+. Two coincide exactly and are mapped; the rest are reported in
+`scoringUnmapped`. CBS pays **nothing at all for 18 to 27 allowed**, so
+mapping its 14-17 band onto Juke's 14-20 would pay for three scorelines the
+league does not — the same line this project already refuses to cross for a
+kicker's short field goals.
+
+**A field goal is a base rate plus distance steps, matched on the band's
+LOWER edge.** CBS states 40-49 / 50-59 / 60-69 and Juke's top band is 60+,
+so containment cannot be the test: the first version was clever about it
+and paid a sixty-yard kick the 40-49 bonus, coming out at 4 where the
+league pays 6. Plausible, silent, and wrong by two points a kick.
+
+**There is no public CBS league at all**, which shapes the routes and the
+dialog rather than being a footnote. `/cbs/league`'s GET is kept and reads
+as whatever the caller has already stored — that is what makes revisiting a
+connected league work — and signed out it answers `private`, which is the
+truth about CBS rather than a refusal the route invented. The dialog
+therefore asks for the address and the cookie in ONE step: a step that
+asked for the address alone could only ever fail, which is a control that
+cannot act.
+
+**And every CBS read is credentialed, so the snapshot's edge cache never
+fires.** The guard is kept anyway — that key is league and season alone, so
+writing a credentialed read there would serve one reader's rosters to
+anybody who asked for the same slug. What it costs is one upstream call per
+render rather than per two minutes, bounded on the client by
+`snapshotStore`'s own window. A private ESPN league has had exactly that
+property since it shipped.
+
+**What is deliberately not built.** `league/schedules` is real and is not
+read: turning it into the shape `lib/schedule.js` wants is its own change
+with its own measurements, and `schedule: null` is what a Sleeper league
+already answers, so every consumer degrades to the behaviour it has. There
+is no transactions feed and no draft board. Neither is blocked on anything
+but effort.
+
+**`worker/test-cbs.mjs` is the whole of the offline coverage**, and it has
+to be: CBS's entire league surface is behind a session, so unlike espn.js
+there is no public league anybody can re-check this against by hand. Its
+fixtures are shaped from the captured payloads. Nine mutations of the
+adapter and three of the routes were each confirmed red and each named its
+own assertion — and the first attempt at one crashed rather than failed,
+which is not the same thing and was rewritten until it failed for its own
+reason.
 
 ## The draft countdown, and the instant that outlives its draft
 

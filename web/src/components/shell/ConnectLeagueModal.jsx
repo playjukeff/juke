@@ -92,11 +92,16 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
   const [leagues, setLeagues] = useState([])
   const [sleeperUser, setSleeperUser] = useState(null)
   const [chosen, setChosen] = useState(null)
-  /* ESPN resolves ONE league from the id, and then asks a question Sleeper
-     never has to: which of these teams is yours. There is no account here
-     to infer it from, and without it every screen that says "your roster"
-     has nothing to key on. */
-  const [espnLeague, setEspnLeague] = useState(null)
+  /* ESPN and CBS both resolve ONE league from an address, and then ask a
+     question Sleeper never has to: which of these teams is yours. There is
+     no account here to infer it from, and without it every screen that says
+     "your roster" has nothing to key on.
+
+     Named for what it holds rather than for the platform it was written
+     for -- it served CBS the day that shipped, and a state called
+     `espnLeague` holding a CBS league is the stale name this project keeps
+     paying for. */
+  const [oneLeague, setOneLeague] = useState(null)
 
   /* The ESPN pair for a PRIVATE league.
 
@@ -107,6 +112,14 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      element reused for every open. */
   const [espnS2, setEspnS2] = useState('')
   const [swid, setSwid] = useState('')
+
+  /* CBS's own, and there is exactly one of it.
+
+     Measured by elimination against a real league: 51 cookies in a
+     signed-in browser, removed one at a time, and `pid` alone is required.
+     Held here for as long as the dialog is open and never in localStorage,
+     the same rule the ESPN pair above follows. */
+  const [pid, setPid] = useState('')
   // Which tier's cap was hit, and what it is — filled only on a tier-limit
   // refusal, to say which plan this account is on rather than a bare
   // "you're at your limit".
@@ -122,9 +135,10 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setLeagues([])
       setSleeperUser(null)
       setChosen(null)
-      setEspnLeague(null)
+      setOneLeague(null)
       setEspnS2('')
       setSwid('')
+      setPid('')
       setPlatform(null)
       setTierInfo({ tier: null, cap: null })
       setEmail('')
@@ -162,6 +176,14 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
   }
 
   const isEspn = platform && platform.key === 'espn'
+  const isCbs = platform && platform.key === 'cbs'
+
+  /* Two platforms resolve one league and ask which team in it is yours;
+     one answers with a list of leagues. That is the only split the steps
+     below actually turn on, so it is named once rather than being spelled
+     `isEspn || isCbs` at eight call sites that would each have to be found
+     again the day a fourth platform lands. */
+  const picksTeam = isEspn || isCbs
 
   /* One field, two questions.
 
@@ -177,6 +199,34 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
     setStatus('looking')
     const l = live()
 
+    /* CBS resolves the league and the sign-in in ONE step, which is the
+       one place its flow differs from ESPN's rather than mirroring it.
+
+       ESPN has a public half, so its dialog can check a league id before
+       anybody has pasted a credential and only ask for one when the answer
+       comes back "private". CBS has no public half at all -- every
+       endpoint that says who is in a league answers "User not signed in"
+       anonymously -- so a step that asked for the address alone could only
+       ever fail, which is a control that cannot act. */
+    if (isCbs) {
+      const res = l && l.cbsLookup
+        ? await l.cbsLookup(typed, null, { pid: pid.trim() }, await token())
+        : { ok: false, reason: 'offline' }
+      if (!res.ok) {
+        /* "private" from CBS is not "make your league public" -- there is
+           no such setting to reach. It means the cookie did not work, so
+           the message has to send somebody back to the value they pasted
+           rather than to a league setting that would not help. */
+        setStatus(res.reason === 'private' ? 'cbs-bad'
+                : res.reason === 'not-found' ? 'not-found'
+                : 'error')
+        return
+      }
+      setOneLeague(res.league)
+      setStatus('picking')
+      return
+    }
+
     if (isEspn) {
       const res = l && l.espnLookup ? await l.espnLookup(typed) : { ok: false, reason: 'offline' }
       if (!res.ok) {
@@ -187,7 +237,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 : 'error')
         return
       }
-      setEspnLeague(res.league)
+      setOneLeague(res.league)
       setStatus('picking')
       return
     }
@@ -227,7 +277,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               : 'error')
       return
     }
-    setEspnLeague(res.league)
+    setOneLeague(res.league)
     setStatus('picking')
   }
 
@@ -240,10 +290,12 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
        they just picked. Both land in the same `ownerId` column, because
        both answer the same question — which of these rosters is theirs. */
     const res = l && l.connectLeague
-      ? isEspn
-        ? await l.connectLeague(await token(), espnLeague.leagueId, chosen.teamId, 'espn',
-                                espnS2.trim() && swid.trim() ? { espnS2: espnS2.trim(), swid: swid.trim() } : null)
-        : await l.connectLeague(await token(), chosen.leagueId, sleeperUser && sleeperUser.userId, 'sleeper')
+      ? isCbs
+        ? await l.connectLeague(await token(), oneLeague.leagueId, chosen.teamId, 'cbs', { pid: pid.trim() })
+        : isEspn
+          ? await l.connectLeague(await token(), oneLeague.leagueId, chosen.teamId, 'espn',
+                                  espnS2.trim() && swid.trim() ? { espnS2: espnS2.trim(), swid: swid.trim() } : null)
+          : await l.connectLeague(await token(), chosen.leagueId, sleeperUser && sleeperUser.userId, 'sleeper')
       : { ok: false, reason: 'offline' }
 
     if (!res.ok) {
@@ -310,8 +362,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      ESPN with the chosen league's teams — different things to choose, the
      same question being asked, so one renderer rather than two lists side
      by side that drift the first time a row gains a field. */
-  const rows = isEspn ? (espnLeague ? espnLeague.teams : []) : leagues
-  const rowKey = (r) => (isEspn ? r.teamId : r.leagueId)
+  const rows = picksTeam ? (oneLeague ? oneLeague.teams : []) : leagues
+  const rowKey = (r) => (picksTeam ? r.teamId : r.leagueId)
 
   const label = 'font-mono text-[11px] tracking-[0.14em] text-teal'
 
@@ -346,7 +398,12 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   ? 'Sign in to ESPN'
                   : isEspn
                     ? 'Your ESPN league ID'
-                    : `Your ${platform ? platform.name : 'Sleeper'} username`}
+                    : isCbs
+                      // Not "username": CBS identifies a league by the web
+                      // address it lives at, and the sign-in is a second
+                      // field under it rather than the subject of the step.
+                      ? 'Your CBS league'
+                      : `Your ${platform ? platform.name : 'Sleeper'} username`}
             </h3>
           </div>
           <button
@@ -571,10 +628,10 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
         ) : status === 'picking' || status === 'connecting' ? (
           <>
             <p className="mt-2 text-[14px] leading-[1.5] text-voidInk-body">
-              {isEspn ? (
+              {picksTeam ? (
                 <>
-                  <b className="font-semibold text-white">{espnLeague?.name}</b>
-                  {espnLeague?.season ? ` · ${espnLeague.season}` : ''} · Juke reads this league
+                  <b className="font-semibold text-white">{oneLeague?.name}</b>
+                  {oneLeague?.season ? ` · ${oneLeague.season}` : ''} · Juke reads this league
                   and never writes to it.
                 </>
               ) : (
@@ -587,7 +644,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
 
             {rows.length === 0 ? (
               <p className="mt-4 rounded-xl border border-dashed border-flow-pillEdge px-4 py-5 text-center text-[14px] text-voidInk-body">
-                {isEspn
+                {picksTeam
                   ? 'That league has no teams in it yet.'
                   : 'No leagues on that account this season.'}
               </p>
@@ -630,7 +687,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                             {lg.name}
                           </span>
                           <span className="mt-0.5 block truncate font-mono text-[11px] tracking-[0.1em] text-ink-muted">
-                            {isEspn
+                            {picksTeam
                               // A team's manager is the thing that tells two
                               // similarly-named teams apart, and it is the
                               // only way somebody picks their own out of ten.
@@ -654,7 +711,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               className="mt-5 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01] disabled:opacity-40"
               style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
             >
-              {status === 'connecting' ? 'Connecting…' : isEspn ? 'Connect this team' : 'Connect league'}
+              {status === 'connecting' ? 'Connecting…' : picksTeam ? 'Connect this team' : 'Connect league'}
             </button>
           </>
         ) : (
@@ -673,7 +730,14 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             </button>
 
             <p className="mt-1.5 text-[14px] leading-[1.5] text-voidInk-body">
-              {isEspn ? (
+              {isCbs ? (
+                <>
+                  The web address your league lives at — <span className="font-mono text-meta text-white">
+                  yourleague.football.cbssports.com</span>. CBS shows nothing at all to anyone who
+                  is not signed in, so it needs one cookie from your own browser too. Juke only
+                  ever reads, and never writes back.
+                </>
+              ) : isEspn ? (
                 <>
                   The number in your league&apos;s own URL — <span className="font-mono text-meta text-white">
                   leagueId=</span> on fantasy.espn.com. A private league takes one more step, and
@@ -693,24 +757,85 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 setUsername(e.target.value)
                 if (status !== 'idle') setStatus('idle')
               }}
-              autoComplete={isEspn ? 'off' : 'username'}
+              autoComplete={picksTeam ? 'off' : 'username'}
               spellCheck={false}
               /* numeric on a phone for ESPN: the value is a league id, and
                  a text keyboard for a ten-digit number is a small tax paid
                  on every character. */
               inputMode={isEspn ? 'numeric' : 'text'}
-              placeholder={isEspn ? '65142363' : 'sleeper username'}
+              placeholder={isCbs ? 'yourleague.football.cbssports.com'
+                         : isEspn ? '65142363'
+                         : 'sleeper username'}
               /* 16px, because anything smaller makes iOS zoom the page in
                  on focus and not zoom back out — the floor CLAUDE.md keeps
                  for every field in this app. */
               className="mt-4 w-full rounded-xl border border-line-hairline bg-surface-page px-4 py-3 text-[16px] text-white outline-none placeholder:text-ink-muted focus:border-teal"
             />
 
+            {isCbs ? (
+              <>
+                <label className="mt-4 block text-meta text-ink-muted" htmlFor="cbs-pid">
+                  pid cookie
+                </label>
+                <input
+                  id="cbs-pid"
+                  value={pid}
+                  onChange={(e) => {
+                    setPid(e.target.value)
+                    if (status !== 'idle') setStatus('idle')
+                  }}
+                  placeholder="0000000000000000"
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-xl border border-line-hairline bg-surface-page px-3 py-2.5 font-mono text-[16px] text-white outline-none focus:border-white/30"
+                />
+
+                {/* The honest difference between this and ESPN's pair, and
+                    it may not quietly inherit ESPN's sentence. `espn_s2`
+                    rotates, so that step can truthfully say the credential
+                    expires on its own. This one is set with an expiry in
+                    2037, which means disconnecting is the ONLY revocation
+                    Juke can offer -- and a reader deciding whether to paste
+                    it is entitled to know that before they do. */}
+                <p className="mt-2 text-meta text-ink-muted">
+                  It is encrypted before it is stored and removed the moment you disconnect the
+                  league or delete your account. Unlike ESPN&apos;s, it does not expire on its
+                  own — disconnecting is what ends it.
+                </p>
+
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-meta text-ink-muted hover:text-white">
+                    Where do I find this?
+                  </summary>
+                  <p className="mt-2 text-meta leading-[1.6] text-voidInk-body">
+                    On a desktop browser, sign in and open your league. Open your browser&apos;s
+                    developer tools, go to Application (or Storage) &rarr; Cookies &rarr;
+                    cbssports.com, and copy the value of{' '}
+                    <span className="font-mono text-white">pid</span>. It is the only one Juke
+                    needs — leave the rest alone.
+                  </p>
+                </details>
+              </>
+            ) : null}
+
+            {/* CBS answers one refusal for a wrong address and a wrong
+                cookie alike, so this names both rather than sending
+                somebody to re-check whichever one it guessed. There is no
+                "make it public" to offer: CBS has no public league. */}
+            {status === 'cbs-bad' ? (
+              <p className="mt-2 text-meta text-flow-rose">
+                CBS would not open that league. Check the address is the one in your browser&apos;s
+                bar when you are in the league, and copy the pid value again.
+              </p>
+            ) : null}
+
             {status === 'not-found' ? (
               <p className="mt-2 text-meta text-flow-rose">
-                {isEspn
-                  ? 'No ESPN league with that ID. It is the number after leagueId= in the URL.'
-                  : 'No Sleeper account with that username. Check the spelling — it is the username, not a display name.'}
+                {isCbs
+                  ? 'No CBS league at that address. It is the whole address, ending football.cbssports.com.'
+                  : isEspn
+                    ? 'No ESPN league with that ID. It is the number after leagueId= in the URL.'
+                    : 'No Sleeper account with that username. Check the spelling — it is the username, not a display name.'}
               </p>
             ) : null}
             {/* The one failure with a fix the reader can carry out, so it
@@ -745,17 +870,19 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
             ) : null}
             {status === 'error' ? (
               <p className="mt-2 text-meta text-flow-rose">
-                Could not reach {isEspn ? 'ESPN' : 'Sleeper'} just now. Try again in a moment.
+                Could not reach {platform ? platform.name : 'Sleeper'} just now. Try again in a moment.
               </p>
             ) : null}
 
             <button
               type="submit"
-              disabled={!username.trim() || status === 'looking'}
+              /* CBS needs both halves before it can ask anything at all,
+                 because there is no request it can make with one of them. */
+              disabled={!username.trim() || (isCbs && !pid.trim()) || status === 'looking'}
               className="mt-4 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01] disabled:opacity-40"
               style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
             >
-              {status === 'looking' ? 'Looking…' : isEspn ? 'Find my league' : 'Find my leagues'}
+              {status === 'looking' ? 'Looking…' : picksTeam ? 'Find my league' : 'Find my leagues'}
             </button>
           </form>
         )}
