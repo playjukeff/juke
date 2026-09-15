@@ -178,11 +178,13 @@ function stripItems({ total, regular, current, focus, mine, weekView, tailNote }
 function flagsOf(player, week, isCurrent) {
   if (!player) return {}
   const severity = injurySeverity(player.inj)
+  const scored = typeof player.actualPts === 'number' && Number.isFinite(player.actualPts) ? player.actualPts : null
   return {
     severity,
     code: player.inj || null,
     bye: !!week && Number(player.bye) === Number(week),
     locked: isCurrent && player.locked === true,
+    scored,
   }
 }
 
@@ -206,7 +208,7 @@ function NameCell({ row, align, week, isCurrent }) {
           <span className={cx('mt-0.5 flex min-w-0 flex-wrap items-center gap-1 font-figure text-[12px] uppercase tracking-[0.06em] text-v3-ink3', right && 'justify-end')}>
             {p ? <span className="sm:hidden">{p.pos === 'DST' ? 'D/ST' : p.pos}</span> : null}
             {p && p.team ? <span>{p.team}</span> : null}
-            {f.locked ? <span className="text-v3-ink2">· started</span> : null}
+            {f.scored !== null ? <span className="text-v3-ink2">· already scored: {f.scored.toFixed(1)}</span> : f.locked ? <span className="text-v3-ink2">· started</span> : null}
             {f.bye ? <InjuryChip onBye /> : f.severity ? <InjuryChip severity={f.severity} code={f.code} /> : null}
           </span>
         </span>
@@ -328,14 +330,23 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
       {games.length ? (
         <ul>
           {games.map((g) => {
-            const [a, b] = g.sides
+            /* Whichever side is being read on this page goes on the left,
+               matching the head-to-head card and the lineup table above —
+               a game's own home/away (ESPN) or roster-id (Sleeper) order has
+               no reason to agree with that, and for the reader's OWN row it
+               read as a different game from the one above it. Every other
+               row keeps its natural order: there is no "yours" to anchor a
+               neutral third-party game by. */
+            const flip = !!(focus && g.sides[1] && sameTeam(g.sides[1].team, focus))
+            const a = flip ? g.sides[1] : g.sides[0]
+            const b = flip ? g.sides[0] : g.sides[1]
             const sa = scoreOf(a, g)
             const sb = scoreOf(b, g)
             const on = g.sides.some((s) => sameTeam(s.team, focus))
             const yours = g.sides.some((s) => sameTeam(s.team, mine))
             const Row = sample ? 'div' : 'a'
-            const aWon = g.winner === 0
-            const bWon = g.winner === 1
+            const aWon = flip ? g.winner === 1 : g.winner === 0
+            const bWon = flip ? g.winner === 0 : g.winner === 1
             return (
               <li key={g.key} className="border-b border-v3-rule last:border-b-0">
                 <Row
@@ -482,11 +493,23 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
   }, [boardReady, engine, week, current, snapshot, pricing.weekPts, pricing.byId, pricing.boardById])
 
   const priced = phase !== 'final' && scorer
-  const rowsFor = (team) => (priced && team ? lineupRows(team, scorer.byId, scorer.weekPts).map((r) => ({ id: r.id, player: r.player, pts: r.projPts })) : [])
+  /* The same branch teamWeek()/projectedTotal() already take: once a
+     player has actually scored, that is the number his row shows — never
+     the stale projection beside a total that has moved past it. */
+  const ptsFor = (r) => {
+    const actual = r.player && r.player.actualPts
+    return typeof actual === 'number' && Number.isFinite(actual) ? actual : r.projPts
+  }
+  const rowsFor = (team) => (priced && team ? lineupRows(team, scorer.byId, scorer.weekPts).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) })) : [])
   const leftRows = rowsFor(focus)
   const rightRows = opp ? rowsFor(opp) : null
   const totalL = priced && focus ? projectedTotal(focus, scorer.byId, scorer.weekPts) : null
   const totalR = priced && opp ? projectedTotal(opp, scorer.byId, scorer.weekPts) : null
+  // How many starters on each side are already-scored rather than
+  // projected — said out loud so the blended total never reads as a plain
+  // projection it no longer is.
+  const scoredCount = leftRows.filter((r) => r.player && typeof r.player.actualPts === 'number').length
+  const oppScoredCount = (rightRows || []).filter((r) => r.player && typeof r.player.actualPts === 'number').length
   const cv = pricing.cv
   const wA = priced ? teamWeek(lineupRows(focus, scorer.byId, scorer.weekPts), cv) : null
   const wB = priced && opp ? teamWeek(lineupRows(opp, scorer.byId, scorer.weekPts), cv) : null
@@ -551,7 +574,7 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
   const valueB = phase === 'final' && g && !g.bye ? g.theirs.points : totalR
   const valueLabel = phase === 'final'
     ? (g && typeof g.mine.points === 'number' ? 'Final' : 'No score published')
-    : isCurrent ? 'Projected' : 'Projected · today’s rosters'
+    : isCurrent ? (scoredCount || oppScoredCount ? 'Live' : 'Projected') : 'Projected · today’s rosters'
 
   const scoreOf = (side) => {
     if (phase === 'final') return side.points
@@ -594,26 +617,32 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
       )
     }
   } else if (g && !g.bye && priced) {
-    const benchA = benchRows(focus, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: r.projPts }))
-    const benchB = opp ? benchRows(opp, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: r.projPts })) : []
+    const benchA = benchRows(focus, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) }))
+    const benchB = opp ? benchRows(opp, scorer.byId, scorer.weekPts).sort((x, y) => (y.projPts || 0) - (x.projPts || 0)).map((r) => ({ id: r.id, player: r.player, pts: ptsFor(r) })) : []
+    const anyScored = isCurrent && (scoredCount || oppScoredCount)
     const note = isCurrent
       ? (source === 'all' ? `${platform}'s projection for week ${week}, under your league's scoring.` : source === 'some' ? `${platform}'s projection where it has one, Juke's for the rest.` : snapshot.rules ? "Juke's projection for this week, under your league's own scoring." : "Juke's projection — your league's scoring could not be read, so default rules.")
       : `Projected from today's rosters and designations: each starter's season average under ${snapshot.rules ? "your league's" : 'default'} scoring, with week ${week} byes at zero. Not ${platform}'s number — it has not published one for week ${week}.`
+    const liveNote = anyScored
+      ? ` ${scoredCount} of ${focusName}'s and ${oppScoredCount} of ${opp ? opp.teamName : 'their'} starters have already played — those rows show ${platform}'s actual points, not a projection.`
+      : ''
+    const unit = anyScored ? 'Pts' : 'Proj'
+    const totalsLabel = anyScored ? 'So far' : 'Projected'
     lineups = (
       <Sheet code={isCurrent ? 'Lineups · as set' : 'Lineups · today’s rosters'} aside={isCurrent ? 'Points this week' : `Projected · week ${week}`} bodyClass="p-0" rise={false}>
         {leftRows.length ? (
-          <LineupTable left={leftRows} right={rightRows} leftTeam={focus} rightTeam={opp} week={week} isCurrent={isCurrent} unit="Proj" slots={snapshot.lineup} caption={`Week ${week} lineups, projected`} totals={{ label: 'Projected', left: totalL, right: totalR }} />
+          <LineupTable left={leftRows} right={rightRows} leftTeam={focus} rightTeam={opp} week={week} isCurrent={isCurrent} unit={unit} slots={snapshot.lineup} caption={`Week ${week} lineups, ${anyScored ? 'priced' : 'projected'}`} totals={{ label: totalsLabel, left: totalL, right: totalR }} />
         ) : <p className="px-4 py-4 text-[15px] text-v3-ink2 sm:px-5">No lineup is set for this week yet.</p>}
         {benchA.length || benchB.length ? (
           <details className="border-t border-v3-rule">
             <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between px-3 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:px-5 [&::-webkit-details-marker]:hidden">
               Bench <span className="text-v3-ink3">{benchA.length} · {benchB.length}</span>
             </summary>
-            <LineupTable left={benchA} right={opp ? benchB : null} leftTeam={focus} rightTeam={opp} week={week} isCurrent={isCurrent} unit="Proj" slots={false} caption={`Week ${week} benches, projected`} />
+            <LineupTable left={benchA} right={opp ? benchB : null} leftTeam={focus} rightTeam={opp} week={week} isCurrent={isCurrent} unit={unit} slots={false} caption={`Week ${week} benches, ${anyScored ? 'priced' : 'projected'}`} />
           </details>
         ) : null}
         <p className="border-t border-v3-rule px-3 py-3 text-[13px] leading-[1.5] text-v3-ink3 sm:px-5">
-          {note}{isCurrent ? ' Anybody whose game has kicked off is marked started; his slot can no longer change.' : ''}
+          {note}{liveNote}{isCurrent ? ' Anybody whose game has kicked off is marked started; his slot can no longer change.' : ''}
         </p>
       </Sheet>
     )
@@ -685,7 +714,9 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
                     ? 'No win probability: a starter on one side has no projection, and Juke only prices a matchup when both lineups can be.'
                     : 'No win probability yet: the weekly spread it needs is measured once the board has loaded.',
                   what: isCurrent
-                    ? 'A scoring-strength estimate from two projected lineups — not a simulated week.'
+                    ? (scoredCount || oppScoredCount
+                        ? `A scoring-strength estimate from two lineups, narrowing as games are played — ${scoredCount} of ${focusName}'s and ${oppScoredCount} of ${opp ? opp.teamName : 'theirs'} have already scored.`
+                        : 'A scoring-strength estimate from two projected lineups — not a simulated week.')
                     : `A scoring-strength estimate from today's two rosters, ${week - (current || 0)} ${week - (current || 0) === 1 ? 'week' : 'weeks'} out — rosters and injuries will change before then.`,
                 }}
               />
@@ -720,7 +751,7 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
           focus={focus}
           mine={mine}
           scoreOf={scoreOf}
-          unitLabel={phase === 'final' ? 'Final' : isCurrent ? 'Projected' : 'Projected · today’s rosters'}
+          unitLabel={phase === 'final' ? 'Final' : isCurrent ? (scoredCount || oppScoredCount ? 'Live' : 'Projected') : 'Projected · today’s rosters'}
         />
       ) : null}
 
