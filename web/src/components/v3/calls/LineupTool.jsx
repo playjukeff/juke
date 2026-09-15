@@ -230,6 +230,22 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                     {startPts.toFixed(1)} − {sitPts.toFixed(1)} = <Delta value={best.gain} digits={1} />
                   </p>
                 </Step>
+                {/* Only when the swap is INTO a flagged player, and then it is
+                    the condition the gain above is silently assuming. The
+                    number is breakEvenPlayOdds() in strategyBoard.js — this
+                    draws it and does not decide it. */}
+                {best.needsToPlay !== null && (
+                  <Step
+                    n={4}
+                    what={`This one is a bet on ${best.start.name} playing`}
+                    sub={`${platformName} has him ${best.start.inj === 'D' ? 'doubtful' : 'questionable'}, and the slot scores nothing if he sits`}
+                  >
+                    <p className="font-figure text-[15px] text-v3-ink2">
+                      {sitPts.toFixed(1)} ÷ {startPts.toFixed(1)} = worth it at about{' '}
+                      <Fig className="font-bold text-v3-ink">{Math.round(best.needsToPlay * 100)}%</Fig> to play
+                    </p>
+                  </Step>
+                )}
               </Steps>
             </div>
           ) : (

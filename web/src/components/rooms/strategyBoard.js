@@ -237,6 +237,35 @@ function benched(player, week) {
   return injurySeverity(player.inj) === 'out'
 }
 
+/* How likely a flagged player has to be to play for the swap to be worth it.
+ *
+ * Measured 15 September 2026 against the connected ESPN league: a platform
+ * does NOT discount a questionable player — it either zeroes him or projects
+ * him as if he plays, and Ladd McConkey came out at 1.09 of his own season
+ * rate while carrying a Q. So a swap INTO a flagged player is a bet the card
+ * was making silently: he scores his projection or he scores nothing, so it
+ * is worth making when `p * start >= sit`, which is `p >= sit / start`.
+ *
+ * It is a SENTENCE rather than a discount. Multiplying the gain by a
+ * probability would mean Juke inventing the quantity the card turns on, which
+ * is the line the pipeline refuses to cross for a kicker's short field goals.
+ * This is arithmetic over two numbers already on screen and invents nothing —
+ * and it is not double-counting, because the platform applied no discount of
+ * its own (see CLAUDE.md, "Questionable is not discounted by the platform
+ * either").
+ *
+ * Null wherever the condition would be meaningless: a seat already scoring
+ * nothing has no break-even, and a swap the reader would not make anyway has
+ * no bet in it.
+ */
+export function breakEvenPlayOdds(startPts, sitPts) {
+  if (!Number.isFinite(startPts) || !Number.isFinite(sitPts)) return null
+  if (startPts <= 0) return null
+  if (sitPts <= 0) return null
+  if (sitPts >= startPts) return null
+  return sitPts / startPts
+}
+
 /* The board's players with each rostered player's LIVE status laid over
  * the nightly one.
  *
@@ -350,7 +379,18 @@ export function swaps(team, byId, weekPts, week) {
          Caught by a test written for the opposite case. */
       const sitPts = benched(sit.player, week) ? 0 : sit.projPts
       const gain = start.projPts - sitPts
-      if (gain > 0) out.push({ start: start.player, sit: sit.player, gain, replacing: sitPts === 0 })
+
+      /* A swap INTO a flagged player is a bet, and the gain above does not
+         say so. `needsToPlay` is how likely he has to be to play for it to
+         be worth making — null for everybody else, so a card can draw the
+         condition only where there is one. See breakEvenPlayOdds(). */
+      const needsToPlay =
+        injurySeverity(start.player.inj) === 'questionable'
+          ? breakEvenPlayOdds(start.projPts, sitPts)
+          : null
+
+      if (gain > 0)
+        out.push({ start: start.player, sit: sit.player, gain, replacing: sitPts === 0, needsToPlay })
     }
   }
   out.sort((a, b) => b.gain - a.gain)
