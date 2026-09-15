@@ -1890,19 +1890,52 @@ exactly, the last as a bound with headroom — rather than asserting zero waste
 everywhere, which is a property this guard was never able to give and which
 would have stood red.
 
-**This residue is not the conservation law below, and the two must not be
-confused.** "Tried and rejected: tiering `cpuChoice()`'s fallback" settles the
-case where `picks > absorbableSize()`: there the room *must* absorb
-`picks − absorbableSize()` unusable players whoever takes them, so reordering
-the fallback moves the waste around and never removes it. Every shape in the
-table above is one the guard **allows**, which means `picks ≤ absorbableSize()`
-and the conservation law says the forced waste is zero. It is not zero, so what
-is left is a greedy snake failing to reach a feasible assignment that demonstrably
-exists — 380 picks against 387 capacity still landing 15 on the unstartable.
+**This residue was written up as a greedy-snake failure in `cpuChoice()`, and
+it was the conservation law the whole time — measured against a capacity
+figure that was itself wrong.** Corrected in place 14 September 2026.
 
-That is a real, open problem and a different one from the rejected experiment.
-It lives in `cpuChoice()` — and anybody picking it up should read the section
-below first and note that its conclusion does not cover this case.
+The retired claim was that every shape in the table is one the guard
+**allows**, so `picks ≤ absorbableSize()` and the conservation law says the
+forced waste is zero; it is not zero, therefore a greedy snake is failing to
+reach a feasible assignment that demonstrably exists. Both halves of that were
+true except the last word: **the assignment did not exist.**
+
+**`absorbableSize()` counted ruled-out players as capacity**, and
+`cpuChoice()` skips those outright — so the function was promising the room
+picks it could never spend. Measured on the 480-player standard board, at the
+worst shape the spec reports:
+
+```
+20 teams / 19 rounds     picks 380
+absorbableSize()               382     allowed, 2 to spare
+the same sum, ruled-out rows excluded   345
+                         380 − 345  =   35
+```
+
+**35 is exactly the worst waste the spec reported**, to the pick. The phantom
+capacity is 37 seats — 18 RB and 19 WR whose rows are on the board and whose
+players are out — and the same 37 shows up at 18, 20 and 24 teams.
+
+So the fix is one filter in `absorbableSize()` rather than anything in
+`cpuChoice()`, the rejected tiering experiment's conclusion covers this case
+after all, and the split this section draws between the two problems was
+never real. **A residue that is exactly your own capacity error is your
+capacity error** — the same tell as a par whose residual is the negative of
+its own baseline, which this file already records one section over.
+
+**The cost, measured after, as the deepest roster each team count may run:**
+
+```
+teams      4   6   8  10  12  14  16  18  20  22  24
+was       22  22  22  22  22  21  20  20  19  18  17
+now       22  22  22  22  21  20  19  18  17  16  15
+```
+
+One to two rounds off the deep end and nothing a person meets: the default
+ten- and twelve-team shapes still reach 21 or 22 against the 14 they use.
+`tests/pool-capacity.spec.mjs` passes with its bound untouched, and
+`deep-board`, `kd-timing` and `solo` pass with it — **27 of 27**, where two
+were red before.
 
 **It does NOT have a worker deploy attached, and this sentence used to say
 it did.** Corrected 10 September 2026 by a grep rather than a measurement:

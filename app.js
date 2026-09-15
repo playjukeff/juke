@@ -1472,7 +1472,16 @@ function poolSize() { return adpSet().length; }
    about what a roster may contain. */
 function absorbableSize() {
   const counts = {};
-  adpSet().forEach(function (p) { counts[p.pos] = (counts[p.pos] || 0) + 1; });
+  adpSet().forEach(function (p) {
+    // A ruled-out player is a row nobody can take: cpuChoice() skips him
+    // outright, so counting him as capacity promises the room a pick it
+    // cannot spend. Measured 14 September 2026 on the 480-player standard
+    // board: 18 RB and 19 WR, which is 37 phantom seats — and at 20 teams
+    // over 19 rounds that is exactly the 35 unstartable picks the draft
+    // was landing while this function said the shape fitted with 2 to spare.
+    if (isRuledOut(p)) return;
+    counts[p.pos] = (counts[p.pos] || 0) + 1;
+  });
   return POSITIONS.reduce(function (n, pos) {
     return n + Math.min(counts[pos] || 0, holdCap(pos) * league.teams);
   }, 0);
