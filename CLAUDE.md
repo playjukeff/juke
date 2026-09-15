@@ -10100,15 +10100,18 @@ demands an `access_token` for everything. A league's own subdomain —
 for part of its surface:
 
 ```
-league/rules     roster positions, the WHOLE scoring system,      anonymous
-                 waiver and trade policy, player pool, fees
-players/list     the player universe, with CBS ids                anonymous
+league/rules     roster positions, waiver and trade policy,       anonymous
+                 the playoff schedule, fees, player pool
+players/list     4,910 players: CBS id, name, position, club,     anonymous
+                 bye week, elias id
 league/details   the league, its teams, who is in it              "User not signed in"
 league/teams     ditto                                            "User not signed in"
 league/rosters   ditto                                            "User not signed in"
 league/standings/overall                                          "User not signed in"
 league/schedules                                                  "User not signed in"
 league/draft/results                                              "User not signed in"
+league/scoring/rules   the per-stat scoring values                "User not signed in"
+league/stats           ditto                                      "User not signed in"
 ```
 
 **A 400 means the endpoint exists and wants a `league_id`; a 404 means it
@@ -10127,19 +10130,107 @@ So the mint was retired and the check was not: a token exists as a concept
 with nothing left that issues one. A credential would have to come out of a
 logged-in browser session, which is the ESPN cookie question again.
 
-**The upside is real and is the reason to do CBS next rather than Yahoo.**
-`league/rules` hands over the league's entire scoring system, pre-named and
-anonymously. That is the part of ESPN that cost a 319-player cross-reference
-to derive statIds from, with **28 rules still unrepresentable** and one
-(`rec_40p: 38`) mapped to the wrong stat for a while because the derivation
-could not reject a subset. CBS gives it away.
+### ~~The upside is the scoring~~ — wrong, and corrected the same day
+
+**The first version of this section said `league/rules` "hands over the
+league's entire scoring system, pre-named and anonymously", and it does
+not.** That claim was read off the KEY NAME — the payload has a
+`scoring_system` key and a `scoring_system_rows` key — without opening
+either. Opened:
+
+- `scoring_system` is prose about the FORMAT: `{"scoring_system":
+  "Head-to-Head, Points", "type": "h2h", "win_determination": "points",
+  ...}`.
+- `scoring_system_rows` is `["scoring_system", "scoring_period",
+  "matchup_tiebreaker"]` — which rows to DISPLAY, not what anything scores.
+
+The whole rules payload contains **zero** occurrences of "touchdown",
+"reception", "yard" or "fumble". There are no per-stat numbers in it at all.
+
+The real endpoint is `league/scoring/rules`, it exists — 400 "Missing
+league_id" rather than 404 — and it answers **"User not signed in"**. So
+scoring is on the far side of the credential with everything else, and the
+reason to do CBS ahead of Yahoo is weaker than this file claimed for a day.
+
+**It is the same error as `posRank` standing in for value**, which this file
+already has a section about: a name read as its contents. It was written
+into this file, a commit message and a merged PR body before anybody opened
+the object, and the correction cost one `json.load` and a `grep`. **Open the
+payload.** A key called `scoring_system` is a claim about a key.
+
+### What IS free, and it is the crosswalk
+
+`players/list` is anonymous, 4,910 rows, and carries CBS id, full name,
+first/last, position, pro team, bye week and an `elias_id`. That is enough
+to join CBS to the board with no session at all, and it was measured against
+the real list and the 15 September board rather than estimated:
+
+```
+                        rows   joined   unmatched
+every fantasy row        480     470       10
+REAL-ADP rows            230     230        0      <- the ones that matter
+deep-bench rows          250     240       10
+```
+
+**100% of the players a connected league can actually be about**, against
+139 of 141 for ESPN. The ten misses are all deep-bench rows — Roethlisberger,
+Jack Doyle, Eric Ebron — players Sleeper's master still carries and CBS has
+dropped, which is the correct answer rather than a gap.
+
+Four tiers, each one earned by a measurement:
+
+1. **normalised name + position** — 460 of 480 on its own.
+2. **a normalised name that is unique in the pool** — 3 more.
+3. **the CLUB, for a defense, never the name.** CBS stores the nickname
+   ("49ers") where the pipeline stores "San Francisco Defense" and neither
+   normalises to the other. Exactly the rule `espn.js` already states. Worth
+   19 rows.
+4. **surname + position + club, and only when EXACTLY ONE candidate
+   matches.** Worth the last 2 real-ADP rows, both nickname mismatches:
+   `Kenny Gainwell -> Kenneth Gainwell` and
+   `Andy Borregales -> Andres Borregales`. The uniqueness requirement is
+   not caution for its own sake — **60 of 2,046 surname|position|club keys
+   in the CBS pool are ambiguous**, so a tier that took the first candidate
+   would silently mismatch about 3% of what it touched.
+
+**CBS spells Jacksonville `JAC` and the pipeline spells it `JAX`.** One
+alias, and every other club code agrees exactly. Found by a defense
+reconciling to nothing, which is the third time that is how a club alias
+has surfaced here — `TEAM_ALIASES` already carries nflverse calling the
+Rams `LA`.
+
+**And the surname tier measured 0 before it measured 2**, which is the
+warning worth keeping. The probe split `normalise(name)` on a space, and
+`normalise()` strips spaces — so it returned the whole token, matched
+nothing, and reported a confident zero that read as "the tier is not worth
+having". Splitting the RAW name before normalising is what exercised it.
+**A tier that resolves nothing is a question about the probe first.**
+
+### The league site is behind CBS's central login
+
+`https://<league>.football.cbssports.com/` 302s to
+`www.cbssports.com/login?product_abbrev=mgmt&master_product=41403`, so the
+whole thing is a session on `.cbssports.com` rather than anything
+league-scoped. Anonymously that host sets `pid` and `anon=TRUE`; whatever
+carries the actual sign-in only appears once signed in, which is why **which
+cookie the API honours is not answerable from outside** and is the one thing
+still open.
+
+There is a Swagger document at `api/docs?version=4.0` — the only resource
+with a v4 at all — and its `paths` object is empty, so it names nothing.
 
 **Nothing CBS-shaped is built.** What exists that it will reuse:
 `league_credentials` is keyed by provider already, `sealCredential()` takes
 an arbitrary value shape, and `platformFor()` answers for a provider this
-build does not know about. So the credential half is done; what is not is an
-adapter, a crosswalk from CBS player ids, and the answer to where a session
-legitimately comes from.
+build does not know about. So the credential half is done and the crosswalk
+is solved on paper; what is not is an adapter, and the answer to where a
+session legitimately comes from.
+
+**Do not build the adapter against a guess at the roster payload.** Every
+shape it has to parse — teams, rosters, standings, the scoring values — is
+behind the session, so nothing about it can be measured yet, and this file's
+own record is that three of six proposals die on contact once somebody
+measures them.
 
 ## The draft countdown, and the instant that outlives its draft
 
