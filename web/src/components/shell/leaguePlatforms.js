@@ -8,9 +8,9 @@
    between. Reported exactly that way: "there's a disconnect between what
    we're saying we can connect to and what our pop-up is asking for."
 
-   ---- ESPN is built now, and the list is why that was one edit ----
+   ---- CBS is built now, and the list is still why that is one edit ----
 
-   Two of the four are live. Because this list is the only place the answer
+   Three of the four are live. Because this list is the only place the answer
    is written down, turning ESPN on was `live: true` here — the connect
    dialog, the caption under every connect control on the site, and the
    badge on a connected league all followed with nothing else to find. That
@@ -27,6 +27,19 @@
    reader's own ESPN sign-in, which is a bigger ask than a league id and
    belongs in the one line under the button. Corrected in place rather
    than left standing, which is the whole reason this list is one list.
+
+   **CBS's note may not inherit ESPN's.** ESPN's `espn_s2` rotates, so a
+   dialog can honestly say the credential expires on its own. CBS's `pid`
+   is set with `expires` in 2037, and disconnecting is the only revocation
+   Juke can offer — so "always" is doing real work in that line and is not
+   a stylistic difference from the row above it. The other half of it is
+   that there is no public CBS league at all: every endpoint that says who
+   is in a league answers "User not signed in" anonymously, so unlike
+   ESPN's, the sign-in is not the private case, it is the only case.
+
+   The order is the order they are offered in, so the three that work sit
+   together and the one that does not is last. It was CBS then Yahoo when
+   neither worked, which was alphabetical about nothing.
 
    ---- Listed, not hidden ----
 
@@ -46,8 +59,8 @@
 export const PLATFORMS = [
   { key: 'sleeper', name: 'Sleeper', live: true, note: 'Username only — no password' },
   { key: 'espn', name: 'ESPN', live: true, note: 'League ID — private leagues need your ESPN sign-in' },
+  { key: 'cbs', name: 'CBS', live: true, note: 'League address — plus your CBS sign-in, always' },
   { key: 'yahoo', name: 'Yahoo', live: false },
-  { key: 'cbs', name: 'CBS', live: false },
 ]
 
 export const LIVE_PLATFORMS = PLATFORMS.filter((p) => p.live)

@@ -421,5 +421,90 @@ check("a slug that could never be a host is refused before any request",
   (await leagueSnapshot("evil.com#", "2026", null, resolve)).reason, "not-found");
 check("and nothing was fetched for it", urls.length, 0);
 
+/* ----------------------------------------------------------
+   The routes, through the real router
+   ----------------------------------------------------------
+
+   draft-room.js is an ordinary fetch handler and imports into Node, so its
+   guards can be driven in process with no wrangler and no ports -- the same
+   seam test-me-routes.mjs already uses.
+
+   It imports standardwebhooks, which tests.yml installs nothing for, so
+   this half SKIPS there and runs in deploy-worker.yml. It says so out loud
+   rather than quietly reporting fewer assertions: a suite that has stopped
+   checking is indistinguishable from one that passes. */
+
+let worker = null;
+try {
+  worker = (await import("./draft-room.js")).default;
+} catch (err) {
+  console.log("--  the route half is SKIPPED: " + (err && err.message));
+  console.log("    (it needs worker/node_modules; deploy-worker.yml installs them)");
+}
+
+if (worker) {
+  const ORIGIN = "https://jukeff.com";
+  const env = {};
+  const ctx = { waitUntil() {} };
+  const call = (path, init) => worker.fetch(
+    new Request("https://w.dev" + path, Object.assign({ headers: { origin: ORIGIN } }, init)),
+    env, ctx
+  );
+
+  let sawCookie = null;
+  globalThis.fetch = async (u, init) => {
+    const u2 = String(u);
+    if (u2.includes("/state/nfl")) {
+      return new Response(JSON.stringify({ season: "2026", week: 2 }), { status: 200 });
+    }
+    sawCookie = (init && init.headers && init.headers.cookie) || null;
+    const key = Object.keys(BODIES).find((k) => u2.includes("/api/" + k));
+    if (!key) return new Response(JSON.stringify({ body: {} }), { status: 200 });
+    if (!sawCookie) return new Response("User not signed in", { status: 200 });
+    return new Response(JSON.stringify({ body: BODIES[key] }), { status: 200 });
+  };
+
+  /* A verb a preflight does not name is a request that never leaves the
+     page: no log line, no error at the worker, and a dialog that does
+     nothing. The lesson PATCH on /me/leagues already cost once. */
+  const pre = await call("/cbs/league", { method: "OPTIONS" });
+  check("the lookup preflight names POST",
+    pre.headers.get("access-control-allow-methods"), "GET, POST");
+  check("and authorization with it, since that form needs an account",
+    pre.headers.get("access-control-allow-headers"), "content-type, authorization");
+  check("the snapshot preflight is GET only",
+    (await call("/cbs/snapshot", { method: "OPTIONS" }))
+      .headers.get("access-control-allow-methods"), "GET");
+
+  /* The origin check runs before anything upstream is spent. CORS tells a
+     browser whether it may READ a response and does nothing about the
+     request being made. */
+  const noOrigin = await worker.fetch(new Request("https://w.dev/cbs/snapshot?league=x"), env, ctx);
+  check("a request with no Origin is refused", noOrigin.status, 403);
+  const badOrigin = await worker.fetch(
+    new Request("https://w.dev/cbs/snapshot?league=x", { headers: { origin: "https://evil.example" } }),
+    env, ctx);
+  check("and one from an origin that is not ours", badOrigin.status, 403);
+
+  // The slug becomes a hostname, so it is refused before a URL is built.
+  for (const bad of ["evil.com%23", "a.b", "", "x"]) {
+    check("refused before any request is made: " + JSON.stringify(bad),
+      (await call("/cbs/snapshot?league=" + bad)).status, 400);
+  }
+
+  check("a signed-out lookup answers private, which is the truth about CBS",
+    (await (await call("/cbs/league?league=sanctuaryfootballleague")).json()).reason, "private");
+
+  /* The POST carries a session somebody has just copied out of their own
+     browser and answers whether it works. Left open, that is an oracle for
+     testing stolen cookies on our origin and our IP. */
+  sawCookie = null;
+  const noAuth = await call("/cbs/league?league=sanctuaryfootballleague", {
+    method: "POST", body: JSON.stringify({ pid: "abc" })
+  });
+  check("the POST refuses without an account", noAuth.status, 401);
+  check("and nothing was sent to CBS for it", sawCookie, null);
+}
+
 console.log(failures ? "\n" + failures + " failed" : "\nall passed");
 process.exit(failures ? 1 : 0);

@@ -651,6 +651,45 @@
         .catch(() => syncResult(false, "offline", { league: null }));
     },
 
+    /* Look a CBS league up, which can only ever be done as somebody.
+
+       There is no public half of CBS at all: every endpoint that says who
+       is in a league or what they hold answers "User not signed in"
+       anonymously. So unlike espnLookup() above there is no signed-out
+       form of this that can succeed, and the session goes with the first
+       request rather than after a public one has checked the address.
+
+       `leagueId` is the league's own address -- CBS identifies a league by
+       the SUBDOMAIN it lives on, and every endpoint requires a `league_id`
+       parameter that it then ignores entirely. Either the whole URL or the
+       slug works; the worker canonicalises it.
+
+       The cookie goes in a BODY for espnLookup()'s reason: a credential in
+       a URL is a credential in every log between here and the worker. */
+    cbsLookup: function (leagueId, season, cred, token) {
+      const id = String(leagueId || "").trim();
+      if (!id) return Promise.resolve(syncResult(false, "bad-request", { league: null }));
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", { league: null }));
+      const http = WORKER.replace(/^ws/, "http");
+      const q = "?league=" + encodeURIComponent(id) +
+                (season ? "&season=" + encodeURIComponent(season) : "");
+      const pid = cred && cred.pid;
+      return fetch(http + "/cbs/league" + q, {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+        body: JSON.stringify({ pid: pid || undefined })
+      })
+        .then(function (r) {
+          if (!r.ok) return syncResult(false, reasonForStatus(r.status), { league: null });
+          return r.json()
+            .then((body) => (body && body.league)
+              ? syncResult(true, null, { league: body.league, season: body.season })
+              : syncResult(false, (body && body.reason) || "not-found", { league: null }))
+            .catch(() => syncResult(false, "bad-response", { league: null }));
+        })
+        .catch(() => syncResult(false, "offline", { league: null }));
+    },
+
     // A league's current state — rosters, records, points. Cached at the
     // edge for a couple of minutes, so calling this on every navigation is
     // cheap and calling it in a loop is not a problem for Sleeper.
@@ -661,7 +700,9 @@
       /* Which platform's route. Defaulted rather than required, because
          every caller predates ESPN and a connection stored before the
          provider column meant anything is a Sleeper one. */
-      const path = provider === "espn" ? "/espn/snapshot?league=" : "/sleeper/snapshot?league=";
+      const path = provider === "espn" ? "/espn/snapshot?league="
+                 : provider === "cbs" ? "/cbs/snapshot?league="
+                 : "/sleeper/snapshot?league=";
       return fetch(http + path + encodeURIComponent(id))
         .then(function (r) {
           if (r.status === 404) return syncResult(false, "not-found", { snapshot: null });
@@ -762,7 +803,11 @@
           // Absent means a public league, which is what every ESPN connect
           // meant before private ones could be read at all.
           espnS2: (cred && cred.espnS2) || undefined,
-          swid: (cred && cred.swid) || undefined
+          swid: (cred && cred.swid) || undefined,
+          /* CBS's whole surface is behind a session, so there is no
+             absent-means-public reading of this one: a connect with no
+             `pid` is refused rather than tried as a public league. */
+          pid: (cred && cred.pid) || undefined
         })
       })
         .then(function (r) {
