@@ -14,6 +14,7 @@ import path from "node:path";
 
 const {
   lineupRows, benchRows, swaps, bestSwaps, projectedTotal, injurySeverity, injuryWatch, weekScorer,
+  breakEvenPlayOdds,
   platformScorer, leagueWeekPts, projectionSource, withLiveStatus, withLiveActuals,
 } = await import(pathToFileURL(path.resolve("web/src/components/rooms/strategyBoard.js")).href);
 
@@ -370,6 +371,53 @@ check("an OUT starter scores nothing under Juke's fallback", () => {
   for (const code of ["O", "IR", "PUP", "SUS", "DNR"]) {
     assert.equal(weekScorer(byeBase, 7)({ bye: 11, projPts: 14, inj: code }), 0, code);
   }
+});
+
+/* ---- a swap INTO a flagged player is a bet, and the card must say so ----
+ *
+ * The gain is start - sit with no probability in it, so the reader was
+ * handed an expected value that only holds if he is certain to play.
+ * He scores his projection or nothing, so the swap breaks even at
+ * p >= sit / start. Reported 15 September 2026 off the deployed app.
+ *
+ * Confirmed red by having swaps() omit needsToPlay: the four assertions
+ * below fail and every other check in this file stays green. */
+check("the break-even is the sit player's points over the start player's", () => {
+  assert.equal(breakEvenPlayOdds(14.6, 12.4).toFixed(3), "0.849", "the reported card, to the point");
+  assert.equal(breakEvenPlayOdds(20, 10), 0.5);
+});
+
+check("no condition where the seat already scores nothing", () => {
+  assert.equal(breakEvenPlayOdds(14.6, 0), null,
+    "any chance of playing beats a certain zero, so there is nothing to warn about");
+});
+
+check("no condition where the swap is not worth making anyway", () => {
+  assert.equal(breakEvenPlayOdds(10, 12), null);
+  assert.equal(breakEvenPlayOdds(0, 12), null);
+  assert.equal(breakEvenPlayOdds(null, 12), null);
+});
+
+check("swaps() carries it for a flagged player and nobody else", () => {
+  const byId = new Map([
+    ["sit", { id: "sit", pos: "WR", name: "Healthy Starter", inj: "", bye: 0 }],
+    ["q",   { id: "q",   pos: "WR", name: "Flagged Bench",   inj: "Q", bye: 0 }],
+    ["ok",  { id: "ok",  pos: "WR", name: "Healthy Bench",   inj: "", bye: 0 }],
+  ]);
+  const pts = { sit: 12.4, q: 14.6, ok: 15.0 };
+  const team = { starters: ["sit"], players: ["sit", "q", "ok"] };
+  const rows = swaps(team, byId, (p) => pts[p.id], 2);
+  const flagged = rows.find((r) => r.start.id === "q");
+  const healthy = rows.find((r) => r.start.id === "ok");
+  // `.toFixed()` on an absent field throws, and a throw names the FILE rather
+  // than the check — the same trap the kicker-fold assertions already record.
+  // Formatting the value first means a missing one fails as "undefined".
+  assert.equal(
+    typeof flagged.needsToPlay === "number" ? flagged.needsToPlay.toFixed(3) : String(flagged.needsToPlay),
+    "0.849",
+    "the bet is stated",
+  );
+  assert.equal(healthy.needsToPlay, null, "a healthy swap carries no condition");
 });
 
 check("a questionable one is still scored", () => {
