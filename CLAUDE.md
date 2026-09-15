@@ -10779,6 +10779,109 @@ with the league's screen and give no reason.
   the status block below does is narrower: it stops a started game being
   treated as a decision.
 
+### Tried and rejected: zeroing a ruled-out player's platform number
+
+**The composition in `leagueWeekPts()` is deliberate, and it reads as a bug.**
+`platformScorer` wraps `weekScorer` on the OUTSIDE and answers the moment it
+has a platform number — so `weekScorer`'s zeroing of a bye and of an
+OUT/IR/PUP/SUS/DNR starter never runs for a connected league, which is the
+only kind of league that has a platform number at all. Proved against the
+real module rather than read:
+
+```
+OUT + platform number   = 15.23    weekScorer's zero does not survive
+BYE + platform number   = 15.23    nor here
+OUT, no platform number = 0        the fallback path is untouched
+```
+
+That is the owner's non-negotiable holding: a connected league shows the
+projection its platform shows. Both functions say so in their own comments
+and `scripts/test_strategy_board.mjs` asserts it twice by name — *"a bye
+beneath the league's number, never above it"* and *"the league's own number
+is never overridden by it"*.
+
+**Reopened and re-rejected 15 September 2026, and the one-line reorder was
+written before the tests refused it.** It is recorded here because the next
+reader will reach for exactly the same fix: a lineup counting a player the
+screen has already flagged is the "right value, wrong column" shape this file
+is full of, and it takes an hour to find out it is not one.
+
+**What the decision now has that it did not: what the platform actually
+returns for a player it has itself ruled out.** Measured against the
+connected ESPN league's own pool, week 2:
+
+```
+of ten OUT players carrying a week-2 projection, NINE are non-zero
+                                mean 0.97 of that player's own season rate
+Brock Bowers      OUT           15.23
+TreVeyon Henderson OUT           9.14
+```
+
+So the platform is not quietly zeroing them and the point is not moot. **The
+cost of the rule is real and accepted**: a lineup that leaves an out starter
+in it counts him in full — in the projected total, in the margin and in the
+win probability — while "Might not play" names him two inches away. The
+*advice* is unaffected, which is why nothing caught it: `swaps()` refuses to
+start an out player on its own, so every recommendation was right and only
+every total was inflated.
+
+**It bites rarely.** Measured the same afternoon: 0 of that league's 10 teams
+had an out player in a starting slot, and ESPN's own displayed total is the
+plain sum of its starters' projections — checked to the penny on all ten. So
+zeroing him would put Juke BELOW the number ESPN shows, which is the one
+thing the non-negotiable exists to prevent.
+
+**If it is ever reopened, the open question is not the ordering.** It is
+whether "match the platform" should hold for a player the platform has ruled
+out, and the honest version of the other answer needs a visible line on the
+card saying why the two disagree — a silent divergence reads as a bad import.
+
+### Questionable is not discounted by the platform either, and that is measured
+
+The companion measurement, and it settles a thing `weekScorer` decides
+without evidence: **Q is scored in full, and ESPN does the same.** So there is
+no discount already baked into the platform's number for Juke to
+double-count — which was the reason to check before touching it, and the
+shape of the first-downs-and-touchdowns error read from the other end.
+
+Ratio of ESPN's week-2 projection to that player's own ESPN season rate
+(season ÷ 17). A risk discount would put QUESTIONABLE below ACTIVE:
+
+```
+                          n     mean    median
+the league's rosters
+  ACTIVE                120    1.017     1.017
+  QUESTIONABLE            6    five at 0.89-1.09, one zeroed outright
+the league-wide pool (1,042 players), non-zero cases
+  ACTIVE                290    1.058
+  QUESTIONABLE            9    1.161
+```
+
+**ESPN's handling is binary rather than probabilistic**: it either zeroes a
+player or projects him as if he plays. Ladd McConkey, QUESTIONABLE, came out
+at **1.09** — projected slightly ABOVE his own average.
+
+**Which makes a swap into a flagged player an unstated bet.** On that week's
+card, starting him over a healthy 12.4 was offered as "+2.1 points this
+week", and the arithmetic underneath is `14.6 − 12.4` with no probability in
+it. The break-even is `12.4 / 14.6`, so **the swap is right only if he is at
+least 85% to play**, against a +2.2 upside and a −12.4 downside. Nothing on
+the card says so, and "Might not play" listing the same player is the
+contradiction the reader is left to resolve.
+
+**Nothing was changed for it**, and the two honest options are to state the
+condition (pure arithmetic from figures already on screen, inventing no
+probability) or to refuse to recommend swapping INTO a flagged player the way
+`swaps()` already refuses a locked one. Both are product decisions.
+
+**Caveats, because the n is small.** Six questionable players with both
+numbers in the league and nine league-wide after filtering, one week, one
+season, one league's view of the pool. The zero-or-full split is unambiguous
+and consistent across both sets; the ratios are not worth quoting to three
+decimals. And the season-rate baseline is itself depressed for a chronically
+injured player — a bias TOWARD finding no discount, which is worth stating
+because it cuts against the conclusion. It cannot explain a ratio above 1.0.
+
 ### Sleeper's projection is arithmetic as well, and it is read the same way
 
 Reported 10 September 2026 from a placeholder Sleeper league, the day after
