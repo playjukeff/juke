@@ -292,7 +292,7 @@ export function WayIn() {
 export function ReadOnlyLine() {
   return (
     <p className="font-figure text-[13px] text-v3-ink3">
-      Read-only — Juke never edits your league · {PLATFORM_LINE}
+      Read-only: Juke never edits your league. {PLATFORM_LINE}.
     </p>
   )
 }

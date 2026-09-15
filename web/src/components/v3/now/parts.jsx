@@ -416,7 +416,7 @@ export function PassCard({ week, primary = false, inSeason = false }) {
         {pro} reads {one === 1 ? 'one league' : `${one} leagues`}; {multi} reads up to {many} and adds what every rival is short of. Neither is on sale yet — leave an email and Juke will tell you when it is.
       </p>
       <div className="mt-4"><NotifyForm need="pro" primary={primary} /></div>
-      <p className="mt-3 font-figure text-[12px] text-v3-ink3">Read-only — Juke never edits your league · {PLATFORM_LINE}</p>
+      <p className="mt-3 font-figure text-[12px] text-v3-ink3">Read-only: Juke never edits your league. {PLATFORM_LINE}.</p>
     </Sheet>
   )
 }
