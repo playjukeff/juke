@@ -52,6 +52,9 @@ async function openDialog(page, opts = {}) {
     // useTier() reads /me, not a `tier` method -- the cap otherwise sends
     // every open straight to the tier-limit screen.
     window.Live.me = () => Promise.resolve(ok({ signedIn: true, tier: 'allaccess' }))
+    /* ESPN's public lookup answers "private", which is the branch that
+       offers the sign-in step the bookmarklet lives on. */
+    window.Live.espnLookup = () => Promise.resolve({ ok: false, reason: 'private' })
     window.Live.cbsLookup = (id, season, cred, token) => {
       window.__calls.push({ fn: 'cbsLookup', id, pid: cred && cred.pid, token })
       if (!cred || cred.pid !== 'GOODPID') return Promise.resolve({ ok: false, reason: 'private' })
@@ -161,7 +164,7 @@ test('the CBS step offers the bookmarklet, and says what to do with it', async (
   await openDialog(page)
   await page.getByRole('button', { name: /^CBS/ }).click()
 
-  const bm = page.getByRole('link', { name: /copy my cbs key/i })
+  const bm = page.getByRole('link', { name: /copy my key/i })
   await expect(bm).toBeVisible()
 
   /* It has to be a javascript: href -- that is the whole mechanism. A
@@ -169,7 +172,9 @@ test('the CBS step offers the bookmarklet, and says what to do with it', async (
   const href = await bm.getAttribute('href')
   expect(href.startsWith('javascript:')).toBe(true)
   expect(href).not.toContain(String.fromCharCode(10))
-  expect(href).toContain('pid=')
+  // It names the one cookie it will read, and only that one.
+  expect(href).toContain('["pid"]')
+  expect(href).not.toContain('espn_s2')
 
   /* Clicking it HERE is refused by this page's own CSP, so the click has to
      say what to do rather than appear to do nothing -- a control that
@@ -180,4 +185,37 @@ test('the CBS step offers the bookmarklet, and says what to do with it', async (
   // And the manual route is still reachable for a phone, where dragging a
   // bookmark is not a thing anybody can do.
   await expect(page.getByText(/or find it by hand/i)).toBeVisible()
+})
+
+test('the ESPN private step offers one too, and one paste fills both boxes', async ({ page }) => {
+  /* ESPN needed a browser extension right up until the HttpOnly flag on
+     `espn_s2` was actually looked at -- it is not set, so document.cookie
+     can read it and this is the same mechanism CBS gets. */
+  await openDialog(page)
+  await page.getByRole('button', { name: /^ESPN/ }).click()
+  await page.locator('input[placeholder="65142363"]').fill('65142363')
+  await page.getByRole('button', { name: /find my league/i }).click()
+
+  // The public lookup answers "private", which is what offers the sign-in step.
+  await page.getByRole('button', { name: /connect it with my espn sign-in/i }).click()
+
+  const bm = page.getByRole('link', { name: /copy my key/i })
+  await expect(bm).toBeVisible()
+  const href = await bm.getAttribute('href')
+  expect(href.startsWith('javascript:')).toBe(true)
+  expect(href).toContain('espn_s2')
+  expect(href).toContain('SWID')
+
+  /* One clipboard value, two boxes -- pasting into EITHER fills both,
+     because somebody with one value and two fields tries whichever is
+     nearer. */
+  await page.locator('#espn-s2').focus()
+  await page.evaluate(() => {
+    const el = document.querySelector('#espn-s2')
+    const dt = new DataTransfer()
+    dt.setData('text', 'SWID={ABC-123}; espn_s2=AEBxyz')
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  })
+  await expect(page.locator('#espn-swid')).toHaveValue('{ABC-123}')
+  await expect(page.locator('#espn-s2')).toHaveValue('AEBxyz')
 })

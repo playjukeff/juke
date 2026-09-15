@@ -1,7 +1,9 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { X, Check, Lock } from 'lucide-react'
 import { PLATFORMS, LIVE_PLATFORMS } from './leaguePlatforms.js'
-import { CBS_BOOKMARKLET, CBS_BOOKMARKLET_LABEL } from './cbsKeyBookmarklet.js'
+import {
+  CBS_BOOKMARKLET, ESPN_BOOKMARKLET, BOOKMARKLET_LABEL, splitEspnPaste,
+} from './keyBookmarklets.js'
 import { tierLabel } from '../../lib/tiers.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -282,6 +284,17 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      (the public lookup already said "private"), so what is wrong is the
      pair, and the message has to say so rather than sending somebody back
      to re-check a number. */
+  /* One clipboard value, two boxes. Anything that is not the combined
+     `SWID=…; espn_s2=…` shape falls through untouched, so an ordinary
+     single-value paste behaves exactly as it always has. */
+  const onEspnPaste = (e) => {
+    const pair = splitEspnPaste(e.clipboardData && e.clipboardData.getData('text'))
+    if (!pair) return
+    e.preventDefault()
+    setSwid(pair.swid)
+    setEspnS2(pair.espnS2)
+  }
+
   const lookupPrivate = async (e) => {
     e.preventDefault()
     if (!espnS2.trim() || !swid.trim()) return
@@ -599,11 +612,50 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               here if this league stops loading.
             </p>
 
+            {/* The easy path, first -- same mechanism as CBS's, and it
+                needs no extension for the reason measured in
+                keyBookmarklets.js: `espn_s2` is not HttpOnly, so
+                `document.cookie` can see it.
+
+                ESPN needs BOTH halves, so the bookmarklet copies them as one
+                string and `onPaste` splits it across the two boxes. Pasting
+                into either one works, because somebody with two boxes and
+                one clipboard value will try whichever is nearer. */}
+            <div className="mt-4 rounded-xl border border-line-hairline bg-surface-page p-3">
+              <p className="text-meta text-ink-muted">
+                Easiest way — drag this to your bookmarks bar, then click it while
+                you&apos;re signed in at fantasy.espn.com:
+              </p>
+              <a
+                href={ESPN_BOOKMARKLET}
+                draggable="true"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setDragHint(true)
+                }}
+                className="mt-2 inline-flex cursor-grab items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-[14px] font-semibold text-white active:cursor-grabbing"
+              >
+                <span aria-hidden="true">&#8595;</span> {BOOKMARKLET_LABEL}
+              </a>
+              {dragHint ? (
+                <p className="mt-2 text-meta text-voidInk-body">
+                  Drag it up to your bookmarks bar rather than clicking it here — it
+                  only works on an ESPN page. On a phone, use the manual steps below.
+                </p>
+              ) : null}
+              <p className="mt-2 text-meta text-ink-muted">
+                It reads the two values below and copies them. It sends nothing
+                anywhere, and reads nothing else in your ESPN account. Paste it into
+                either box.
+              </p>
+            </div>
+
             <label className="mt-4 block text-meta text-ink-muted" htmlFor="espn-swid">SWID</label>
             <input
               id="espn-swid"
               value={swid}
               onChange={(e) => setSwid(e.target.value)}
+              onPaste={onEspnPaste}
               placeholder="{XXXXXXXX-XXXX-...}"
               spellCheck="false"
               autoComplete="off"
@@ -615,6 +667,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               id="espn-s2"
               value={espnS2}
               onChange={(e) => setEspnS2(e.target.value)}
+              onPaste={onEspnPaste}
               placeholder="AEB..."
               spellCheck="false"
               autoComplete="off"
@@ -869,7 +922,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                     }}
                     className="mt-2 inline-flex cursor-grab items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-[14px] font-semibold text-white active:cursor-grabbing"
                   >
-                    <span aria-hidden="true">&#8595;</span> {CBS_BOOKMARKLET_LABEL}
+                    <span aria-hidden="true">&#8595;</span> {BOOKMARKLET_LABEL}
                   </a>
                   {dragHint ? (
                     <p className="mt-2 text-meta text-voidInk-body">
