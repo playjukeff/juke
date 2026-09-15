@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-14 16:43 UTC
+Generated 2026-09-15 02:50 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -16,35 +16,35 @@ picking one would serve somebody else's news under this name.
 Seahawks | DEF | SEA | no Tank01 id
 Broncos | DEF | DEN | no Tank01 id
 Texans | DEF | HOU | no Tank01 id
-Rams | DEF | LAR | no Tank01 id
-Eagles | DEF | PHI | no Tank01 id
-Lions | DEF | DET | no Tank01 id
 Vikings | DEF | MIN | no Tank01 id
-Chargers | DEF | LAC | no Tank01 id
+Rams | DEF | LAR | no Tank01 id
+Lions | DEF | DET | no Tank01 id
 Patriots | DEF | NE | no Tank01 id
-Jaguars | DEF | JAX | no Tank01 id
-49ers | DEF | SF | no Tank01 id
 Steelers | DEF | PIT | no Tank01 id
-Bills | DEF | BUF | no Tank01 id
-Titans | DEF | TEN | no Tank01 id
-Ravens | DEF | BAL | no Tank01 id
+Eagles | DEF | PHI | no Tank01 id
+49ers | DEF | SF | no Tank01 id
+Chargers | DEF | LAC | no Tank01 id
+Jets | DEF | NYJ | no Tank01 id
+Giants | DEF | NYG | no Tank01 id
+Cowboys | DEF | DAL | no Tank01 id
+Jaguars | DEF | JAX | no Tank01 id
+Packers | DEF | GB | no Tank01 id
+Buccaneers | DEF | TB | no Tank01 id
 Browns | DEF | CLE | no Tank01 id
+Ravens | DEF | BAL | no Tank01 id
+Bills | DEF | BUF | no Tank01 id
 Falcons | DEF | ATL | no Tank01 id
+Titans | DEF | TEN | no Tank01 id
+Bears | DEF | CHI | no Tank01 id
+Saints | DEF | NO | no Tank01 id
 Alex Kessman | K | CAR | no Tank01 id
 Bengals | DEF | CIN | no Tank01 id
 Colts | DEF | IND | no Tank01 id
 Cardinals | DEF | ARI | no Tank01 id
 Raiders | DEF | LV | no Tank01 id
-Jets | DEF | NYJ | no Tank01 id
-Cowboys | DEF | DAL | no Tank01 id
 Commanders | DEF | WAS | no Tank01 id
-Buccaneers | DEF | TB | no Tank01 id
 Panthers | DEF | CAR | no Tank01 id
-Saints | DEF | NO | no Tank01 id
-Packers | DEF | GB | no Tank01 id
 Dolphins | DEF | MIA | no Tank01 id
-Giants | DEF | NYG | no Tank01 id
-Bears | DEF | CHI | no Tank01 id
 Chiefs | DEF | KC | no Tank01 id
 Ben Roethlisberger | QB | PIT | no Tank01 id
 Eric Ebron | TE | PIT | no Tank01 id
@@ -238,40 +238,40 @@ every season we store. Sleeper stays authoritative: this changes no
 stored number and never should. It is here so that when the two
 start disagreeing, somebody finds out from this file.
 
-445 of 481 players joined to an nflverse record.
+448 of 484 players joined to an nflverse record.
 
 No nflverse record for:
 Seahawks | DEF | SEA | no nflverse id
 Broncos | DEF | DEN | no nflverse id
 Texans | DEF | HOU | no nflverse id
-Rams | DEF | LAR | no nflverse id
-Eagles | DEF | PHI | no nflverse id
-Lions | DEF | DET | no nflverse id
 Vikings | DEF | MIN | no nflverse id
-Chargers | DEF | LAC | no nflverse id
+Rams | DEF | LAR | no nflverse id
+Lions | DEF | DET | no nflverse id
 Patriots | DEF | NE | no nflverse id
-Jaguars | DEF | JAX | no nflverse id
-49ers | DEF | SF | no nflverse id
 Steelers | DEF | PIT | no nflverse id
-Bills | DEF | BUF | no nflverse id
-Titans | DEF | TEN | no nflverse id
-Ravens | DEF | BAL | no nflverse id
+Eagles | DEF | PHI | no nflverse id
+49ers | DEF | SF | no nflverse id
+Chargers | DEF | LAC | no nflverse id
+Jets | DEF | NYJ | no nflverse id
+Giants | DEF | NYG | no nflverse id
+Cowboys | DEF | DAL | no nflverse id
+Jaguars | DEF | JAX | no nflverse id
+Packers | DEF | GB | no nflverse id
+Buccaneers | DEF | TB | no nflverse id
 Browns | DEF | CLE | no nflverse id
+Ravens | DEF | BAL | no nflverse id
+Bills | DEF | BUF | no nflverse id
 Falcons | DEF | ATL | no nflverse id
+Titans | DEF | TEN | no nflverse id
+Bears | DEF | CHI | no nflverse id
+Saints | DEF | NO | no nflverse id
 Bengals | DEF | CIN | no nflverse id
 Colts | DEF | IND | no nflverse id
 Cardinals | DEF | ARI | no nflverse id
 Raiders | DEF | LV | no nflverse id
-Jets | DEF | NYJ | no nflverse id
-Cowboys | DEF | DAL | no nflverse id
 Commanders | DEF | WAS | no nflverse id
-Buccaneers | DEF | TB | no nflverse id
 Panthers | DEF | CAR | no nflverse id
-Saints | DEF | NO | no nflverse id
-Packers | DEF | GB | no nflverse id
 Dolphins | DEF | MIA | no nflverse id
-Giants | DEF | NYG | no nflverse id
-Bears | DEF | CHI | no nflverse id
 Chiefs | DEF | KC | no nflverse id
 Michael Warren | RB | DET | no nflverse id
 Qadir Ismail | WR | CHI | no nflverse id
@@ -301,36 +301,36 @@ season    compared  disagree    rate
 2020           795        15    1.9%
 2021           983        14    1.4%
 2022          1260        40    3.2%
-2023          1563        12    0.8%
-2024          1934         7    0.4%
-2025          2302         5    0.2%
+2023          1577        12    0.8%
+2024          1951         7    0.4%
+2025          2318         5    0.2%
 
 stat  compared   agree   agree%
-cfd       896     833    93.0%
-ct        708     708   100.0%
-cy        959     955    99.6%
+cfd       900     837    93.0%
+ct        710     710   100.0%
+cy        963     959    99.6%
 f19        17      17   100.0%
-f29       129     126    97.7%
-f39       131     131   100.0%
-f49       130     129    99.2%
-f59       126     118    93.7%
-f60        17       9    52.9%
-fg        131     130    99.2%
-fgx       128     128   100.0%
+f29       132     129    97.7%
+f39       134     134   100.0%
+f49       133     132    99.2%
+f59       129     121    93.8%
+f60        18      10    55.6%
+fg        134     133    99.3%
+fgx       131     131   100.0%
 pa        314     310    98.7%
 pc        280     277    98.9%
 pfd       261     224    85.8%
 pi        224     224   100.0%
 pt        241     240    99.6%
 py        280     277    98.9%
-ra        839     834    99.4%
-rc        954     952    99.8%
-rfd       696     638    91.7%
+ra        841     836    99.4%
+rc        958     956    99.8%
+rfd       698     640    91.7%
 rt        472     472   100.0%
-ry        827     820    99.2%
-tg        972     958    98.6%
-xp        131     130    99.2%
-xpx        94      94   100.0%
+ry        829     822    99.2%
+tg        976     962    98.6%
+xp        134     133    99.3%
+xpx        95      95   100.0%
 
 223 disagreements beyond 0.5, largest first:
   2022 | py   | Joe Burrow | ours 4527 | theirs 4475
@@ -413,9 +413,9 @@ season    fgm  in bands   short      fgmiss  in bands   short
 2020      263       263    0.0%          37        20   45.9%
 2021      332       332    0.0%          47        29   38.3%
 2022      416       416    0.0%          67        46   31.3%
-2023      524       524    0.0%          70        36   48.6%
-2024      591       591    0.0%         101       101    0.0%
-2025      753       753    0.0%         120       120    0.0%
+2023      554       554    0.0%          77        40   48.1%
+2024      618       618    0.0%         105       105    0.0%
+2025      782       782    0.0%         128       128    0.0%
 
 Bands are complete from 2024 on and lossy before it,
 and the two halves are lossy to very different degrees in this pool.
