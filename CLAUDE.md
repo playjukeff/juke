@@ -4012,6 +4012,75 @@ symptom whose cause was the harness, not the change under test. Check what
 process holds a CPU or a port before trusting a flaky rerun to mean
 anything about the code.
 
+
+### Real ADP dries up once the season starts, and the board tips over
+
+Found 14 September 2026, by four specs going red at once and none of them
+being stale. **OPEN — this is a live product defect with no fix decided.**
+
+FFC's ADP is sourced from real recorded drafts, which the section above
+already says, and the consequence nobody had followed through is that
+**people stop running mock drafts once the season starts.** The sample
+collapses, and `extend_deep_bench()` fills the hole with synthetic rows:
+
+```
+committed players.js     real ADP rows (of 1440, three sets)
+8 September                        668
+9 September                        654
+14 September                       373
+```
+
+Measured on the half-PPR board of 14 September: **426 of 480 rows carry
+`deep: true`. Fifty-four players have real ADP.** The section above records
+223 to 271 as the preseason norm.
+
+**What that does to a draft is not subtle.** `buildBoard()` sorts by ADP and
+numbers `overall` off that order — correctly, and it was checked rather than
+assumed: zero ADP inversions in the top 60. But with only fifty-four real
+rows, every real-ADP kicker and defense is inside them. Measured on that
+same board:
+
+```
+rank 41   DST  LA Rams Defense     adp  99.5
+rank 43   DST  Houston Defense     adp 105.2
+rank 52   K    Brandon Aubrey      adp 134.9
+rank 54+  K    the rest of them    adp 164+
+```
+
+So `cpuChoice()` takes a **kicker in round 5** of a ten-team draft, and
+defenses at picks 42 to 47. This file's own measurement for the intended
+behaviour is first K at picks 103 to 128 and first DST at 72 to 89. A
+manager running a mock in September sees kickers and defenses going five
+rounds early, which is the most visible kind of wrong this product can be.
+
+**Four specs report it and every one of them is behaving correctly.**
+`solo.spec.mjs` (six tests, `EARLIEST_SANE_KICKER_ROUND`, whose own comment
+records re-measuring over forty drafts and landing in rounds 11 to 13),
+`kd-timing.spec.mjs`, `pool-capacity.spec.mjs` (worst waste 35 against a
+bound of 30) and `deep-board.spec.mjs`, whose "real ADP ends here" divider
+cannot say anything useful when real ADP is eleven per cent of the board.
+
+**Do not loosen any of them.** A bound moved to accommodate this would turn
+the one mechanism that noticed into a mechanism that never notices again —
+the standing-red trap this file already records, reached from the other
+side. They are red because the board is wrong, and they are the only thing
+that said so.
+
+**The fix is a product decision and has not been made.** Three shapes were
+visible at the point of writing and none is obviously right: hold the last
+preseason ADP snapshot and draft off that all season; fall back to
+projection order for the deep tail only, keeping real ADP wherever it still
+exists; or refuse to extend past real coverage and let the board be as
+short as the data honestly is, which `setupProblem()` would then start
+refusing deep leagues against. Each changes what a September mock draft
+*is*, which is why none of them is a tidy-up.
+
+**And the general lesson is the one this file keeps arriving at.** Every
+figure in the board-depth section above was measured in August, on a
+preseason board, and each was true. None of them was a claim about what
+happens in week 6. A measurement is true of the board it was taken on —
+including the measurements that establish what "normal" looks like.
+
 ## The board card
 
 Five things per cell: who, what and where, which way the pick order is
