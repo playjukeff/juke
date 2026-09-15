@@ -78,9 +78,9 @@ export function SampleTag({ className = '' }) {
    it says anything else. A sample page leads the band with SAMPLE. */
 export function SituationBand({ items, sample = false, lead }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-[6px] bg-v3-band px-4 py-2.5 font-figure text-[13px] text-v3-bandInk">
-      {sample && <span className="rounded-[4px] bg-v3-warnWash px-1.5 py-0.5 font-bold uppercase tracking-[0.12em] text-v3-warn">Sample</span>}
-      {lead && <span className="font-bold uppercase tracking-[0.14em] text-white">{lead}</span>}
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-[6px] bg-v3-band px-4 py-2.5 text-[13px] text-v3-bandInk">
+      {sample && <span className="rounded-[4px] bg-v3-warnWash px-1.5 py-0.5 font-figure font-bold uppercase tracking-[0.12em] text-v3-warn">Sample</span>}
+      {lead && <span className="font-figure font-bold uppercase tracking-[0.14em] text-white">{lead}</span>}
       {items.filter(Boolean).map((it, i) => (
         <span key={i}>{it}</span>
       ))}
@@ -291,7 +291,7 @@ export function WayIn() {
 
 export function ReadOnlyLine() {
   return (
-    <p className="font-figure text-[13px] text-v3-ink3">
+    <p className="text-[13px] text-v3-ink3">
       Read-only: Juke never edits your league. {PLATFORM_LINE}.
     </p>
   )

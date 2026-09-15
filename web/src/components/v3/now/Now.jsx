@@ -206,7 +206,7 @@ function NowGuest({ season, post = false }) {
             <CallButton data-hero-cta href="#/draft">Start a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton>
             <QuietButton href="#/players">Browse every player</QuietButton>
           </div>
-          <p className="mt-4 font-figure text-[13px] text-v3-ink3">No account needed · runs in your browser</p>
+          <p className="mt-4 text-[13px] text-v3-ink3">No account needed · runs in your browser</p>
         </div>
         <TheCall />
       </div>

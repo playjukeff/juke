@@ -143,7 +143,7 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
           <QuietButton onClick={onSettings}><Glyph name="gear" className="h-4 w-4" /> Draft settings</QuietButton>
           <GoLink href={INSIGHTS_HASH}>Your insights</GoLink>
         </div>
-        <p className="font-figure text-[12px] text-v3-ink3">
+        <p className="text-[12px] text-v3-ink3">
           {roomActive ? 'A room fixes the league for every seat.' : 'No account needed · runs in your browser · graded the moment it ends'}
         </p>
       </div>
