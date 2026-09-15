@@ -89,7 +89,12 @@ function RosterTable({ team, pricing, snapshot }) {
             {ids.map((id, n) => {
               const p = byId.get(id)
               const bench = !starting.has(id)
-              const pts = p && weekPts ? weekPts(p) : null
+              // Once he has actually scored, that is the number this column
+              // shows — never a projection a total elsewhere has moved past.
+              const actual = p && p.actualPts
+              const pts = typeof actual === 'number' && Number.isFinite(actual)
+                ? actual
+                : p && weekPts ? weekPts(p) : null
               const season = p ? valueOf(p, gapOf) : null
               return [
                 bench && n > 0 && starting.has(ids[n - 1]) ? (

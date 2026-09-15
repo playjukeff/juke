@@ -3,7 +3,7 @@ import { useBoardSize } from '../../v2/league/useLeagueModel.js'
 import { myTeam, freeAgents, rosterGaps } from '../../rooms/waiverBoard.js'
 import {
   bestSwaps, benchRows, injuryWatch, leagueWeekPts, lineupRows, projectedTotal,
-  projectionSource, withLiveStatus,
+  projectionSource, withLiveActuals, withLiveStatus,
 } from '../../rooms/strategyBoard.js'
 import { rosterTotal, rosterValues } from '../../rooms/tradeBoard.js'
 import { roomStakes } from '../../shell/roomStakes.js'
@@ -54,8 +54,14 @@ export function usePricing(snapshot) {
     [size]
   )
   const week = snapshot ? snapshot.week : null
+  /* The live overlay chain LineupTool.jsx already carries — status first
+     (who is out, who has kicked off), then what has already been scored.
+     This is the ONE place that builds it for every other connected page
+     (the matchup page, the team page, Now's call sheet), so fixing it here
+     is what makes them agree with the lineup tool rather than each needing
+     the chain written out again. */
   const byId = useMemo(
-    () => withLiveStatus(boardById, snapshot && snapshot.status, week),
+    () => withLiveActuals(withLiveStatus(boardById, snapshot && snapshot.status, week), snapshot && snapshot.actuals, week),
     [boardById, snapshot, week]
   )
   const weekPts = useMemo(
