@@ -10002,17 +10002,144 @@ on a fresh port with an absolute path, hashes equal, then measured.
 **That check has now paid for itself twice**, and both times on the first
 attempt of a session. It costs one line.
 
-### Rejected: reading a private league
+### ~~Rejected: reading a private league~~ — built, on the owner's call
 
-There is a well-known cookie pair (`espn_s2`, `SWID`) that makes ESPN serve a
-private league, and asking a manager to paste them would work. It is not
-built and should not be. They are session credentials for somebody's whole
-ESPN account, not a scoped read token — storing them would make this the one
-place in the project holding a credential that can act as a person, and
-"Connecting is read-only. Juke never edits your league" would stop being a
-property of the API and become a promise somebody has to keep. The public-
-league requirement is a real limit, it is stated on the platform row, and it
-is the honest version.
+**Reversed 15 September 2026**, the same way orange and Barlow Condensed
+were: a recorded argument outranked by a decision. The owner's is that a
+private league is what a paying subscriber has — *"this will be a crucial
+aspect of the connectivity for end users who are paying subscribers next
+year"* — and a product that can only read leagues nobody plays in is not
+the product.
+
+**The argument this file made against it was not wrong and is the reason
+the implementation is shaped the way it is**, so it is kept rather than
+deleted: `espn_s2` + `SWID` really is a session credential for somebody's
+whole ESPN account rather than a scoped read token, and storing it really
+does make this the one place in the project holding a credential that can
+act as a person. `0005_leagues.sql`'s own header says "there is no token
+here, no OAuth grant, and nothing this worker could send that would change
+anybody's roster", and that is what made "Juke never edits your league"
+cheap to keep. **From here it is a promise the code keeps rather than a
+property of the API**, which is exactly what the rejection warned about.
+What changed is that the promise is now worth making.
+
+**There is no third option, and that was checked rather than assumed.**
+ESPN publishes no OAuth for third parties. The cookie pair is the only
+route, so "build it properly" and "do not build it" were the whole of the
+choice.
+
+What the implementation owes that rejection, each of which is a test:
+
+- **A missing `LEAGUE_CRED_KEY` refuses.** It never falls back to storing
+  the pair in the clear, which is the failure that would have looked
+  exactly like success — a connected private league, working, with an
+  account-acting credential in plain text. And it refuses BEFORE asking
+  ESPN, so a pair we have nowhere to put is never sent upstream at all.
+- **The blob is bound to (clerk_id, provider, league_id)** as AES-GCM
+  additional data, so somebody who can write the database without holding
+  the key cannot copy a stranger's credential onto their own league row
+  and have this worker spend it for them.
+- **It is its own table.** `listLeagues()`'s answer goes to the browser,
+  and a credential column on that row is one forgotten `SELECT *` away
+  from a page — which would render identically, because nothing draws it.
+  Separated, the only statement that reads a secret is one function nobody
+  reaches by accident, and `listLeagues()`'s three-rung schema ladder did
+  not have to move.
+- **It is deleted on disconnect and on account deletion.** A disconnect
+  that left an account-acting session behind would be the worst leftover
+  this schema can produce, and the one a reader would most believe they
+  had just removed.
+
+### The edge cache was the leak, and the WRITE is the half that matters
+
+`caches.default` keys on league and season alone. So an entry written
+while reading a private league would be served to **anybody** who asked
+for the same league id, with no credential, as a 200 that looks perfectly
+healthy — the "right value, wrong reader" shape of every silent failure in
+this file, with somebody's roster in it.
+
+A credentialed read therefore touches that cache in neither direction, on
+all three ESPN routes. **The first cut of this guarded the snapshot's read
+and not its write**, which closes nothing: refusing to READ a shared entry
+while still writing one means the leak is intact and only this reader
+cannot see it. Grep `cache.put` before believing a cache guard is done.
+
+The cost is one upstream call per private reader per render rather than
+per two minutes, bounded by `snapshotStore`'s own window. A
+credential-hash-keyed entry would buy that back and has not been measured,
+so it is not built.
+
+### `/espn/league` grew a POST, and it is the one ESPN read that needs an account
+
+The dialog has to resolve a private league before anything is stored:
+ESPN's connect asks which team is yours, and the teams only exist once the
+league has been read. A body rather than query parameters, because a
+credential in a URL is a credential in every log between here and ESPN.
+
+`requireUser()` rather than `originAllowed()`, because a route answering
+"does this ESPN session work on this league" is, left open, an oracle for
+testing stolen cookies from our origin and our IP. It costs the connect
+flow nothing — the dialog is behind Clerk already. **The GET is untouched**
+and still reads a public league signed out, which is what keeps "check
+this id" working before anybody has pasted anything.
+
+**And the preflight names POST**, which is the `PATCH` lesson this file
+already records: a verb a preflight does not name is a request that never
+leaves the page — no log line, no error at the worker, and a dialog that
+does nothing. Asserted rather than assumed, and confirmed red.
+
+## CBS, measured before anything was built for it
+
+Probed 15 September 2026 against a real league, because the alternative was
+scoping a platform from memory. Everything below is what the API actually
+answered.
+
+**There are two hosts and they behave differently.** `api.cbssports.com`
+demands an `access_token` for everything. A league's own subdomain —
+`<league>.football.cbssports.com/api/...` — is the same API and does not,
+for part of its surface:
+
+```
+league/rules     roster positions, the WHOLE scoring system,      anonymous
+                 waiver and trade policy, player pool, fees
+players/list     the player universe, with CBS ids                anonymous
+league/details   the league, its teams, who is in it              "User not signed in"
+league/teams     ditto                                            "User not signed in"
+league/rosters   ditto                                            "User not signed in"
+league/standings/overall                                          "User not signed in"
+league/schedules                                                  "User not signed in"
+league/draft/results                                              "User not signed in"
+```
+
+**A 400 means the endpoint exists and wants a `league_id`; a 404 means it
+does not exist.** That is how the list above was separated from the half
+dozen plausible-sounding paths that are simply not there
+(`league/transactions`, `fantasy-teams`, `scoring/leaders`).
+
+**So CBS is private ESPN's shape, not Sleeper's.** Everything that says who
+is in the league and what they hold needs a session on that subdomain.
+
+**And there is no way to mint a token.** `api.cbssports.com/general/login` —
+the documented route, historically — is a hard **404**, as are `login`,
+`user/login` and `auth/login` on the league subdomain. Meanwhile
+`access_token` is still *accepted* and still answers "invalid access token".
+So the mint was retired and the check was not: a token exists as a concept
+with nothing left that issues one. A credential would have to come out of a
+logged-in browser session, which is the ESPN cookie question again.
+
+**The upside is real and is the reason to do CBS next rather than Yahoo.**
+`league/rules` hands over the league's entire scoring system, pre-named and
+anonymously. That is the part of ESPN that cost a 319-player cross-reference
+to derive statIds from, with **28 rules still unrepresentable** and one
+(`rec_40p: 38`) mapped to the wrong stat for a while because the derivation
+could not reject a subset. CBS gives it away.
+
+**Nothing CBS-shaped is built.** What exists that it will reuse:
+`league_credentials` is keyed by provider already, `sealCredential()` takes
+an arbitrary value shape, and `platformFor()` answers for a provider this
+build does not know about. So the credential half is done; what is not is an
+adapter, a crosswalk from CBS player ids, and the answer to where a session
+legitimately comes from.
 
 ## The draft countdown, and the instant that outlives its draft
 
