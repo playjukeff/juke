@@ -20,7 +20,7 @@
  * one — see CLAUDE.md's ESPN section for the measurement.
  */
 
-import { leagueSnapshot, lookupLeague, normalise, weekActual, weekProjection } from "./espn.js";
+import { leagueSnapshot, leagueTransactions, lookupLeague, normalise, espnSource, weekActual, weekProjection } from "./espn.js";
 
 let failures = 0;
 function check(what, got, want) {
@@ -358,6 +358,87 @@ console.log("--- the request asks for the picks ---");
   globalThis.fetch = keep;
   check("the lookup asks for mDraftDetail", lookupAsked.includes("view=mDraftDetail"), true);
   check("and so does the snapshot", snapAsked.includes("view=mDraftDetail"), true);
+}
+
+/* ---- Reading a PRIVATE league, which means reading as somebody ----
+
+   ESPN publishes no OAuth for third parties, so the credential is the
+   `espn_s2` + `SWID` pair out of the reader's own browser. What is
+   asserted here is narrow and is the whole contract espn.js owes the
+   routes above it:
+
+   - a credential, when there is one, reaches ESPN as a Cookie header;
+   - when there is NOT one, no Cookie header is sent at all, so an
+     uncredentialed read is byte-identical to what this file did before
+     private leagues existed -- not an empty cookie, which is a different
+     request;
+   - the X-Fantasy-Filter header transactions depends on still rides
+     alongside it, because both go through the same one `extra` argument
+     and a naive merge would drop one of them. */
+console.log("");
+console.log("--- a private league is read as somebody ---");
+{
+  const keep = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, init) => {
+    seen.push({ url: String(url), headers: (init && init.headers) || {} });
+    return { ok: true, status: 200, json: async () => LEAGUE };
+  };
+
+  const CRED = { espnS2: "AEB%2Fsession", swid: "{ABC-123}" };
+
+  seen.length = 0;
+  await lookupLeague("777", "2026", espnSource("https://stub.invalid", CRED));
+  check("a credentialed lookup sends the pair as one Cookie header",
+        seen[0].headers.cookie, "espn_s2=AEB%2Fsession; SWID={ABC-123}");
+  check("and still reads from the base it was given",
+        seen[0].url.startsWith("https://stub.invalid"), true);
+
+  seen.length = 0;
+  await lookupLeague("777", "2026", "https://stub.invalid");
+  check("a bare string sends no cookie at all", "cookie" in seen[0].headers, false);
+
+  seen.length = 0;
+  await lookupLeague("777", "2026", espnSource("https://stub.invalid", null));
+  check("and neither does a source built with no credential",
+        "cookie" in seen[0].headers, false);
+  check("which is a plain string, not an object wearing one",
+        typeof espnSource("https://stub.invalid", null), "string");
+
+  /* Half a pair is not a credential. ESPN accepts neither cookie alone,
+     so sending one would be a request that fails as though the league
+     were private -- which is the answer it was trying to get past. */
+  seen.length = 0;
+  await lookupLeague("777", "2026", espnSource("https://stub.invalid", { espnS2: "only" }));
+  check("half a pair is no credential", "cookie" in seen[0].headers, false);
+  seen.length = 0;
+  await lookupLeague("777", "2026", espnSource("https://stub.invalid", { swid: "{only}" }));
+  check("nor the other half", "cookie" in seen[0].headers, false);
+
+  /* Transactions is the one read that already used `extra`, for the
+     filter ESPN takes as a header rather than a path. Both have to
+     survive the same merge. */
+  seen.length = 0;
+  /* The filtered call only happens when the feed actually names players
+     -- leagueTransactions returns early on an empty one -- so the stub
+     has to answer the first request with a move in it. The first version
+     of this check ran against a league with no transactions, so the
+     second request was never made and it was asserting nothing. */
+  globalThis.fetch = async (url, init) => {
+    seen.push({ url: String(url), headers: (init && init.headers) || {} });
+    const body = String(url).includes("mTransactions2")
+      ? { transactions: [{ items: [{ playerId: 4242, fromTeamId: 0, toTeamId: 3 }] }] }
+      : LEAGUE;
+    return { ok: true, status: 200, json: async () => body };
+  };
+  await leagueTransactions("777", "2026", espnSource("https://stub.invalid", CRED), resolve, 5);
+  check("the filtered second request is actually made",
+        seen.some((r) => r.url.includes("kona_player_info")), true);
+  const withFilter = seen.find((r) => r.headers["x-fantasy-filter"]);
+  check("the transactions filter still rides alongside the cookie",
+        !!withFilter && withFilter.headers.cookie === "espn_s2=AEB%2Fsession; SWID={ABC-123}", true);
+
+  globalThis.fetch = keep;
 }
 /* The roster comes back in LINEUP order, not the order ESPN returned its
    entries in. Measured on a real team, ESPN gives WR, WR, QB, FLEX, RB, RB,

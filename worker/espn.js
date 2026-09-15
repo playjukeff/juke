@@ -104,12 +104,58 @@ const PRO_TEAMS = {
    module alone. */
 export { normalise } from "./names.js";
 
+/* Where to read from, and as whom.
+
+   `base` has always been a string -- the API origin, a parameter so a test
+   can serve a canned league from a stub. Since private leagues it may also
+   be `{ base, cookie }`, and every function in this file passes whatever it
+   was given straight through without looking at it.
+
+   **That shape is why there is no `auth` parameter.** The three exported
+   reads take `base` at position 3 and then differ -- `resolve` at 4,
+   `limit` at 5 -- so a trailing credential argument would sit at a
+   different index in each one, which is a signature people get wrong
+   silently. Folding it into the value it belongs with costs nothing: about
+   thirty call sites in test-espn.mjs still pass a bare string and still
+   mean exactly what they meant.
+
+   ---- The cookie is an ESPN SESSION, not a scoped token ----
+
+   `espn_s2` + `SWID` is what ESPN's own browser sends, because ESPN
+   publishes no OAuth for third parties. It can act as the reader on ESPN,
+   which is why it is sealed at rest (worker/credentials.js) and why a
+   credentialed read is never written to the shared edge cache: that cache
+   keys on league and season alone, so an entry written under a credential
+   would be served to anyone who asked for the same league id. */
+function sourceOf(base) {
+  if (base && typeof base === "object") {
+    return { url: base.base || ESPN_API, cookie: base.cookie || null };
+  }
+  return { url: base || ESPN_API, cookie: null };
+}
+
+/* Build one, for the routes. Answers a plain string when there is no
+   credential, so an uncredentialed read is byte-identical to what this
+   file did before private leagues existed -- including sending no Cookie
+   header at all rather than an empty one. */
+export function espnSource(base, cred) {
+  const s2 = cred && cred.espnS2;
+  const swid = cred && cred.swid;
+  if (!s2 || !swid) return base || ESPN_API;
+  return { base: base || ESPN_API, cookie: "espn_s2=" + s2 + "; SWID=" + swid };
+}
+
 async function getJson(path, base, extra) {
+  const src = sourceOf(base);
   try {
-    const res = await fetch((base || ESPN_API) + path, {
+    const res = await fetch(src.url + path, {
       // `extra` carries X-Fantasy-Filter, which is how ESPN takes a query
       // rather than a path -- see leagueTransactions().
-      headers: Object.assign({ accept: "application/json" }, extra || null),
+      headers: Object.assign(
+        { accept: "application/json" },
+        src.cookie ? { cookie: src.cookie } : null,
+        extra || null
+      ),
     });
     /* 401 is a private league and 404 is no league. Both are answers
        rather than faults, and the caller needs to tell them apart, so the

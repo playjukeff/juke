@@ -928,6 +928,11 @@ export async function deleteUserData(env, clerkId) {
       // the parent DELETE hits the constraint and the whole batch rolls
       // back, which is the loud half of this particular mistake.
       env.DB.prepare("DELETE FROM decisions WHERE clerk_id = ?").bind(clerkId),
+      /* Added with 0011_league_credentials.sql, on the same instruction.
+         This is the row in this database it matters most to remove: an
+         ESPN session that can act as the person whose account was just
+         deleted. */
+      env.DB.prepare("DELETE FROM league_credentials WHERE clerk_id = ?").bind(clerkId),
       env.DB.prepare("DELETE FROM users WHERE clerk_id = ?").bind(clerkId)
     ]);
     return true;
@@ -1441,15 +1446,148 @@ export async function deleteLeague(env, clerkId, provider, leagueId) {
   if (!env.DB) return false;
 
   try {
-    await env.DB.prepare(
-      "DELETE FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?"
-    ).bind(clerkId, provider, leagueId).run();
+    /* A batch of two since 0011, and the second one is the point.
+       Disconnecting a private league while leaving its credential behind
+       would leave an account-acting ESPN session in this database after
+       the one gesture a reader would believe had removed it -- which is
+       worse than never having offered the disconnect. Batched so a
+       half-disconnected league is not a state that can exist.
+
+       The catch below retries the league on its own, because the worker
+       ships separately from its migrations and this batch throws on a
+       database that has not had 0011 applied. */
+    await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM league_credentials WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+      ).bind(clerkId, provider, leagueId),
+      env.DB.prepare(
+        "DELETE FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+      ).bind(clerkId, provider, leagueId)
+    ]);
     // Deleting nothing is a success: disconnecting a league that is
     // already gone is the state the caller asked for, and Clerk's own
     // webhook retries depend on the same idempotence.
     return true;
   } catch (err) {
-    console.error("league delete failed:", err && err.message);
+    /* Pre-0011 there is no credential table, so refusing the disconnect
+       here would be an outage for a feature that has nothing to do with
+       credentials. One rung down: the league alone, which is exactly what
+       this function did before 0011 and is complete on a database that
+       cannot hold a credential in the first place. */
+    try {
+      await env.DB.prepare(
+        "DELETE FROM connected_leagues WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+      ).bind(clerkId, provider, leagueId).run();
+      return true;
+    } catch (err2) {
+      console.error("league delete failed:", err2 && err2.message, "(first:", err && err.message, ")");
+      return false;
+    }
+  }
+}
+
+/* ----------------------------------------------------------
+   The credential a private league needs
+
+   See 0011_league_credentials.sql for why this is its own table, and
+   worker/credentials.js for what is actually in `cred`. Nothing in this
+   section seals or opens anything -- it stores an opaque string, which is
+   what keeps the key out of the file that talks to the database.
+
+   **Only one function here returns the blob**, and it is named so that
+   reaching for it by accident is hard. Everything a SCREEN needs to know
+   about a credential -- whether there is one, when it was written -- is
+   answered without it.
+   ---------------------------------------------------------- */
+
+/* Write, or replace, the sealed credential for one account's one league.
+
+   Answers false rather than throwing on a database that has not had 0011
+   applied, and the connect route reads that answer: storing the league
+   while failing to store the credential would connect a private league
+   that can never be read, which renders as a league with nothing in it. */
+export async function putLeagueCredential(env, clerkId, provider, leagueId, sealed) {
+  if (!env.DB || !sealed) return false;
+
+  try {
+    const res = await env.DB.prepare(
+      "INSERT INTO league_credentials (clerk_id, provider, league_id, cred, cred_at) " +
+      "VALUES (?, ?, ?, ?, ?) " +
+      "ON CONFLICT(clerk_id, provider, league_id) DO UPDATE SET " +
+      "  cred = excluded.cred, cred_at = excluded.cred_at " +
+      /* The same ownership clause draft_history's upsert carries. The
+         primary key here CONTAINS clerk_id, so this is belt and braces
+         rather than the load-bearing check -- but a credential is the one
+         row in this database where "probably safe" is not a thing to
+         leave standing. */
+      "WHERE league_credentials.clerk_id = excluded.clerk_id"
+    ).bind(clerkId, provider, leagueId, sealed, nowSeconds()).run();
+    return !!(res && res.meta ? res.meta.changes !== 0 : true);
+  } catch (err) {
+    console.error("credential write failed:", err && err.message);
+    return false;
+  }
+}
+
+/* The one read that returns a secret.
+
+   Answers the opaque blob or null. Null covers a missing row, a missing
+   binding and a database without 0011 alike, and every caller treats all
+   three the same way: read the league as a public one, which is what it
+   did before this feature existed. */
+export async function leagueCredentialBlob(env, clerkId, provider, leagueId) {
+  if (!env.DB || !clerkId) return null;
+
+  try {
+    const row = await env.DB.prepare(
+      "SELECT cred FROM league_credentials WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+    ).bind(clerkId, provider, leagueId).first();
+    return (row && row.cred) || null;
+  } catch (err) {
+    console.error("credential read failed:", err && err.message);
+    return null;
+  }
+}
+
+/* Which of this account's leagues carry one, and when it was written.
+
+   Deliberately returns no `cred` at all: this is what a SCREEN asks, so
+   the answer a screen gets cannot contain the thing a screen must never
+   have. `listLeagues()` is left alone for the same reason -- see the
+   migration's own header.
+
+   The shape is a plain object keyed "provider|leagueId" rather than a Map
+   because it is JSON on its way to a browser. */
+export async function credentialedLeagues(env, clerkId) {
+  if (!env.DB || !clerkId) return {};
+
+  try {
+    const res = await env.DB.prepare(
+      "SELECT provider, league_id, cred_at FROM league_credentials WHERE clerk_id = ?"
+    ).bind(clerkId).all();
+    const out = {};
+    ((res && res.results) || []).forEach((r) => {
+      out[r.provider + "|" + r.league_id] = r.cred_at || 0;
+    });
+    return out;
+  } catch {
+    /* Not logged: on a pre-0011 database this fires on every /me/leagues,
+       and a log full of one expected failure is a log the next real fault
+       cannot be found in. */
+    return {};
+  }
+}
+
+export async function deleteLeagueCredential(env, clerkId, provider, leagueId) {
+  if (!env.DB) return false;
+
+  try {
+    await env.DB.prepare(
+      "DELETE FROM league_credentials WHERE clerk_id = ? AND provider = ? AND league_id = ?"
+    ).bind(clerkId, provider, leagueId).run();
+    return true;
+  } catch (err) {
+    console.error("credential delete failed:", err && err.message);
     return false;
   }
 }

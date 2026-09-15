@@ -40,7 +40,9 @@ import {
      never imported, which is a ReferenceError rather than a wrong number —
      see that function's own note for the three days of GET /me/leagues it
      took down. */
-  nowSeconds
+  nowSeconds,
+  // Added with 0011: the sealed credential a private league needs.
+  putLeagueCredential, leagueCredentialBlob, credentialedLeagues
 } from "./store.js";
 
 /* Sleeper, read-only. Kept out of store.js for the same reason auth.js is:
@@ -51,8 +53,14 @@ import { lookupUser, leagueSnapshot, leagueMatchups, nflState, SNAPSHOT_TTL, SLE
 import {
   lookupLeague as espnLookupLeague,
   leagueSnapshot as espnLeagueSnapshot, leagueTransactions as espnLeagueTransactions,
-  ESPN_API
+  espnSource, ESPN_API
 } from "./espn.js";
+
+/* Sealing the credential a private league needs. Kept out of store.js for
+   the reason auth.js is: that file owns D1 and this owns the key, and a
+   database module that could decrypt its own rows is a larger blast radius
+   than one that stores an opaque string. */
+import { canSealCredentials, sealCredential, openCredential } from "./credentials.js";
 
 /* Clerk session verification — see that file's own header for the shape.
    Kept separate from store.js on purpose: that file owns D1 and nothing
@@ -1294,7 +1302,15 @@ async function espnLookupRoute(request, env) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
 
-  const found = await espnLookupLeague(leagueId, season, env.ESPN_BASE || ESPN_API);
+  /* As the reader, when they are signed in and have connected this
+     league privately. Signed out, or for a league they have not connected,
+     this is exactly the public lookup it has always been -- which is what
+     keeps the connect dialog's "check this id" step working before anybody
+     has pasted a credential. */
+  const cred = await espnCredFor(env, await optionalUser(request, env), leagueId);
+  const found = await espnLookupLeague(
+    leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred)
+  );
   return new Response(JSON.stringify(Object.assign({ season }, found)), { headers });
 }
 
@@ -1329,6 +1345,8 @@ async function espnTransactionsRoute(request, env, ctx) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
 
+  const cred = await espnCredFor(env, await optionalUser(request, env), leagueId);
+
   const cache = caches.default;
   /* Built rather than taken from the request, the same rule the news route
      follows: caches.default keys on the whole URL, so an Origin or any
@@ -1337,12 +1355,26 @@ async function espnTransactionsRoute(request, env, ctx) {
     "https://juke.internal/espn/transactions?league=" + leagueId + "&season=" + season,
     { method: "GET" }
   );
-  const hit = await cache.match(key);
-  if (hit) return new Response(await hit.text(), { headers });
+  /* A CREDENTIALED read never touches the shared cache, in either
+     direction, and this is the leak this feature could most easily have
+     shipped. That key is league and season and nothing else -- so an entry
+     written while reading a private league would be served to anybody who
+     asked for the same league id, with no credential, as a 200 that looks
+     perfectly healthy. Reading FROM it is refused for the mirror reason:
+     a public entry is not an answer about a private league.
+
+     The cost is one upstream call per private reader per render rather
+     than per two minutes, and the client-side snapshotStore still dedupes
+     on its own window. Keying the cache on a hash of the credential would
+     buy that back and it has not been measured, so it is not done. */
+  if (!cred) {
+    const hit = await cache.match(key);
+    if (hit) return new Response(await hit.text(), { headers });
+  }
 
   const resolve = (wanted) => resolveSleeperIds(env, wanted);
   const out = await espnLeagueTransactions(
-    leagueId, season, env.ESPN_BASE || ESPN_API, resolve
+    leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred), resolve
   );
 
   if (out.reason) {
@@ -1353,7 +1385,7 @@ async function espnTransactionsRoute(request, env, ctx) {
   // No moves is a fact, not a fault, and it is worth caching so a quiet
   // week costs one upstream call every two minutes rather than one a render.
   const body = JSON.stringify(out.feed || { moves: [], unnamed: 0, window: 0 });
-  after(ctx, cache.put(key, new Response(body, {
+  if (!cred) after(ctx, cache.put(key, new Response(body, {
     headers: { "content-type": "application/json", "cache-control": "max-age=" + SNAPSHOT_TTL }
   })));
   return new Response(body, { headers });
@@ -1379,6 +1411,8 @@ async function espnSnapshotRoute(request, env, ctx) {
     return new Response(JSON.stringify({ error: "upstream" }), { status: 503, headers });
   }
 
+  const cred = await espnCredFor(env, await optionalUser(request, env), leagueId);
+
   // Same construction as the Sleeper snapshot's key, and the season is part
   // of it: the same league id is a different league year to year.
   const cache = caches.default;
@@ -1386,11 +1420,19 @@ async function espnSnapshotRoute(request, env, ctx) {
     "https://juke.internal/espn/snapshot?league=" + leagueId + "&season=" + season,
     { method: "GET" }
   );
-  const hit = await cache.match(key);
-  if (hit) return new Response(await hit.text(), { headers });
+  /* Never shared, in either direction, when the read is credentialed --
+     see the same guard on the transactions route above for the whole
+     argument. This is the one that matters most: a snapshot is the
+     rosters, the lineups and the scoring of somebody's private league. */
+  if (!cred) {
+    const hit = await cache.match(key);
+    if (hit) return new Response(await hit.text(), { headers });
+  }
 
   const resolve = (wanted) => resolveSleeperIds(env, wanted);
-  const out = await espnLeagueSnapshot(leagueId, season, env.ESPN_BASE || ESPN_API, resolve);
+  const out = await espnLeagueSnapshot(
+    leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred), resolve
+  );
 
   if (!out.snapshot) {
     /* Not cached, and the reason is passed through rather than flattened
@@ -1418,8 +1460,14 @@ async function espnSnapshotRoute(request, env, ctx) {
 
   const body = JSON.stringify(out.snapshot);
   /* A snapshot taken before the pool existed is not worth keeping for two
-     minutes: it is the one the sync above is in the middle of fixing. */
-  if (out.snapshot.crosswalkReady) {
+     minutes: it is the one the sync above is in the middle of fixing.
+
+     And a CREDENTIALED one is never kept at all: this key is league and
+     season alone, so writing a private league here would serve its
+     rosters to anybody who asked for the same league id, with no
+     credential, as a healthy-looking 200. The read guard above does not
+     close that on its own -- the write is the leak. */
+  if (out.snapshot.crosswalkReady && !cred) {
     await cache.put(key, new Response(body, {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=" + SNAPSHOT_TTL }
     }));
@@ -1456,6 +1504,42 @@ const LEAGUE_CACHE_TTL = 3600;
    forgotten both my leagues", three layers away from itself. The default
    export's own catch is the fix for that half; see it for why a thrown route
    must still answer with CORS. */
+/* The credential for one account's one ESPN league, opened, or null.
+
+   Null is the ordinary answer and every caller treats it the same way:
+   read the league as a public one, which is what this worker did before
+   private leagues existed. It covers a signed-out reader, an account with
+   no credential for this league, a database without 0011, a rotated
+   LEAGUE_CRED_KEY and a tampered row alike -- see credentials.js for why
+   those are deliberately not told apart.
+
+   `clerkId` is the account the blob is bound to, so passing the wrong one
+   does not return somebody else's credential; it returns nothing. That is
+   the additional-data binding doing its job rather than a check here. */
+async function espnCredFor(env, clerkId, leagueId) {
+  if (!clerkId) return null;
+  const blob = await leagueCredentialBlob(env, clerkId, "espn", leagueId);
+  if (!blob) return null;
+  return await openCredential(blob, { clerkId, provider: "espn", leagueId }, env);
+}
+
+/* Who is asking, when the answer is allowed to be "nobody".
+
+   The three ESPN read routes are `originAllowed()` rather than
+   `requireUser()`, because a PUBLIC league is readable signed out and that
+   has to keep being true. But a private one can only be read as somebody,
+   so they need the reader's identity when there is one -- without turning
+   an ordinary signed-out visit into an error, which is the line /me itself
+   already draws for the same reason. */
+async function optionalUser(request, env) {
+  try {
+    const user = await verifiedUser(request, env);
+    return (user && user.id) || null;
+  } catch {
+    return null;
+  }
+}
+
 function staleLeague(league) {
   /* A league that has drafted has nothing left to refresh: the roster is
      what changes now and that is the snapshot's job, not this cache's. */
@@ -1476,7 +1560,14 @@ async function refreshActiveLeague(env, clerkId, league) {
       const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
       const season = String(league.season || (state && state.season) || "");
       if (!season) return;
-      const found = await espnLookupLeague(league.leagueId, season, env.ESPN_BASE || ESPN_API);
+      /* As the reader, when there is a credential. A private league's
+         cached name and draft time would otherwise go stale for ever:
+         this is the one refresh path that keeps them honest, and without
+         the credential it answers "private" every hour instead. */
+      const cred = await espnCredFor(env, clerkId, league.leagueId);
+      const found = await espnLookupLeague(
+        league.leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred)
+      );
       if (!found.league) return;
       await refreshLeagueCache(env, clerkId, Object.assign({}, found.league, {
         provider: "espn",
@@ -1532,7 +1623,15 @@ async function meLeaguesRoute(request, env, ctx) {
       after(ctx, refreshActiveLeague(env, user.id, active));
     }
 
-    return new Response(JSON.stringify({ leagues }), { headers });
+    /* Which leagues are private, WITHOUT the thing that makes them
+       readable. A screen needs to say "this one is connected with your
+       ESPN sign-in, reconnect it if it stops working"; it never needs the
+       credential, so the answer it gets cannot contain one. See the
+       migration for why this is a second read rather than a column on the
+       row above. */
+    const credentialed = await credentialedLeagues(env, user.id);
+
+    return new Response(JSON.stringify({ leagues, credentialed }), { headers });
   }
 
   /* PATCH — switch which connected league is the active one.
@@ -1630,6 +1729,10 @@ async function meLeaguesRoute(request, env, ctx) {
      connected, which is a better failure than a chip pointing at nothing. */
   let league = null;
   let failure = "not-found";
+  /* The sealed credential, when this is a private ESPN connect. Declared
+     out here because it is produced inside the provider branch and
+     written after the league row, below. */
+  let sealedCred = null;
 
   if (provider === "espn") {
     const state = await nflState(env.SLEEPER_BASE || SLEEPER_API);
@@ -1637,7 +1740,39 @@ async function meLeaguesRoute(request, env, ctx) {
     if (!season) {
       return new Response(JSON.stringify({ ok: false, error: "upstream" }), { status: 503, headers });
     }
-    const found = await espnLookupLeague(leagueId, season, env.ESPN_BASE || ESPN_API);
+    /* A PRIVATE league, which means reading it as the person connecting.
+
+       ESPN publishes no OAuth for third parties, so the credential is the
+       `espn_s2` + `SWID` pair out of their own browser -- an ESPN session
+       rather than a scoped read token. Both halves or neither: ESPN
+       accepts one alone no more than it accepts none, so half a pair
+       would fail as "private", sending somebody back to re-copy a value
+       that was right.
+
+       The pair is used to VALIDATE before it is stored. A credential that
+       does not open the league is one the reader mis-copied, and storing
+       it would connect a league that can never be read -- which renders
+       as a connected league with nothing in it, the failure this route's
+       own comment already gives for an unvalidated ownerId. */
+    const espnS2 = String((body && body.espnS2) || "").trim().slice(0, 2048);
+    const swid = String((body && body.swid) || "").trim().slice(0, 128);
+    const wantsPrivate = !!(espnS2 && swid);
+
+    /* Refused up front rather than after asking ESPN, because the answer
+       does not depend on ESPN: a deployment with no LEAGUE_CRED_KEY has
+       nowhere to put the pair, and the one thing it must never do is keep
+       it in the clear. See credentials.js. */
+    if (wantsPrivate && !canSealCredentials(env)) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "private-unavailable" }),
+        { status: 503, headers }
+      );
+    }
+
+    const cred = wantsPrivate ? { espnS2, swid } : null;
+    const found = await espnLookupLeague(
+      leagueId, season, espnSource(env.ESPN_BASE || ESPN_API, cred)
+    );
     if (found.league) {
       /* ESPN has no account to infer the reader's team from, so the dialog
          asks and posts it. Checked against the league's own teams rather
@@ -1663,6 +1798,24 @@ async function meLeaguesRoute(request, env, ctx) {
         draftAt: found.league.draftAt || null,
         draftStatus: found.league.draftStatus || null
       };
+
+      /* Sealed here, written after the league row below.
+
+         Sealing is pure and cheap, so doing it now means the only thing
+         left to fail later is the write -- and a seal that cannot happen
+         (no key, unusable key) is caught before anything is stored rather
+         than after. */
+      if (cred) {
+        sealedCred = await sealCredential(
+          cred, { clerkId: user.id, provider: "espn", leagueId: found.league.leagueId }, env
+        );
+        if (!sealedCred) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "private-unavailable" }),
+            { status: 503, headers }
+          );
+        }
+      }
     } else {
       failure = found.reason || "not-found";
     }
@@ -1722,6 +1875,29 @@ async function meLeaguesRoute(request, env, ctx) {
      the league and only this fails. Which is why the answer below ignores
      it — under the pre-0006 ordering a freshly connected league is already
      the head, so the switch failing changes nothing a reader can see. */
+  /* The credential goes in AFTER the league row and its failure undoes
+     both, which is the ordering that leaves no state worth worrying about.
+
+     A league stored without its credential is a private league that can
+     never be read: it would sit in the switcher, draw a name, and answer
+     "private" on every screen behind it -- a connected league with nothing
+     in it, which is the failure this route already refuses an unvalidated
+     ownerId to avoid. So it is rolled back rather than reported alongside
+     a success, and deleteLeague() clears both tables.
+
+     The likely cause is a database that has not had 0011 applied, which
+     is a real window: the worker ships separately from its migrations. */
+  if (ok && sealedCred) {
+    const kept = await putLeagueCredential(env, user.id, "espn", league.leagueId, sealedCred);
+    if (!kept) {
+      await deleteLeague(env, user.id, "espn", league.leagueId);
+      return new Response(
+        JSON.stringify({ ok: false, error: "private-unavailable" }),
+        { status: 503, headers }
+      );
+    }
+  }
+
   if (ok) await selectLeague(env, user.id, league.provider, league.leagueId);
 
   return new Response(

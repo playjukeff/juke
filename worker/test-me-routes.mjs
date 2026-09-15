@@ -108,17 +108,27 @@ function token(sub = "user_2abcDEF") {
    turns on — so it is a parameter rather than a constant, and the two
    values it can take are the two branches under test. Everything else
    answers the shape store.js expects and nothing more. */
-function stubDb(changes = 1, rows = []) {
+function stubDb(changes = 1, rows = [], credRows = []) {
   const seen = [];
   const stmt = (sql) => ({
     sql,
     bind(...args) { seen.push({ sql, args }); return this; },
     async run() { return { success: true, meta: { changes } }; },
-    // `rows` is what listLeagues() reads. It defaults to empty, which is
-    // what every test above this line wants and is also exactly what kept
-    // the leagues GET untested for as long as it was — see the block at the
-    // bottom of this file.
-    async all() { return { results: rows }; },
+    /* `rows` is what listLeagues() reads. It defaults to empty, which is
+       what every test above this line wants and is also exactly what kept
+       the leagues GET untested for as long as it was — see the block at the
+       bottom of this file.
+
+       It answers PER TABLE, because since 0011 the leagues GET makes two
+       reads and they want different answers. A stub that handed the league
+       rows to both reported every connected league as carrying a stored
+       ESPN credential — which is the wrong answer in the direction nobody
+       would check, since the field is new and a screen drawing a
+       "private" badge on everything still renders. */
+    async all() {
+      if (/league_credentials/.test(sql)) return { results: credRows };
+      return { results: rows };
+    },
     async first() { return null; }
   });
   return {
@@ -295,6 +305,9 @@ const LEAGUE_ROW = {
   draft_status: null
 };
 
+/* The credential map rides alongside the list, and carries no credential
+   in it: see 0011_league_credentials.sql for why a screen's answer is a
+   second read rather than a column on the row above. */
 check("a connected league is listed rather than throwing on the way out",
       await call("/me/leagues", { auth: token(), db: stubDb(1, [LEAGUE_ROW]) }),
       { status: 200, body: { leagues: [{
@@ -308,7 +321,26 @@ check("a connected league is listed rather than throwing on the way out",
         refreshedAt: 1,
         draftAt: null,
         draftStatus: null
-      }] } });
+      }], credentialed: {} } });
+
+/* A league with a stored credential says so, and says only that.
+
+   The map is what a screen reads to draw "connected with your ESPN
+   sign-in", so what it must never carry is the credential itself -- which
+   is a property of the QUERY (0011 keeps it in its own table) rather than
+   of anything this route filters, and is worth an assertion because a
+   regression would be a secret in a response body that renders fine. */
+{
+  const res = await call("/me/leagues", {
+    auth: token(),
+    db: stubDb(1, [LEAGUE_ROW], [{ provider: "espn", league_id: "1075383", cred_at: 99 }])
+  });
+  check("a stored credential is reported as one",
+        res.body.credentialed, { "espn|1075383": 99 });
+  check("and the credential itself is nowhere in the answer",
+        JSON.stringify(res.body).includes("cred\"") || JSON.stringify(res.body).includes("espn_s2"),
+        false);
+}
 
 /* Same request, asserted on the header instead, because the two failures are
    different and only one of them is visible from the browser. A 500 with no
