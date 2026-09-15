@@ -330,14 +330,23 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
       {games.length ? (
         <ul>
           {games.map((g) => {
-            const [a, b] = g.sides
+            /* Whichever side is being read on this page goes on the left,
+               matching the head-to-head card and the lineup table above —
+               a game's own home/away (ESPN) or roster-id (Sleeper) order has
+               no reason to agree with that, and for the reader's OWN row it
+               read as a different game from the one above it. Every other
+               row keeps its natural order: there is no "yours" to anchor a
+               neutral third-party game by. */
+            const flip = !!(focus && g.sides[1] && sameTeam(g.sides[1].team, focus))
+            const a = flip ? g.sides[1] : g.sides[0]
+            const b = flip ? g.sides[0] : g.sides[1]
             const sa = scoreOf(a, g)
             const sb = scoreOf(b, g)
             const on = g.sides.some((s) => sameTeam(s.team, focus))
             const yours = g.sides.some((s) => sameTeam(s.team, mine))
             const Row = sample ? 'div' : 'a'
-            const aWon = g.winner === 0
-            const bWon = g.winner === 1
+            const aWon = flip ? g.winner === 1 : g.winner === 0
+            const bWon = flip ? g.winner === 0 : g.winner === 1
             return (
               <li key={g.key} className="border-b border-v3-rule last:border-b-0">
                 <Row
