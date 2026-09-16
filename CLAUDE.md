@@ -10285,12 +10285,36 @@ render rather than per two minutes, bounded on the client by
 `snapshotStore`'s own window. A private ESPN league has had exactly that
 property since it shipped.
 
-**What is deliberately not built.** `league/schedules` is real and is not
-read: turning it into the shape `lib/schedule.js` wants is its own change
-with its own measurements, and `schedule: null` is what a Sleeper league
-already answers, so every consumer degrades to the behaviour it has. There
-is no transactions feed and no draft board. Neither is blocked on anything
-but effort.
+**The schedule is read, and `period=all` is the whole of why.** Corrected
+in place 16 September 2026: this paragraph said `league/schedules` was
+"real and is not read", and the sentence above the route table called it a
+full schedule. The second half was a claim about a plural. **The bare call
+answers the CURRENT period only** -- one entry in `periods` -- and
+`period=all` answers all seventeen weeks in one request. Nobody had asked
+for the parameter, so "a full schedule at `league/schedules`" was true of
+the endpoint and false of the call.
+
+Three things in that payload decide the adapter, all measured against a
+real league rather than inferred:
+
+- **a played side carries `points` and `result`; an unplayed side carries
+  neither key.** So played is decided by the key being PRESENT, never by
+  its value -- `Number(t.points) > 0` is what espn.js does, and copying it
+  here files a genuine 0.0 week as unplayed;
+- **`points` is a STRING** (`"89.3400"`). Converted once at the adapter
+  boundary, because a string that reaches a room adds by concatenation and
+  produces a plausible total nobody can reconcile;
+- **`type` is "Regular Season" or "Playoffs"**, which is what sets
+  `regularSeasonWeeks` -- read rather than assumed, the same way ESPN's
+  `playoffTierType` is.
+
+The winner is CBS's own per-side `result` ("W"/"L"), translated into the
+HOME/AWAY/TIE/UNDECIDED vocabulary every room already reads. Never derived
+from the points, for the reason `scheduleFromEspn()` already states: that
+calls an unplayed 0-0 a draw.
+
+**What is still deliberately not built.** There is no transactions feed and
+no draft board. Neither is blocked on anything but effort.
 
 **`worker/test-cbs.mjs` is the whole of the offline coverage**, and it has
 to be: CBS's entire league surface is behind a session, so unlike espn.js

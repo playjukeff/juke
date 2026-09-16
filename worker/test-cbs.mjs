@@ -27,6 +27,7 @@ import {
 } from "./cbs.js";
 import { rulesFromCbs } from "./scoring.js";
 import { normalise } from "./names.js";
+import { scheduleFromCbs } from "./matchups.js";
 
 let failures = 0;
 function check(what, got, want) {
@@ -505,6 +506,78 @@ if (worker) {
   check("the POST refuses without an account", noAuth.status, 401);
   check("and nothing was sent to CBS for it", sawCookie, null);
 }
+
+
+/* ---- The schedule ----
+
+   Every field below is copied from what a real league answered on 16
+   September 2026, logos stripped: a played side carries `points` as a
+   STRING and a `result` of "W"/"L", an unplayed side carries neither key,
+   and `type` is "Regular Season" or "Playoffs".
+
+   The cases are the ones that fail silently rather than throw: a string
+   that would concatenate, a genuine 0.0 that would read as unplayed, and a
+   winner that would be derived from the points instead of read. */
+const PERIODS = {
+  periods: [
+    { id: "1", label: "Week 1", type: "Regular Season", matchups: [
+      { id: "1",
+        home_team: { id: "1", name: "You Like That!", points: "89.3400", result: "L", record: "0-1-0", is_vacant: 0 },
+        away_team: { id: "14", name: "Gridiron Gang", points: "132.4600", result: "W", record: "1-0-0", is_vacant: 0 } },
+      /* A real 0.0: everybody on bye, a lineup nobody set. `points` is
+         present, so the week WAS played -- reading its value as truthiness
+         would file this as unplayed and drop a genuine result. */
+      { id: "2",
+        home_team: { id: "2", name: "Nil", points: "0.0000", result: "L", record: "0-1-0", is_vacant: 0 },
+        away_team: { id: "3", name: "Also nil", points: "0.0000", result: "W", record: "1-0-0", is_vacant: 0 } },
+    ] },
+    { id: "2", label: "Week 2", type: "Regular Season", matchups: [
+      { id: "1",
+        home_team: { id: "10", name: "Sladek Slackers", record: "1-0-0", is_vacant: 0 },
+        away_team: { id: "4", name: "Cedeez Nutz", record: "0-1-0", is_vacant: 0 } },
+    ] },
+    { id: "15", label: "Week 15", type: "Playoffs", matchups: [
+      { id: "1",
+        home_team: { id: "1", name: "You Like That!", record: "0-1-0", is_vacant: 0 },
+        away_team: { id: "14", name: "Gridiron Gang", record: "1-0-0", is_vacant: 0 } },
+    ] },
+  ],
+};
+
+console.log("\n--- the schedule, from the shape CBS actually answers ---");
+const sched = scheduleFromCbs(PERIODS);
+check("seventeen is not assumed: the last week is what the periods say", sched.weeks, 15);
+check("and the regular season ends where Playoffs begins", sched.regularSeasonWeeks, 2);
+
+const w1 = sched.matchups.find((m) => m.week === 1);
+check("a played side's points are a NUMBER, not the string CBS sends", w1.home.points, 89.34);
+check("and the other side with it", w1.away.points, 132.46);
+/* The bug this guards is arithmetic rather than a throw: "89.3400" + 132.46
+   is a string, and a total built from it looks like a number on screen. */
+check("so two sides add rather than concatenate", w1.home.points + w1.away.points, 221.8);
+check("the winner is CBS's stated result, not a comparison of the points", w1.winner, "AWAY");
+
+const nil = sched.matchups.find((m) => m.week === 1 && m.home.teamId === "2");
+check("a real 0.0 is a score, not an unplayed week", nil.home.points, 0);
+check("and its result still reads", nil.winner, "AWAY");
+
+const w2 = sched.matchups.find((m) => m.week === 2);
+check("an unplayed side has no points at all", w2.home.points, null);
+check("and is UNDECIDED rather than a draw", w2.winner, "UNDECIDED");
+check("a regular-season week is not a playoff one", w2.playoff, false);
+check("and week 15 is", sched.matchups.find((m) => m.week === 15).playoff, true);
+
+check("nothing to read answers null rather than an empty season", scheduleFromCbs({ periods: [] }), null);
+check("and so does a payload that never arrived", scheduleFromCbs(null), null);
+
+/* A vacant chair is a slot in the fixture list rather than a team. The ROW
+   survives -- dropping it would renumber the season, which is the bye rule
+   one step along -- and the vacant side is null. */
+const vac = scheduleFromCbs({ periods: [{ id: "3", type: "Regular Season", matchups: [
+  { id: "1", home_team: { id: "9", name: "Real", is_vacant: 0 }, away_team: { id: "0", name: "Vacant", is_vacant: 1 } },
+] }] });
+check("a vacant chair keeps its week and carries no team", vac.matchups[0].away, null);
+check("and the real side is still there", vac.matchups[0].home.teamId, "9");
 
 console.log(failures ? "\n" + failures + " failed" : "\nall passed");
 process.exit(failures ? 1 : 0);

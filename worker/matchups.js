@@ -99,6 +99,104 @@ export function scheduleFromEspn(schedule) {
   };
 }
 
+/* ---- CBS, which publishes the same season in a different shape ----
+ *
+ * Measured against a real league on 16 September 2026, because the shape
+ * was not knowable without a session and guessing it is what produced the
+ * `roster_status` bug in this same adapter.
+ *
+ *   GET league/schedules?period=all
+ *     body.schedule.periods[] = { id: "2", label: "Week 2",
+ *                                 type: "Regular Season" | "Playoffs",
+ *                                 start, end, matchups: [...] }
+ *     matchup = { id, home_team: {...}, away_team: {...} }
+ *     a PLAYED side  = { id, points: "89.3400", result: "W", record, name }
+ *     an UNPLAYED side carries neither `points` nor `result` at all
+ *
+ * **`period=all` is what makes this one request rather than seventeen**,
+ * and the bare call is not a smaller version of it -- it answers the
+ * CURRENT period only. CLAUDE.md recorded this endpoint as "a full
+ * schedule", which was true of the plural in `periods` and false of what it
+ * returns: one entry. Corrected there.
+ *
+ * **Played is decided by `points` being present, never by its value.** An
+ * unplayed side has no such key, and a real team really can score 0.0 in a
+ * week everybody was on bye -- so `!points` would call a played week
+ * unplayed. Same rule the pipeline applies to a 0 from any feed, reached
+ * from the other side.
+ *
+ * **The winner is CBS's stated `result`, never a comparison of the
+ * points.** Deriving it would call an unplayed 0-0 a draw, which is the
+ * rule scheduleFromEspn() above already follows.
+ *
+ * **Points arrive as STRINGS** ("89.3400"). Converted once, here, at the
+ * adapter boundary -- a string that reaches a room adds by concatenation
+ * and produces a plausible-looking total nobody can reconcile.
+ */
+
+const CBS_PLAYOFF = "PLAYOFFS";
+
+function cbsSide(t) {
+  if (!t || t.id === undefined || t.id === null) return null;
+  /* A vacant chair is a real slot in the fixture list and not a team. It
+     keeps the row -- dropping it would renumber somebody's season, which is
+     the bye rule one step along -- and carries no id to join on. */
+  if (t.is_vacant) return null;
+  /* `points` present means played. Its VALUE decides nothing: a genuine
+     0.0 is a score, and an unplayed side has no key here at all. */
+  const played = t.points !== undefined && t.points !== null && t.points !== "";
+  const pts = played ? Number(t.points) : NaN;
+  return {
+    teamId: String(t.id),
+    points: Number.isFinite(pts) ? pts : null,
+    result: typeof t.result === "string" && t.result ? t.result.toUpperCase() : null,
+  };
+}
+
+/* CBS states a result per SIDE ("W"/"L"/"T") and matchups.js speaks in
+   winners ("HOME"/"AWAY"/"TIE"/"UNDECIDED"), so the two are translated
+   rather than either being taught the other's vocabulary -- the same
+   contract every adapter in this worker has with the rooms. */
+function cbsWinner(home, away) {
+  const h = home && home.result;
+  const a = away && away.result;
+  if (h === "T" || a === "T") return "TIE";
+  if (h === "W" || a === "L") return "HOME";
+  if (a === "W" || h === "L") return "AWAY";
+  return UNPLAYED;
+}
+
+/* Takes the `schedule` object itself, matching scheduleFromEspn(), which
+   is handed `league.schedule` rather than the whole league. */
+export function scheduleFromCbs(sched) {
+  const periods = sched && Array.isArray(sched.periods) ? sched.periods : null;
+  if (!periods || !periods.length) return null;
+
+  const rows = [];
+  periods.forEach((p) => {
+    if (!p) return;
+    const week = Number(p.id);
+    if (!week) return;
+    const playoff = String(p.type || "").toUpperCase().includes(CBS_PLAYOFF);
+    (Array.isArray(p.matchups) ? p.matchups : []).forEach((m) => {
+      if (!m) return;
+      const home = cbsSide(m.home_team);
+      const away = cbsSide(m.away_team);
+      if (!home && !away) return;
+      rows.push({ week, home, away, winner: cbsWinner(home, away), playoff });
+    });
+  });
+
+  if (!rows.length) return null;
+  rows.sort((a, b) => a.week - b.week);
+
+  return {
+    weeks: rows.reduce((n, r) => Math.max(n, r.week), 0),
+    regularSeasonWeeks: rows.reduce((n, r) => (r.playoff ? n : Math.max(n, r.week)), 0),
+    matchups: rows,
+  };
+}
+
 /* Sleeper publishes no season schedule at all.
  *
  * Its matchups endpoint answers ONE week at a time -- /league/<id>/matchups/
