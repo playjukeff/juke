@@ -195,6 +195,16 @@ function countOfType(ws, type) {
   return ws.inbox.filter((m) => m.type === type).length;
 }
 
+/* How many refusals this socket has been sent.
+
+   Beside lastState/lastOfType rather than halfway down the file, where it
+   used to sit: it is now read from the first section as well as the last,
+   and `const` is not hoisted — a use above the definition is a temporal
+   dead zone, not a forward reference. That is exactly what moving two
+   `sleep(300)` waits onto this helper produced, and the whole suite threw
+   before its first assertion. */
+const rejectsOn = (ws) => ws.inbox.filter((m) => m.type === "rejected").length;
+
 function lastOfType(ws, type) {
   for (let i = ws.inbox.length - 1; i >= 0; i--) {
     if (ws.inbox[i].type === type) return ws.inbox[i];
@@ -240,21 +250,33 @@ check("alice cannot see bob's member id",
       JSON.stringify(s).includes("bob") === false, true);
 
 // non-host start is refused
+/* A rejection ARRIVING is a condition, not a duration. 300ms is generous
+   against localhost and not always enough against a worker at the other
+   end of a real network -- the reasoning until() already carries, applied
+   to the two sites that had not adopted it. */
+const bobStartRejects = rejectsOn(bob);
 bob.send(JSON.stringify({ type: "start" }));
-await sleep(300);
+await until("the non-host start is refused", () => rejectsOn(bob) > bobStartRejects);
 check("non-host start refused", lastOfType(bob, "rejected")?.code, "not-your-seat");
 check("still in lobby", lastState(alice)?.status, "lobby");
 
 // host starts
 alice.send(JSON.stringify({ type: "start" }));
-await until("the room starts drafting", () => lastState(alice)?.status === "drafting" || undefined);
+/* Both again, and for the reason above: the next two lines read bob's
+   state, and alice's arriving says nothing about bob's. This one had
+   never been seen red, which is what a race that usually wins looks
+   like. */
+await until("the room starts drafting",
+            () => (lastState(alice)?.status === "drafting"
+                   && lastState(bob)?.status === "drafting") || undefined);
 check("drafting after host start", lastState(alice)?.status, "drafting");
 check("both sockets saw it", lastState(bob)?.status, "drafting");
 check("a countdown arrived", typeof lastState(bob)?.msLeft, "number");
 
 // wrong seat is refused; seat 0 is on the clock
+const bobPickRejects = rejectsOn(bob);
 bob.send(JSON.stringify({ type: "pick", key: "Gibbs" }));
-await sleep(300);
+await until("the wrong-seat pick is refused", () => rejectsOn(bob) > bobPickRejects);
 check("bob cannot pick on alice's turn", lastOfType(bob, "rejected")?.code, "not-your-seat");
 
 /* alice picks.
@@ -892,7 +914,6 @@ const host = await connect("alice", "Alice", null, ORDER_ROOM);
 const guest = await connect("bob", "Bob", null, ORDER_ROOM);
 await until("both seated", () => lastState(guest)?.seats.filter((s) => s.taken).length === 2);
 
-const rejectsOn = (ws) => ws.inbox.filter((m) => m.type === "rejected").length;
 const guestRejectsBefore = rejectsOn(guest);
 
 // ---- pausing ----
@@ -924,7 +945,20 @@ check("a guest cannot set the draft order",
 check("and nothing moved", seatNames(guest), ["Alice", "Bob", null, null]);
 
 host.send(JSON.stringify({ type: "swap-seats", a: 0, b: 2 }));
-await until("the chairs move", () => seatNames(guest)?.[2] === "Alice");
+/* BOTH sockets, because the assertions below read both.
+   A broadcast is a separate send per socket and they land independently,
+   so waiting on the guest's copy guarantees nothing about the host's --
+   `lastState(host)` then answers the state BEFORE the swap, and the seat
+   it reports is the one the host used to sit in. That is what took the
+   post-deploy gate red on #276: yourSeat 0 against a wanted 2, on a room
+   that had done exactly the right thing.
+   Same shape as room.spec.mjs's own reconnect race, which this file
+   already records: a fact sampled on one connection is not a fact about
+   another. The wait is on `seats` and the assertions are on `yourSeat`,
+   so this still fails a room that moved the chairs and left everybody
+   pointing at where they used to sit -- which is what the test is for. */
+await until("the chairs move",
+            () => seatNames(guest)?.[2] === "Alice" && seatNames(host)?.[2] === "Alice");
 check("the host sets the draft order", seatNames(guest), [null, "Bob", "Alice", null]);
 
 /* The chair moved; the socket has to have moved with it. yourSeat is read off
