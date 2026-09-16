@@ -1,6 +1,9 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { X, Check, Lock } from 'lucide-react'
 import { PLATFORMS, LIVE_PLATFORMS } from './leaguePlatforms.js'
+import {
+  CBS_BOOKMARKLET, ESPN_BOOKMARKLET, BOOKMARKLET_LABEL, splitEspnPaste,
+} from './keyBookmarklets.js'
 import { tierLabel } from '../../lib/tiers.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -120,6 +123,23 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      Held here for as long as the dialog is open and never in localStorage,
      the same rule the ESPN pair above follows. */
   const [pid, setPid] = useState('')
+  /* Clicking the bookmarklet on THIS page is refused by our own CSP, so
+     the click explains the drag rather than appearing to do nothing. */
+  const [dragHint, setDragHint] = useState(false)
+  /* Why the CONNECT failed, kept apart from `status`.
+
+     A failure at this step used to be written into `status`, and none of
+     the values it wrote are ones the picking step renders — so the dialog
+     fell through to the address form and the reader lost the team they had
+     just chosen, on a screen that had already resolved their league.
+     Reported from the live site, with the address and the cookie still
+     filled in and the error above a "Find my league" button that had
+     nothing left to find.
+
+     The press happened on the picking step, so the message belongs there.
+     `status` goes back to 'picking' and this carries the reason. */
+  const [connectError, setConnectError] = useState(null)
+
   // Which tier's cap was hit, and what it is — filled only on a tier-limit
   // refusal, to say which plan this account is on rather than a bare
   // "you're at your limit".
@@ -139,8 +159,10 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setEspnS2('')
       setSwid('')
       setPid('')
+      setDragHint(false)
       setPlatform(null)
       setTierInfo({ tier: null, cap: null })
+      setConnectError(null)
       setEmail('')
       setNotifyStatus('idle')
       // Always the first step, never the one it was left on: this dialog
@@ -262,6 +284,17 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
      (the public lookup already said "private"), so what is wrong is the
      pair, and the message has to say so rather than sending somebody back
      to re-check a number. */
+  /* One clipboard value, two boxes. Anything that is not the combined
+     `SWID=…; espn_s2=…` shape falls through untouched, so an ordinary
+     single-value paste behaves exactly as it always has. */
+  const onEspnPaste = (e) => {
+    const pair = splitEspnPaste(e.clipboardData && e.clipboardData.getData('text'))
+    if (!pair) return
+    e.preventDefault()
+    setSwid(pair.swid)
+    setEspnS2(pair.espnS2)
+  }
+
   const lookupPrivate = async (e) => {
     e.preventDefault()
     if (!espnS2.trim() || !swid.trim()) return
@@ -283,6 +316,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
 
   const connect = async () => {
     if (!chosen) return
+    setConnectError(null)
     setStatus('connecting')
     const l = live()
     /* What identifies the reader inside the league differs by platform:
@@ -304,15 +338,22 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
         setStatus('tier-limit')
         return
       }
-      // A league that stopped being public between the lookup and the
-      // connect is worth naming rather than reporting as a generic failure.
-      /* "private-unavailable" is this deployment having nowhere to seal a
-         credential, which is not the reader's fault and not a retry --
-         so it may not be reported as either "private" (go and make your
-         league public) or a generic error. */
-      setStatus(res.reason === 'private-unavailable' ? 'private-unavailable'
-              : res.reason === 'private' ? 'private'
-              : 'error')
+      /* Back to 'picking', with the reason beside the button that was
+         pressed -- rather than into a status the picking step does not
+         render, which drops the reader onto the address form and discards
+         the team they chose. The tier-limit branch above is the one real
+         exception: it replaces the whole dialog on purpose, because the
+         answer is not "try again" but "you are at your plan's limit".
+
+         A league that stopped being public between the lookup and the
+         connect is worth naming rather than reporting as generic, and
+         "private-unavailable" is this deployment having nowhere to seal a
+         credential -- not the reader's fault, not a retry, and not
+         something to report as "go and make your league public". */
+      setConnectError(res.reason === 'private-unavailable' ? 'private-unavailable'
+                    : res.reason === 'private' ? 'private'
+                    : 'error')
+      setStatus('picking')
       return
     }
     setStatus('done')
@@ -571,11 +612,50 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               here if this league stops loading.
             </p>
 
+            {/* The easy path, first -- same mechanism as CBS's, and it
+                needs no extension for the reason measured in
+                keyBookmarklets.js: `espn_s2` is not HttpOnly, so
+                `document.cookie` can see it.
+
+                ESPN needs BOTH halves, so the bookmarklet copies them as one
+                string and `onPaste` splits it across the two boxes. Pasting
+                into either one works, because somebody with two boxes and
+                one clipboard value will try whichever is nearer. */}
+            <div className="mt-4 rounded-xl border border-line-hairline bg-surface-page p-3">
+              <p className="text-meta text-ink-muted">
+                Easiest way — drag this to your bookmarks bar, then click it while
+                you&apos;re signed in at fantasy.espn.com:
+              </p>
+              <a
+                href={ESPN_BOOKMARKLET}
+                draggable="true"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setDragHint(true)
+                }}
+                className="mt-2 inline-flex cursor-grab items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-[14px] font-semibold text-white active:cursor-grabbing"
+              >
+                <span aria-hidden="true">&#8595;</span> {BOOKMARKLET_LABEL}
+              </a>
+              {dragHint ? (
+                <p className="mt-2 text-meta text-voidInk-body">
+                  Drag it up to your bookmarks bar rather than clicking it here — it
+                  only works on an ESPN page. On a phone, use the manual steps below.
+                </p>
+              ) : null}
+              <p className="mt-2 text-meta text-ink-muted">
+                It reads the two values below and copies them. It sends nothing
+                anywhere, and reads nothing else in your ESPN account. Paste it into
+                either box.
+              </p>
+            </div>
+
             <label className="mt-4 block text-meta text-ink-muted" htmlFor="espn-swid">SWID</label>
             <input
               id="espn-swid"
               value={swid}
               onChange={(e) => setSwid(e.target.value)}
+              onPaste={onEspnPaste}
               placeholder="{XXXXXXXX-XXXX-...}"
               spellCheck="false"
               autoComplete="off"
@@ -587,6 +667,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               id="espn-s2"
               value={espnS2}
               onChange={(e) => setEspnS2(e.target.value)}
+              onPaste={onEspnPaste}
               placeholder="AEB..."
               spellCheck="false"
               autoComplete="off"
@@ -704,6 +785,16 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               </ul>
             )}
 
+            {connectError ? (
+              <p className="mt-4 text-meta text-flow-rose">
+                {connectError === 'private-unavailable'
+                  ? 'Private leagues are not switched on for this deployment yet. Nothing was stored.'
+                  : connectError === 'private'
+                    ? `${platform ? platform.name : 'That platform'} would not let Juke read that league as you. Your sign-in may have expired — go back and paste it again.`
+                    : `Could not reach ${platform ? platform.name : 'the platform'} just now. Try again in a moment.`}
+              </p>
+            ) : null}
+
             <button
               type="button"
               onClick={connect}
@@ -803,9 +894,51 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   own — disconnecting is what ends it.
                 </p>
 
+                {/* The easy path, first.
+
+                    Dragged to the bookmarks bar and clicked on the reader's
+                    own league page, this copies `pid` and nothing else. It
+                    exists because the alternative below — developer tools,
+                    Application, Cookies — is a real barrier in front of the
+                    one thing somebody is trying to do.
+
+                    It is a DRAG target rather than a button: clicking it
+                    here would do nothing, because this page's own CSP has
+                    no `unsafe-inline` in `script-src` and a `javascript:`
+                    href is refused. So the click says what to do instead of
+                    failing silently, which is this project's own rule about
+                    a control that cannot act. */}
+                <div className="mt-4 rounded-xl border border-line-hairline bg-surface-page p-3">
+                  <p className="text-meta text-ink-muted">
+                    Easiest way — drag this to your bookmarks bar, then click it while
+                    you&apos;re on your CBS league page:
+                  </p>
+                  <a
+                    href={CBS_BOOKMARKLET}
+                    draggable="true"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setDragHint(true)
+                    }}
+                    className="mt-2 inline-flex cursor-grab items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-2 text-[14px] font-semibold text-white active:cursor-grabbing"
+                  >
+                    <span aria-hidden="true">&#8595;</span> {BOOKMARKLET_LABEL}
+                  </a>
+                  {dragHint ? (
+                    <p className="mt-2 text-meta text-voidInk-body">
+                      Drag it up to your bookmarks bar rather than clicking it here — it
+                      only works on a CBS page. On a phone, use the manual steps below.
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-meta text-ink-muted">
+                    It reads one cookie and copies it. It sends nothing anywhere, and it
+                    reads nothing else in your CBS account.
+                  </p>
+                </div>
+
                 <details className="mt-3">
                   <summary className="cursor-pointer text-meta text-ink-muted hover:text-white">
-                    Where do I find this?
+                    Or find it by hand
                   </summary>
                   <p className="mt-2 text-meta leading-[1.6] text-voidInk-body">
                     On a desktop browser, sign in and open your league. Open your browser&apos;s
@@ -862,11 +995,6 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   again.
                 </p>
               </>
-            ) : null}
-            {status === 'private-unavailable' ? (
-              <p className="mt-2 text-meta text-flow-rose">
-                Private leagues are not switched on for this deployment yet. Nothing was stored.
-              </p>
             ) : null}
             {status === 'error' ? (
               <p className="mt-2 text-meta text-flow-rose">

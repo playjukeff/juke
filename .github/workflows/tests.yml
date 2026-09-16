@@ -190,6 +190,15 @@ jobs:
       - name: Strategy board
         run: node scripts/test_strategy_board.mjs
 
+      # The "Copy my key" bookmarklets, run as the real strings the bookmark
+      # carries rather than as a copy of their logic. This is a snippet
+      # somebody runs against their own signed-in ESPN or CBS account, so
+      # the assertions that earn their keep are the ones about what it does
+      # NOT read: a session carries far more than the one or two cookies
+      # Juke wants, and none of the rest is ours.
+      - name: The key bookmarklets
+        run: node scripts/test_bookmarklets.mjs
+
       # The Trade Room's arithmetic, and the highest-stakes of the three:
       # a trade is irreversible once accepted, so the sum that says "this
       # is a win" must be checkable without a browser nobody can log into.
