@@ -676,7 +676,16 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
               : cbsWeek && cbsWeek.status === 'loading'
                 ? `Reading ${platform}'s box score for week ${week}…`
                 : cbsWeek && cbsWeek.status === 'ready'
-                  ? `${platform} has no box score for week ${week} — nobody has played it yet.`
+                  /* NOT "nobody has played it yet". The route answers an
+                     empty week for two reasons it cannot tell apart: a
+                     week nobody has played, and a week whose per-player
+                     points Juke could not find. `league/stats` turned out
+                     to be the FREE-AGENT pool -- 369 rows, all of them
+                     free agents -- so the second case is the live one and
+                     this sentence was telling a reader their played week
+                     had not happened. A message may not claim the more
+                     specific of two causes it cannot distinguish. */
+                  ? `Juke could not read ${platform}'s per-player points for week ${week}. The final above is what its schedule states.`
                   : `${platform}'s box score for week ${week} could not be read. The final above is what its schedule states.`}
           </p>
           {cbsWeek && cbsWeek.status === 'error' ? (

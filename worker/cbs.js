@@ -324,9 +324,25 @@ export async function crosswalk(players, lookup) {
  * `league/stats?period=N` is where CBS keeps them, and both halves of that
  * were measured on 16 September 2026 rather than assumed:
  *
- *   201 KB, 369 rows for a played week -- the players who recorded
- *   something, NOT the 4,910-player universe. Each row carries `FPTS`
- *   (CBS's own applied points), `name`, `position` and `TM`.
+ *   201 KB, 369 rows for a played week. Each row carries `FPTS` (CBS's
+ *   own applied points), `name`, `position` and `TM`.
+ *
+ * **`player_status=rostered`, and without it this endpoint answers the
+ * FREE-AGENT pool.** Measured after the first version shipped and found
+ * nobody: the bare call returns 369 rows and all 369 are free agents, so
+ * the intersection with any roster is empty BY CONSTRUCTION. With the
+ * parameter it answers 519 rows and Joe Burrow is in them.
+ *
+ * That failure had no symptom of its own. A wrong population is not an
+ * error -- every row parsed, the crosswalk ran, the join produced nothing,
+ * and the route reported a week with no points, which is exactly what an
+ * unplayed week looks like. The endpoint was mapped by asking whether the
+ * PATH exists (400 vs 404) and nobody had asked what it returns by
+ * default.
+ *
+ * `filter=all` is refused outright -- 400, "invalid_filter" -- so `filter`
+ * is a real parameter with a vocabulary of its own that has not been
+ * mapped. `player_status` is the one that answers this question.
  *
  * **It is its own route rather than a field on the snapshot, and that is
  * the whole reason this exists.** `actuals` on a snapshot is stamped with
@@ -367,7 +383,7 @@ export async function weekActuals(slug, week, base, resolve) {
      endpoint is what answers it, and it is the same parameter that turned
      the schedule from one week into a season. */
   const [statsRes, rostersRes] = await Promise.all([
-    getJson(slug, "league/stats?period=" + n, base),
+    getJson(slug, "league/stats?period=" + n + "&player_status=rostered", base),
     getJson(slug, "league/rosters?team_id=all&period=" + n, base),
   ]);
 

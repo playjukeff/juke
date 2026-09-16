@@ -633,8 +633,10 @@ const WEEK_ROSTERS = { rosters: { period: "1", teams: [
 
 console.log("\n--- one week's points and lineups ---");
 const WK_BODIES = { "league/stats": STATS, "league/rosters": WEEK_ROSTERS };
+let wkUrls = [];
 globalThis.fetch = async (u) => {
   const url = String(u);
+  wkUrls.push(url);
   const key = Object.keys(WK_BODIES).find((k) => url.includes("/api/" + k));
   return new Response(JSON.stringify({ body: key ? WK_BODIES[key] : {} }), { status: 200 });
 };
@@ -677,6 +679,27 @@ check("a player with no row scored nothing and says so", t4.bench[2].points, nul
 check("a multi-eligible free agent takes its first position and is priced", wk.week.players["8138"], 31.4);
 check("and is in nobody's lineup",
   Object.values(wk.week.teams).some((t) => [...t.starters, ...t.bench].some((r) => r.id === "8138")), false);
+
+/* ---- What was ASKED, not only what was parsed ----
+
+   Every assertion above reads a fixture, and a fixture cannot be wrong
+   about the query that fetched it. The first version of this feature
+   shipped with a correct parser pointed at the wrong population: without
+   `player_status=rostered` this endpoint answers the FREE-AGENT pool --
+   369 rows, all free agents -- so the join with any roster was empty by
+   construction and the route reported an unplayed week.
+
+   Nothing in a fixture-driven suite can catch that, which is why the
+   REQUEST is asserted here. */
+const statsUrl = wkUrls.find((u) => u.includes("/api/league/stats"));
+const rosterUrl = wkUrls.find((u) => u.includes("/api/league/rosters"));
+check("the stats call asks for rostered players, not free agents",
+  /[?&]player_status=rostered(&|$)/.test(statsUrl || ""), true);
+check("and for the week being asked about", /[?&]period=1(&|$)/.test(statsUrl || ""), true);
+/* Without team_id=all CBS answers only the signed-in reader's own team,
+   which reads as a one-team league rather than as an error. */
+check("the roster call asks for every team", /[?&]team_id=all(&|$)/.test(rosterUrl || ""), true);
+check("and for the same week", /[?&]period=1(&|$)/.test(rosterUrl || ""), true);
 
 check("a week outside the season is refused before anything is sent",
   (await weekActuals("sanctuaryfootballleague", 0, null, wkResolve)).reason, "bad-request");
