@@ -382,16 +382,45 @@ export async function weekActuals(slug, week, base, resolve) {
      ESPN and would be repeating here by accident. `period` on the roster
      endpoint is what answers it, and it is the same parameter that turned
      the schedule from one week into a season. */
-  const [statsRes, rostersRes] = await Promise.all([
-    getJson(slug, "league/stats?period=" + n + "&player_status=rostered", base),
+  /* THREE stats calls, because CBS splits the positions across them.
+     Measured after the first fix populated everything except kickers and
+     defences: `player_status=rostered` answers QB, RB, WR and TE and
+     nothing else -- 519 rows, and not one K or DST among them. Each of
+     those two has to be asked for by name.
+
+       player_status=rostered   519 rows  QB/RB/WR/TE
+       position=K                33 rows  K
+       position=DST              32 rows  DST
+       position=all               0 rows  -- a real 200 answering nothing
+
+     The two extra calls are 33 and 32 rows against the first one's 519,
+     so this is a rounding error on a request that was already being made.
+
+     `filter` is NOT the parameter for this and the question is closed:
+     it is a stat-filter DSL, and CBS says so in its own refusal --
+     "Invalid filter K. Example filter is QB::PaTD::GT::5". */
+  const statsPath = (q) => "league/stats?period=" + n + "&" + q;
+  const [skillRes, kRes, dstRes, rostersRes] = await Promise.all([
+    getJson(slug, statsPath("player_status=rostered"), base),
+    getJson(slug, statsPath("position=K"), base),
+    getJson(slug, statsPath("position=DST"), base),
     getJson(slug, "league/rosters?team_id=all&period=" + n, base),
   ]);
 
-  if (statsRes.signedOut || rostersRes.signedOut) return { reason: "private", week: null };
-  const rows = (bodyOf(statsRes, "league_stats") || {}).players;
+  if (skillRes.signedOut || rostersRes.signedOut) return { reason: "private", week: null };
+  const statsRes = skillRes;
+  /* The skill call decides whether this week is readable at all; K and
+     DST are additive. One of those two failing costs a kicker's points
+     and must not cost the other eight starters theirs. */
+  const rows = [
+    ...(((bodyOf(skillRes, "league_stats") || {}).players) || []),
+    ...(((bodyOf(kRes, "league_stats") || {}).players) || []),
+    ...(((bodyOf(dstRes, "league_stats") || {}).players) || []),
+  ];
+  const skillRows = (bodyOf(skillRes, "league_stats") || {}).players;
   const rosterBody = bodyOf(rostersRes, "rosters") || {};
   const rosterTeams = Array.isArray(rosterBody.teams) ? rosterBody.teams : [];
-  if (!Array.isArray(rows)) {
+  if (!Array.isArray(skillRows)) {
     return { reason: statsRes.status === 0 ? "offline" : "not-found", week: null };
   }
 
