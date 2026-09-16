@@ -609,7 +609,6 @@ const STATS = { league_stats: { players: [
   /* Turned out and scored nothing. A real result, and the row a
      truthiness test drops. */
   { name: "Bench Receiver", eligible_positions_display: "WR", TM: "LAR", FPTS: 0 },
-  { name: "Jaguars", eligible_positions_display: "DST", TM: "JAC", FPTS: 14 },
   /* A multi-eligible player: the first token is the board position. */
   { name: "Bijan Robinson", eligible_positions_display: "RB-WR", TM: "ATL", FPTS: 31.4, free_agent: 1 },
   /* And the bare call's spelling, which must go on working. */
@@ -624,6 +623,7 @@ const WEEK_ROSTERS = { rosters: { period: "1", teams: [
        that cost this adapter sixteen starters on a nine-man lineup. */
     { fullname: "Bench Receiver", position: "WR", pro_team: "LAR", roster_status: "RS", roster_pos: "WR" },
     { fullname: "Jaguars", position: "DST", pro_team: "JAC", roster_status: "A", roster_pos: "DST" },
+    { fullname: "Will Reichard", position: "K", pro_team: "MIN", roster_status: "A", roster_pos: "K" },
     /* Rostered, did not play: no stats row at all. */
     { fullname: "Hurt Guy", position: "TE", pro_team: "KC", roster_status: "RS", roster_pos: "TE" },
     /* Rostered, did not play: no stats row at all. */
@@ -632,16 +632,29 @@ const WEEK_ROSTERS = { rosters: { period: "1", teams: [
 ] } };
 
 console.log("\n--- one week's points and lineups ---");
+/* CBS splits the positions across three calls and this stub has to as
+   well, or the suite models a payload the product never receives -- the
+   fixture failure this file has already paid for twice tonight. A kicker
+   and a defence are ONLY in their own position calls. */
+const STATS_K = { league_stats: { players: [
+  { name: "Will Reichard", eligible_positions_display: "K", TM: "MIN", FPTS: 7 },
+] } };
+const STATS_DST = { league_stats: { players: [
+  { name: "Jaguars", eligible_positions_display: "DST", TM: "JAC", FPTS: 14 },
+] } };
+
 const WK_BODIES = { "league/stats": STATS, "league/rosters": WEEK_ROSTERS };
 let wkUrls = [];
 globalThis.fetch = async (u) => {
   const url = String(u);
   wkUrls.push(url);
+  if (url.includes("position=K")) return new Response(JSON.stringify({ body: STATS_K }), { status: 200 });
+  if (url.includes("position=DST")) return new Response(JSON.stringify({ body: STATS_DST }), { status: 200 });
   const key = Object.keys(WK_BODIES).find((k) => url.includes("/api/" + k));
   return new Response(JSON.stringify({ body: key ? WK_BODIES[key] : {} }), { status: 200 });
 };
 const wkPool = new Map([
-  ["Josh Allen|QB", "4984"], ["Puka Nacua|WR", "9493"], ["Never Played|RB", "3333"],
+  ["Josh Allen|QB", "4984"], ["Puka Nacua|WR", "9493"], ["Never Played|RB", "3333"], ["Will Reichard|K", "5555"],
   ["Bench Receiver|WR", "1111"], ["Hurt Guy|TE", "2222"],
   ["Bijan Robinson|RB", "8138"],
 ]);
@@ -665,7 +678,7 @@ check("and never on CBS's own spelling of it", wk.week.players.JAC, undefined);
 
 const t4 = wk.week.teams["4"];
 check("who was STARTED comes from roster_status, not roster_pos",
-  t4.starters.map((r) => r.id), ["4984", "9493", "JAX"]);
+  t4.starters.map((r) => r.id), ["4984", "9493", "JAX", "5555"]);
 check("and the bench is the rest", t4.bench.map((r) => r.id), ["1111", "2222", "3333"]);
 check("a benched player still carries what he scored", t4.bench[0].points, 0);
 /* Rostered, no stats row: null rather than 0. "Did not play" and "played
@@ -691,6 +704,19 @@ check("and is in nobody's lineup",
 
    Nothing in a fixture-driven suite can catch that, which is why the
    REQUEST is asserted here. */
+/* K and DST live in their own calls, so the suite asserts all three are
+   made. The first version asked once and populated everything except a
+   kicker and a defence -- two of nine starters missing from a panel whose
+   total includes them. */
+check("a kicker's points come from the position call", wk.week.players["5555"], 7);
+check("and a defence's", wk.week.players.JAX, 14);
+const kUrl = wkUrls.find((u) => u.includes("position=K"));
+const dUrl = wkUrls.find((u) => u.includes("position=DST"));
+check("the kicker call is made", !!kUrl, true);
+check("and the defence call", !!dUrl, true);
+check("each for the week being asked about",
+  /[?&]period=1(&|$)/.test(kUrl || "") && /[?&]period=1(&|$)/.test(dUrl || ""), true);
+
 const statsUrl = wkUrls.find((u) => u.includes("/api/league/stats"));
 const rosterUrl = wkUrls.find((u) => u.includes("/api/league/rosters"));
 check("the stats call asks for rostered players, not free agents",
