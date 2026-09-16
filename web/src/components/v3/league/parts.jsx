@@ -190,22 +190,43 @@ export function KpiGrid({ items }) {
   )
 }
 
-/* A failed read, said as the failure it was, with the one thing to do. */
-export function CouldNotRead({ reason, platform, onRetry, children }) {
+/* A failed read, said as the failure it was, with the one thing to do.
+
+   `provider` rather than only the platform's display NAME, because the two
+   refusals behind a 403 have different fixes and only one of them is a
+   league setting:
+
+     ESPN   a public league that stopped being public -- League Settings,
+            visibility -- OR a private one whose saved sign-in has expired
+     CBS    only ever the second. There is no public CBS league to make
+            public: every endpoint that says who is in a league answers
+            "User not signed in" anonymously, which is why its connect
+            dialog asks for the cookie in the same step as the address
+
+   This card read "ESPN will only let Juke read a public league" under a
+   CBS league, which is the hardcoded-platform-name bug CLAUDE.md already
+   records fixing once in LeagueRoomLive -- and its own instruction was to
+   grep for the previous platform's name when a new one ships. That was not
+   done when CBS landed, so it sent a CBS reader to an ESPN setting that
+   does not exist on their platform. */
+export function CouldNotRead({ reason, platform, provider, onRetry, children }) {
+  const cbs = provider === 'cbs'
   return (
     <Sheet code="Could not read your league" aside={platform} role="alert">
       <p className="text-[18px] font-extrabold text-v3-ink">
         {reason === 'not-found'
           ? 'That league is no longer readable'
           : reason === 'private'
-            ? 'That league is not public any more'
+            ? `${platform} would not show Juke this league`
             : `${platform} did not answer`}
       </p>
       <p className="mt-2 max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2">
         {reason === 'not-found'
           ? `${platform} does not return this league any more. It may have been deleted, or the season rolled over — reconnect it from your account.`
           : reason === 'private'
-            ? 'ESPN will only let Juke read a public league. Open League Settings in ESPN and set visibility to public.'
+            ? cbs
+              ? 'Your saved CBS sign-in has stopped working. Reconnect the league from your account and paste a fresh key.'
+              : 'Either your saved ESPN sign-in has stopped working — reconnect the league from your account — or, if this league was public, check that visibility is still set to public in League Settings.'
             : 'Nothing is wrong with your league; this page could not fetch it. Try again in a moment.'}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">

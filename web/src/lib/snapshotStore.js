@@ -32,6 +32,22 @@
 
 import { singleFlight } from './singleFlight.js'
 
+/* Who is asking, for the one thing on this route that depends on it.
+
+   A PUBLIC league needs no token and a signed-out reader has none, so this
+   answering null is an ordinary anonymous read rather than a failure. What
+   it is load-bearing for is a PRIVATE league: the worker finds the sealed
+   credential by the caller's own account, so a snapshot fetched without a
+   token is asked of the platform as a stranger and refused.
+
+   The same shape as leagueStore/tierStore/decisionStore, deliberately --
+   `getToken` is reassigned on every AuthBridge render, so it is read at
+   call time rather than captured. */
+function token() {
+  const auth = typeof window !== 'undefined' ? window.JukeAuth : null
+  return auth && auth.isSignedIn && auth.getToken ? auth.getToken() : Promise.resolve(null)
+}
+
 /* Two minutes, and it is the worker's own number rather than a guess.
  *
  * `SNAPSHOT_TTL` is 120 in both `worker/espn.js` and `worker/sleeper.js`,
@@ -170,7 +186,9 @@ export function requestSnapshot(leagueId, provider) {
 
   flight.run(
     (isCurrent) =>
-      window.Live.leagueSnapshot(leagueId, provider)
+      token()
+        .catch(() => null)
+        .then((t) => window.Live.leagueSnapshot(leagueId, provider, t))
         .then((res) => {
           /* Two ways this answer can be stale and they are different
              questions. `isCurrent()` is "has a newer ATTEMPT started",
