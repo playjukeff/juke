@@ -593,15 +593,27 @@ check("and the real side is still there", vac.matchups[0].home.teamId, "9");
                               is why the stats call is not optional.
 
    The cases below are the ones that fail silently. */
+/* `eligible_positions_display` and NOT `position`.
+
+   The same endpoint answers different names with and without `period`,
+   and the route asks WITH it -- so a fixture written from the bare call
+   models the wrong variant. The first version of this file did exactly
+   that: every assertion passed and the live route answered an empty week,
+   because a missing position is refused silently rather than throwing.
+
+   One row keeps `position` as well, because both spellings have been seen
+   and dropping support for either would be a silent regression. */
 const STATS = { league_stats: { players: [
-  { name: "Josh Allen", position: "QB", TM: "BUF", FPTS: 24.4 },
-  { name: "Puka Nacua", position: "WR", TM: "LAR", FPTS: 12.4 },
+  { name: "Josh Allen", eligible_positions_display: "QB", TM: "BUF", FPTS: 24.4 },
+  { name: "Puka Nacua", eligible_positions_display: "WR", TM: "LAR", FPTS: 12.4 },
   /* Turned out and scored nothing. A real result, and the row a
      truthiness test drops. */
-  { name: "Bench Receiver", position: "WR", TM: "LAR", FPTS: 0 },
-  { name: "Jaguars", position: "DST", TM: "JAC", FPTS: 14 },
-  /* A free agent nobody rosters: in the payload, and in no lineup. */
-  { name: "Bijan Robinson", position: "RB", TM: "ATL", FPTS: 31.4, free_agent: 1 },
+  { name: "Bench Receiver", eligible_positions_display: "WR", TM: "LAR", FPTS: 0 },
+  { name: "Jaguars", eligible_positions_display: "DST", TM: "JAC", FPTS: 14 },
+  /* A multi-eligible player: the first token is the board position. */
+  { name: "Bijan Robinson", eligible_positions_display: "RB-WR", TM: "ATL", FPTS: 31.4, free_agent: 1 },
+  /* And the bare call's spelling, which must go on working. */
+  { name: "Hurt Guy", position: "TE", TM: "KC", FPTS: 3.2 },
 ] } };
 
 const WEEK_ROSTERS = { rosters: { period: "1", teams: [
@@ -614,6 +626,8 @@ const WEEK_ROSTERS = { rosters: { period: "1", teams: [
     { fullname: "Jaguars", position: "DST", pro_team: "JAC", roster_status: "A", roster_pos: "DST" },
     /* Rostered, did not play: no stats row at all. */
     { fullname: "Hurt Guy", position: "TE", pro_team: "KC", roster_status: "RS", roster_pos: "TE" },
+    /* Rostered, did not play: no stats row at all. */
+    { fullname: "Never Played", position: "RB", pro_team: "KC", roster_status: "RS", roster_pos: "RB" },
   ] },
 ] } };
 
@@ -625,7 +639,7 @@ globalThis.fetch = async (u) => {
   return new Response(JSON.stringify({ body: key ? WK_BODIES[key] : {} }), { status: 200 });
 };
 const wkPool = new Map([
-  ["Josh Allen|QB", "4984"], ["Puka Nacua|WR", "9493"],
+  ["Josh Allen|QB", "4984"], ["Puka Nacua|WR", "9493"], ["Never Played|RB", "3333"],
   ["Bench Receiver|WR", "1111"], ["Hurt Guy|TE", "2222"],
   ["Bijan Robinson|RB", "8138"],
 ]);
@@ -650,16 +664,17 @@ check("and never on CBS's own spelling of it", wk.week.players.JAC, undefined);
 const t4 = wk.week.teams["4"];
 check("who was STARTED comes from roster_status, not roster_pos",
   t4.starters.map((r) => r.id), ["4984", "9493", "JAX"]);
-check("and the bench is the rest", t4.bench.map((r) => r.id), ["1111", "2222"]);
+check("and the bench is the rest", t4.bench.map((r) => r.id), ["1111", "2222", "3333"]);
 check("a benched player still carries what he scored", t4.bench[0].points, 0);
 /* Rostered, no stats row: null rather than 0. "Did not play" and "played
    and scored nothing" are different facts, and the bench above is the one
    that proves the difference is preserved. */
-check("a player with no row scored nothing and says so", t4.bench[1].points, null);
+check("a player whose row uses the bare call's spelling still resolves", t4.bench[1].points, 3.2);
+check("a player with no row scored nothing and says so", t4.bench[2].points, null);
 
 /* A free agent is in the stats payload and in nobody's lineup. Kept in
    `players` -- the wire is priced off it -- and in no team. */
-check("a free agent is priced", wk.week.players["8138"], 31.4);
+check("a multi-eligible free agent takes its first position and is priced", wk.week.players["8138"], 31.4);
 check("and is in nobody's lineup",
   Object.values(wk.week.teams).some((t) => [...t.starters, ...t.bench].some((r) => r.id === "8138")), false);
 

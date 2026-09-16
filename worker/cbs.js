@@ -382,10 +382,32 @@ export async function weekActuals(slug, week, base, resolve) {
   /* A stats row wears different field names from a roster row for the same
      three facts. Translated here so cbsKey() and the four-tier crosswalk
      below are the ones the snapshot already uses -- a second join would be
-     a second thing to drift from a measurement taken on the first. */
+     a second thing to drift from a measurement taken on the first.
+
+     **And the SAME endpoint answers different names with and without
+     `period`.** Measured against a real league:
+
+       league/stats            carries `position`: "QB"
+       league/stats?period=1   carries NO `position` key at all, and
+                               `eligible_positions_display` instead
+
+     The first version of this read `position` alone. Every row then came
+     back with no position, cbsKey() refused all of them, and the route
+     answered 200 with a null week -- which the page draws as "nobody has
+     played this yet". A wrong field name does not throw here; it empties
+     the answer and the emptiness is indistinguishable from an unplayed
+     week.
+
+     `eligible_positions_display` can name more than one slot for a
+     multi-eligible player, so the first token is taken: what is wanted is
+     a board position, and CBS's own roster rows carry exactly one. */
+  const statPos = (r) => {
+    const raw = String((r && (r.position || r.eligible_positions_display)) || "");
+    return raw.split(/[^A-Za-z]/)[0] || "";
+  };
   const asRoster = (r) => ({
     fullname: r && r.name,
-    position: r && r.position,
+    position: statPos(r),
     pro_team: (r && (r.TM || r.pro_team)) || null,
   });
 
