@@ -32,7 +32,7 @@
  * and they run against production unchanged.
  */
 import { test, expect } from "@playwright/test";
-import { SITE } from "./helpers.mjs";
+import { SITE, playerRoutes } from "./helpers.mjs";
 
 const ROUTES = [
   "#/",
@@ -94,7 +94,13 @@ for (const width of [1440, 375]) {
   test(`no screen leaks sideways at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const found = [];
-    for (const route of ROUTES) {
+    /* An individual player's page is swept too, and it is not in ROUTES
+       because its address carries an id that moves with the nightly. It is
+       the screen the strip and the season panel live on; until this it was
+       reachable from `#/players` and swept by nothing, which is the shape
+       `#/calls/wire` shipped a blank page in. */
+    const routes = ROUTES.concat(await playerRoutes(page));
+    for (const route of routes) {
       await page.goto(SITE + "/" + route);
       /* A condition, never a duration. A flat wait reads a room
          mid-skeleton and finds nothing wrong on a screen that has not

@@ -58,9 +58,9 @@ function Note({ children, className = '' }) {
    The preseason figures sit under both, in the same units, so a reader can
    see which way the season has moved him rather than being told. */
 
-function Cellule({ label, sub, children, tone = 'ink' }) {
+function Cellule({ label, sub, children, tone = 'ink', className = '' }) {
   return (
-    <div className="min-w-0 rounded-[6px] bg-v3-paper p-3">
+    <div className={cx('min-w-0 rounded-[6px] bg-v3-paper p-3', className)}>
       <dt><Label className="text-[11px]">{label}</Label></dt>
       <dd className={cx('mt-1 text-[22px] font-bold leading-none', tone === 'dim' ? 'text-v3-ink3' : 'text-v3-ink')}>{children}</dd>
       {sub && <dd className="mt-1 text-[12px] leading-[1.35] text-v3-ink3">{sub}</dd>}
@@ -122,10 +122,32 @@ export function SeasonSheet({ d }) {
             one about moving: a phone lays three out two-up and orphans the
             last, and "from #2" is a qualifier of the delta rather than a
             figure of its own. */}
-        {ros.rank !== null && ros.rankBefore !== null && (
-          <dl className="grid grid-cols-2 gap-3">
-            <Cellule label="Moved" sub={`place${Math.abs(ros.delta) === 1 ? '' : 's'}, from #${ros.rankBefore} at ${since}`}><Delta value={ros.delta} className="text-[22px]" /></Cellule>
+        {/* Where the rest of the season leaves him. The gap and the score are
+            one step apart — the score IS the gap as a share of the biggest
+            one left on the board — so they sit together, and "Moved" joins
+            them because it is the same question asked about the week just
+            played.
+
+            Drawn on having a rank rather than on having moved: a player the
+            board can price but cannot yet say has moved (no "before" to
+            measure from) still has a score, and dropping it with the delta
+            would hide the number this row exists for. On a phone the third
+            cell takes the full width rather than sitting half-empty beside
+            a gap. */}
+        {ros.rank !== null && (
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ros.rankBefore !== null && (
+              <Cellule label="Moved" sub={`place${Math.abs(ros.delta) === 1 ? '' : 's'}, from #${ros.rankBefore} at ${since}`}><Delta value={ros.delta} className="text-[22px]" /></Cellule>
+            )}
             <Cellule label="Over replacement" sub="rest of season">{ros.gap === null ? '—' : <Delta value={ros.gap} className="text-[22px]" />}</Cellule>
+            <Cellule
+              label="Juke score"
+              tone={ros.score === null ? 'dim' : 'ink'}
+              sub={ros.score === null ? 'not rated' : `${ros.scoreLabel} · preseason ${pre.score === null ? '—' : pre.score}`}
+              className={ros.rankBefore !== null ? 'max-sm:col-span-2' : ''}
+            >
+              {ros.score === null ? '—' : ros.score}
+            </Cellule>
           </dl>
         )}
 
@@ -146,8 +168,18 @@ export function SeasonSheet({ d }) {
           )}{' '}
           It prices games he plays, not the chance he misses one: his bye and any designation known to cost him weeks are already out of
           &ldquo;games left&rdquo;, and nothing else is guessed at. Every recommendation Juke makes in season — the wire, a trade, a lineup —
-          is priced on this number rather than on the preseason projection above.
+          is priced on this number rather than on the preseason projection below.
         </Note>
+
+        {!unranked && (
+          <Note>
+            <strong className="font-semibold text-v3-ink2">The Juke score here is the rest of the season</strong>, made the same way the preseason one
+            is and on the same 0–100: points over a replacement starter, as a share of the biggest such figure left on the board. It is the same
+            question asked about the games still to come, so a player the season has moved reads differently here than he does on the board he was
+            drafted off — and a 0 is still a floor rather than a verdict, because a gap of one point below replacement and a gap of sixty both clamp
+            to it. The preseason score and its arithmetic are in the panel below.
+          </Note>
+        )}
       </div>
     </Sheet>
   )
@@ -184,7 +216,7 @@ export function JukeSheet({ d }) {
   const scale = Math.max(proj || 0, replacement || 0, 1)
 
   return (
-    <Sheet code="Juke score" aside={`${d.scoring} · ${r.teams}-team league`} aria-label="Juke score">
+    <Sheet code={d.season ? 'Juke score · preseason' : 'Juke score'} aside={`${d.scoring} · ${r.teams}-team league`} aria-label="Juke score">
       {noProjection ? (
         <p className="text-[15px] leading-[1.55] text-v3-ink2">
           No projection for this player yet, so there is nothing to score him on. The nightly data refresh fills this in for anyone Sleeper carries.
@@ -291,6 +323,7 @@ export function JukeSheet({ d }) {
       {!r.unranked && !noProjection && (
         <Note className="mt-4">
           The Juke score is projected points above the last startable player at this position in a {r.teams}-team league, as a share of the best such figure on the board. It is a ranking against the pool, not a rating of the player — somebody always scores 100, and most of the {r.boardSize} players here score nothing, because a league this size only ever starts {r.startersInPlay} at once.
+          {d.season ? ' Everything in this panel is the PRESEASON board — the one he was drafted off, which does not move once games are played. The same score for the rest of the season is in “This season” above, and it is the one the strip at the top of the page shows.' : ''}
         </Note>
       )}
     </Sheet>

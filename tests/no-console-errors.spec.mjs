@@ -39,7 +39,7 @@
  * the blocked third-party script never runs, so it cannot raise one.
  */
 import { test, expect } from "@playwright/test";
-import { openApp, startSoloDraft, SITE, LOCAL_SITE } from "./helpers.mjs";
+import { openApp, startSoloDraft, SITE, LOCAL_SITE, playerRoutes } from "./helpers.mjs";
 
 const ROUTES = [
   "#/",
@@ -98,7 +98,13 @@ for (const width of [1440, 375]) {
     let route = "(boot)";
     const seen = watch(page, () => route);
 
-    for (const r of ROUTES) {
+    /* Two individual player pages join the list, resolved off the board
+       rather than written down -- see playerRoutes(). A missing import on
+       that screen is a ReferenceError at render, which React answers by
+       unmounting the root: a blank page, indistinguishable in a screenshot
+       from one that has not loaded. This is the check that names it. */
+    const routes = ROUTES.concat(await playerRoutes(page));
+    for (const r of routes) {
       route = r;
       await page.goto(SITE + "/" + r);
       /* A condition, never a duration: a route read mid-skeleton has not run
