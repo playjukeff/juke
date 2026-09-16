@@ -453,8 +453,9 @@ check("bob sees that it was him",
 check("a reaction leaks no member id",
       JSON.stringify(lastState(alice)).includes("bob") === false, true);
 
+const beforeBadReaction = rejectsOn(bob);
 bob.send(JSON.stringify({ type: "react", id: target.id, emoji: "not-an-emoji" }));
-await sleep(300);
+await until("the unlisted reaction is refused", () => rejectsOn(bob) > beforeBadReaction);
 check("an unlisted reaction is refused", lastOfType(bob, "rejected")?.code, "bad-reaction");
 
 bob.send(JSON.stringify({ type: "react", id: target.id, emoji: "\u{1F525}" }));
@@ -699,7 +700,12 @@ check("and a forbidden origin is still refused, cached or not",
    limit is refused, and the socket still works immediately afterwards for
    somebody who was only ever going at human speed. */
 const flooder = await connect("flood", "Flooder");
-await sleep(300);
+/* The room having SPOKEN to this socket is the thing worth waiting for,
+   and `connect()` resolves on the open handshake rather than on the first
+   state. Without that wait the check below reads an inbox nothing has
+   arrived in yet and passes for the wrong reason: zero refusals because
+   zero messages, which is what a duration here was really buying. */
+await until("the flooder's first state arrives", () => lastState(flooder));
 const floodRejects = () => flooder.inbox.filter(
   (m) => m.type === "rejected" && m.code === "too-fast").length;
 
