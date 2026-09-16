@@ -13015,8 +13015,37 @@ comment condemns in this same file — "generous against localhost and not
 always enough against a worker at the other end of a real network". The whole
 suite had adopted `until()` except the first two moves and three later ones.
 Not the cause of this failure, and the same class of latent flake: **when a
-fix is applied to every caller, count the callers.** One deliberate `sleep`
-remains, after a close, where there is no client-side condition to poll.
+fix is applied to every caller, count the callers.**
+
+**This paragraph then ended "One deliberate `sleep` remains, after a close",
+and that was wrong by five.** Counted 16 September 2026: six call sites
+outside `until()`'s own poll interval, and the number had been wrong since
+the sentence was written rather than drifting afterwards — which is what
+"count the callers" was the lesson about, in the sentence immediately
+before it. A count in prose beside the thing it counts is a number nobody
+re-derives; `grep -n "await sleep(" worker/test-sockets.mjs` is what the
+file says.
+
+**Four of the six are legitimate and two are the same latent flake**, and
+the split is what makes the count worth anything:
+
+- **waiting for nothing to happen** — a blank chat message being ignored, a
+  typist not being told about themselves. There is no condition to poll,
+  because the assertion is that no message arrived. A duration is the only
+  thing available. (A round-trip barrier — send something that DOES
+  broadcast and wait for it — would be strictly stronger and nobody has
+  built one.)
+- **after a close**, twice: the reconnect section dropping alice, and the
+  tidy-up at the end. No client-side condition exists either.
+- **waiting for a REJECTION to arrive**, and for a fresh socket's first
+  state. Both are conditions, both have the `until(rejectsOn(ws) > before)`
+  idiom available, and both are flakes waiting for a slow network — the
+  same two-line change the sites above them already took.
+
+So the honest statement is that the suite is *mostly* condition-driven, two
+sites still are not, and the four that remain are waiting for something that
+cannot be polled. **That is a different claim from "one remains", and only
+one of them can be checked.**
 - Engine: `py scripts/test_engine.py` — runs `draft-engine.js` and `room.js`
   outside a browser and asserts the snake maths, the turn order, the legality
   checks, the determinism of the CPU wobble, and the parts of a room that a
