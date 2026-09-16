@@ -382,6 +382,11 @@ export function readPlayerSeason(engine, player) {
   }
   const s = engine.statOf ? engine.statOf(player) : null
   const games = s && s.p && s.p.gp > 0 ? s.p.gp - 1 : null
+  // The preseason Juke score, so the season panel can print the live one
+  // against the board he was drafted off. jukeReadout() is asked rather
+  // than overallScore(): it is the display boundary and has already done
+  // the rounding, so the two scores cannot differ by a decimal place.
+  const readout = engine.jukeReadout ? engine.jukeReadout(player) : null
   return {
     season: b.season,
     week: b.week,
@@ -396,6 +401,7 @@ export function readPlayerSeason(engine, player) {
       games: player.pos === 'DST' ? null : games,
       gap: gap === undefined ? null : gap,
       rank: preRank,
+      score: readout ? readout.score : null,
       posRank: UNRANKED.includes(player.pos) ? null : player.projPosRank || null,
     },
   }

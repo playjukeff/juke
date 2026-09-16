@@ -43,6 +43,10 @@ const SRC = [
   "REGULAR_WEEKS", "ROS_LAST_WEEK", "ROS_K", "ROS_OUT_WEEKS", "NFL_PHASES", "MOVERS_POOL",
 ].map(liftConst).join("\n") + "\n" + [
   "function seasonClockFrom(state, meta, scored)",
+  // The banding the preseason Juke score uses. Lifted rather than
+  // restated: a second copy here would agree with itself while the
+  // two scores on the player page drifted into different bands.
+  "function label(score)",
   "function rosWeight(pos, games)",
   "function rosRate(prior, observed, games, pos)",
   "function rosGamesLeft(player, clock, log)",
@@ -74,7 +78,7 @@ function makeWorld({ board, stats, league }) {
     rosBoard: null,
   };
   const names = Object.keys(deps);
-  const f = new Function(...names, SRC + "\nreturn { REGULAR_WEEKS, ROS_LAST_WEEK, ROS_K, ROS_OUT_WEEKS, MOVERS_POOL, seasonClockFrom, rosWeight, rosRate, rosGamesLeft, moversSince, seasonToDateUnder, buildRosTable, playerMovers, setBoard: (fn) => { rosBoard = fn } };");
+  const f = new Function(...names, SRC + "\nreturn { REGULAR_WEEKS, ROS_LAST_WEEK, ROS_K, ROS_OUT_WEEKS, MOVERS_POOL, label, seasonClockFrom, rosWeight, rosRate, rosGamesLeft, moversSince, seasonToDateUnder, buildRosTable, playerMovers, setBoard: (fn) => { rosBoard = fn } };");
   return f(...names.map((n) => deps[n]));
 }
 
@@ -186,7 +190,8 @@ const league = { teams: 2, starters: { RB: 1, WR: 1, K: 1 } };
 const board = [
   { id: "r1", pos: "RB", bye: 10, inj: "" }, // the preseason #1: 18/g, a 4-point week 1
   { id: "r2", pos: "RB", bye: 10, inj: "" }, // 16/g, a 38-point week 1
-  { id: "r3", pos: "RB", bye: 10, inj: "" }, // 10/g, did not play
+  { id: "r3", pos: "RB", bye: 10, inj: "" }, // 10/g, did not play -- replacement
+  { id: "r4", pos: "RB", bye: 10, inj: "" }, // 5/g, below replacement: the floor
   { id: "w1", pos: "WR", bye: 10, inj: "" },
   { id: "w2", pos: "WR", bye: 10, inj: "" },
   { id: "w3", pos: "WR", bye: 10, inj: "" },
@@ -198,6 +203,7 @@ const stats = {
   r1: { p: season(18), w: { 2026: [{ w: 1, x: 4 }] } },
   r2: { p: season(16), w: { 2026: [{ w: 1, x: 38 }] } },
   r3: { p: season(10), w: { 2026: [{ w: 1 }] } },
+  r4: { p: season(5), w: { 2026: [{ w: 1 }] } },
   w1: { p: season(15), w: { 2026: [{ w: 1, x: 15 }] } },
   w2: { p: season(12), w: { 2026: [{ w: 1, x: 12 }] } },
   w3: { p: season(8) },
@@ -238,10 +244,35 @@ check("a kicker keeps his points and loses every rating", () => {
   assert.equal(now.rows.k1.score, null);
   assert.equal(now.rows.k1.posRank, null);
 });
+check("the rest-of-season Juke score is that gap as a share of the best one left", () => {
+  const best = Math.max(...Object.values(now.rows).map((r) => r.gap || 0));
+  assert.ok(best > 0, "a board where nobody is above replacement cannot test a share");
+  // The leader is the 100 by construction; everybody else is measured off him.
+  const top = Object.values(now.rows).find((r) => r.gap === best);
+  assert.equal(top.score, 100);
+  assert.equal(now.rows.r1.score, Math.round((now.rows.r1.gap / best) * 100));
+  // Whole numbers, not a float's worth of decimals: this is a display figure
+  // and this is the only place it is made.
+  Object.values(now.rows).forEach((r) => {
+    if (r.score !== null) assert.equal(r.score, Math.round(r.score), r.id + " is not whole");
+  });
+  // Banded by the same function the preseason score uses, so the two read
+  // against each other rather than as two unrelated ratings.
+  assert.equal(now.rows.r1.scoreLabel, W.label(now.rows.r1.score));
+  assert.equal(now.rows.k1.scoreLabel, null, "a withheld score has no band");
+});
+check("a score below replacement floors at 0 rather than going negative", () => {
+  const under = Object.values(now.rows).filter((r) => r.gap !== null && r.gap < 0);
+  assert.ok(under.length > 0, "no player is below replacement, so the floor is untested");
+  under.forEach((r) => {
+    assert.equal(r.score, 0, r.id);
+    assert.ok(r.gap < 0, r.id + " keeps the un-clamped gap that tells two zeros apart");
+  });
+});
 check("ranks run across positions by value over replacement, K and DST excluded", () => {
   const ranked = Object.values(now.rows).filter((r) => r.rank !== null).sort((a, b) => a.rank - b.rank).map((r) => r.id);
   assert.deepEqual(ranked.slice(0, 2), ["r2", "r1"]);
-  assert.equal(ranked.length, 6);
+  assert.equal(ranked.length, 7);
 });
 check("a player with no projection has no rest of season", () => {
   const V = makeWorld({ board: [{ id: "n", pos: "WR", bye: 9, inj: "" }], stats: { n: { w: { 2026: [{ w: 1, x: 30 }] } } }, league });

@@ -620,3 +620,38 @@ export async function emptyCells(page) {
   return page.$$eval('[aria-label="Draft board"] tbody td', (tds) =>
     tds.filter((td) => !td.querySelector("button[data-overall]")).length);
 }
+
+/* Two individual player pages for the guest sweeps, resolved off tonight's
+   board rather than written down.
+
+   A hardcoded id is a number nobody re-derives: `players.js` is rebuilt
+   every night and a retired player's page is a NotFound, which renders
+   perfectly and sweeps perfectly clean -- the vacuity trap, with a route
+   list instead of a selector. So the ids come from the board itself.
+
+   Two, because the page has two shapes and only one of them is the common
+   case: a ranked skill player draws the Juke score and its arithmetic, and
+   a kicker draws the withheld version, where three figures become dashes
+   and a whole row of the season panel is absent. Neither covers the other.
+
+   Falls back to whatever the board has if a position is missing, and to an
+   empty list if the engine is not there -- a sweep that cannot resolve an
+   id should sweep the routes it does have rather than fail about the
+   harness. */
+export async function playerRoutes(page) {
+  await page.goto(SITE + "/#/players");
+  await awaitBoard(page);
+  const ids = await page.evaluate(() => {
+    const engine = window.JukeEngine;
+    if (!engine || !engine.board) return [];
+    const board = engine.board() || [];
+    const pick = (fn) => {
+      const hit = board.find(fn);
+      return hit ? String(hit.id) : null;
+    };
+    const ranked = pick((p) => p.pos === "WR" || p.pos === "RB");
+    const withheld = pick((p) => p.pos === "K") || pick((p) => p.pos === "DST");
+    return [ranked, withheld].filter(Boolean);
+  });
+  return ids.map((id) => "#/players/" + encodeURIComponent(id));
+}

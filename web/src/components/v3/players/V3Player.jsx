@@ -53,13 +53,36 @@ function Header({ d, fit, engine }) {
   const rookie = d.stat && d.stat.exp === 0
   const queued = fit && engine.queued ? engine.queued(p) : false
   const watched = fit && engine.watchlisted ? engine.watchlisted(p) : false
-  /* These three are the PRESEASON projection in every phase — the board he
-     was drafted off, which does not move once games are played. Out of
-     season that goes without saying; in season it does not, and a figure
-     whose caption stops being true the week the season starts is this
-     project's own right-value-wrong-column bug with a date on it. The
-     season's own numbers are in the panel below. */
+  /* ---- Which horizon the strip answers about ----
+
+     Board and ADP are facts about the draft and do not move. The other
+     three — what he is worth, how far over replacement, the headline score
+     — are questions with two answers once a season is being played, and
+     the strip answers about the one that is CURRENT.
+
+     Out of season that is the preseason projection and there is nothing to
+     say. In season it is the rest of the season, and the preseason trio
+     moves down into the two panels that already carry it with its
+     arithmetic and its own caption. Leaving August's numbers as the
+     largest thing on the page in October is this project's own
+     right-value-wrong-column bug with a horizon instead of a scoring
+     table: a receiver who has climbed 67 places since week 1 was reading a
+     Juke score of 0 in 56px type, correct about a board nobody is drafting
+     off any more.
+
+     Every caption names its horizon either way, so the two can never be
+     read as one number that changed its mind. */
+  const ros = d.season ? d.season.ros : null
   const pre = (sub) => (d.season ? (sub ? `preseason · ${sub}` : 'preseason') : sub)
+  /* The horizon goes LAST here and first in pre(), which is not a slip. A
+     FigCell's sub truncates, and at 375px a third of the strip is about
+     105px: "rest of season · Very Low" loses the band, which is the half
+     that says something, while "Very Low · rest of season" loses the half a
+     reader can infer from every other caption around it.
+
+     pre() is deliberately left as it is. It has the same problem and fixing
+     it would change a screen out of season, which this pass is not about. */
+  const now = (sub) => (sub ? `${sub} · rest of season` : 'rest of season')
 
   return (
     <header className="grid gap-6">
@@ -86,11 +109,23 @@ function Header({ d, fit, engine }) {
           {/* The three figures Juke adds tick up to themselves when the page is
               arrived at. A dash (a kicker's withheld score, a missing
               projection) is drawn as a dash and never counts. */}
-          <FigCell label="Proj pts" sub={pre(d.scoring)}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
-          <FigCell label="Over repl." sub={r.unranked ? 'not rated' : pre(r.replacementRank ? `vs ${r.replacementRank}` : null)}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
-          <FigCell label="Juke score" sub={r.unranked ? 'not rated' : pre(r.label || null)}>
-            <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}><CountUp value={typeof r.score === 'number' ? r.score : null} /></span>
-          </FigCell>
+          {ros ? (
+            <>
+              <FigCell label="Pts left" sub={now(null)}><CountUp value={ros.pts === null ? null : Math.round(ros.pts)} /></FigCell>
+              <FigCell label="Over repl." sub={r.unranked ? 'not rated' : now(null)}><Delta value={ros.gap} count className="text-[22px]" /></FigCell>
+              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : now(ros.scoreLabel || null)}>
+                <span className={ros.score === null ? 'text-v3-ink3' : ''}><CountUp value={ros.score} /></span>
+              </FigCell>
+            </>
+          ) : (
+            <>
+              <FigCell label="Proj pts" sub={pre(d.scoring)}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
+              <FigCell label="Over repl." sub={r.unranked ? 'not rated' : pre(r.replacementRank ? `vs ${r.replacementRank}` : null)}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
+              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : pre(r.label || null)}>
+                <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}><CountUp value={typeof r.score === 'number' ? r.score : null} /></span>
+              </FigCell>
+            </>
+          )}
         </dl>
       </div>
 
@@ -165,7 +200,7 @@ export default function V3Player({ playerId }) {
           <NewsSheet engine={engine} player={d.player} />
           <p className="text-[13px] leading-[1.55] text-v3-ink3">
             Every figure here is Juke&apos;s own engine reading tonight&apos;s board of <Fig>{d.readout ? d.readout.boardSize : ''}</Fig> players under {d.scoring}, the scoring your mock is set to — the projection above also shows him under the other two stock tables.
-            {d.season ? ' The projection, the Juke score and the arithmetic behind them are the preseason board, unchanged; “This season” at the top is the only thing on this page that moves when a game is played.' : ''}
+            {d.season ? ' The strip at the top and “This season” below it are the rest of the season, which moves when a game is played; the projection and the Juke score panel are the preseason board, unchanged, and each says so.' : ''}
           </p>
         </div>
       </div>

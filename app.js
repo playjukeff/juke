@@ -4641,7 +4641,8 @@ function buildRosTable(rules, lg, clock, tw, key) {
     rows[p.id] = {
       id: String(p.id), pos: p.pos, prior: prior, rate: rate, games: std.games,
       seasonPts: std.points, ppg: std.ppg, left: left, pts: pts,
-      weight: rosWeight(p.pos, std.games), gap: null, score: null, rank: null, posRank: null
+      weight: rosWeight(p.pos, std.games), gap: null, score: null, scoreLabel: null,
+      rank: null, posRank: null
     };
     if (pts !== null) (byPos[p.pos] = byPos[p.pos] || []).push(rows[p.id]);
   });
@@ -4664,7 +4665,20 @@ function buildRosTable(rules, lg, clock, tw, key) {
   // A stable sort over board order, so a tie falls the way the board does.
   ranked.slice().sort(function (a, b) { return b.gap - a.gap; }).forEach(function (r, i) {
     r.rank = i + 1;
-    r.score = Math.max(0, Math.min(100, (r.gap / best) * 100));
+    /* The Juke score, rest of season: this gap as a share of the biggest one
+       left on the board, on the same 0-100 the preseason score uses and with
+       the same banding, so the two can be read against each other rather than
+       as two unrelated ratings.
+
+       Rounded here rather than at the render, which is the opposite of the
+       rule overallScore() follows and safe for the opposite reason:
+       modelMultipliers() divides by the preseason score, so rounding THAT at
+       source would move the suggestions. Nothing divides by this one -- it is
+       a display figure and this is the only place it is made -- and leaving it
+       raw is how the preseason score once printed 65.39900249376561 on the one
+       screen somebody opens because they want the number explained. */
+    r.score = Math.round(Math.max(0, Math.min(100, (r.gap / best) * 100)));
+    r.scoreLabel = label(r.score);
   });
 
   return { key: key, season: clock.season, week: clock.week, throughWeek: tw, rows: rows, replacement: replacement, best: best };

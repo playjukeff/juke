@@ -11884,11 +11884,106 @@ a preseason list is a control that sorts by a column nobody can see.
 A mode saved in September must not survive into February, when there is no
 rest of a season to rank.
 
-**On the player page the season leads, above the Juke score**, and the three
-figures in the header strip say "preseason ·" beside them once a season is
-being played. They are the board he was drafted off and they do not move; a
-caption that stops being true the week the season starts is the same failure
-as a wrong column.
+**On the player page the season leads, above the Juke score.** That much was
+always true. What was NOT enough is the sentence this paragraph used to end
+with -- that the three figures in the header strip "say preseason · beside
+them once a season is being played". See below: a caption is not a demotion.
+
+### Two Juke scores, and the strip answers about the one that is current
+
+Reported 16 September 2026, in the form a defect of this shape always takes
+-- a question rather than a bug report. *"Why would someone like Jalen Coker,
+who had a breakout in Week 1, still be rated at 0 (Very Low)? Is there no
+logic that adjusts a player's rating if they have a good game?"*
+
+**There was, it had fired, and it was correct.** He had moved 67 places
+(#133 to #66), his rate had gone 8.0 to 10.0 a game, and he had gone from 37
+points BELOW a replacement starter to 2 above -- every one of those on the
+same page, in the panel under the strip. The recommendations had moved with
+them, because `leagueGap.js` prices the wire, a trade and a lineup on the
+rest-of-season figure rather than the preseason one.
+
+**What was wrong is which number was the biggest thing on the screen.**
+`overallScore()` reads `player.projPts`, which is the preseason season-long
+projection and does not move all year, and the strip was drawing it at the
+top of the page in 22px type with a 56px repeat below it -- a verdict about a
+board nobody has drafted off since August, sitting above the numbers that are
+true today. That is this file's own right-value-wrong-column failure with a
+HORIZON instead of a scoring table, and the "preseason ·" caption is exactly
+the mitigation the standings column's own bug already proves insufficient:
+every number there was correctly labelled too.
+
+**Half of the fix already existed and had never been drawn.** `buildRosTable`
+has computed `r.score` -- the rest-of-season gap as a share of the biggest one
+left on the board, clamped 0-100, null for `UNRANKED_POSITIONS` -- since the
+in-season work landed. Nothing in `app.js` or `web/src` read it. A value
+computed, put on every row, and rendered nowhere is the dead-control failure
+pointed at a number, and it survived because a field nobody draws contrasts
+and overflows exactly as well as one nobody needs. **Grep for a reader before
+believing a computed field is a feature.**
+
+So there are two scores now and each is named for its horizon:
+
+```
+strip, in season      rest of season   Pts left / Over repl. / Juke score
+"This season" panel   rest of season   the arithmetic, and the score at its end
+"Juke score · preseason"               the August board, with its own working
+out of season         unchanged        byte for byte, one branch away
+```
+
+**The preseason panel is renamed rather than moved or deleted.** It is the
+board he was drafted off, it is the only thing that explains a draft grade,
+and a panel titled "Juke score" explaining a number the strip no longer shows
+would be the same bug one floor down. Its closing note says which board it is
+about and points at the live one.
+
+**Rounded and banded at `buildRosTable`, which is the opposite of the rule
+`overallScore()` follows and safe for the opposite reason.** `jukeReadout()`
+rounds at the display boundary and explicitly does not round at source,
+because `modelMultipliers()` divides by the preseason score and rounding it
+there would move the suggestions rather than tidy a label. Nothing divides by
+the rest-of-season score -- it is a display figure and `buildRosTable` is the
+only place it is made -- and leaving it raw is how the preseason one once
+printed `65.39900249376561` on the one screen somebody opens BECAUSE they
+want the number explained. `label()` is called rather than restated, so the
+two scores cannot land in different bands.
+
+**Withholding is still complete, which is the thing this change could most
+easily have broken.** A kicker's rest-of-season row has `gap: null` by
+construction, so it never enters the ranked list, so the score is null too:
+the strip draws two dashes and "not rated", the season panel's whole
+rank/gap/score row is absent, and the note says why. A sheet that dashed the
+preseason score and then printed a live one would have told a reader to
+distrust an order and then argued from it.
+
+**Coker reads 2 rather than 0, and that is the honest answer rather than a
+flattering one.** He is two points over replacement against a board whose best
+remaining gap is over a hundred; one good week does not make him a
+league-winner and the score correctly declines to say it does. What changed is
+that the number is now about the games still to come, and it will move again
+next week.
+
+**The strip's sub-captions put the band FIRST and the horizon second**, which
+is the reverse of the preseason helper beside it and is not a slip: a
+`FigCell` sub truncates, a third of the strip is about 105px at 375, and
+"rest of season · Very Low" loses the half that says something while
+"Very Low · rest of season" loses the half a reader can infer from every
+other caption on the row. `pre()` has the same problem and is deliberately
+left alone -- fixing it would change a screen out of season, which that pass
+was not about.
+
+**And the individual player page was swept by nothing.** Both guest sweeps
+listed `#/players` and `#/players/rookies` and neither listed a player, which
+is the same gap `#/calls/wire` shipped a blank page in -- a missing import
+there is a `ReferenceError` at render, React unmounts the root, and the
+result is indistinguishable in a screenshot from a page that has not loaded.
+`playerRoutes()` in `helpers.mjs` resolves two off tonight's board rather
+than writing an id down: `players.js` is rebuilt nightly, a retired player's
+page is a NotFound, and a NotFound sweeps perfectly clean -- the vacuity trap
+with a route list instead of a selector. Two, because the ranked shape and
+the withheld shape are different screens and neither covers the other.
+Confirmed non-vacuous by planting one overflowing element and watching both
+sweeps name `#/players/9221` and `#/players/11533` at both widths.
 
 ### What the weight sentence says, and the version that was wrong
 
