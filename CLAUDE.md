@@ -218,9 +218,18 @@ and the same secrets.
 
 ### The HTTP surface
 
-Fifteen routes. This list did not exist anywhere before now, which is the gap
-that most justified writing this section: a file table says what a file is and
-says nothing about the interface somebody has to keep compatible.
+This list did not exist anywhere before now, which is the gap that most
+justified writing this section: a file table says what a file is and says
+nothing about the interface somebody has to keep compatible.
+
+**It used to open "Fifteen routes" and the count was wrong before anything
+was added to it** — sixteen were listed under it at the time, and the four
+CBS routes were not in the table at all. A hand-kept count of a list
+directly beneath it is a number nobody re-derives and everybody trusts,
+which is the same failure as a component list this file had to replace with
+a script. The routes are what the table says; `grep -c 'url.pathname ===' 
+worker/draft-room.js` is what the router says, and the two disagreeing is
+the thing worth noticing rather than any particular total.
 
 | Route | Methods | Guard | Answers |
 |---|---|---|---|
@@ -229,11 +238,16 @@ says nothing about the interface somebody has to keep compatible.
 | `/me/draft` | `GET` `POST` `DELETE` | `requireUser()` | the one in-progress draft |
 | `/me/history` | `GET` `POST` `DELETE` | `requireUser()` | the locker; `POST` writes exactly one entry |
 | `/me/leagues` | `GET` `POST` `PATCH` `DELETE` | `requireUser()` | connected leagues, most-recently-selected first |
+| `/me/decisions` | `GET` `POST` `DELETE` | `requireUser()` | the call ledger |
 | `/sleeper/lookup` | `GET` | `originAllowed()` | a manager's leagues, by username |
 | `/sleeper/snapshot` | `GET` | `originAllowed()` | one league's rosters, Sleeper-id keyed |
+| `/sleeper/matchups` | `GET` | `originAllowed()` | one week's matchups, Sleeper only |
 | `/espn/league` | `GET` | `originAllowed()` | a public league's teams and managers |
 | `/espn/snapshot` | `GET` | `originAllowed()` | the same, crosswalked to Sleeper ids |
 | `/espn/transactions` | `GET` | `originAllowed()` | recent adds, drops and trades, players named |
+| `/cbs/league` | `GET` `POST` | `originAllowed()`; `requireUser()` on POST | a CBS league and its teams, read as the caller |
+| `/cbs/snapshot` | `GET` | `originAllowed()` | the same, crosswalked to Sleeper ids |
+| `/cbs/week` | `GET` | `originAllowed()` | one played week's per-player points and lineups |
 | `/news` | `GET` | `originAllowed()` | headlines by provider id, D1-cached |
 | `/giphy` | `GET` | `originAllowed()` | a proxied GIF search |
 | `/media` | `POST` | `originAllowed()` | an R2 upload; returns the key's URL |
@@ -10144,8 +10158,16 @@ league/standings/overall                                          "User not sign
 league/schedules                                                  "User not signed in"
 league/draft/results                                              "User not signed in"
 league/scoring/rules   the per-stat scoring values                "User not signed in"
-league/stats           ditto                                      "User not signed in"
+league/stats           a week's per-player FPTS, by population     "User not signed in"
 ```
+
+**`league/stats` is corrected in place**: this table read "ditto", meaning
+the scoring values, and it carries a played week's per-player points
+instead — `FPTS`, CBS's own applied number. Nobody had opened it when the
+list was written, which is the same error as reading `scoring_system` off
+its key name two sections down. **What it answers depends entirely on the
+parameters**, and the bare call is the free-agent pool; see the box-score
+section below for the map.
 
 **A 400 means the endpoint exists and wants a `league_id`; a 404 means it
 does not exist.** That is how the list above was separated from the half
@@ -10345,6 +10367,100 @@ The winner is CBS's own per-side `result` ("W"/"L"), translated into the
 HOME/AWAY/TIE/UNDECIDED vocabulary every room already reads. Never derived
 from the points, for the reason `scheduleFromEspn()` already states: that
 calls an unplayed 0-0 a draw.
+
+### A played week's box score, and four requests that were answered about something else
+
+`/cbs/week`, `weekActuals()` in cbs.js, and `useCbsWeek.js` on the client.
+Built 16 September 2026, in five attempts, and the four failures are worth
+more than the feature.
+
+**It is its own route rather than a field on the snapshot.** `actuals`
+there is stamped with ONE week — espn.js's is the current one, deliberately,
+so week 1's figure is never served as an answer about week 2 — and the
+matchup page asks about whichever week a reader opened. One request per week
+opened, held for the worker's own window. Every CBS read is credentialed, so
+the edge cache is untouched in both directions: this key would be
+league+season+week and would serve one reader's league to anybody asking for
+the same slug, as a healthy-looking 200.
+
+**Points alone cannot draw a played week.** Who was STARTED is the other
+half, and today's roster is not that week's lineup — a rule this file
+already states about ESPN and one this change nearly broke by accident.
+`league/rosters?team_id=all&period=N` answers it. That endpoint carries no
+per-week points of its own (its keys are `ytd_points`, `avg_points`,
+`projected_points`, all season-level), which is why the stats call below is
+not optional.
+
+#### The endpoint map, measured rather than inferred
+
+```
+league/stats?period=N&player_status=rostered   519 rows  QB/RB/WR/TE ONLY
+league/stats?period=N&position=K                33 rows  K
+league/stats?period=N&position=DST              32 rows  DST
+league/stats?period=N                          369 rows  FREE AGENTS, all of them
+league/stats?period=N&position=all               0 rows  a real 200 answering nothing
+league/rosters?team_id=all&period=N                      that week's roster
+```
+
+A row carries `FPTS` — CBS's own applied points — plus `name`, `TM`, and a
+position under either `position` or `eligible_positions_display` depending
+on the call.
+
+**`filter` is not a position selector and that question is closed.** CBS
+says so in its own refusal: *"Invalid filter K. Example filter is
+QB::PaTD::GT::5"*. It is a stat-filter DSL nobody here has needed.
+
+#### Four wrong questions, none of which threw
+
+Every CBS defect in this feature was the adapter asking something that was
+accepted and answered about a different population. The parse was correct
+every time:
+
+| asked for | answered with |
+|---|---|
+| `roster_pos` | the ELIGIBLE slot, not the assignment — sixteen starters on a nine-man lineup |
+| `league/schedules` | ONE period, not the season |
+| `league/stats` | free agents, not rostered players |
+| `player_status=rostered` | skill players only, not K or DST |
+
+**None of these has a symptom of its own.** A wrong population is not an
+error: the rows parse, the crosswalk runs, the join produces nothing, and
+the route reports a week with no points — which is exactly what an unplayed
+week looks like. The panel said "nobody has played it yet" over a week that
+had been played and lost.
+
+**So the instruction is narrow and it is new.** This whole CBS surface was
+mapped by asking whether a PATH exists — 400 against 404 — and that proves
+a route is reachable while saying nothing about what it answers by DEFAULT.
+**Existence is not a contract.** Ask what a new endpoint returns when you
+give it nothing, and count what comes back by position before believing it
+is the population you wanted.
+
+#### A fixture cannot be wrong about the query that fetched it
+
+The offline suite is the whole of CBS's coverage — there is no public CBS
+league anybody can re-check against by hand — and three times in one evening
+it modelled a payload the product never receives: the bare stats call rather
+than the period one, a defence sitting in the skill payload, and a position
+field under the name the other variant uses. **Every assertion passed each
+time**, because a correct parser aimed at the wrong population satisfies all
+of them.
+
+`test-cbs.mjs` asserts the REQUEST now — `player_status`, `position=K`,
+`position=DST`, `team_id=all`, and the week on every call — and that is the
+only thing in the suite that can catch this class. Confirmed red by dropping
+each parameter in turn.
+
+**Presence decides played, never the value.** A player who turned out and
+scored 0.0 is a result; one who did not play has no row at all, and scores
+null rather than 0. "Did not play" and "played and scored nothing" are
+different facts, and a truthiness test drops exactly the rows a reader
+queries.
+
+**A message may not claim the more specific of two causes it cannot
+distinguish.** The route answers an empty week both for a week nobody has
+played and for a week whose points Juke could not find, and the panel named
+the first while the second was live.
 
 **What is still deliberately not built.** There is no transactions feed and
 no draft board. Neither is blocked on anything but effort.
