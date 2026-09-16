@@ -693,7 +693,7 @@
     // A league's current state — rosters, records, points. Cached at the
     // edge for a couple of minutes, so calling this on every navigation is
     // cheap and calling it in a loop is not a problem for Sleeper.
-    leagueSnapshot: function (leagueId, provider) {
+    leagueSnapshot: function (leagueId, provider, token) {
       const id = String(leagueId || "");
       if (!id) return Promise.resolve(syncResult(false, "bad-request", { snapshot: null }));
       const http = WORKER.replace(/^ws/, "http");
@@ -703,11 +703,39 @@
       const path = provider === "espn" ? "/espn/snapshot?league="
                  : provider === "cbs" ? "/cbs/snapshot?league="
                  : "/sleeper/snapshot?league=";
-      return fetch(http + path + encodeURIComponent(id))
+      /* The token is what makes a PRIVATE league readable at all, and
+         leaving it off is the bug this parameter exists for.
+
+         A private ESPN or CBS league is read with a credential this account
+         sealed at connect time, and the worker finds that row by asking who
+         is calling -- optionalUser(), which reads the bearer token off this
+         request and nothing else. Without one the route looks up no
+         credential, asks the platform anonymously, and gets the refusal any
+         stranger would: 403, reported here as "private".
+
+         So the failure was a connected private league that stored
+         correctly, drew its own name in the header, and answered "that
+         league is not public any more" on every screen behind it. Nothing
+         threw and nothing logged, which is why the connect flow being fixed
+         did not surface it -- the connect route takes a token and this one
+         never had.
+
+         Optional, because a PUBLIC league needs no token and a signed-out
+         reader has none: the header is omitted rather than sent empty, so
+         nothing about the anonymous path changes. */
+      const opts = token
+        ? { headers: { authorization: "Bearer " + token } }
+        : undefined;
+      return fetch(http + path + encodeURIComponent(id), opts)
         .then(function (r) {
           if (r.status === 404) return syncResult(false, "not-found", { snapshot: null });
-          // 403 here is an ESPN league that has stopped being public — a
-          // thing the reader can fix, and so worth telling apart.
+          /* 403 is the platform refusing to show this league to whoever
+             asked. For a public ESPN league that means it stopped being
+             public; for a private one it means the sealed credential no
+             longer works -- an expired session, or a key rotated since.
+             Those have different fixes and only one of them is a league
+             setting, which is why the screen naming this may not assume
+             the first. */
           if (r.status === 403) return syncResult(false, "private", { snapshot: null });
           if (!r.ok) return syncResult(false, reasonForStatus(r.status), { snapshot: null });
           return r.json()

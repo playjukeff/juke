@@ -520,7 +520,7 @@ function Connected({ league }) {
         {head}
         {status === 'loading' || status === 'none'
           ? <Sheet band={false} aria-busy="true"><Skeleton lines={8} /></Sheet>
-          : <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/account">Manage leagues</QuietButton></CouldNotRead>}
+          : <CouldNotRead reason={reason} platform={platform} provider={league.provider} onRetry={() => retrySnapshot(league.leagueId, league.provider)}><QuietButton href="#/account">Manage leagues</QuietButton></CouldNotRead>}
       </div>
     )
   }
