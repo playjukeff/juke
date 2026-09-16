@@ -532,19 +532,19 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
     : null
   const items = stripItems({ total, regular: shape.regular, current, focus, mine, weekView, tailNote })
   const sleeperFailed = !hasSchedule && sleeperEntry && sleeperEntry.status === 'error'
-  /* A platform whose weeks Juke does not read AT ALL is a different fact
-     from one whose week failed to load, and only one of them is worth
-     offering a retry for.
+  /* Sleeper's weeks and everybody else's fail differently, and the copy
+     here described Sleeper's mechanics for all of them.
 
      Sleeper publishes its pairings a week at a time and Juke asks for each
-     one, so a failure there is a request that did not land -- retry is the
-     right control. CBS publishes its own schedule and the adapter does not
-     read it yet: `schedule: null`, which lands here because this branch is
-     "no schedule" rather than "Sleeper". So the page said CBS "publishes a
-     league's pairings one week at a time" -- false, and disproved by CBS's
-     own season page -- and offered a Try again for something that was never
-     going to succeed, which is the dead-control failure this project
-     already has a rule about.
+     one, so a failure there is one week's request that did not land, and
+     `retrySleeperWeeks` is the control that can act on it. ESPN and CBS
+     publish a whole season ON THE SNAPSHOT, so a missing schedule there is
+     the snapshot's own read failing -- a different fetch, with a different
+     retry.
+
+     The page said CBS "publishes a league's pairings one week at a time",
+     which CBS's own season page disproves, and wired its Try again to a
+     fetch that was not the one that failed.
 
      Third instance of the hardcoded-platform bug in one night. The check
      CLAUDE.md prescribes is to grep for the previous platform's name; what
@@ -553,7 +553,7 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
   const weeksUnread = !hasSchedule && league.provider !== 'sleeper'
   const stripCaption = !hasSchedule && !shape.last
     ? (weeksUnread
-        ? `Juke does not read ${platform}'s weekly pairings yet, so these are the NFL's eighteen weeks and carry no results.`
+        ? `${platform}'s schedule could not be read, so these are the NFL's eighteen weeks and carry no results.`
         : sleeperFailed ? `${platform}'s weekly pairings could not be read, so these are the NFL's eighteen weeks and carry no results.` : `Reading ${platform}'s weeks…`)
     : shape.regular ? `${shape.regular}-week regular season${shape.last && shape.last > shape.regular ? `, playoffs to week ${shape.last}` : ''}.` : null
 
@@ -583,7 +583,7 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
   } else {
     title = `Week ${week}.`
     lede = weeksUnread
-      ? `Juke does not read ${platform}'s pairings yet, so this week has no opponent beside it.`
+      ? `${platform}'s schedule could not be read, so this week has no opponent beside it.`
       : !hasSchedule
       ? `${platform}'s pairing for week ${week} could not be read.`
       : `${snapshot.name}'s schedule has no game for ${focusName} in week ${week}.`
@@ -694,16 +694,16 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
 
       <Sheet code="The season, week by week" aside={isMine || !focus ? null : `${focusName}’s weeks`} bodyClass="p-3 sm:p-4">
         <WeekStrip items={items} selected={week} label={`Weeks of ${focusName}'s season`} />
-        {stripCaption ? <p className="mt-2 px-1 text-[13px] leading-[1.5] text-v3-ink3">{stripCaption}{sleeperFailed && !weeksUnread ? <> <button type="button" onClick={() => retrySleeperWeeks(league.leagueId)} className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">Try again</button></> : null}</p> : null}
+        {stripCaption ? <p className="mt-2 px-1 text-[13px] leading-[1.5] text-v3-ink3">{stripCaption}{sleeperFailed || weeksUnread ? <> <button type="button" onClick={() => (weeksUnread ? retrySnapshot(league.leagueId, league.provider) : retrySleeperWeeks(league.leagueId))} className="font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">Try again</button></> : null}</p> : null}
       </Sheet>
 
       {loadingWeek ? <Sheet band={false} aria-busy="true"><Skeleton lines={8} /></Sheet> : null}
 
       {!loadingWeek && (sleeperFailed || weeksUnread) && !view ? (
-        <Sheet code={`Week ${week}`} aside={weeksUnread ? 'Not read yet' : 'Could not read'} role="status">
+        <Sheet code={`Week ${week}`} aside="Could not read" role="status">
           <p className="text-[15px] leading-[1.55] text-v3-ink2">
             {weeksUnread
-              ? `Juke reads your ${platform} roster and its scoring, and does not read its schedule yet — so there is no opponent to put beside this week. Nothing about your league is wrong, and ${platform} has the pairing on its own site.`
+              ? `${platform} publishes this league's whole season and Juke could not read it — the rest of the snapshot came through, so this is the schedule alone. Nothing about your league is wrong.`
               : <>{platform} publishes a league's pairings one week at a time, and Juke could not read week {week}'s — {sleeperEntry.reason === 'not-found' ? `${platform} does not return this league any more.` : `the route that reads it may not be on this worker yet, or ${platform} did not answer.`} Nothing about your league is wrong.</>}
           </p>
           {week === current && focus && scorer ? (
@@ -711,9 +711,14 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
               What the snapshot still holds is {isMine ? 'your' : `${focusName}'s`} own lineup as set, below.
             </p>
           ) : null}
-          {/* Only where a retry can do something. Nothing is pending for a
-              platform whose schedule is simply not read. */}
-          {weeksUnread ? null : <div className="mt-4"><QuietButton onClick={() => retrySleeperWeeks(league.leagueId)}>Try again</QuietButton></div>}
+          {/* Each retry aims at the fetch that failed. A season provider's
+              schedule rides on the SNAPSHOT, so retrying Sleeper's per-week
+              route here would be a control that presses nothing. */}
+          <div className="mt-4">
+            <QuietButton onClick={() => (weeksUnread
+              ? retrySnapshot(league.leagueId, league.provider)
+              : retrySleeperWeeks(league.leagueId))}>Try again</QuietButton>
+          </div>
         </Sheet>
       ) : null}
 
