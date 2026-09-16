@@ -272,6 +272,39 @@ log line, no error at the worker, and a menu that does nothing.
 `test-auth.mjs` asserts the preflight names `PATCH` for exactly that reason,
 and it was confirmed red by removing it.
 
+**And a new HEADER is a new door too, which cost every league on the site
+for half an hour on 16 September 2026.** The rule above was read as being
+about methods and it is about CORS-simplicity: a GET carrying nothing
+unusual goes straight out, and adding `Authorization` — which a private
+league's snapshot needs, so the worker can find whose sealed credential to
+open — makes it non-simple. The browser preflights it and sends nothing at
+all unless the OPTIONS answer names that header. None of the three snapshot
+routes did:
+
+```
+/sleeper/snapshot   no access-control-allow-headers at all
+/espn/snapshot      content-type
+/cbs/snapshot       content-type
+```
+
+**Sleeper went down with the other two despite never reading the header**,
+and that is the half worth keeping: a preflight is about the SHAPE of the
+request rather than about what the route does with it, so a public route
+refusing the header is exactly as fatal as a private one. The symptom was
+three leagues reporting "did not answer" with no log line and no error at
+the worker, because the request never left the browser.
+
+The instruction is therefore wider than it was written: **when you add a
+verb OR a header to a fetch, grep for that route's preflight before
+believing the request arrives.** `test-me-routes.mjs` asserts all three
+name `authorization`, over the three together rather than one per platform
+suite — what breaks is one fact about the router, and three copies would be
+three chances to fix two of them.
+
+It is worth knowing how close the warning was: `/espn/league`'s own
+preflight sits two routes above the ones that were changed and says this in
+its own comment. Proximity is not a reminder.
+
 ### The socket protocol
 
 Fourteen verbs in, three kinds of message out. The asymmetry is the design:
@@ -10495,6 +10528,39 @@ feature rather than through prose.
 They read `platformFor(league.provider).name` now. **This is the check to
 run on the next provider**: grep the app for the name of the one that came
 before it.
+
+**That grep is necessary and it is not sufficient, which took a third
+platform to find.** It catches a sentence naming the previous platform
+under the new one. It cannot catch a sentence that names NO platform and
+asserts a BEHAVIOUR only one of them has — and that is the shape the same
+bug took when CBS landed.
+
+The matchup page told a CBS reader that "CBS publishes a league's pairings
+one week at a time", interpolating the platform's name into copy written
+about Sleeper's mechanics. CBS publishes its whole season at once; the
+reader's own CBS season page disproved it. The grep comes back clean,
+because the only platform name in that string is the right one.
+
+So the check has two halves. Grep for the previous platform's name, and
+then **read what the sentence CLAIMS about the platform it is naming.** The
+tell is a verb: publishes, only lets, requires, expires. A sentence that
+describes what a platform DOES is a claim that has to be true of whichever
+platform gets interpolated into it.
+
+**And the branch a message sits in is part of the claim.** That copy lived
+under `!hasSchedule`, which reads as "Sleeper's week failed" and means "no
+schedule from anywhere". A message is only as true as the condition that
+selects it, so when a second provider starts reaching an existing branch,
+re-read the branch's own name as well as its words.
+
+**The fix for it was stale one commit later, in the same pull request.** It
+said "Juke does not read CBS's weekly pairings yet" — true when written and
+false as soon as the adapter beside it landed, at which point an absent
+schedule meant a read that FAILED rather than a feature that was missing.
+Telling somebody nothing was attempted when something was attempted and
+lost is the same class of wrong sentence. Copy that describes the state of
+the BUILD goes stale on the build's own schedule; copy that describes where
+the data comes from does not.
 
 ### A fallback that shares a fragment with what it falls back from is not one
 
