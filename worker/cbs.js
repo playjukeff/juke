@@ -50,6 +50,7 @@
 import { normalise } from "./names.js";
 import { rulesFromCbs } from "./scoring.js";
 import { injuryCode } from "./status.js";
+import { scheduleFromCbs } from "./matchups.js";
 
 /* The required-and-ignored parameter. Named so nobody reading a call site
    mistakes it for an id anybody chose. */
@@ -381,7 +382,9 @@ export async function leagueSnapshot(slug, season, base, resolve) {
          reader's OWN team, which reads as a one-team league. */
       getJson(slug, "league/rosters?team_id=all", base),
       getJson(slug, "league/standings/overall", base),
-      getJson(slug, "league/schedules", base),
+      /* `period=all`, and the bare call is NOT a smaller version of it:
+         it answers the current period only. See scheduleFromCbs(). */
+      getJson(slug, "league/schedules?period=all", base),
       getJson(slug, "league/rules", base),
       getJson(slug, "league/scoring/rules", base),
     ]);
@@ -524,12 +527,10 @@ export async function leagueSnapshot(slug, season, base, resolve) {
       scoring: scoring.rules,
       scoringUnmapped: scoring.unmapped,
       lineup: lineupFromCbs(rules),
-      /* Not built in this pass: CBS publishes a full schedule at
-         `league/schedules` (periods, matchups, records) and turning it into
-         the shape lib/schedule.js reads is its own change with its own
-         measurements. Null is what a Sleeper league already answers, so
-         every consumer degrades to the behaviour it already has. */
-      schedule: null,
+      /* Every week of it, from one request. Null when CBS does not answer,
+         which is what a Sleeper league already returns -- so a failure here
+         costs the opponent beside a week and nothing else on the page. */
+      schedule: scheduleFromCbs(bodyOf(scheduleRes, "schedule")),
       draft: null,
       teams,
       crosswalkReady,
