@@ -57,7 +57,8 @@ import {
 } from "./espn.js";
 import {
   cbsSlug, cbsSource,
-  lookupLeague as cbsLookupLeague, leagueSnapshot as cbsLeagueSnapshot
+  lookupLeague as cbsLookupLeague, leagueSnapshot as cbsLeagueSnapshot,
+  weekActuals as cbsWeekActuals
 } from "./cbs.js";
 
 /* Sealing the credential a private league needs. Kept out of store.js for
@@ -1681,6 +1682,64 @@ async function cbsSnapshotRoute(request, env, ctx) {
   return new Response(body, { headers });
 }
 
+/* One week's per-player points, for a week that has been played.
+ *
+ * Its own route rather than a field on the snapshot: `actuals` there is
+ * stamped with ONE week and the matchup page asks about whichever week a
+ * reader opened. See weekActuals() in cbs.js for the measurement -- 201 KB
+ * and 369 rows, and the roster endpoint's `period` NOT carrying points.
+ *
+ * Credentialed like every other CBS read, so the edge cache is untouched in
+ * both directions: this key would be league+season+week and would serve one
+ * reader's league to anybody who asked for the same slug, as a healthy 200.
+ * The cost is one upstream call per week a reader opens, bounded on the
+ * client by the store in front of it.
+ */
+async function cbsWeekRoute(request, env, ctx) {
+  if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+
+  const headers = Object.assign({ "content-type": "application/json" }, corsFor(request));
+  const url = new URL(request.url);
+  const slug = cbsSlug((url.searchParams.get("league") || "").trim().slice(0, 200));
+  const week = Number(url.searchParams.get("week"));
+  if (!slug || !Number.isInteger(week) || week < 1) {
+    return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+  }
+
+  const cred = await cbsCredFor(env, await optionalUser(request, env), slug);
+  const resolve = (wanted) => resolveSleeperIds(env, wanted);
+  const out = await cbsWeekActuals(slug, week, cbsSource(env.CBS_BASE || null, cred), resolve);
+
+  if (!out.week) {
+    /* "CBS published nothing for this week" is a 200 with a null body and
+       not an error: an unplayed week is a normal answer, and a page that
+       treated it as a failure would offer a retry for a game nobody has
+       played. Only a refusal and an unreachable CBS are statuses. */
+    const status = out.reason === "private" ? 403
+                 : out.reason === "not-found" ? 404
+                 : out.reason === "offline" ? 503
+                 : out.reason === "bad-request" ? 400
+                 : 200;
+    return new Response(
+      JSON.stringify(status === 200 ? { week: null, reason: out.reason || null } : { error: out.reason }),
+      { status, headers }
+    );
+  }
+
+  /* The pool is what the crosswalk reads, and on a fresh deployment it is
+     empty until the nightly cron first runs -- the same fill-on-demand the
+     snapshot route already does, off the response path. */
+  after(ctx, syncPlayerPool(env).then((n) => {
+    if (n) console.log("player pool filled on demand:", n);
+  }));
+
+  return new Response(JSON.stringify({ week: out.week }), { headers });
+}
+
 /* An hour. Long enough that an open tab is not a poller, short enough that
    a draft moved this morning is right by this afternoon. A draft time moves
    rarely and a league name almost never; what this is really bounding is how
@@ -2572,6 +2631,21 @@ const handler = {
         }, corsFor(request)) });
       }
       return cbsLookupRoute(request, env);
+    }
+
+    if (url.pathname === "/cbs/week") {
+      if (request.method === "OPTIONS") {
+        // "authorization" for the reason /sleeper/snapshot's preflight
+        // states: a header the preflight does not name is a request that
+        // never leaves the page, and this route needs the account to find
+        // whose sealed credential to open.
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET",
+          "access-control-allow-headers": "content-type, authorization",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return cbsWeekRoute(request, env, ctx);
     }
 
     if (url.pathname === "/cbs/snapshot") {

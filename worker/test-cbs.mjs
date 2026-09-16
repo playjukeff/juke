@@ -23,7 +23,7 @@
 import {
   cbsHost, cbsSlug, cbsSource, lineupFromCbs, tradeDeadlineFromCbs,
   waiverFromCbs, draftInfoFromCbs, cbsKey, crosswalk, lookupLeague,
-  leagueSnapshot,
+  leagueSnapshot, weekActuals,
 } from "./cbs.js";
 import { rulesFromCbs } from "./scoring.js";
 import { normalise } from "./names.js";
@@ -579,5 +579,91 @@ const vac = scheduleFromCbs({ periods: [{ id: "3", type: "Regular Season", match
 check("a vacant chair keeps its week and carries no team", vac.matchups[0].away, null);
 check("and the real side is still there", vac.matchups[0].home.teamId, "9");
 
+
+/* ---- One week's per-player points, and who was started ----
+
+   Shapes measured on 16 September 2026:
+
+     league/stats?period=1    201 KB, 369 rows -- the players who recorded
+                              something, NOT the 4,910-player universe.
+                              Each row: FPTS, name, position, TM.
+     league/rosters?...&period=1   that week's roster, roster_status and
+                              all. Its keys are ytd_points / avg_points /
+                              projected_points -- no per-week points, which
+                              is why the stats call is not optional.
+
+   The cases below are the ones that fail silently. */
+const STATS = { league_stats: { players: [
+  { name: "Josh Allen", position: "QB", TM: "BUF", FPTS: 24.4 },
+  { name: "Puka Nacua", position: "WR", TM: "LAR", FPTS: 12.4 },
+  /* Turned out and scored nothing. A real result, and the row a
+     truthiness test drops. */
+  { name: "Bench Receiver", position: "WR", TM: "LAR", FPTS: 0 },
+  { name: "Jaguars", position: "DST", TM: "JAC", FPTS: 14 },
+  /* A free agent nobody rosters: in the payload, and in no lineup. */
+  { name: "Bijan Robinson", position: "RB", TM: "ATL", FPTS: 31.4, free_agent: 1 },
+] } };
+
+const WEEK_ROSTERS = { rosters: { period: "1", teams: [
+  { id: 4, players: [
+    { fullname: "Josh Allen", position: "QB", pro_team: "BUF", roster_status: "A", roster_pos: "QB" },
+    { fullname: "Puka Nacua", position: "WR", pro_team: "LAR", roster_status: "A", roster_pos: "WR" },
+    /* roster_pos says WR and roster_status says benched. The distinction
+       that cost this adapter sixteen starters on a nine-man lineup. */
+    { fullname: "Bench Receiver", position: "WR", pro_team: "LAR", roster_status: "RS", roster_pos: "WR" },
+    { fullname: "Jaguars", position: "DST", pro_team: "JAC", roster_status: "A", roster_pos: "DST" },
+    /* Rostered, did not play: no stats row at all. */
+    { fullname: "Hurt Guy", position: "TE", pro_team: "KC", roster_status: "RS", roster_pos: "TE" },
+  ] },
+] } };
+
+console.log("\n--- one week's points and lineups ---");
+const WK_BODIES = { "league/stats": STATS, "league/rosters": WEEK_ROSTERS };
+globalThis.fetch = async (u) => {
+  const url = String(u);
+  const key = Object.keys(WK_BODIES).find((k) => url.includes("/api/" + k));
+  return new Response(JSON.stringify({ body: key ? WK_BODIES[key] : {} }), { status: 200 });
+};
+const wkPool = new Map([
+  ["Josh Allen|QB", "4984"], ["Puka Nacua|WR", "9493"],
+  ["Bench Receiver|WR", "1111"], ["Hurt Guy|TE", "2222"],
+  ["Bijan Robinson|RB", "8138"],
+]);
+const wkResolve = async (wanted) => {
+  const m = new Map();
+  for (const w of wanted) {
+    const id = wkPool.get(w.name + "|" + w.pos);
+    if (id) m.set(normalise(w.name) + "|" + w.pos, id);
+  }
+  return m;
+};
+
+const wk = await weekActuals("sanctuaryfootballleague", 1, { base: "https://cbs.test", cookie: "pid=x" }, wkResolve);
+check("the week is stamped, so week 1 is never an answer about week 2", wk.week.week, 1);
+check("a played player's points are read", wk.week.players["4984"], 24.4);
+check("a real 0.0 is a score rather than a missing row", wk.week.players["1111"], 0);
+check("a defence joins on its club", wk.week.players.JAX, 14);
+/* CBS spells Jacksonville JAC and the pipeline spells it JAX -- the alias
+   has to survive this path too, not only the snapshot's. */
+check("and never on CBS's own spelling of it", wk.week.players.JAC, undefined);
+
+const t4 = wk.week.teams["4"];
+check("who was STARTED comes from roster_status, not roster_pos",
+  t4.starters.map((r) => r.id), ["4984", "9493", "JAX"]);
+check("and the bench is the rest", t4.bench.map((r) => r.id), ["1111", "2222"]);
+check("a benched player still carries what he scored", t4.bench[0].points, 0);
+/* Rostered, no stats row: null rather than 0. "Did not play" and "played
+   and scored nothing" are different facts, and the bench above is the one
+   that proves the difference is preserved. */
+check("a player with no row scored nothing and says so", t4.bench[1].points, null);
+
+/* A free agent is in the stats payload and in nobody's lineup. Kept in
+   `players` -- the wire is priced off it -- and in no team. */
+check("a free agent is priced", wk.week.players["8138"], 31.4);
+check("and is in nobody's lineup",
+  Object.values(wk.week.teams).some((t) => [...t.starters, ...t.bench].some((r) => r.id === "8138")), false);
+
+check("a week outside the season is refused before anything is sent",
+  (await weekActuals("sanctuaryfootballleague", 0, null, wkResolve)).reason, "bad-request");
 console.log(failures ? "\n" + failures + " failed" : "\nall passed");
 process.exit(failures ? 1 : 0);
