@@ -318,6 +318,136 @@ export async function crosswalk(players, lookup) {
   return await lookup(wanted);
 }
 
+
+/* ---- One week's per-player points ----
+ *
+ * `league/stats?period=N` is where CBS keeps them, and both halves of that
+ * were measured on 16 September 2026 rather than assumed:
+ *
+ *   201 KB, 369 rows for a played week -- the players who recorded
+ *   something, NOT the 4,910-player universe. Each row carries `FPTS`
+ *   (CBS's own applied points), `name`, `position` and `TM`.
+ *
+ * **It is its own route rather than a field on the snapshot, and that is
+ * the whole reason this exists.** `actuals` on a snapshot is stamped with
+ * ONE week -- espn.js's is the current one, deliberately, so week 1's
+ * figure is never served as an answer about week 2. That is right for a
+ * live Sunday and it cannot answer "what did my lineup do in week 1",
+ * which is the question a matchup page asks every time somebody opens a
+ * past week.
+ *
+ * **The roster endpoint takes `period` too and does NOT carry the week's
+ * points**, which is worth writing down because it is the cheaper answer
+ * and it was the first thing tried: its keys are `ytd_points`,
+ * `avg_points` and `projected_points`, all season-level. So this is a
+ * second request or it is nothing.
+ *
+ * **Presence of `FPTS` decides played, never its value.** A player who
+ * turned out and scored 0.0 is a real result, and the row for a player who
+ * did not play is absent entirely -- so a truthiness test drops exactly
+ * the rows a reader is most likely to query. Same rule as the schedule's
+ * `points`, one endpoint along.
+ *
+ * **The crosswalk is the snapshot's own**, adapted at the boundary rather
+ * than reimplemented: a stats row spells the name `name` and the club
+ * `TM`, where a roster row spells them `fullname` and `pro_team`. A second
+ * join here would be a second thing to drift, and this one is measured at
+ * 100% on real-ADP rows.
+ */
+export async function weekActuals(slug, week, base, resolve) {
+  const host = cbsHost(slug);
+  if (!host) return { reason: "not-found", week: null };
+  const n = Number(week);
+  if (!Number.isInteger(n) || n < 1 || n > 30) return { reason: "bad-request", week: null };
+
+  /* Two endpoints, in parallel, because POINTS alone cannot draw a played
+     week. Who was STARTED that week is the other half, and today's roster
+     is not that week's lineup -- a fact this project already states about
+     ESPN and would be repeating here by accident. `period` on the roster
+     endpoint is what answers it, and it is the same parameter that turned
+     the schedule from one week into a season. */
+  const [statsRes, rostersRes] = await Promise.all([
+    getJson(slug, "league/stats?period=" + n, base),
+    getJson(slug, "league/rosters?team_id=all&period=" + n, base),
+  ]);
+
+  if (statsRes.signedOut || rostersRes.signedOut) return { reason: "private", week: null };
+  const rows = (bodyOf(statsRes, "league_stats") || {}).players;
+  const rosterBody = bodyOf(rostersRes, "rosters") || {};
+  const rosterTeams = Array.isArray(rosterBody.teams) ? rosterBody.teams : [];
+  if (!Array.isArray(rows)) {
+    return { reason: statsRes.status === 0 ? "offline" : "not-found", week: null };
+  }
+
+  /* A stats row wears different field names from a roster row for the same
+     three facts. Translated here so cbsKey() and the four-tier crosswalk
+     below are the ones the snapshot already uses -- a second join would be
+     a second thing to drift from a measurement taken on the first. */
+  const asRoster = (r) => ({
+    fullname: r && r.name,
+    position: r && r.position,
+    pro_team: (r && (r.TM || r.pro_team)) || null,
+  });
+
+  /* Presence decides played, never the value: a player who turned out and
+     scored 0.0 is a result, and a player who did not play has no row at
+     all. A truthiness test drops exactly the rows a reader queries. */
+  const scored = rows.filter((r) => r && r.FPTS !== undefined && r.FPTS !== null && r.FPTS !== "");
+
+  const everyPlayer = scored.map(asRoster);
+  rosterTeams.forEach((t) => (t.players || []).forEach((pl) => everyPlayer.push(pl)));
+  const resolved = everyPlayer.length && resolve ? await crosswalk(everyPlayer, resolve) : null;
+  const byName = resolved || new Map();
+
+  const idOf = (pl) => {
+    const k = cbsKey(pl);
+    if (!k.pos) return null;
+    if (k.pos === "DST") return k.team || null;
+    return byName.get(normalise(k.name) + "|" + k.pos) || null;
+  };
+
+  const players = {};
+  scored.forEach((r) => {
+    const id = idOf(asRoster(r));
+    if (!id) return;
+    const pts = Number(r.FPTS);
+    if (Number.isFinite(pts)) players[id] = pts;
+  });
+
+  /* The week's lineups, keyed by CBS's own team id -- sparse and
+     unordered, so it is never an index. `roster_status` is the assignment
+     and `roster_pos` is the ELIGIBLE slot, which is the distinction that
+     cost this adapter sixteen starters on a nine-man lineup. */
+  const teams = {};
+  let rosteredWithPoints = 0;
+  rosterTeams.forEach((t) => {
+    const starters = [];
+    const bench = [];
+    (t.players || []).forEach((pl) => {
+      const id = idOf(pl);
+      if (!id) return;
+      const pts = players[id];
+      const row = { id, points: pts === undefined ? null : pts };
+      if (pts !== undefined) rosteredWithPoints++;
+      if (String(pl.roster_status || "").toUpperCase() === "A") starters.push(row);
+      else bench.push(row);
+    });
+    if (starters.length || bench.length) teams[String(t.id)] = { starters, bench };
+  });
+
+  /* Nothing to show is a normal answer about a week nobody has played, and
+     it is told apart from a crosswalk that has not filled yet: only one of
+     those is a fact about the league, and only one is worth retrying. */
+  if (!rosteredWithPoints) {
+    return { reason: resolved === null ? "crosswalk" : null, week: null };
+  }
+
+  return {
+    reason: null,
+    week: { week: n, source: "cbs", at: Date.now(), players, teams },
+  };
+}
+
 /* ----------------------------------------------------------
    The two reads
    ---------------------------------------------------------- */

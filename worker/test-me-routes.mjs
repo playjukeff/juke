@@ -597,7 +597,7 @@ check("and one from a disallowed origin",
    Asserted over the three together rather than one per platform suite,
    because what broke is one fact about the router and a per-platform copy
    would be three chances to fix two of them. */
-for (const path of ["/sleeper/snapshot", "/espn/snapshot", "/cbs/snapshot"]) {
+for (const path of ["/sleeper/snapshot", "/espn/snapshot", "/cbs/snapshot", "/cbs/week"]) {
   const pre = await worker.fetch(
     new Request("https://w.dev" + path, {
       method: "OPTIONS",

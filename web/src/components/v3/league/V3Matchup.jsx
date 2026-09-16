@@ -20,6 +20,7 @@ import {
   shortTeam, sleeperWeekView, alignLineups,
 } from './matchupData.js'
 import { retrySleeperWeeks, useSleeperWeeks } from './useSleeperWeeks.js'
+import { retryCbsWeek, useCbsWeek } from './useCbsWeek.js'
 
 /* #/league/matchup?week=N[&team=id] — one matchup, any week, either side.
 
@@ -416,7 +417,18 @@ function ConnectedMatchup({ league, q }) {
     const e = sw[w]
     return e && e.view ? sleeperWeekView(snapshot, e.view) : null
   }
-  const view = weekView(week)
+  /* CBS's per-player points and that week's lineups, for the week being
+     looked at. ESPN publishes its own on the snapshot and Sleeper's are a
+     different fetch again, so this asks for one provider and answers `off`
+     for the rest. */
+  const cbsWeek = useCbsWeek(ready ? league.leagueId : null, league.provider, week)
+
+  /* The schedule says who played whom and what it finished; the box score
+     says who was started and what each of them scored. Laid over rather
+     than merged into the adapter, because they are two requests with two
+     freshness windows and only one of them is on the snapshot. */
+  const raw = weekView(week)
+  const view = withCbsLineups(raw, cbsWeek.view)
   const sleeperEntry = sleeperOn ? sw[week] : null
 
   const mine = ready ? myTeam(snapshot, league) : null
@@ -462,12 +474,39 @@ function ConnectedMatchup({ league, q }) {
       league={league} snapshot={snapshot} pricing={pricing} platform={platform}
       week={week} current={current} view={view} weekView={weekView} shape={shape}
       focus={focus} mine={mine} hasSchedule={hasSchedule} sleeperEntry={sleeperEntry}
-      head={head}
+      cbsWeek={cbsWeek} head={head}
     />
   )
 }
 
-function MatchupBody({ league, snapshot, pricing, platform, week, current, view, weekView, shape, focus, mine, hasSchedule, sleeperEntry, head }) {
+/* The schedule's sides, with the week's box score laid over them.
+ *
+ * `espnWeek()` fills `starters`/`bench` with null, because ESPN's own
+ * box score is not read — so for CBS those are the two fields this
+ * supplies, keyed by CBS's own team id, which is what `rosterId` carries.
+ *
+ * A side the box score has nothing for keeps its nulls rather than
+ * getting an empty array: the panel treats an empty lineup as one it
+ * could read and found nobody in, and this is one it could not read.
+ *
+ * Laid over rather than merged in the adapter because the two are
+ * different requests with different windows — the schedule rides on the
+ * snapshot and this is a call per week somebody opens.
+ */
+function withCbsLineups(view, wk) {
+  if (!view || !wk || !wk.teams) return view
+  const of = (side) => {
+    const id = side && side.team && side.team.rosterId
+    const t = id === null || id === undefined ? null : wk.teams[String(id)]
+    if (!t) return side
+    return Object.assign({}, side, { starters: t.starters, bench: t.bench })
+  }
+  return Object.assign({}, view, {
+    games: (view.games || []).map((g) => Object.assign({}, g, { sides: (g.sides || []).map(of) })),
+  })
+}
+
+function MatchupBody({ league, snapshot, pricing, platform, week, current, view, weekView, shape, focus, mine, hasSchedule, sleeperEntry, cbsWeek, head }) {
   const { engine, ready: boardReady } = pricing
   const seasonDone = shape.last && current && current > shape.last
   const phase = view ? view.phase : current ? phaseFor(week, current) : 'upcoming'
@@ -630,12 +669,19 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
       )
     } else {
       lineups = (
-        <Sheet code="Lineups · as played" aside="Not read">
+        <Sheet code="Lineups · as played" aside={cbsWeek && cbsWeek.status === 'loading' ? 'Reading' : 'Not read'}>
           <p className="text-[15px] leading-[1.55] text-v3-ink2">
             {league.provider === 'espn'
               ? `${platform}'s per-player box score for a played week is not read, so the final above is the whole of what ${platform} tells Juke about week ${week}. Juke's own recount of a played week agrees with ${platform}'s about four weeks in five, which is not good enough to print beside it, and today's rosters are not that week's lineups — so neither is shown in its place.`
-              : `${platform} did not publish per-player points for week ${week}.`}
+              : cbsWeek && cbsWeek.status === 'loading'
+                ? `Reading ${platform}'s box score for week ${week}…`
+                : cbsWeek && cbsWeek.status === 'ready'
+                  ? `${platform} has no box score for week ${week} — nobody has played it yet.`
+                  : `${platform}'s box score for week ${week} could not be read. The final above is what its schedule states.`}
           </p>
+          {cbsWeek && cbsWeek.status === 'error' ? (
+            <div className="mt-4"><QuietButton onClick={() => retryCbsWeek(league.leagueId)}>Try again</QuietButton></div>
+          ) : null}
         </Sheet>
       )
     }
