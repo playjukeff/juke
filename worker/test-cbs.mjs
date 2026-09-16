@@ -714,6 +714,14 @@ const kUrl = wkUrls.find((u) => u.includes("position=K"));
 const dUrl = wkUrls.find((u) => u.includes("position=DST"));
 check("the kicker call is made", !!kUrl, true);
 check("and the defence call", !!dUrl, true);
+/* Every stats call needs it, not just the skill one. Without it a
+   position call answers the FREE-AGENT pool -- a row says `free_agent: 1`
+   on its face -- which is how this shipped populating nothing for a
+   kicker or a defence after the same defect had just been fixed one call
+   over. The request is the only place this is visible. */
+check("the kicker call asks for rostered players",
+  /[?&]player_status=rostered(&|$)/.test(kUrl || ""), true);
+check("and the defence call", /[?&]player_status=rostered(&|$)/.test(dUrl || ""), true);
 check("each for the week being asked about",
   /[?&]period=1(&|$)/.test(kUrl || "") && /[?&]period=1(&|$)/.test(dUrl || ""), true);
 

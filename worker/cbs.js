@@ -388,10 +388,20 @@ export async function weekActuals(slug, week, base, resolve) {
      nothing else -- 519 rows, and not one K or DST among them. Each of
      those two has to be asked for by name.
 
-       player_status=rostered   519 rows  QB/RB/WR/TE
-       position=K                33 rows  K
-       position=DST              32 rows  DST
-       position=all               0 rows  -- a real 200 answering nothing
+       player_status=rostered                     519 rows  QB/RB/WR/TE
+       player_status=rostered&position=K           33 rows  K
+       player_status=rostered&position=DST         32 rows  DST
+       position=K            (no player_status)    20 rows  FREE AGENTS
+       position=DST          (no player_status)    19 rows  FREE AGENTS
+       position=all                                 0 rows  a real 200
+                                                            answering nothing
+
+     **`player_status=rostered` is needed on EVERY one of them**, and
+     leaving it off the two position calls is how this shipped populating
+     nothing for a kicker or a defence. It is the same defect as the bare
+     stats call answering free agents, reintroduced in the two requests
+     added to fix that one -- measured correctly, transcribed wrongly. A
+     row from either call says `free_agent: 1` on its face.
 
      The two extra calls are 33 and 32 rows against the first one's 519,
      so this is a rounding error on a request that was already being made.
@@ -402,8 +412,8 @@ export async function weekActuals(slug, week, base, resolve) {
   const statsPath = (q) => "league/stats?period=" + n + "&" + q;
   const [skillRes, kRes, dstRes, rostersRes] = await Promise.all([
     getJson(slug, statsPath("player_status=rostered"), base),
-    getJson(slug, statsPath("position=K"), base),
-    getJson(slug, statsPath("position=DST"), base),
+    getJson(slug, statsPath("player_status=rostered&position=K"), base),
+    getJson(slug, statsPath("player_status=rostered&position=DST"), base),
     getJson(slug, "league/rosters?team_id=all&period=" + n, base),
   ]);
 
