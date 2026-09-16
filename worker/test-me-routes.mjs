@@ -578,6 +578,43 @@ check("and one from a disallowed origin",
       (await call("/me/leagues", { auth: token(), origin: "https://evil.example",
                                    db: stubDb(1, [LEAGUE_ROW]) })).status, 403);
 
+/* ---- Every route the page sends a token to has to name it ----
+
+   A GET carrying no unusual header is CORS-simple and goes straight out.
+   Add `Authorization` -- which a private league's snapshot needs, so the
+   worker can find whose sealed credential to open -- and the browser
+   preflights it first, sending nothing at all unless the OPTIONS answer
+   names that header.
+
+   It did not, on all three snapshot routes, and the page reported every
+   league as "did not answer": no log line and no error at the worker,
+   because the request never left the browser. Sleeper went down with the
+   other two despite never reading the header, which is the property worth
+   asserting here -- **a preflight is about the SHAPE of the request, not
+   about what the route does with it**, so a public route refusing the
+   header is exactly as fatal as a private one.
+
+   Asserted over the three together rather than one per platform suite,
+   because what broke is one fact about the router and a per-platform copy
+   would be three chances to fix two of them. */
+for (const path of ["/sleeper/snapshot", "/espn/snapshot", "/cbs/snapshot"]) {
+  const pre = await worker.fetch(
+    new Request("https://w.dev" + path, {
+      method: "OPTIONS",
+      headers: {
+        origin: ORIGIN,
+        "access-control-request-method": "GET",
+        "access-control-request-headers": "authorization",
+      },
+    }),
+    { ALLOWED_ORIGINS: ORIGIN },
+    { waitUntil() {} },
+  );
+  const allowed = String(pre.headers.get("access-control-allow-headers") || "")
+    .split(",").map((h) => h.trim().toLowerCase());
+  check(`OPTIONS on ${path} names authorization`, allowed.includes("authorization"), true);
+}
+
 jwks.close();
 
 if (fails.length) process.exitCode = 1;

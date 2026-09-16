@@ -2478,8 +2478,30 @@ const handler = {
 
     if (url.pathname === "/sleeper/snapshot") {
       if (request.method === "OPTIONS") {
+        /* "authorization" is what makes this a PREFLIGHTED request at all,
+           and leaving it out took every league down.
+
+           A GET with no unusual header is CORS-simple and goes straight
+           out. Adding `Authorization` -- which a private league's snapshot
+           needs, so the worker can find whose sealed credential to open --
+           makes it non-simple, so the browser asks OPTIONS first and sends
+           nothing unless the answer names that header. It did not, so the
+           request never left the page: no log line, no error at the
+           worker, and three leagues reporting "did not answer".
+
+           Including Sleeper, which needs no credential and never reads the
+           header. The preflight is about the SHAPE of the request rather
+           than about what the route does with it, so a public route
+           refusing the header is just as fatal as a private one.
+
+           This is the PATCH lesson on /me/leagues exactly -- a door the
+           preflight does not name is a door nobody comes through -- with a
+           header in place of a verb. Two routes above, /espn/league's own
+           preflight says so in its own comment, and it was not read when
+           the token was added here. */
         return new Response(null, { headers: Object.assign({
           "access-control-allow-methods": "GET",
+          "access-control-allow-headers": "content-type, authorization",
           "access-control-max-age": "86400"
         }, corsFor(request)) });
       }
@@ -2527,9 +2549,10 @@ const handler = {
 
     if (url.pathname === "/espn/snapshot") {
       if (request.method === "OPTIONS") {
+        // See /sleeper/snapshot above for why "authorization" is here.
         return new Response(null, { headers: Object.assign({
           "access-control-allow-methods": "GET",
-          "access-control-allow-headers": "content-type",
+          "access-control-allow-headers": "content-type, authorization",
           "access-control-max-age": "86400"
         }, corsFor(request)) });
       }
@@ -2553,9 +2576,10 @@ const handler = {
 
     if (url.pathname === "/cbs/snapshot") {
       if (request.method === "OPTIONS") {
+        // See /sleeper/snapshot above for why "authorization" is here.
         return new Response(null, { headers: Object.assign({
           "access-control-allow-methods": "GET",
-          "access-control-allow-headers": "content-type",
+          "access-control-allow-headers": "content-type, authorization",
           "access-control-max-age": "86400"
         }, corsFor(request)) });
       }
