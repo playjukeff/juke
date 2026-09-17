@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-16 15:14 UTC
+Generated 2026-09-17 15:23 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -238,7 +238,7 @@ every season we store. Sleeper stays authoritative: this changes no
 stored number and never should. It is here so that when the two
 start disagreeing, somebody finds out from this file.
 
-448 of 483 players joined to an nflverse record.
+446 of 483 players joined to an nflverse record.
 
 No nflverse record for:
 Seahawks | DEF | SEA | no nflverse id
@@ -273,9 +273,11 @@ Commanders | DEF | WAS | no nflverse id
 Panthers | DEF | CAR | no nflverse id
 Dolphins | DEF | MIA | no nflverse id
 Chiefs | DEF | KC | no nflverse id
+Quincy Skinner | WR | GB | no nflverse id
 Michael Warren | RB | DET | no nflverse id
 Qadir Ismail | WR | CHI | no nflverse id
 Matt Hibner | TE | BAL | no nflverse id
+Scotty Miller | WR | CHI | no nflverse id
 
 Two differences are known, applied rather than reported, and
 must not be `fixed' by taking their column:
@@ -298,38 +300,38 @@ season    compared  disagree    rate
 2018           499        78   15.6%
 2019           637        54    8.5%
 2020           813        16    2.0%
-2021           999        14    1.4%
-2022          1269        40    3.2%
-2023          1597        12    0.8%
-2024          1971         7    0.4%
-2025          2333         5    0.2%
+2021           994        14    1.4%
+2022          1264        40    3.2%
+2023          1581        12    0.8%
+2024          1963         7    0.4%
+2025          2325         5    0.2%
 
 stat  compared   agree   agree%
-cfd       918     853    92.9%
-ct        724     724   100.0%
-cy        984     980    99.6%
+cfd       916     851    92.9%
+ct        723     723   100.0%
+cy        981     977    99.6%
 f19        17      17   100.0%
-f29       132     129    97.7%
-f39       134     134   100.0%
-f49       133     132    99.2%
-f59       129     121    93.8%
+f29       129     126    97.7%
+f39       131     131   100.0%
+f49       130     129    99.2%
+f59       126     118    93.7%
 f60        18      10    55.6%
-fg        134     133    99.3%
-fgx       131     131   100.0%
+fg        131     130    99.2%
+fgx       128     128   100.0%
 pa        314     310    98.7%
 pc        280     277    98.9%
 pfd       261     224    85.8%
 pi        224     224   100.0%
 pt        241     240    99.6%
 py        280     277    98.9%
-ra        847     842    99.4%
-rc        979     977    99.8%
-rfd       703     645    91.7%
-rt        473     473   100.0%
-ry        836     829    99.2%
-tg        997     982    98.5%
-xp        134     133    99.3%
-xpx        95      95   100.0%
+ra        845     840    99.4%
+rc        976     974    99.8%
+rfd       702     644    91.7%
+rt        472     472   100.0%
+ry        834     827    99.2%
+tg        994     979    98.5%
+xp        131     130    99.2%
+xpx        92      92   100.0%
 
 226 disagreements beyond 0.5, largest first:
   2022 | py   | Joe Burrow | ours 4527 | theirs 4475
@@ -412,9 +414,9 @@ season    fgm  in bands   short      fgmiss  in bands   short
 2020      263       263    0.0%          37        20   45.9%
 2021      332       332    0.0%          47        29   38.3%
 2022      416       416    0.0%          67        46   31.3%
-2023      554       554    0.0%          77        40   48.1%
-2024      618       618    0.0%         105       105    0.0%
-2025      782       782    0.0%         128       128    0.0%
+2023      533       533    0.0%          73        37   49.3%
+2024      594       594    0.0%          95        95    0.0%
+2025      763       763    0.0%         124       124    0.0%
 
 Bands are complete from 2024 on and lossy before it,
 and the two halves are lossy to very different degrees in this pool.
