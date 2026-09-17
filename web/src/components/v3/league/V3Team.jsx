@@ -104,7 +104,7 @@ function RosterTable({ team, pricing, snapshot }) {
                   <td className="border-0 py-2.5 pl-4 sm:pl-5">
                     {bench ? <span className="inline-flex h-[22px] min-w-[34px] items-center justify-center rounded-[4px] bg-v3-well px-1.5 font-figure text-[12px] font-bold text-v3-ink2">BN</span> : p ? <PosTag pos={p.pos} /> : <span className="font-figure text-[12px] text-v3-ink3">—</span>}
                   </td>
-                  <td className="border-0 max-w-0 py-2.5 pr-2">
+                  <td className="border-0 w-full max-w-0 py-2.5 pr-2">
                     <span className="flex items-center gap-2">
                       {bench && p ? <PosTag pos={p.pos} className="hidden sm:inline-flex" /> : null}
                       <PlayerCell player={p} id={id} />

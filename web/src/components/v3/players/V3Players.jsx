@@ -463,6 +463,10 @@ export default function V3Players() {
             </div>
           </div>
 
+          {/* The filter groups flow onto one row where the row can seat them:
+              three stacked full-width rows used under 30% of their width
+              each, and the page exists for the table underneath them. */}
+          <div className="grid gap-4 md:flex md:flex-wrap md:items-end md:gap-x-8 md:gap-y-4">
           {/* The three orders, in season only. Out of season there is no
               rest of a season to rank and no games to have played, so the
               control is absent rather than a segment that cannot act. */}
@@ -507,6 +511,7 @@ export default function V3Players() {
               <Seg label="Tenure" value={tenure} onChange={setTenure} options={TENURE} />
             </div>
           </div>
+          </div>
 
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 md:hidden">
             {/* Only this mode's own orders: offering "ROS pts" on a
@@ -530,7 +535,7 @@ export default function V3Players() {
               its caption would be this project's own right-value-wrong-
               column bug, with a horizon instead of a table. */}
           {key && (
-            <p className="text-[13px] leading-[1.5] text-v3-ink3">
+            <p className="max-w-[85ch] text-[13px] leading-[1.5] text-v3-ink3">
               {mode === 'ros' && (
                 <>
                   Rest of season is a rate for the weeks he has left — what he was projected to average, pulled toward what he has actually

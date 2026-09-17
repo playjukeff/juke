@@ -229,7 +229,7 @@ function TopBar({ current }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
-        <a href="#/" aria-label="Juke, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={18} onLight color="rgb(var(--v3-ink))" /></a>
+        <a href="#/" aria-label="Juke, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={24} markWidth={48} onLight color="rgb(var(--v3-ink))" /></a>
         <nav aria-label="Primary" className="ml-6 hidden h-full items-stretch gap-1 md:flex">
           {NAV.map((n) => {
             const on = n.match.includes(current)
@@ -292,7 +292,7 @@ function Footer() {
     <footer className="mt-24 border-t border-v3-rule bg-v3-sheet">
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <JukeLogo size={16} onLight color="rgb(var(--v3-ink))" />
+          <JukeLogo size={20} markWidth={40} onLight color="rgb(var(--v3-ink))" />
           <p className="mt-3 max-w-[46ch] text-[15px] leading-[1.6] text-v3-ink2">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere. Connecting a league is read-only; Juke never edits it.
           </p>
@@ -391,17 +391,39 @@ export default function V3App({ sub = '' }) {
   const current = clean.split('/')[0]
   const { page, bare } = route(clean)
   useEffect(() => { window.scrollTo(0, 0) }, [clean])
+  /* A route change moved the page and left focus on the nav link that
+     caused it: a keyboard reader tabbed out of the nav again on every
+     navigation, and a screen reader was told nothing at all. Focus moves
+     into the new page's own container (tabIndex -1, so it takes focus and
+     stays out of the tab order), and the announcer says where they are.
+     Not on the first paint — a cold load has not navigated anywhere. */
+  const mainRef = useRef(null)
+  const landed = useRef(false)
+  const [announce, setAnnounce] = useState('')
+  useEffect(() => {
+    if (!landed.current) { landed.current = true; return }
+    if (mainRef.current) mainRef.current.focus({ preventScroll: true })
+    const h1 = typeof document !== 'undefined' ? document.querySelector('main h1') : null
+    setAnnounce(h1 && h1.textContent ? h1.textContent.trim() : 'Page changed')
+  }, [clean])
   // MotionRoot: Framer's reducedMotion="user" for everything declarative
   // under it; the imperative primitives in motion.jsx ask on their own.
   return (
     <MotionRoot>
-      <div className="min-h-screen overflow-x-clip bg-v3-paper font-sheet text-v3-ink antialiased">
+      <div data-v3-root className="min-h-screen overflow-x-clip bg-v3-paper font-sheet text-v3-ink antialiased">
         {bare ? (
           <main>{page}</main>
         ) : (
           <>
+            <a
+              href="#v3-main"
+              className="sr-only rounded-[6px] bg-v3-call px-4 py-2 text-[15px] font-semibold text-v3-onCall focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+            >
+              Skip to content
+            </a>
             <TopBar current={current} />
-            <main className="mx-auto max-w-[1320px] px-4 pb-24 pt-8 sm:px-8 sm:pt-12 md:pb-0">{page}</main>
+            <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-8 focus:outline-none sm:px-8 sm:pt-12 md:pb-0">{page}</main>
+            <p aria-live="polite" className="sr-only">{announce}</p>
             <Footer />
             <TabBar current={current} />
           </>

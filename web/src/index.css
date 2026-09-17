@@ -413,6 +413,16 @@ body {
   border-radius: inherit;
 }
 
+/* Inside v3 the ring is cobalt, because that is what v3's own controls
+   already paint: every button, field and segment carries
+   focus-visible:ring-v3-call, so the teal fallback above only ever showed
+   on the controls that had NOT been given a ring — one page handed a
+   keyboard reader two different focus colours. The fallback stays teal
+   outside v3, which is where teal is still the accent. */
+[data-v3-root] :where(a, button, [role='button'], [role='radio'], [role='tab'], summary, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: rgb(var(--v3-call));
+}
+
 /* Browser surfaces the design system should own rather than inherit.
 
    Selection and the caret ship with defaults that belong to no design

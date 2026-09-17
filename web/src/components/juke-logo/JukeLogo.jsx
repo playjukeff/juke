@@ -171,11 +171,18 @@ export default function JukeLogo({
   color = FOREGROUND,
   className = "",
   style,
+  markWidth: markWidthProp,
 }) {
   // 1.7 rather than the goalpost's 1.15: the shark is a wide mark, and this
   // is the ratio that puts its visual mass level with the wordmark's cap
   // height. Verified at sizes 18, 19, 21 and 32.
-  const markWidth = Math.round(size * 1.7);
+  //
+  // markWidth overrides it where a bar constrains HEIGHT rather than the
+  // wordmark's size — the app bar is one: at size 18 the derived 31px mark
+  // resolved 31 paths into 19px of height, which reads as a smudge rather
+  // than a shark. A prop rather than an inline style at the call site, so
+  // the size is a value the component owns and a reviewer can find.
+  const markWidth = markWidthProp || Math.round(size * 1.7);
 
   if (variant === "mark") {
     return (
