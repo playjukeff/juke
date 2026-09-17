@@ -457,7 +457,7 @@ export default function V3DraftHome() {
           <Scenarios engine={engine} ready={ready} tick={tick} roomActive={roomActive} />
           <Friends engine={engine} roomActive={roomActive} />
         </div>
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-[76px] lg:self-start">
           <Recent history={history} inProgress={inProgress} onDelete={(id) => { engine.deleteHistoryDraft(id); bump() }} />
           <InsightsTeaser engine={engine} ready={ready} />
         </div>

@@ -163,7 +163,7 @@ export function PosTag({ pos, className = '' }) {
    `code` is the band's left text (what situation this block is), `aside` the
    right. A sheet without a band is allowed — `band={false}` — for the plain
    white panels a page needs between the called blocks. */
-export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', rise = true, ...rest }) {
+export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', codeAs: CodeTag = 'h2', rise = true, ...rest }) {
   // A Sheet rises once on ARRIVAL -- a route change plays the new page's
   // first viewport (motion.jsx useReveal). One in view on a cold load is
   // simply there, and so is one below the fold: sections do not rise as
@@ -176,7 +176,10 @@ export function Sheet({ code, aside, band = true, children, className = '', body
     <Tag ref={ref} className={cx('overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet', className)} {...rest}>
       {band && (code || aside) && (
         <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
-          <span className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{code}</span>
+          {/* The band's code IS the section's heading — it was a span, so
+              five pages carried one heading between them and nothing could
+              be jumped to. The tag changes and the styling does not. */}
+          <CodeTag className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{code}</CodeTag>
           {aside && <span className="shrink-0 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-bandInk">{aside}</span>}
         </div>
       )}

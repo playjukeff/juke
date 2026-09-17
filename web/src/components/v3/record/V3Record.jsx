@@ -75,6 +75,7 @@ function Summary({ locker, stats, calls, callsStatus, signedIn, sync, leagueStat
     { label: 'Last draft', value: stats.last ? shortDate(stats.last.completedAt) : '—', note: stats.last ? stats.last.leagueType : 'Nothing yet' },
   ]
   const known = callsStatus === 'ready'
+  const noCalls = known && !calls.graded && !calls.pending && !calls.good && !calls.bad
   const callFigures = [
     { label: 'Good calls', value: known ? calls.good : '—', note: known ? (calls.graded ? `Of ${calls.graded} graded` : 'Nothing graded yet') : 'No calls recorded' },
     { label: 'Bad calls', value: known ? calls.bad : '—', note: 'Calls the week went against' },
@@ -93,7 +94,12 @@ function Summary({ locker, stats, calls, callsStatus, signedIn, sync, leagueStat
       <section aria-labelledby="rec-sum-calls" className="min-w-0">
         <Headline as="h2" size="block" id="rec-sum-calls">Calls Juke gave you</Headline>
         <div className="mt-2"><CallsWhere signedIn={signedIn} leagueStatus={leagueStatus} /></div>
-        {callsStatus === 'loading' ? <Skeleton lines={3} className="mt-4" /> : (
+        {/* Four tiles of em-dashes state "no calls" a second time, directly
+            above an empty state that states it in prose. One sentence until
+            there is a figure worth a tile. */}
+        {callsStatus === 'loading' ? <Skeleton lines={3} className="mt-4" /> : noCalls ? (
+          <p className="mt-4 text-[15px] leading-[1.55] text-v3-ink3">No calls recorded yet — they land here as Juke makes them on your roster.</p>
+        ) : (
           <dl className="mt-4 grid grid-cols-2 gap-2">{callFigures.map((f) => <Stat key={f.label} {...f} />)}</dl>
         )}
       </section>
@@ -231,7 +237,7 @@ function Vocabulary() {
   return (
     <div>
       <Label>Every verdict a call can carry</Label>
-      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
         {VERDICT_KEYS.map((k) => (
           <li key={k} className="flex min-w-0 items-center gap-2"><VerdictMark verdict={k} /></li>
         ))}
@@ -353,7 +359,7 @@ function CallsSection({ dec, mode, onSeeAll, signedIn, leagueStatus }) {
     body = (
       <div className="grid gap-6 p-5 sm:p-8">
         <div className="flex max-w-[64ch] flex-col items-start gap-3">
-          <Headline as="h3" size="block">{signedOut ? 'Your calls start when you connect a league' : 'No calls recorded yet'}</Headline>
+          <Headline as="h2" size="block">{signedOut ? 'Your calls start when you connect a league' : 'No calls recorded yet'}</Headline>
           <p className="text-[15px] leading-[1.55] text-v3-ink2">
             {signedOut
               ? 'Every call Juke makes about your real roster — the claim, the swap, the trade — is written down here with what you did and what happened next, so the advice can be checked rather than taken on trust. There is nothing to show yet, and a sample would defeat the point.'

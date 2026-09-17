@@ -330,7 +330,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
           </Sheet>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-6 lg:sticky lg:top-[76px] lg:self-start">
           <Sheet code="Every swap worth making" aside={unit} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             {swaps.length ? (
               <ul>

@@ -260,7 +260,7 @@ function WeekCall({ sheet, week }) {
   const matchWeek = game ? game.week : week
   const matchText = matchWeek ? `Week ${matchWeek} matchup` : 'The matchup'
   return (
-    <div className="mt-7 rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
+    <div className="rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
       <div className="flex items-center justify-between gap-3">
         <Label>The one thing this week</Label>
         {call ? <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{call.kind}</span> : null}
@@ -694,16 +694,27 @@ export default function NowConnected({ plan = null }) {
     <div className="grid gap-10">
       <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} showKickoff={!mine} />
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+      {/* The opening sentence runs the full measure rather than being wrapped
+          by the narrower of two tracks: the headline is sized by the viewport
+          (clamp), so squeezing it into a 5fr column put 68px type on four
+          lines and left a third of the hero empty beside it. Copy on its own
+          row, then the week's two cards side by side underneath. */}
+      <div className="grid gap-8">
         <div>
           <Label>Now · your call sheet{week ? ` · week ${week}` : ''}</Label>
-          <Headline className="mt-3">{title}</Headline>
-          <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
+          <Headline className="mt-3 max-w-[22ch]">{title}</Headline>
+          <p className="mt-5 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2">
             {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}
           </p>
-          {!mine ? <div className="mt-7"><QuietButton href="#/account">Manage leagues</QuietButton></div> : <WeekCall sheet={sheet} week={week} />}
         </div>
-        {mine ? <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} sleeperGame={sleeperGame} /> : null}
+        {mine ? (
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-8">
+            <Matchup sheet={sheet} week={week} platform={platform} hasRules={!!snapshot.rules} hasSchedule={!!(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length)} sleeperGame={sleeperGame} />
+            <WeekCall sheet={sheet} week={week} />
+          </div>
+        ) : (
+          <div><QuietButton href="#/account">Manage leagues</QuietButton></div>
+        )}
       </div>
 
       {mine ? (

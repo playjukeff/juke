@@ -295,7 +295,7 @@ function Standings({ snapshot, ownerId, odds }) {
                    row is the team and not the slot. */
                 <motion.tr {...LAYOUT_ROW} key={rowKey(t, i)} data-team-row={rowKey(t, i)} className={cx('border-b border-v3-rule last:border-b-0 [&>td]:bg-inherit', you ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : 'bg-v3-sheet', jumped.has(rowKey(t, i)) && 'relative z-[2]')}>
                   <td className="border-0 py-3 pl-3 pr-0 font-figure text-[15px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
-                  <td className="border-0 max-w-0 py-3 pl-1 pr-2">
+                  <td className="border-0 w-full max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
                       <a href={teamHref(t)} className="min-w-0 truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
                       {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
@@ -467,10 +467,10 @@ function DraftReport({ league, snapshot, ready }) {
               const team = findTeam(snapshot, s.teamId)
               return (
                 <tr key={s.teamId} className={cx('border-t border-v3-rule', s.mine ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
-                  <td className="border-0 max-w-0 px-4 py-2.5 sm:px-5">
-                    {team ? <a href={teamHref(team)} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span className="block truncate text-[15px] font-semibold text-v3-ink">{s.name}</span>}
+                  <td className="border-0 w-full max-w-0 py-2.5 ps-4 pe-2 sm:ps-5">
+                    {team ? <a href={teamHref(team)} title={s.name} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span title={s.name} className="block truncate text-[15px] font-semibold text-v3-ink">{s.name}</span>}
                   </td>
-                  <td className="border-0 whitespace-nowrap px-4 py-2.5 text-right font-figure text-[15px] font-bold text-v3-ink sm:px-5">
+                  <td className="border-0 w-px whitespace-nowrap py-2.5 ps-2 pe-4 text-right font-figure text-[15px] font-bold text-v3-ink sm:pe-5">
                     {s.grade || '—'}{s.rank ? <span className="font-medium text-v3-ink2"> · {ordinal(s.rank)}</span> : null}
                   </td>
                 </tr>
@@ -552,9 +552,9 @@ function Connected({ league }) {
         </Sheet>
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <Standings snapshot={snapshot} ownerId={league.ownerId || null} odds={model.odds} />
-        <div className="grid gap-4">
+        <div className="grid gap-4 lg:sticky lg:top-[76px] lg:self-start">
           <Facts league={league} snapshot={snapshot} />
           <DraftReport league={league} snapshot={snapshot} ready={model.ready} />
           <div className="flex flex-wrap items-center gap-3 px-1">

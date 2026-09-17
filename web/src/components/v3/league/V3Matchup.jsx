@@ -195,7 +195,7 @@ function NameCell({ row, align, week, isCurrent }) {
   const f = flagsOf(p, week, isCurrent)
   const right = align === 'right'
   return (
-    <td className={cx('border-0 max-w-0 py-2', right ? 'pl-2 pr-3 sm:pl-3 sm:pr-5' : 'pl-3 pr-2 sm:pl-5 sm:pr-3')}>
+    <td className={cx('border-0 w-full max-w-0 py-2', right ? 'pl-2 pr-3 sm:pl-3 sm:pr-5' : 'pl-3 pr-2 sm:pl-5 sm:pr-3')}>
       <span className={cx('flex min-w-0 items-center gap-2', right && 'flex-row-reverse text-right')}>
         {p ? <PosTag pos={p.pos} className="hidden sm:inline-flex" /> : null}
         <span className="min-w-0">
