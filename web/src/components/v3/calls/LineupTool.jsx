@@ -198,90 +198,74 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
 
   return shell(title, lede, (
     <div className="grid gap-6">
-      {/* ---- The call and the matchup it moves ---- */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <Sheet code="The call · Start / sit" aside={sample ? <SampleTag /> : unit}>
-          {best ? (
-            <div className="grid gap-5">
-              <p className="text-[18px] leading-[1.45] text-v3-ink">
-                Start <a href={playerHref(best.start)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.start.name}</a> over{' '}
-                <a href={playerHref(best.sit)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.sit.name}</a> —{' '}
-                <Delta value={best.gain} digits={1} className="text-[18px]" /> {unit}.
-              </p>
-              <Steps>
-                <Step n={1} what={`Project both ${best.start.pos === 'DST' ? 'defenses' : best.start.pos + 's'}`} sub={sample ? 'per game, from the season projection' : 'this week, under your league’s scoring'}>
-                  <StepBars
-                    max={Math.max(startPts, sitPts, 1)}
-                    rows={[
-                      { label: `${best.sit.name} (starting)`, value: sitPts, tone: 'neutral' },
-                      { label: `${best.start.name} (bench)`, value: startPts, tone: 'neutral' },
-                    ]}
-                  />
-                </Step>
-                <Step
-                  n={2}
-                  what={best.replacing ? `${best.sit.name} scores nothing` : 'Same position, so the swap is certainly legal'}
-                  sub={best.replacing
-                    ? (week && Number(best.sit.bye) === Number(week) ? `he is on bye in week ${week}` : 'he is ruled out')
-                    : `a FLEX may allow more, but ${sample ? 'a league' : platformName} does not say which slot is one`}
-                />
-                <Step n={3} what={after !== null ? `${best.replacing ? `Counting ${best.sit.name} at 0, your` : 'Your'} lineup goes from ${nowTotal.toFixed(1)} to ${after.toFixed(1)}` : 'The gap is the call'} sub={winAfter !== null && winProb !== null ? `win probability ${Math.round(winProb * 100)}% → ${Math.round(winAfter * 100)}%` : null}>
-                  <p className="font-figure text-[15px] text-v3-ink2">
-                    {startPts.toFixed(1)} − {sitPts.toFixed(1)} = <Delta value={best.gain} digits={1} />
-                  </p>
-                </Step>
-                {/* Only when the swap is INTO a flagged player, and then it is
-                    the condition the gain above is silently assuming. The
-                    number is breakEvenPlayOdds() in strategyBoard.js — this
-                    draws it and does not decide it. */}
-                {best.needsToPlay !== null && (
-                  <Step
-                    n={4}
-                    what={`This one is a bet on ${best.start.name} playing`}
-                    sub={`${platformName} has him ${best.start.inj === 'D' ? 'doubtful' : 'questionable'}, and the slot scores nothing if he sits`}
-                  >
-                    <p className="font-figure text-[15px] text-v3-ink2">
-                      {sitPts.toFixed(1)} ÷ {startPts.toFixed(1)} = worth it at about{' '}
-                      <Fig className="font-bold text-v3-ink">{Math.round(best.needsToPlay * 100)}%</Fig> to play
-                    </p>
-                  </Step>
-                )}
-              </Steps>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              <p className="text-[18px] leading-[1.45] text-v3-ink">
-                Nothing on your bench beats a starter at his own position — this lineup is the best one Juke can prove from this roster.
-              </p>
-              <p className="text-[15px] leading-[1.55] text-v3-ink2">
-                {total !== null ? <>It projects <Fig className="font-bold text-v3-ink">{total.toFixed(1)}</Fig> {unit} as set.</> : 'Some starters have no projection, so there is no total to quote.'}
-                {benchBest !== null && <> Your best bench player projects <Fig className="font-bold text-v3-ink">{benchBest.toFixed(1)}</Fig>.</>}
-              </p>
-            </div>
-          )}
-        </Sheet>
-
-        <MatchupSheet
-          sample={sample}
-          week={week}
-          game={game}
-          opponent={opponent}
-          total={total}
-          oppTotal={oppTotal}
-          margin={margin}
-          winProb={winProb}
-          readTone={readTone}
-          mineWeek={mineWeek}
-          oppWeek={oppWeek}
-          scoredCount={scoredCount}
-          oppScoredCount={oppScoredCount}
-          provider={league && league.provider}
-        />
-      </div>
-
-      {/* ---- The working ---- */}
+      {/* One grid rather than two stacked ones. The call and the
+          matchup were a row of their own, and a call with nothing to do
+          is a short card beside a tall one — a band of empty ground
+          across the middle of the page while the working sat below it.
+          Merged, each column runs continuously and any difference in
+          length lands at the foot of the page where it costs nothing. */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="grid gap-6">
+          <Sheet code="The call · Start / sit" aside={sample ? <SampleTag /> : unit}>
+            {best ? (
+              <div className="grid gap-5">
+                <p className="text-[18px] leading-[1.45] text-v3-ink">
+                  Start <a href={playerHref(best.start)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.start.name}</a> over{' '}
+                  <a href={playerHref(best.sit)} className={cx(HIT, 'font-bold underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink')}>{best.sit.name}</a> —{' '}
+                  <Delta value={best.gain} digits={1} className="text-[18px]" /> {unit}.
+                </p>
+                <Steps>
+                  <Step n={1} what={`Project both ${best.start.pos === 'DST' ? 'defenses' : best.start.pos + 's'}`} sub={sample ? 'per game, from the season projection' : 'this week, under your league’s scoring'}>
+                    <StepBars
+                      max={Math.max(startPts, sitPts, 1)}
+                      rows={[
+                        { label: `${best.sit.name} (starting)`, value: sitPts, tone: 'neutral' },
+                        { label: `${best.start.name} (bench)`, value: startPts, tone: 'neutral' },
+                      ]}
+                    />
+                  </Step>
+                  <Step
+                    n={2}
+                    what={best.replacing ? `${best.sit.name} scores nothing` : 'Same position, so the swap is certainly legal'}
+                    sub={best.replacing
+                      ? (week && Number(best.sit.bye) === Number(week) ? `he is on bye in week ${week}` : 'he is ruled out')
+                      : `a FLEX may allow more, but ${sample ? 'a league' : platformName} does not say which slot is one`}
+                  />
+                  <Step n={3} what={after !== null ? `${best.replacing ? `Counting ${best.sit.name} at 0, your` : 'Your'} lineup goes from ${nowTotal.toFixed(1)} to ${after.toFixed(1)}` : 'The gap is the call'} sub={winAfter !== null && winProb !== null ? `win probability ${Math.round(winProb * 100)}% → ${Math.round(winAfter * 100)}%` : null}>
+                    <p className="font-figure text-[15px] text-v3-ink2">
+                      {startPts.toFixed(1)} − {sitPts.toFixed(1)} = <Delta value={best.gain} digits={1} />
+                    </p>
+                  </Step>
+                  {/* Only when the swap is INTO a flagged player, and then it is
+                      the condition the gain above is silently assuming. The
+                      number is breakEvenPlayOdds() in strategyBoard.js — this
+                      draws it and does not decide it. */}
+                  {best.needsToPlay !== null && (
+                    <Step
+                      n={4}
+                      what={`This one is a bet on ${best.start.name} playing`}
+                      sub={`${platformName} has him ${best.start.inj === 'D' ? 'doubtful' : 'questionable'}, and the slot scores nothing if he sits`}
+                    >
+                      <p className="font-figure text-[15px] text-v3-ink2">
+                        {sitPts.toFixed(1)} ÷ {startPts.toFixed(1)} = worth it at about{' '}
+                        <Fig className="font-bold text-v3-ink">{Math.round(best.needsToPlay * 100)}%</Fig> to play
+                      </p>
+                    </Step>
+                  )}
+                </Steps>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                <p className="text-[18px] leading-[1.45] text-v3-ink">
+                  Nothing on your bench beats a starter at his own position — this lineup is the best one Juke can prove from this roster.
+                </p>
+                <p className="text-[15px] leading-[1.55] text-v3-ink2">
+                  {total !== null ? <>It projects <Fig className="font-bold text-v3-ink">{total.toFixed(1)}</Fig> {unit} as set.</> : 'Some starters have no projection, so there is no total to quote.'}
+                  {benchBest !== null && <> Your best bench player projects <Fig className="font-bold text-v3-ink">{benchBest.toFixed(1)}</Fig>.</>}
+                </p>
+              </div>
+            )}
+          </Sheet>
           <Sheet code="Your lineup, as set" aside={total === null ? 'not all projected' : `${total.toFixed(1)} ${sample ? 'pts / gm' : scoredCount ? 'so far' : 'proj'}`} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             {lineup.length ? (
               <ul>
@@ -330,7 +314,23 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
           </Sheet>
         </div>
 
-        <div className="grid gap-6 lg:sticky lg:top-[76px] lg:self-start">
+        <div className="grid gap-6">
+          <MatchupSheet
+            sample={sample}
+            week={week}
+            game={game}
+            opponent={opponent}
+            total={total}
+            oppTotal={oppTotal}
+            margin={margin}
+            winProb={winProb}
+            readTone={readTone}
+            mineWeek={mineWeek}
+            oppWeek={oppWeek}
+            scoredCount={scoredCount}
+            oppScoredCount={oppScoredCount}
+            provider={league && league.provider}
+          />
           <Sheet code="Every swap worth making" aside={unit} bodyClass="px-4 pb-4 pt-1 sm:px-5">
             {swaps.length ? (
               <ul>
