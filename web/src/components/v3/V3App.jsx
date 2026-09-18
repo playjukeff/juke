@@ -23,6 +23,7 @@ import V3Call from './calls/V3Call.jsx'
 import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
+import V3Game from './games/V3Game.jsx'
 import { WelcomeRoute } from './landing/Landing.jsx'
 import YahooReturn from '../shell/YahooReturn.jsx'
 import FullValueTips from './FullValue.jsx'
@@ -434,6 +435,7 @@ function NotFound() {
      #/draft-room        → #/draft
      #/draft?room=<code> → #/draft/live?room=<code>   an invite
      #/v3/...            → #/...              the proposal's own prefix
+     #/games/<espnId>    one NFL game — new, nothing redirects to it
      /docs/*.html        → #/method/<doc> */
 function route(sub) {
   const [a = '', b, c] = (sub || '').split('/')
@@ -450,6 +452,7 @@ function route(sub) {
   if (a === 'draft' && b === 'insights') return { page: <V3Insights /> }
   if (a === 'draft') return { page: <V3DraftHome /> }
   if (a === 'record') return { page: <V3Record /> }
+  if (a === 'games' && b) return { page: <V3Game gameId={b} /> }
   if (a === 'account') return { page: <V3Account /> }
   if (a === 'method') return { page: <V3Method doc={b || 'how-it-works'} /> }
   if (a === 'welcome') return { page: <WelcomeRoute /> }

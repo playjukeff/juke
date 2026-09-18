@@ -182,7 +182,10 @@ export function Slate({ games, kickoffAt }) {
           const scored = g.state !== 'pre' && g.awayScore !== undefined && g.homeScore !== undefined
           const when = g.state === 'pre' && g.kickoff ? kickoffText(Date.parse(g.kickoff)) : g.detail
           return (
-            <li key={`${g.away}-${g.home}-${i}`} className={cx('min-h-[48px] items-center justify-between gap-3 border-b border-v3-rule px-4 py-2 sm:flex sm:px-5 sm:[&:nth-child(odd)]:border-r', !all && i >= PHONE_SLATE ? 'hidden' : 'flex')}>
+            <li key={`${g.away}-${g.home}-${i}`} className={cx('relative min-h-[48px] items-center justify-between gap-3 border-b border-v3-rule px-4 py-2 sm:flex sm:px-5 sm:[&:nth-child(odd)]:border-r', g.id && 'hover:bg-v3-paper focus-within:bg-v3-paper', !all && i >= PHONE_SLATE ? 'hidden' : 'flex')}>
+              {/* The whole row opens the game. A cached scoreboard from before
+                  ESPN's event id was kept has none, and that row is plain. */}
+              {g.id ? <a href={`#/games/${encodeURIComponent(g.id)}`} aria-label={`${g.away} at ${g.home}, game details`} className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call" /> : null}
               <span className="flex min-w-0 items-baseline gap-2 font-figure text-[15px] font-semibold text-v3-ink">
                 <span>{g.away}</span>
                 {scored ? <Fig className="text-v3-ink2">{g.awayScore}</Fig> : null}

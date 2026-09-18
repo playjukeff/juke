@@ -67,6 +67,8 @@ export default {
           costWash: 'rgb(var(--v3-cost-wash) / <alpha-value>)',
           warn: 'rgb(var(--v3-warn) / <alpha-value>)',
           warnWash: 'rgb(var(--v3-warn-wash) / <alpha-value>)',
+          away: 'rgb(var(--v3-away) / <alpha-value>)',
+          home: 'rgb(var(--v3-home) / <alpha-value>)',
           // What a shadow or a scrim is cast in: the ink in light, black at
           // night. Never text.
           shade: 'rgb(var(--v3-shade) / <alpha-value>)',
