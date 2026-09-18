@@ -26,7 +26,7 @@ The Draft Room is still that simulator, built for one specific ten-team
 league and now configurable from the setup screen: 4 to 24 teams, 8 to 20
 rounds, any starting lineup, and standard, half or full PPR. That original
 league is still what every control defaults to. Around it: a league
-connected from Sleeper, ESPN or CBS (Yahoo in testing), read-only; the
+connected from Sleeper, ESPN, CBS or Yahoo, read-only; the
 week's lineup, wire and trade calls on it; and the player, league and
 record pages. Reading a real league is Season Pass, which is not on sale
 yet.

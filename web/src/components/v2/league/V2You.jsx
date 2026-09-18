@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SignInButton, SignUpButton, useClerk, useUser } from '@clerk/clerk-react'
-import { LINE as PLATFORM_LINE, LIVE_NAMES, platformFor } from '../../shell/leaguePlatforms.js'
+import { LINE as PLATFORM_LINE, LIVE_NAMES, MORE_COMING, platformFor } from '../../shell/leaguePlatforms.js'
 import { leagueCap, tierLabel } from '../../../lib/tiers.js'
 import { useAccountUiReady } from '../../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../../hooks/useAuthState.js'
@@ -315,7 +315,7 @@ export default function V2You() {
               <ul className="mt-3 space-y-2.5">
                 {[
                   'Your locker, synced to every browser you sign in on.',
-                  `A connected league — ${LIVE_NAMES} today, more to come. Read-only; Juke never edits it.`,
+                  `A connected league — ${LIVE_NAMES}${MORE_COMING ? " today, more to come" : ""}. Read-only; Juke never edits it.`,
                   'The in-season rooms and the decision ledger, reading your real roster.',
                 ].map((t) => (
                   <li key={t} className="flex gap-2.5 text-[14px] leading-[1.5] text-v2-ink2">

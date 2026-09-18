@@ -23,15 +23,16 @@
    produced were the harness, measured by moving the sign-in after load and
    watching them go.
 
-   The Yahoo platform is `beta`, so every test but one opts this browser in
-   the way a beta tester would. */
+   Yahoo is live, so nothing here opts the browser in. It shipped `beta`
+   first, and every test but one set juke.beta.yahoo the way a tester's
+   browser would; the flag is gone from these tests because a reader with a
+   clean browser is who they are about now. */
 
 import { test, expect } from "@playwright/test";
 import { SITE } from "./helpers.mjs";
 
-function install(page, { beta = true } = {}) {
-  return page.addInitScript(({ beta }) => {
-    if (beta) localStorage.setItem("juke.beta.yahoo", "1");
+function install(page) {
+  return page.addInitScript(() => {
     const log = (name, args) => {
       const all = JSON.parse(sessionStorage.getItem("__ylog") || "[]");
       all.push({ name, args });
@@ -74,7 +75,7 @@ function install(page, { beta = true } = {}) {
       get: () => real,
       set: (v) => { real = Object.assign(v, stubs); },
     });
-  }, { beta });
+  });
 }
 
 const logOf = (page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("__ylog") || "[]"));
@@ -94,10 +95,12 @@ test("the whole round trip, through the real return page", async ({ page }) => {
 
   const yahooRow = dialog.getByRole("button", { name: /Yahoo/ });
   await expect(yahooRow).toBeEnabled();
-  await expect(yahooRow).toContainText("BETA");
-  /* Joined by the list file rather than by hand -- this read "Sleeper and
-     ESPN and CBS" and "the others" about a single platform. */
-  await expect(dialog).toContainText("Sleeper, ESPN and CBS are what Juke reads today. Yahoo is not connected yet.");
+  await expect(yahooRow).not.toContainText("BETA");
+  /* Derived from the list file rather than written by hand -- this read
+     "Sleeper and ESPN and CBS" and "the others" about a single platform --
+     and with every platform live it names none of them as missing. */
+  await expect(dialog).toContainText("Juke reads all of these.");
+  await expect(dialog).not.toContainText("not connected yet");
 
   await yahooRow.click();
   await expect(dialog.getByRole("heading", { name: "Sign in with Yahoo" })).toBeVisible();
@@ -169,11 +172,19 @@ test("the return page will not redirect off the site", async ({ page }) => {
   expect(new URL(page.url()).origin).toBe(new URL(SITE).origin);
 });
 
-test("without the beta flag Yahoo is still locked", async ({ page }) => {
-  await install(page, { beta: false });
-  const row = (await openDialog(page)).getByRole("button", { name: /Yahoo/ });
-  await expect(row).toBeDisabled();
-  await expect(row).not.toContainText("BETA");
+/* The flip itself. This test used to be "without the beta flag Yahoo is
+   still locked"; the same clean browser now has to be offered it, and
+   `install` sets no flag at all, so nothing in this file can pass on a
+   tester's opt-in. Asserted first on the storage, because a flag left
+   behind would make every test above pass for the wrong reason. */
+test("a browser with no flag is offered Yahoo, like every other platform", async ({ page }) => {
+  await install(page);
+  const dialog = await openDialog(page);
+  expect(await page.evaluate(() => localStorage.getItem("juke.beta.yahoo"))).toBeNull();
+  for (const name of ["Sleeper", "ESPN", "CBS", "Yahoo"]) {
+    await expect(dialog.getByRole("button", { name: new RegExp(name) })).toBeEnabled();
+  }
+  await expect(dialog.getByRole("button", { name: /Yahoo/ })).not.toContainText("BETA");
 });
 
 /* The dialog's box asked for 92vw inside a <dialog> the browser caps at
