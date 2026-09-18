@@ -9,13 +9,13 @@
        reason: this page shares style.css and has no toggle of its own, so it
        has to honour a choice made next door rather than reverting to light
        halfway through a visit. -->
-  <script src="../theme.js?v=202609181900"></script>
+  <script src="../theme.js?v=202609181915"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../style.css?v=202609181900">
+  <link rel="stylesheet" href="../style.css?v=202609181915">
 
   <link rel="icon" href="../juke-icon-tile.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="../juke-icon-tile-32.png">
@@ -134,7 +134,7 @@
   <header class="appbar">
    <div class="appbar-inner">
     <a class="home" href="../index.html" title="Juke home"
-       aria-label="Back to the Draft Room">
+       aria-label="Juke home">
     <!-- class="mark" is kept so .home's layout rules and the 560px hide rule
          still find it, and the size is overridden inline because .mark is
          31x36 - the shield's portrait aspect. The shark is 564:352, so 36
@@ -156,22 +156,25 @@
   <main class="doc">
 
     <p class="doc-intro">
-      You can use Juke without an account, and most people do &mdash; a mock
-      draft runs entirely in your own browser and needs nothing from us but
-      the page. There is now also an optional account, which exists for one
-      reason: so your drafts follow you from your phone to your laptop. What
-      follows is a specific account of what the app actually does in each
-      case, not a template filled in with the usual disclaimers.
+      You can use most of Juke without an account, and most people do &mdash;
+      a mock draft runs entirely in your own browser, and the player pages
+      and the sample league need nothing from us but the page. An account is
+      for two things: so your drafts follow you from your phone to your
+      laptop, and so Juke can read a league you connect. What follows is a
+      specific account of what the app actually does in each case, not a
+      template filled in with the usual disclaimers.
     </p>
 
     <div class="note">
       Written to describe what the code actually does rather than to read
       like a generic policy &mdash; every claim below was checked against the
       source and the live configuration before being written down. It hasn't
-      been reviewed by a lawyer. Last updated 18 September 2026: Juke can
+      been reviewed by a lawyer. Last updated September 18, 2026: Juke can
       read a Yahoo league through a permission you grant on Yahoo's own
       page, which is being tested before it is offered to everybody. The
-      update before that, 2 September 2026, was accounts arriving, when the
+      same day, the opening stopped saying an account exists only for your
+      drafts, which stopped being true when leagues could be connected. The
+      update before that, September 2, 2026, was accounts arriving, when the
       previous version of this page said Juke had none.
     </div>
 
@@ -218,11 +221,13 @@
 
     <h2 id="s02"><span class="no">02</span>Accounts, and what signing in changes</h2>
     <p>
-      An account is optional. Nothing about drafting requires one, and the
-      whole app works signed out exactly as section 01 describes. What an
-      account buys is one thing: the draft you are in the middle of, and the
+      An account is optional. Nothing about drafting requires one, and a
+      mock draft works signed out exactly as section 01 describes. What an
+      account adds is two things: the draft you are in the middle of, and the
       locker of drafts you have finished, follow you to any browser you sign
-      in on instead of living in one.
+      in on instead of living in one; and you can connect a league for Juke
+      to read, which needs an account because the league has to belong to
+      somebody.
     </p>
     <p>
       <b>Identity is handled by Clerk</b>, a third-party authentication
@@ -238,7 +243,7 @@
       Five tables, and only the first exists merely because you signed in:
     </p>
     <table>
-      <tr><td class="k">Who you are</td><td>The account id Clerk issues, and two timestamps &mdash; when the row was created and when you were last seen. <b>Not</b> your email address, and not your name: the page already has both from your own session, so a second copy here would be a copy we did not need and would have to protect.</td></tr>
+      <tr><td class="k">Who you are</td><td>The account id Clerk issues, which plan the account is on, and two timestamps &mdash; when the row was created and when you were last seen. <b>Not</b> your email address, and not your name: the page already has both from your own session, so a second copy here would be a copy we did not need and would have to protect.</td></tr>
       <tr><td class="k">Your draft in progress</td><td>The same saved draft described in section 01 &mdash; seat, picks, settings, queue, watchlist &mdash; stored whole against your account id, and replaced each time you save. There is only ever one.</td></tr>
       <tr><td class="k">Your finished drafts</td><td>One row per completed mock: the picks, the league it was, and the grade report, against your account id and the date it finished.</td></tr>
       <tr><td class="k">Leagues you connected</td><td>For each one: which platform, its id, which team in it is yours, and a cached copy of its name, season and size so the header can draw without asking the platform again on every page.</td></tr>
@@ -287,21 +292,22 @@
       your Yahoo account, which ends it immediately whatever we hold.
     </p>
     <p>
-      That is the whole of it. No behavioural profile, no record of what you
+      That is the whole of it. No behavioral profile, no record of what you
       looked at, nothing about you beyond the drafts you chose to run and the
       leagues you asked us to read.
     </p>
     <p>
       <b>Deleting things.</b> Removing a draft from your locker deletes it
       from your account as well as from your browser. Your account itself is
-      Clerk's to delete, from the account screen behind your avatar &mdash;
-      and doing that now deletes everything in the table above with it.
-      Clerk tells Juke the account is gone and the three rows are removed:
-      your id, your draft in progress, every finished draft, every league you
-      connected and any private-league sign-in stored with one. Nothing is
+      Clerk's to delete, from <b>Profile and security</b> in the Account
+      menu &mdash; and doing that now deletes everything in the table above
+      with it. Clerk tells Juke the account is gone and every row is removed:
+      your id and plan, your draft in progress, every finished draft, every
+      league you connected and any sign-in or permission stored to read one.
+      Nothing is
       kept back and there is nothing left to ask us for.
       <br><br>
-      This page said the opposite until 2 September 2026, because it was
+      This page said the opposite until September 2, 2026, because it was
       true: there was no link between the two, and describing one that did
       not exist would have been worse than admitting the gap.
     </p>
@@ -459,7 +465,7 @@
 
   </main>
 
-  <script src="../back-to-top.js?v=202609181900" data-auto></script>
+  <script src="../back-to-top.js?v=202609181915" data-auto></script>
 
 </body>
 </html>

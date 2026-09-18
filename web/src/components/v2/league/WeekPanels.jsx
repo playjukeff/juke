@@ -207,7 +207,7 @@ export function SeasonEnd({ league, snapshot, onWeeks }) {
             Mock a {snapshot.totalTeams}-team board before next year
           </h3>
           <p className="mt-2 text-[14px] leading-[1.55] text-v2-ink2">
-            The draft is the one decision a whole season runs on, and the only one you can practise.
+            The draft is the one decision a whole season runs on, and the only one you can practice.
           </p>
         </div>
         <VoltButton href="#/v2/draft" size="md">Open the Draft Room <Arrow /></VoltButton>

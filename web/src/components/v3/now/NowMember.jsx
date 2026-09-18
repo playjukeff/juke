@@ -36,7 +36,7 @@ function Lede({ audience, bucket, week, season, plan }) {
   const pro = tierLabel('pro')
   if (audience === 'free') {
     if (bucket === 'season') return <>Week {week} is on. {pro} puts your league on this page — the matchup, the lineup swap, the claim — with the arithmetic printed beside each.</>
-    if (bucket === 'post') return <>{season ? `The ${season} season is over.` : 'The season is over.'} Next year’s draft is the one decision left, and it is the one you can practise tonight.</>
+    if (bucket === 'post') return <>{season ? `The ${season} season is over.` : 'The season is over.'} Next year’s draft is the one decision left, and it is the one you can practice tonight.</>
     return <>Tonight’s board is priced and your next mock is one press away. When your league drafts, {pro} is what puts it on this page.</>
   }
   if (audience === 'sub') {

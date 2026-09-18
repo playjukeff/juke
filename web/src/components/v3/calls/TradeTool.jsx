@@ -204,7 +204,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
       ? 'Pick players on both sides'
       : Math.abs(swing.you) < 5
         ? 'Close to even'
-        : swing.you > 0 ? 'This favours you' : 'This favours them'
+        : swing.you > 0 ? 'This favors you' : 'This favors them'
   const mineTotal = rosterTotal(mine, byId, gapOf)
   const win = tradeWindow(snapshot.tradeDeadline, { week: snapshot.week }).state
   const top = myRows.filter((r) => r.value !== null).slice().sort((a, b) => b.value - a.value)[0] || null
@@ -222,7 +222,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
   const title = !empty && swing.priced
     ? Math.abs(swing.you) < 5
       ? 'This deal is close to even.'
-      : swing.you > 0 ? `This deal favours you by ${Math.round(swing.you)}.` : `This deal favours them by ${Math.round(-swing.you)}.`
+      : swing.you > 0 ? `This deal favors you by ${Math.round(swing.you)}.` : `This deal favors them by ${Math.round(-swing.you)}.`
     : !empty ? 'Juke will not call this one.'
       : suggestion ? `Ask for ${suggestion.get.player.name}.` : 'Price a trade before you send it.'
   const lede = !empty

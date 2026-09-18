@@ -8014,7 +8014,7 @@ function ourRead(player, s, sig) {
   } else if (player.projPosRank) {
     if (gap >= MARKET_GAP) {
       lines.push(`The board has ${them} at <b>${posLabel(player.pos)}${player.posRank}</b> and the projection
-        says <b>${posLabel(player.pos)}${player.projPosRank}</b> — ${gap} places of daylight in your favour.
+        says <b>${posLabel(player.pos)}${player.projPosRank}</b> — ${gap} places of daylight in your favor.
         That is the kind of gap that pays for a pick.`);
     } else if (gap <= -MARKET_GAP) {
       lines.push(`The room is drafting ${them} at <b>${posLabel(player.pos)}${player.posRank}</b> and the
