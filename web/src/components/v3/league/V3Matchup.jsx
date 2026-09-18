@@ -239,10 +239,10 @@ function LineupTable({ left, right, leftTeam, rightTeam, week, isCurrent, captio
         <colgroup><col /><col className="w-[56px] sm:w-[72px]" /><col className="w-[56px] sm:w-[72px]" /><col /></colgroup>
         <thead>
           <tr className="border-b border-v3-rule">
-            <th scope="col" className="border-0 bg-v3-sheet py-2.5 pl-3 pr-2 font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3 sm:pl-5"><span className="block truncate">{leftTeam ? leftTeam.teamName : '—'}</span></th>
+            <th scope="col" className="border-0 bg-v3-sheet py-2.5 pl-3 pr-2 font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3 sm:pl-5"><span className="block break-words [overflow-wrap:anywhere]">{leftTeam ? leftTeam.teamName : '—'}</span></th>
             <th scope="col" className="border-0 bg-v3-sheet py-2.5 pr-2 text-right font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{unit}</th>
             <th scope="col" className="border-0 bg-v3-sheet border-l border-v3-rule py-2.5 pl-2 text-left font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{right ? unit : ''}</th>
-            <th scope="col" className="border-0 bg-v3-sheet py-2.5 pl-2 pr-3 text-right font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3 sm:pr-5"><span className="block truncate">{rightTeam ? rightTeam.teamName : ''}</span></th>
+            <th scope="col" className="border-0 bg-v3-sheet py-2.5 pl-2 pr-3 text-right font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3 sm:pr-5"><span className="block break-words [overflow-wrap:anywhere]">{rightTeam ? rightTeam.teamName : ''}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -281,8 +281,8 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
     <div className={cx('min-w-0', right && 'text-right')}>
       <div className={cx('flex min-w-0 items-center gap-2', right && 'flex-row-reverse')}>
         {team && link ? (
-          <a href={teamHref(team)} className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
-        ) : team ? <span className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
+          <a href={teamHref(team)} className="min-w-0 break-words [overflow-wrap:anywhere] text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
+        ) : team ? <span className="min-w-0 break-words [overflow-wrap:anywhere] text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
           : <span className="text-[18px] font-extrabold text-v3-ink3 sm:text-[20px]">—</span>}
         {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
       </div>
@@ -355,7 +355,7 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
                   className={cx('grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 sm:gap-4 sm:px-5', !sample && 'transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call', on ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}
                 >
                   <span className="min-w-0">
-                    <span className={cx('block truncate text-[15px] sm:text-[15px]', aWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{a.team ? a.team.teamName : '—'}</span>
+                    <span className={cx('block break-words [overflow-wrap:anywhere] text-[15px] sm:text-[15px]', aWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{a.team ? a.team.teamName : '—'}</span>
                     <span className="block truncate font-figure text-[12px] text-v3-ink3">{a.team ? recordText(a.team) : ''}{yours && sameTeam(a.team, mine) ? ' · you' : ''}</span>
                   </span>
                   <span className="flex items-center gap-2 font-figure text-[15px] tabular-nums">
@@ -364,7 +364,7 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
                     <span className={bWon ? 'font-bold text-v3-ink' : 'text-v3-ink2'}>{typeof sb === 'number' ? sb.toFixed(1) : '—'}</span>
                   </span>
                   <span className="min-w-0 text-right">
-                    <span className={cx('block truncate text-[15px] sm:text-[15px]', bWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{b.team ? b.team.teamName : '—'}</span>
+                    <span className={cx('block break-words [overflow-wrap:anywhere] text-[15px] sm:text-[15px]', bWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{b.team ? b.team.teamName : '—'}</span>
                     <span className="block truncate font-figure text-[12px] text-v3-ink3">{b.team ? recordText(b.team) : ''}{yours && sameTeam(b.team, mine) ? ' · you' : ''}</span>
                   </span>
                 </Row>

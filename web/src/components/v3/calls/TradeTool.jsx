@@ -413,8 +413,8 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
                   <span className="min-w-0">
                     <a href={playerHref(row.player)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>{row.player.name}</a>
                     {teamHref(row.team) && !sample ? (
-                      <a href={teamHref(row.team)} className="block truncate font-figure text-[12px] text-v3-ink3 hover:text-v3-ink hover:underline">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</a>
-                    ) : <span className="block truncate font-figure text-[12px] text-v3-ink3">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</span>}
+                      <a href={teamHref(row.team)} className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3 hover:text-v3-ink hover:underline">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</a>
+                    ) : <span className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</span>}
                   </span>
                   <ValueBar value={Math.max(0, row.value)} max={valueMax} tone="neutral" className="order-last col-span-4 sm:order-none sm:col-span-1" />
                   <span className="text-right"><Signed value={row.value} className="text-[15px]" /></span>

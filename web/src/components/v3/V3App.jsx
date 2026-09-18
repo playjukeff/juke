@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
+import { SignInButton, SignedIn, SignedOut, useClerk, useUser } from '@clerk/clerk-react'
 import JukeLogo from '../juke-logo/JukeLogo.jsx'
 import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
@@ -24,6 +24,7 @@ import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
 import YahooReturn from '../shell/YahooReturn.jsx'
+import FullValueTips from './FullValue.jsx'
 
 /* Juke — "Call Sheet". This is the site as of the cutover: its own
    information architecture rather than a restyle of what came before, and
@@ -153,8 +154,7 @@ function Account() {
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <a href="#/account" className={cx(TOUCH, 'min-h-[40px] rounded-[6px] px-3 py-2 text-[15px] font-semibold text-v3-ink hover:bg-v3-well')}>Account</a>
-          <UserButton />
+          <AccountMenu />
         </SignedIn>
       </>
     )
@@ -164,6 +164,61 @@ function Account() {
       <Icon name="account" className="h-5 w-5" />
       <span className="hidden sm:inline">{signedIn ? 'Account' : 'Log in'}</span>
     </a>
+  )
+}
+
+/* One labelled button for everything about the signed-in account (A11).
+   It replaced an "Account" link sitting beside Clerk's own avatar button:
+   two controls for one subject, and only one of them said what it was.
+   Clerk's <UserButton/> is not reused because its trigger is an unlabelled
+   avatar and its menu cannot carry our own Account page; useClerk() gives
+   the same two actions it offered (manage profile, sign out) under our own
+   words. Safe to call here: this only renders inside <SignedIn>, which is
+   only rendered once a provider exists. */
+function AccountMenu() {
+  const { user } = useUser()
+  const clerk = useClerk()
+  const [open, setOpen] = useState(false)
+  const box = useRef(null)
+  const trigger = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const away = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') { setOpen(false); if (trigger.current) trigger.current.focus() } }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc) }
+  }, [open])
+  const name = (user && (user.firstName || user.username || (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress))) || 'Account'
+  const item = 'flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left text-[15px] font-medium text-v3-ink transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none'
+  return (
+    <div ref={box} className="relative">
+      <button
+        ref={trigger}
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cx(TOUCH, 'inline-flex min-h-[44px] items-center gap-2 rounded-[6px] px-2 text-[15px] font-semibold text-v3-ink hover:bg-v3-well focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call sm:px-3')}
+      >
+        {user && user.imageUrl
+          ? <img src={user.imageUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+          : <Icon name="account" className="h-5 w-5" />}
+        <span className="hidden sm:inline">Account</span>
+        <span className="sr-only sm:hidden">Account</span>
+      </button>
+      {open && (
+        <div role="group" aria-label="Account" className="absolute right-0 z-50 mt-2 w-[260px] overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet shadow-[0_12px_32px_-12px_rgb(var(--v3-shade)/0.35)]">
+          <div className="border-b border-v3-rule px-4 py-2.5">
+            <Label>Signed in as</Label>
+            <p className="mt-0.5 truncate text-[15px] font-semibold text-v3-ink" title={name}>{name}</p>
+          </div>
+          <a href="#/account" onClick={() => setOpen(false)} className={item}><Icon name="settings" className="h-5 w-5 shrink-0 text-v3-ink2" />Account and leagues</a>
+          <button type="button" onClick={() => { setOpen(false); clerk.openUserProfile() }} className={item}><Icon name="account" className="h-5 w-5 shrink-0 text-v3-ink2" />Profile and security</button>
+          <button type="button" onClick={() => { setOpen(false); clerk.signOut() }} className={cx(item, 'border-t border-v3-rule')}><Icon name="back" className="h-5 w-5 shrink-0 text-v3-ink2" />Sign out</button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -316,7 +371,7 @@ function Footer() {
     <footer className="mt-section border-t border-v3-rule bg-v3-sheet">
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <JukeLogo size={20} markWidth={40} onLight color="rgb(var(--v3-ink))" />
+          <JukeLogo size={30} markWidth={60} onLight color="rgb(var(--v3-ink))" />
           <p className="mt-3 max-w-[46ch] text-[15px] leading-[1.6] text-v3-ink2">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere. Connecting a league is read-only; Juke never edits it.
           </p>
@@ -449,6 +504,7 @@ export default function V3App({ sub = '' }) {
             <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-12 focus:outline-none sm:px-8 sm:pt-24 md:pb-0">{page}</main>
             <p aria-live="polite" className="sr-only">{announce}</p>
             <Footer />
+            <FullValueTips />
             <TabBar current={current} />
           </>
         )}

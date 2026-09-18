@@ -209,7 +209,7 @@ export function ViewField({ report, hover, onHover, onOpen }) {
               aria-label={`${r.name}: you at round ${r.you.toFixed(1)}, the room at ${r.field.toFixed(1)}${r.cliff === null ? ', tier never emptied' : `, tier empties at ${r.cliff.toFixed(1)}`}. ${r.note}.`}
               className={cx('grid w-full grid-cols-[56px_minmax(0,1fr)] items-center gap-3 rounded-[4px] border-b border-v3-rule px-2.5 py-3 text-left sm:grid-cols-[164px_minmax(0,1fr)_160px]', FOCUS, hover === r.pos && 'bg-v3-paper')}
             >
-              <span className="flex min-w-0 items-center gap-2"><PosTag pos={r.pos} /><span className="hidden truncate text-[15px] text-v3-ink sm:inline">{r.name}</span></span>
+              <span className="flex min-w-0 items-center gap-2"><PosTag pos={r.pos} /><span className="hidden break-words [overflow-wrap:anywhere] text-[15px] text-v3-ink sm:inline">{r.name}</span></span>
               <span className="relative block h-[28px]">
                 <span className="absolute inset-x-0 top-[13px] h-0.5 bg-v3-well" />
                 {r.cliff !== null && <span className="absolute top-1 h-5 w-0.5 bg-v3-warn" style={{ left: at(r.cliff) }} />}

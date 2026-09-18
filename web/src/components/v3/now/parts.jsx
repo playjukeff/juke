@@ -234,7 +234,7 @@ export function Movers({ rows, week }) {
               <a href={r.id ? `#/players/${encodeURIComponent(String(r.id))}` : '#/players'} className="grid min-h-[56px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:px-5">
                 <PosTag pos={r.pos} />
                 <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
+                  <span className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>
                   <span className="block truncate font-figure text-[12px] text-v3-ink3">
                     {r.team || 'FA'}
                     {typeof r.seasonPts === 'number' ? ` · ${r.seasonPts.toFixed(1)} pts` : ''}

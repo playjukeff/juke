@@ -206,7 +206,7 @@ function DraftOrderList({ engine, league, onChange }) {
                 <span className={cx('w-6 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chosen ? 'text-white' : 'text-v3-ink3')}>{r.slot + 1}</span>
                 <Glyph name={r.you ? 'person' : 'cpu'} className={cx('h-5 w-5 shrink-0', chosen ? 'text-white' : 'text-v3-ink3')} />
                 <span className="min-w-0 flex-1">
-                  <span className={cx('block truncate text-[15px] font-semibold', chosen ? 'text-white' : 'text-v3-ink')}>{r.name}</span>
+                  <span className={cx('block break-words [overflow-wrap:anywhere] text-[15px] font-semibold', chosen ? 'text-white' : 'text-v3-ink')}>{r.name}</span>
                   <span className={cx('block font-figure text-[12px]', chosen ? 'text-v3-bandInk' : 'text-v3-ink3')}>
                     Position {r.slot + 1}{r.firstPick ? ` · first pick #${r.firstPick}` : ''}
                   </span>

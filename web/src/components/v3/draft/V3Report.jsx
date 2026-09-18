@@ -191,7 +191,7 @@ function Standings({ rep, onPick }) {
           const inner = (
             <>
               <span className={cx('w-6 shrink-0 text-right font-figure text-[12px] tabular-nums', on ? 'text-v3-bandInk' : 'text-v3-ink3')}>{t.rank}</span>
-              <span className={cx('min-w-0 flex-1 truncate text-[15px]', t.isMine && 'font-bold', on ? 'text-white' : 'text-v3-ink')}>{t.isMine ? 'Your team' : t.teamName}</span>
+              <span className={cx('min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-[15px]', t.isMine && 'font-bold', on ? 'text-white' : 'text-v3-ink')}>{t.isMine ? 'Your team' : t.teamName}</span>
               <span className={cx('w-9 shrink-0 text-center font-sheet text-[20px] font-black leading-none', on ? 'text-white' : 'text-v3-ink')}>{t.grade}</span>
             </>
           )

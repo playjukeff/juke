@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { evidence, knownAbout, productionLine, rookies } from '../../rooms/prospectBoard.js'
 import { Delta, Fig, Label, PageHead, PosTag, QuietButton, Seg, Sheet, Skeleton, cx } from '../ui.jsx'
 import { UNRANKED, posWord } from './playerData.js'
-import { Chips, PlayerFace, ViewTabs } from './parts.jsx'
+import { Chips, PlayerFace, TenureControl } from './parts.jsx'
 import { useBoardKey } from './useBoardKey.js'
 
 /* Rookies — production's Prospect Room, as a view of the Players place.
@@ -299,15 +299,21 @@ export default function V3Rookies() {
         label={c ? `Players · rookies · ${c.rows.length} in their first season` : null}
         title="The rookie class, and what we don't know yet."
         lede="Every first-year player on the board, ranked by points over the player a league your size would start instead — and, for each, what is on file and what is not. Behind them, the players still in college."
-        action={<ViewTabs current="rookies" />}
       />
-      <div>
-        <Seg
-          label="Which rookies"
-          value={view}
-          onChange={setView}
-          options={[{ value: 'class', label: 'The class' }, { value: 'college', label: 'In college' }]}
-        />
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+        <div className="grid justify-items-start gap-1">
+          <Label>Tenure</Label>
+          <TenureControl current="rookie" />
+        </div>
+        <div className="grid justify-items-start gap-1">
+          <Label>Which rookies</Label>
+          <Seg
+            label="Which rookies"
+            value={view}
+            onChange={setView}
+            options={[{ value: 'class', label: 'The class' }, { value: 'college', label: 'In college' }]}
+          />
+        </div>
       </div>
       {!engine || !key ? (
         <Skeleton lines={8} />

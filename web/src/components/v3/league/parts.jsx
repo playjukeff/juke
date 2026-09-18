@@ -349,7 +349,7 @@ export function LeagueSwitcher() {
         className="inline-flex min-h-[44px] max-w-full items-center gap-2.5 rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink transition-colors hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call focus-visible:ring-offset-2"
       >
         <PlatformMark provider={league.provider} />
-        <span className="min-w-0 truncate">{league.name}</span>
+        <span className="min-w-0 break-words [overflow-wrap:anywhere]">{league.name}</span>
         <span className="hidden font-figure text-[12px] uppercase tracking-[0.1em] text-v3-ink3 sm:inline">{leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}</span>
         <Icon name="arrow" className={cx('h-4 w-4 shrink-0 text-v3-ink2 transition-transform motion-reduce:transition-none', open ? '-rotate-90' : 'rotate-90')} />
       </button>
@@ -377,7 +377,7 @@ export function LeagueSwitcher() {
               >
                 <PlatformMark provider={lg.provider} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold text-v3-ink">{lg.name}</span>
+                  <span className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{lg.name}</span>
                   <span className="mt-0.5 block truncate font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">
                     {plat.name}{lg.season ? ` · ${lg.season}` : ''}{lg.totalTeams ? ` · ${lg.totalTeams} teams` : ''}
                   </span>

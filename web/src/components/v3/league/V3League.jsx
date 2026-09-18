@@ -159,7 +159,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
             <div className="mt-3 grid gap-2">
               {[{ name: 'You', v: game.points }, { name: opp ? opp.teamName : 'Opponent', v: game.opponentPoints, team: opp }].map((r) => (
                 <div key={r.name} className="grid grid-cols-[minmax(0,8rem)_1fr_3.5rem] items-center gap-3">
-                  {r.team ? <a href={teamHref(r.team)} className="truncate text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>}
+                  {r.team ? <a href={teamHref(r.team)} className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>}
                   <ValueBar value={r.v} max={max} tone="neutral" />
                   <Fig className="text-right text-[15px] font-bold text-v3-ink">{r.v.toFixed(1)}</Fig>
                 </div>
@@ -297,10 +297,10 @@ function Standings({ snapshot, ownerId, odds }) {
                   <td className="border-0 py-3 pl-3 pr-0 font-figure text-[15px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
                   <td className="border-0 w-full max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
-                      <a href={teamHref(t)} className="min-w-0 truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
+                      <a href={teamHref(t)} className="min-w-0 break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
                       {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
                     </span>
-                    {t.manager && t.manager !== t.teamName ? <span className="mt-0.5 block truncate text-[13px] text-v3-ink3">{t.manager}</span> : null}
+                    {t.manager && t.manager !== t.teamName ? <span className="mt-0.5 block break-words [overflow-wrap:anywhere] text-[13px] text-v3-ink3">{t.manager}</span> : null}
                   </td>
                   <td className="border-0 px-1 py-3 text-right font-figure text-[15px] tabular-nums text-v3-ink sm:px-2">{recordText(t)}</td>
                   <td className="border-0 px-1 py-3 text-right font-figure text-[15px] tabular-nums text-v3-ink2 sm:px-2">{(t.pointsFor || 0).toFixed(1)}</td>
@@ -468,7 +468,7 @@ function DraftReport({ league, snapshot, ready }) {
               return (
                 <tr key={s.teamId} className={cx('border-t border-v3-rule', s.mine ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}>
                   <td className="border-0 w-full max-w-0 py-2.5 ps-4 pe-2 sm:ps-5">
-                    {team ? <a href={teamHref(team)} title={s.name} className="block truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span title={s.name} className="block truncate text-[15px] font-semibold text-v3-ink">{s.name}</span>}
+                    {team ? <a href={teamHref(team)} title={s.name} className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{s.name}</a> : <span title={s.name} className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{s.name}</span>}
                   </td>
                   <td className="border-0 w-px whitespace-nowrap py-2.5 ps-2 pe-4 text-right font-figure text-[15px] font-bold text-v3-ink sm:pe-5">
                     {s.grade || '—'}{s.rank ? <span className="font-medium text-v3-ink2"> · {ordinal(s.rank)}</span> : null}
