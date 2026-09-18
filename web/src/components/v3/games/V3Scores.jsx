@@ -11,7 +11,7 @@ import { boardTeam } from '../../../lib/gameSummary.js'
 import { useSlate } from '../now/season.js'
 import { Label, Sheet, Skeleton, cx } from '../ui.jsx'
 import Crumbs from './Crumbs.jsx'
-import { GameCard, byDay, useBoardById } from './WeekGames.jsx'
+import { GameCard, byDay } from './WeekGames.jsx'
 
 const logo = (abbr) => `https://sleepercdn.com/images/team_logos/nfl/${boardTeam(abbr).toLowerCase()}.png`
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
@@ -111,7 +111,6 @@ export default function V3Scores() {
   }, [])
   const shown = week || current
   const games = useWeekGames(shown, current, slate)
-  const { fx, byId } = useBoardById()
   const days = useMemo(() => (Array.isArray(games) ? byDay(games) : []), [games])
   const pick = (w) => { window.location.hash = w === current ? '#/scores' : `#/scores?week=${w}` }
 
@@ -120,7 +119,6 @@ export default function V3Scores() {
       <Crumbs items={[{ label: 'Scores', href: '#/scores' }, { label: 'NFL' }]} />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-[clamp(32px,5vw,48px)] font-black leading-[1.02] tracking-[-0.02em]">NFL scores</h1>
-        {fx.ready ? <Label>Your starters from {fx.label}</Label> : null}
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -141,11 +139,10 @@ export default function V3Scores() {
               <div key={d.key} className="grid gap-2">
                 <Label>{d.label}</Label>
                 <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-                  {d.rows.map((g) => <GameCard key={g.id} g={g} fx={fx} byId={byId} detail showYours={shown === current} />)}
+                  {d.rows.map((g) => <GameCard key={g.id} g={g} detail />)}
                 </div>
               </div>
             ))}
-          {fx.ready && shown !== current ? <p className="text-[12px] text-v3-ink3">Your starters are this week&apos;s lineup; another week&apos;s points are on its game pages.</p> : null}
         </div>
         <Standings />
       </div>

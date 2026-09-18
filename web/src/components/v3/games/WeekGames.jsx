@@ -2,14 +2,13 @@
    homepage's "This week in the NFL" and the rows of the scores page.
 
    A card is one game: both clubs with their records (or the score), when
-   and where it is shown, and -- for a reader with a connected league -- the
-   starters of theirs who play in it, with what their platform has credited
-   each so far. The whole card opens the game; a name opens the player. */
+   and where it is shown. The whole card opens the game. Deliberately no
+   per-reader rows: a card with your starters in it grew taller than its
+   neighbours in the same row, and the game page is where they live. */
 import { useMemo } from 'react'
 import { boardTeam } from '../../../lib/gameSummary.js'
 import { useSlate } from '../now/season.js'
 import { Fig, GoLink, Label, cx } from '../ui.jsx'
-import { sourceText, useFantasy } from './fantasy.js'
 
 const logo = (abbr) => `https://sleepercdn.com/images/team_logos/nfl/${boardTeam(abbr).toLowerCase()}.png`
 const ORDER = { in: 0, pre: 1, post: 2 }
@@ -48,18 +47,6 @@ const kickTime = (iso) => {
   return Number.isFinite(t) ? new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''
 }
 
-/* The reader's starters who play in this game, with the platform's figure. */
-export function yoursIn(g, fx, byId) {
-  if (!fx.ready || !byId) return []
-  const clubs = new Set([boardTeam(g.away), boardTeam(g.home)])
-  const out = []
-  for (const id of fx.starters) {
-    const p = byId.get(id)
-    if (p && clubs.has(String(p.team || '').toUpperCase())) out.push({ id, name: p.name, pos: p.pos, x: fx.pointsFor(id, null) })
-  }
-  return out.sort((a, b) => ((b.x ? b.x.v : -1) - (a.x ? a.x.v : -1)))
-}
-
 function TeamRow({ abbr, name, rec, score, state, lost }) {
   return (
     <div className="grid h-9 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2.5">
@@ -72,10 +59,9 @@ function TeamRow({ abbr, name, rec, score, state, lost }) {
   )
 }
 
-export function GameCard({ g, fx, byId, detail = false, showYours = true }) {
+export function GameCard({ g, detail = false }) {
   const post = g.state === 'post'
   const a = Number(g.awayScore), h = Number(g.homeScore)
-  const yours = showYours ? yoursIn(g, fx, byId) : []
   const lead = (g.leaders || []).slice(0, detail ? 3 : 2)
   return (
     <div className="relative grid gap-3 rounded-[8px] border border-v3-rule bg-v3-sheet p-3.5 transition-colors hover:border-v3-ink3 focus-within:border-v3-ink3">
@@ -102,20 +88,7 @@ export function GameCard({ g, fx, byId, detail = false, showYours = true }) {
         </div>
       </div>
       {detail && g.venue ? <p className="text-[13px] text-v3-ink3">{g.venue}{g.city ? ` · ${g.city}` : ''}</p> : null}
-      {yours.length ? (
-        <div className="relative grid gap-1 border-t border-v3-rule pt-2.5">
-          <Label className="text-v3-call">Your starters</Label>
-          {yours.map((y) => (
-            <p key={y.id} className="flex items-baseline justify-between gap-3 text-[14px]">
-              <a href={`#/players/${encodeURIComponent(y.id)}?from=${encodeURIComponent(g.id)}`} className="relative z-[1] min-w-0 truncate font-semibold hover:text-v3-call hover:underline">{y.name}</a>
-              <span className="shrink-0 text-right">
-                <Fig className="font-bold">{y.x ? y.x.v.toFixed(2) : g.state === 'pre' ? '' : '—'}</Fig>
-                {y.x ? <span className="ml-1.5 font-figure text-[10px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{sourceText(y.x)}</span> : null}
-              </span>
-            </p>
-          ))}
-        </div>
-      ) : detail && lead.length ? (
+      {detail && lead.length ? (
         <div className="grid gap-1 border-t border-v3-rule pt-2.5">
           <Label>{g.state === 'pre' ? 'Key players · season' : 'Stat leaders'}</Label>
           {lead.map((l, i) => (
@@ -130,21 +103,9 @@ export function GameCard({ g, fx, byId, detail = false, showYours = true }) {
   )
 }
 
-export function useBoardById() {
-  const fx = useFantasy(null)
-  const engine = typeof window !== 'undefined' ? window.JukeEngine : null
-  const byId = useMemo(() => {
-    const b = engine && engine.board ? engine.board() : []
-    return new Map((b || []).map((p) => [String(p.id), p]))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, fx.index])
-  return { fx, byId }
-}
-
 /* The homepage's section: this week's games, every day of them. */
 export default function WeekGames() {
   const games = useSlate(true)
-  const { fx, byId } = useBoardById()
   const days = useMemo(() => byDay(games), [games])
   if (!days.length) return null
   const n = days.reduce((t, d) => t + d.rows.length, 0)
@@ -160,13 +121,10 @@ export default function WeekGames() {
         <div key={d.key} className="grid gap-2">
           <Label>{d.label}</Label>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {d.rows.map((g) => <GameCard key={g.id} g={g} fx={fx} byId={byId} />)}
+            {d.rows.map((g) => <GameCard key={g.id} g={g} />)}
           </div>
         </div>
       ))}
-      {fx.ready ? (
-        <p className="text-[12px] text-v3-ink3">Your starters from {fx.label}. Points are {fx.platform}&apos;s own, once their game has kicked off.</p>
-      ) : null}
     </section>
   )
 }
