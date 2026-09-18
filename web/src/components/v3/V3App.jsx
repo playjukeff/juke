@@ -24,6 +24,7 @@ import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
 import V3Game from './games/V3Game.jsx'
+import ScoresTicker from './games/ScoresTicker.jsx'
 import { WelcomeRoute } from './landing/Landing.jsx'
 import YahooReturn from '../shell/YahooReturn.jsx'
 import FullValueTips from './FullValue.jsx'
@@ -306,7 +307,7 @@ function ThemeMenu() {
   )
 }
 
-function TopBar({ current }) {
+function TopBar({ current, ticker = true }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
@@ -338,6 +339,9 @@ function TopBar({ current }) {
           <Account />
         </div>
       </div>
+      {/* Game day only; draws nothing the rest of the week. Not on a game
+          page, whose own strip of the week's games is the same thing. */}
+      {ticker && <ScoresTicker />}
     </header>
   )
 }
@@ -505,7 +509,7 @@ export default function V3App({ sub = '' }) {
             >
               Skip to content
             </a>
-            <TopBar current={current} />
+            <TopBar current={current} ticker={current !== 'games'} />
             <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-12 focus:outline-none sm:px-8 sm:pt-24 md:pb-0">{page}</main>
             <p aria-live="polite" className="sr-only">{announce}</p>
             <Footer />
