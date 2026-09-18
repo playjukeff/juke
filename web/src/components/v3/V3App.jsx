@@ -309,7 +309,7 @@ function TopBar({ current }) {
   return (
     <header className="sticky top-0 z-40 border-b border-v3-rule bg-v3-sheet/95 backdrop-blur">
       <div className="mx-auto flex h-[60px] max-w-[1320px] items-center gap-3 px-4 sm:px-8">
-        <a href="#/" aria-label="Juke, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={24} markWidth={48} onLight color="rgb(var(--v3-ink))" /></a>
+        <a href="#/" aria-label="Juke, Now" className={cx(TOUCH, 'inline-flex shrink-0 items-center')}><JukeLogo size={26} markWidth={76} onLight color="rgb(var(--v3-ink))" /></a>
         <nav aria-label="Primary" className="ml-6 hidden h-full items-stretch gap-1 md:flex">
           {NAV.map((n) => {
             const on = n.match.includes(current)
