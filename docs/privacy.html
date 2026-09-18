@@ -31,11 +31,11 @@
        the kind of abstraction this project's own conventions argue against
        building early.
 
-       It is no longer identical, and the differences are deliberate: the
-       width, the section headings and numbers, the note and the phone
+       The width, the section headings and numbers, the note and the phone
        table below were reworked 18 September 2026, each against a
-       measurement noted beside it. terms.html and the how-it-works page
-       still carry the original block. */
+       measurement noted beside it, and terms.html and the how-it-works page
+       were brought into step the same day. A change to any of these rules
+       belongs in all three pages. */
     /* 600, down from 720, because a full line ran 90 characters at 720 --
        measured as the column over the paragraph's own average glyph width,
        not guessed from `ch` -- and prose reads best nearer 70. At 600 it is
@@ -80,11 +80,25 @@
        Side by side, the key column refuses to wrap and took over half of a
        375px screen, squeezing every explanation to three or four words a
        line -- measured and screenshotted. A two-column table is the wrong
-       shape for a key and a paragraph on a narrow screen. */
+       shape for a key and a paragraph on a narrow screen.
+
+       Written as a grid because the how-it-works page carries the identical
+       rule and has three-column rows (key, number, description): there the
+       key runs across the top and the rest sit side by side under it. This
+       page's rows are all two-column, so here it simply stacks. Kept
+       identical in both files so the two cannot drift. */
     @media (max-width: 560px) {
-      .doc table, .doc tbody, .doc tr, .doc td { display: block; }
-      .doc td.k { white-space: normal; border-bottom: 0; padding-bottom: 2px; }
-      .doc td.k + td { padding-top: 2px; }
+      .doc table, .doc tbody { display: block; }
+      .doc tr { display: grid; grid-template-columns: auto 1fr; }
+      .doc td { display: block; }
+      .doc td.k { grid-column: 1 / -1; white-space: normal; border-bottom: 0; padding-bottom: 2px; }
+      .doc td.k:empty { display: none; }
+      .doc td.k:not(:empty) ~ td { padding-top: 2px; }
+      /* One width for every row's number, because each row is its own grid:
+         sized by content, "never" pushed its description right of the
+         "0.80" above it. 4.75em holds "never" plus its padding. */
+      .doc td.n { grid-column: 1; min-width: 4.75em; text-align: left; }
+      .doc td:not(.k):not(.n) { grid-column: 2; }
     }
     .doc code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
