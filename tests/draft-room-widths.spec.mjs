@@ -59,7 +59,7 @@ function sweepOverflow() {
        the same thing under another name. */
     const clipped = c.clipPath === "inset(50%)" || /rect\(0px,\s*0px,\s*0px,\s*0px\)/.test(c.clip);
     if (clipped && b.width <= 2 && b.height <= 2) return;
-    if (c.overflow === "hidden" || c.overflowX === "hidden") return;
+    if (/hidden|clip/.test(c.overflow) || /hidden|clip/.test(c.overflowX)) return;
     const spill = [...el.children].filter(
       (k) => k.getBoundingClientRect().right > el.getBoundingClientRect().right + slack);
     if (spill.length > 0 && spill.every((k) => getComputedStyle(k).position === "absolute")) return;

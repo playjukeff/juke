@@ -74,7 +74,10 @@ const SWEEP = () => {
     const cs = getComputedStyle(el);
     if (/auto|scroll/.test(cs.overflowX)) continue;
     if (cs.textOverflow === "ellipsis" && cs.whiteSpace === "nowrap") continue;
-    if (cs.overflow === "hidden" || cs.overflowX === "hidden") continue;
+    /* hidden or clip: both mean the element contains its own overflow, so
+       nothing inside it can reach the page. clip was missing, and the
+       landing page's decorative glow reads as a leak without it. */
+    if (/hidden|clip/.test(cs.overflow) || /hidden|clip/.test(cs.overflowX)) continue;
     bad.push({
       tag: el.tagName + "." + String(el.className).slice(0, 60),
       over,
