@@ -690,6 +690,85 @@
         .catch(() => syncResult(false, "offline", { league: null }));
     },
 
+    /* ---- Yahoo ----
+
+       The one platform with a real OAuth grant, so its connect LEAVES the
+       page: yahooAuthorize() answers Yahoo's consent URL, the reader signs
+       in there, Yahoo sends them back to /connect/yahoo with a one-time
+       code, and yahooExchange() trades it for a token the worker seals. No
+       password or cookie is ever typed into Juke. Every one needs an
+       account, because the grant belongs to somebody.
+
+       Reasons beyond the usual: "not-configured" is this deployment having
+       no Yahoo app registered, "needs-auth" is a grant that is gone (never
+       made, or revoked from the reader's Yahoo account), and "bad-state" is
+       a return that does not belong to this account -- all three are "not
+       a retry", and a screen that called them offline would say the wrong
+       thing every time. */
+    yahooAuthorize: function (token) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", { url: null, state: null }));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/yahoo/authorize", {
+        method: "POST",
+        headers: { "authorization": "Bearer " + token }
+      })
+        .then(function (r) {
+          return r.json()
+            .then((body) => (r.ok && body && body.url)
+              ? syncResult(true, null, { url: body.url, state: body.state || null })
+              : syncResult(false, (body && body.error) || reasonForStatus(r.status), { url: null, state: null }))
+            .catch(() => syncResult(false, reasonForStatus(r.status), { url: null, state: null }));
+        })
+        .catch(() => syncResult(false, "offline", { url: null, state: null }));
+    },
+
+    /* The code goes in a BODY, for espnLookup()'s reason: a credential in a
+       URL is a credential in every log between here and the worker. */
+    yahooExchange: function (token, code, state) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", { leagues: [] }));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/yahoo/token", {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+        body: JSON.stringify({ code: String(code || ""), state: String(state || "") })
+      })
+        .then(function (r) {
+          return r.json()
+            .then((body) => (r.ok && body && body.ok)
+              ? syncResult(true, null, { leagues: Array.isArray(body.leagues) ? body.leagues : [] })
+              : syncResult(false, (body && body.error) || reasonForStatus(r.status), { leagues: [] }))
+            .catch(() => syncResult(false, reasonForStatus(r.status), { leagues: [] }));
+        })
+        .catch(() => syncResult(false, "offline", { leagues: [] }));
+    },
+
+    /* The reader's Yahoo leagues again, from the grant already stored --
+       which is what lets the dialog skip Yahoo's consent screen for
+       somebody who has already been through it. */
+    yahooLeagues: function (token) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", { leagues: [] }));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/yahoo/leagues", { headers: { "authorization": "Bearer " + token } })
+        .then(function (r) {
+          return r.json()
+            .then((body) => (r.ok && body && body.ok)
+              ? syncResult(true, null, { leagues: Array.isArray(body.leagues) ? body.leagues : [] })
+              : syncResult(false, (body && body.error) || reasonForStatus(r.status), { leagues: [] }))
+            .catch(() => syncResult(false, reasonForStatus(r.status), { leagues: [] }));
+        })
+        .catch(() => syncResult(false, "offline", { leagues: [] }));
+    },
+
+    /* Forget the grant, if no connected league still reads through it. The
+       worker decides "if"; this only asks. */
+    yahooForget: function (token) {
+      if (!token) return Promise.resolve(syncResult(false, "signed-out", {}));
+      const http = WORKER.replace(/^ws/, "http");
+      return fetch(http + "/yahoo/leagues", { method: "DELETE", headers: { "authorization": "Bearer " + token } })
+        .then((r) => syncResult(r.ok, r.ok ? null : reasonForStatus(r.status), {}))
+        .catch(() => syncResult(false, "offline", {}));
+    },
+
     // A league's current state — rosters, records, points. Cached at the
     // edge for a couple of minutes, so calling this on every navigation is
     // cheap and calling it in a loop is not a problem for Sleeper.
@@ -702,6 +781,7 @@
          provider column meant anything is a Sleeper one. */
       const path = provider === "espn" ? "/espn/snapshot?league="
                  : provider === "cbs" ? "/cbs/snapshot?league="
+                 : provider === "yahoo" ? "/yahoo/snapshot?league="
                  : "/sleeper/snapshot?league=";
       /* The token is what makes a PRIVATE league readable at all, and
          leaving it off is the bug this parameter exists for.

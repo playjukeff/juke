@@ -124,7 +124,11 @@ the Stack section above, not a one-time migration hiccup.
 | `room.js` | One shared draft: seats, picks, the clock. Pure, and time is always passed in rather than read. Loaded by the worker only; the page consumes the view it sends. Not copied into `web/dist/` — nothing client-side ever references it. |
 | `live.js` | The client end of a room: one socket, the invite code, and the messages. Knows nothing about the board or how anything is drawn. |
 | `worker/` | The Cloudflare Durable Object behind an invite link, plus every proxied route whose key or quota may not be in the page (`/giphy`, `/news`, `/media`, the two league adapters) and its `wrangler.toml`. Deployed to `juke-draft-room.jukeff.workers.dev`. **`.github/workflows/deploy-worker.yml` ships it on a push to `main`** touching anything under `worker/`, or `room.js`, or `draft-engine.js` — the code half of the deploy gap is closed; **D1 migrations are still manual and deliberately so**. `npm --prefix worker run deploy` is the by-hand path and migrates first. See `worker/README.md` and the system section above. |
-| `worker/espn.js`, `worker/sleeper.js`, `worker/cbs.js` | The three league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A fourth platform is a fourth file here, not a second vocabulary in the UI. |
+| `worker/espn.js`, `worker/sleeper.js`, `worker/cbs.js`, `worker/yahoo.js` | The four league adapters. Each turns one platform's shape into the one vocabulary the app reads — Sleeper-id-keyed rosters and `pre_draft`/`drafting`/`complete`. A fifth platform is a fifth file here, not a second vocabulary in the UI. Yahoo is the one with a real OAuth grant; see "Yahoo, the one platform that asks properly". |
+| `worker/yahoo-json.js` | Reads Yahoo's mechanically-translated JSON — resources as arrays of single-key objects, collections as numbered objects — accepting both the array and numbered forms, because Yahoo uses them interchangeably. Its own file so `scoring.js` and `lineup.js` can read a Yahoo league without importing `yahoo.js`, which imports them. |
+| `worker/test-yahoo.mjs` | The Yahoo adapter against fixtures in Yahoo's published shape, and its OAuth routes through the real router against a real SQLite database built from `migrations/` (`node:sqlite`, Node 22.13+). Only Yahoo is faked. |
+| `web/public/connect/yahoo.html`, `yahoo.js` | Where Yahoo returns a reader after its consent screen — the redirect URI the Yahoo app is registered with, so the path may not move. Hands the code to the app through sessionStorage and goes back. |
+| `web/src/components/shell/YahooReturn.jsx`, `web/src/lib/yahooReturn.js` | Finishes a Yahoo connect on whichever route the reader came back to. Mounted once in `V3App`, draws nothing until there is a return to finish — so it never reaches the prerendered markup. |
 | `worker/status.js` | A player's live injury designation in the pipeline's own codes, from either platform's words. **The vocabulary exists in two languages** — `build_players.py` has the other — and `worker/test-status.mjs` reads that table and fails on any drift. |
 | `worker/names.js` | `normalise()`, the JavaScript half of the name crosswalk. **It exists in two languages and they must not drift** — `build_players.py` has the other one, and `test_engine.py` is the only suite that asserts they agree. A drift does not throw; it stops matching. |
 | `worker/store.js` | The D1 cache: Sleeper's pool and Tank01 headlines. A cache and never a source of truth, and a missing binding is a normal condition rather than a fault. |
@@ -248,6 +252,10 @@ the thing worth noticing rather than any particular total.
 | `/cbs/league` | `GET` `POST` | `originAllowed()`; `requireUser()` on POST | a CBS league and its teams, read as the caller |
 | `/cbs/snapshot` | `GET` | `originAllowed()` | the same, crosswalked to Sleeper ids |
 | `/cbs/week` | `GET` | `originAllowed()` | one played week's per-player points and lineups |
+| `/yahoo/authorize` | `POST` | `requireUser()` | Yahoo's consent URL, with a `state` signed for this account |
+| `/yahoo/token` | `POST` | `requireUser()` + the state | code → token, sealed; the reader's Yahoo leagues |
+| `/yahoo/leagues` | `GET` `DELETE` | `requireUser()` | the leagues from the stored grant; forget the grant |
+| `/yahoo/snapshot` | `GET` | `originAllowed()` + the caller's grant | one Yahoo league, crosswalked |
 | `/news` | `GET` | `originAllowed()` | headlines by provider id, D1-cached |
 | `/giphy` | `GET` | `originAllowed()` | a proxied GIF search |
 | `/media` | `POST` | `originAllowed()` | an R2 upload; returns the key's URL |
@@ -10491,6 +10499,123 @@ keeps finding, landing on a field name. `test-cbs.mjs` asserts the key now,
 confirmed red with the old name put back. **When an adapter adds a snapshot
 field, grep for how the rooms read it, not only for how the other adapters
 write it.**
+
+## Yahoo, the one platform that asks properly
+
+Built 18 September 2026, on `feat/yahoo-adapter`, and **`beta` rather than
+`live`** — see the last part of this section for why and what flips it.
+
+**Measured first: Yahoo has no public half at all.** Every anonymous Fantasy
+API request — the game metadata, the stat categories, a league's settings —
+answers 401 `unable_to_determine_oauth_type`. So it is CBS's shape rather than
+ESPN's, with one difference that changes everything: **Yahoo publishes a real
+OAuth 2.0 grant for third parties.** The reader signs in on Yahoo's own
+consent screen, approves Juke, and what comes back is a token scoped by the
+app's registration to Fantasy Sports read, revocable from their Yahoo account.
+No password and no cookie ever reaches Juke. "Juke never edits your league" is
+a property of the grant here rather than a promise the code keeps — the thing
+the ESPN and CBS sections record having to give up.
+
+**The free crosswalk misses the same players it misses for ESPN.** Sleeper's
+`yahoo_id` covers **115 of the 448 non-defence rows on the 15 September board
+(25.7%)**, 62 of 209 real-ADP rows, and is absent for Gibbs, Bijan Robinson,
+Chase and Nacua — the stopped-backfill shape `espn_id` has. So `yahoo.js` makes
+the name join `cbs.js` and `espn.js` make, through the same resolver.
+
+### The flow leaves the page, and three things follow from that
+
+The connect dialog's Yahoo step has no field: the reader presses Continue,
+`POST /yahoo/authorize` answers Yahoo's consent URL, and the page navigates
+there. Yahoo returns to `https://jukeff.com/connect/yahoo` — the redirect URI
+the app is registered with — which hands the code to the app through
+sessionStorage. `YahooReturn` (mounted once in `V3App`) finds it, reopens the
+dialog through `resumeYahoo()`, and `POST /yahoo/token` trades the code for a
+token and answers the reader's leagues. Yahoo knows which team in each is
+theirs, so there is no "which team is yours" step.
+
+- **`state` binds a consent to the account that asked.** Otherwise somebody
+  could start a connect on their own account, send the consent link to a
+  victim, and read the victim's Yahoo leagues once they approved. The state
+  is an HMAC over a hash of the account id, an expiry and a nonce, and the
+  token route refuses a code whose state names a different account **before
+  the code is spent at Yahoo**. The sessionStorage comparison on the page is
+  a courtesy; the signature is the binding.
+- **`www.jukeff.com` is its own origin** — measured, it answers 200 rather
+  than redirecting — and Yahoo can only return a reader to the one registered
+  address. So the state also carries the origin the reader started on, and the
+  return page sends them home before writing anything. It reads that value
+  before anything has verified the signature, so it only follows it to a
+  fixed list of the site's own addresses.
+- **`YahooReturn` renders nothing until there is a return**, and reads
+  storage only in an effect. A dialog drawn on the client and not in the
+  prerender is a hydration failure, and React answers one of those by
+  discarding the whole prerender — see "A portal is hydrated too".
+
+### One token per account, not per league
+
+ESPN's and CBS's credentials are pasted per league, so they are sealed per
+league. A Yahoo grant is per person, reads every league they are in, and may
+come back with a new refresh token when the old one is spent — copies per
+league would each go stale alone. So there is one sealed `league_credentials`
+row with `league_id = "*"`, a Yahoo connect writes the league row and nothing
+else, and **disconnecting the last Yahoo league deletes the token**. A reader
+who signs in to Yahoo and then closes the dialog without connecting has the
+grant forgotten on close, if no league still reads through it.
+
+The access token lives an hour. `yahooCaller()` refreshes it within a minute
+of expiry and again on a 401 — **at most once per request**, however many
+parallel reads hit the 401 together, because a refresh that raced itself would
+spend the refresh token twice — and reseals it so the next request starts warm.
+A revoked grant answers `private`, which on the league screens now says "sign
+in to Yahoo again" rather than anything about league settings.
+
+### Scoring is matched by name, which ESPN's table taught
+
+A league's settings print a `name` beside every stat id. `rulesFromYahoo()`
+uses the id only to join a category to its value and decides the Juke rule
+from the name — because nothing has been checked against a real Yahoo league,
+an id table would be a table of guesses, and a wrong id scores the wrong
+category in silence (`rec_40p: 38` was exactly that on ESPN). A name it does
+not recognise lands in `scoringUnmapped`. Two pairs differ by one letter and
+are anchored apart: `Interceptions` (the passer) and `Interception` (the
+defence), `Sacks` (the quarterback taken down) and `Sack`.
+
+Missed field goals translate exactly despite the shapes differing: Yahoo
+charges each band alone, Juke charges `fgmiss` on every miss and adds a band
+increment, so `fgmiss` is Yahoo's 0–19 charge and each band is its Yahoo
+charge less that. Yahoo's 50+ is both of Juke's top bands, made and missed.
+
+### What is not measured, and what flips it to live
+
+**Every shape in a league payload is written against Yahoo's published
+format, not measured.** The readers in `yahoo-json.js` accept both forms Yahoo
+uses for a list, so a wrong guess about a node cannot silently drop it — but
+tolerant parsing is not the same as a measurement, and a platform that
+connects and draws the wrong roster is worse than one that is not offered. So
+`leaguePlatforms.js` marks Yahoo `beta`: the dialog offers it only to a
+browser with `localStorage["juke.beta.yahoo"] = "1"`, and every caption on the
+site still says "Yahoo soon", which is true.
+
+To flip it: the owner registers the Yahoo app and sets `YAHOO_CLIENT_ID` and
+`YAHOO_CLIENT_SECRET` (worker/README.md, "Switching it on"); somebody connects
+a real Yahoo league in a beta browser and compares rosters, lineup order,
+records, scoring and the schedule against Yahoo's own screens; then `live:
+true` and delete `beta`. Correct this section with what was actually measured
+when that happens — anything that turns out wrong here is the adapter's
+comment and this file's to fix, not just the code's.
+
+**Not built:** per-player projections (Yahoo's public API publishes none, so
+the rooms use Juke's under the league's scoring and say so), transactions,
+the draft board, and played-week box scores.
+
+`worker/test-yahoo.mjs` covers the adapter and the routes — the latter against
+the real router, `requireUser()`, `credentials.js` and `store.js`'s own SQL on
+a real SQLite database built from `migrations/` with foreign keys on. Thirteen
+mutations were each confirmed red. One first stayed green and was not an
+escape: the schedule's `has()` check only chose which of two identical copies
+to keep, because the Map key already deduplicated, so the mutation was re-aimed
+at the key. **A mutation that survives is a question about the mutation
+before it is a question about the test.**
 
 ## The draft countdown, and the instant that outlives its draft
 

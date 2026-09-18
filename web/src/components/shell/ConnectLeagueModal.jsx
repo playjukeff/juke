@@ -1,6 +1,7 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { X, Check, Lock } from 'lucide-react'
-import { PLATFORMS, LIVE_PLATFORMS } from './leaguePlatforms.js'
+import { PLATFORMS, LIVE_PLATFORMS, LIVE_NAMES, betaEnabled, offered } from './leaguePlatforms.js'
+import { YAHOO_PENDING } from '../../lib/yahooReturn.js'
 import {
   CBS_BOOKMARKLET, ESPN_BOOKMARKLET, BOOKMARKLET_LABEL, splitEspnPaste,
 } from './keyBookmarklets.js'
@@ -149,22 +150,120 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
   const [email, setEmail] = useState('')
   const [notifyStatus, setNotifyStatus] = useState('idle')
 
+  /* ---- Yahoo, which is the one flow that leaves the page ----
+
+     Yahoo is the only platform here with a real OAuth grant, so its middle
+     step has no field in it: the reader presses Continue, signs in on
+     Yahoo's own consent screen, and Yahoo sends them back to
+     /connect/yahoo, which hands the code to YahooReturn -- which reopens
+     this dialog through resumeYahoo() below, at the league list. Juke never
+     sees a Yahoo password or cookie.
+
+     `beta` is read when the dialog OPENS rather than during a render,
+     because it is a fact about one browser's storage. `yahooNote` is why
+     the Yahoo step is showing something other than its button. And the two
+     refs are what the close handler reads: a grant made in this dialog and
+     then abandoned is forgotten on the way out, so a token nobody is using
+     does not sit in the database. */
+  const [beta, setBeta] = useState(false)
+  const [yahooNote, setYahooNote] = useState(null)
+  const yahooAuthed = useRef(false)
+  const connected = useRef(false)
+
+  const yahooPlatform = PLATFORMS.find((p) => p.key === 'yahoo')
+
+  /* Everything a fresh open clears, in one place, so the Yahoo resume
+     cannot open onto some earlier session's leftovers. */
+  const reset = () => {
+    setUsername('')
+    setLeagues([])
+    setSleeperUser(null)
+    setChosen(null)
+    setOneLeague(null)
+    setEspnS2('')
+    setSwid('')
+    setPid('')
+    setDragHint(false)
+    setPlatform(null)
+    setTierInfo({ tier: null, cap: null })
+    setConnectError(null)
+    setEmail('')
+    setNotifyStatus('idle')
+    setYahooNote(null)
+    setBeta(betaEnabled())
+    yahooAuthed.current = false
+    connected.current = false
+  }
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return undefined
+    const onClose = () => {
+      if (!yahooAuthed.current || connected.current) return
+      yahooAuthed.current = false
+      const l = typeof window !== 'undefined' ? window.Live : null
+      const auth = typeof window !== 'undefined' ? window.JukeAuth : null
+      if (!l || !l.yahooForget || !auth || !auth.getToken) return
+      /* The worker only forgets the grant when no connected Yahoo league
+         still reads through it, so this is safe to ask whatever the
+         account already holds. Fire and forget: the dialog is closing. */
+      Promise.resolve(auth.getToken()).then((t) => l.yahooForget(t)).catch(() => {})
+    }
+    dialog.addEventListener('close', onClose)
+    return () => dialog.removeEventListener('close', onClose)
+  }, [])
+
   useImperativeHandle(ref, () => ({
+    /* Back from Yahoo's consent screen, with whatever it answered.
+
+       The pending state this dialog stored before leaving is compared with
+       the one that came back, as a courtesy: it is what stops a link
+       somebody sent from opening this dialog onto a sign-in that is not
+       theirs. The real check is the worker's, which refuses a state signed
+       for any account but the one presenting the code. */
+    async resumeYahoo(ret) {
+      reset()
+      setPlatform(yahooPlatform)
+      dialogRef.current?.showModal()
+
+      let pending = null
+      try {
+        pending = JSON.parse(sessionStorage.getItem(YAHOO_PENDING) || 'null')
+        sessionStorage.removeItem(YAHOO_PENDING)
+      } catch {
+        pending = null
+      }
+
+      if (!ret || ret.error || !ret.code) {
+        setYahooNote('denied')
+        setStatus('yahoo')
+        return
+      }
+      if (pending && pending.state && pending.state !== ret.state) {
+        setYahooNote('bad')
+        setStatus('yahoo')
+        return
+      }
+
+      setStatus('yahoo-checking')
+      const l = live()
+      const res = l && l.yahooExchange
+        ? await l.yahooExchange(await token(), ret.code, ret.state)
+        : { ok: false, reason: 'offline' }
+      if (!res.ok) {
+        setYahooNote(res.reason === 'not-configured' || res.reason === 'private-unavailable' ? 'off'
+                   : res.reason === 'offline' ? 'error'
+                   : 'bad')
+        setStatus('yahoo')
+        return
+      }
+      yahooAuthed.current = true
+      setLeagues(res.leagues)
+      setStatus('picking')
+    },
+
     open() {
-      setUsername('')
-      setLeagues([])
-      setSleeperUser(null)
-      setChosen(null)
-      setOneLeague(null)
-      setEspnS2('')
-      setSwid('')
-      setPid('')
-      setDragHint(false)
-      setPlatform(null)
-      setTierInfo({ tier: null, cap: null })
-      setConnectError(null)
-      setEmail('')
-      setNotifyStatus('idle')
+      reset()
       // Always the first step, never the one it was left on: this dialog
       // is one element reused for every open, which is the same reason
       // openSheet() clears the player sheet's team colour rather than
@@ -199,6 +298,59 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
 
   const isEspn = platform && platform.key === 'espn'
   const isCbs = platform && platform.key === 'cbs'
+  const isYahoo = platform && platform.key === 'yahoo'
+
+  /* Choosing a platform. Every one but Yahoo goes straight to its field;
+     Yahoo first asks whether this account already granted access, so a
+     reader who has been through Yahoo's consent screen once is not sent
+     through it again just to connect a second league. */
+  const pickPlatform = async (p) => {
+    setPlatform(p)
+    setYahooNote(null)
+    if (p.key !== 'yahoo') {
+      setStatus('idle')
+      return
+    }
+    setStatus('yahoo-checking')
+    const l = live()
+    const res = l && l.yahooLeagues ? await l.yahooLeagues(await token()) : { ok: false, reason: 'offline' }
+    if (res.ok) {
+      setLeagues(res.leagues)
+      setStatus('picking')
+      return
+    }
+    /* "needs-auth" is the ordinary answer for somebody who has never
+       connected Yahoo, and it is not an error: it is the Continue button. */
+    if (res.reason === 'not-configured') setYahooNote('off')
+    else if (res.reason !== 'needs-auth') setYahooNote('error')
+    setStatus('yahoo')
+  }
+
+  /* Leave for Yahoo's consent screen. The state the worker signed is kept
+     in sessionStorage with where the dialog was opened from, so the return
+     page can send the reader back to it and resumeYahoo() can tell its own
+     return from somebody else's. */
+  const continueToYahoo = async () => {
+    setYahooNote(null)
+    setStatus('yahoo-checking')
+    const l = live()
+    const res = l && l.yahooAuthorize ? await l.yahooAuthorize(await token()) : { ok: false, reason: 'offline' }
+    if (!res.ok || !res.url) {
+      setYahooNote(res.reason === 'not-configured' || res.reason === 'private-unavailable' ? 'off' : 'error')
+      setStatus('yahoo')
+      return
+    }
+    try {
+      sessionStorage.setItem(YAHOO_PENDING, JSON.stringify({
+        state: res.state, back: window.location.hash || '#/account', at: Date.now(),
+      }))
+    } catch {
+      /* Storage blocked: the return still works -- the worker's state check
+         is the binding -- it just lands on the account page. */
+    }
+    setStatus('yahoo-leaving')
+    window.location.assign(res.url)
+  }
 
   /* Two platforms resolve one league and ask which team in it is yours;
      one answers with a list of leagues. That is the only split the steps
@@ -323,8 +475,14 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
        Sleeper knows them from the username lookup, ESPN only from the team
        they just picked. Both land in the same `ownerId` column, because
        both answer the same question — which of these rosters is theirs. */
+    /* Yahoo posts no credential at all: the league reads through the grant
+       the reader made on Yahoo's own page, which the worker already holds.
+       Its team is Yahoo's own answer, and the worker prefers that over
+       whatever is posted here. */
     const res = l && l.connectLeague
-      ? isCbs
+      ? isYahoo
+        ? await l.connectLeague(await token(), chosen.leagueId, chosen.myTeamId, 'yahoo')
+      : isCbs
         ? await l.connectLeague(await token(), oneLeague.leagueId, chosen.teamId, 'cbs', { pid: pid.trim() })
         : isEspn
           ? await l.connectLeague(await token(), oneLeague.leagueId, chosen.teamId, 'espn',
@@ -356,6 +514,7 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
       setStatus('picking')
       return
     }
+    connected.current = true
     setStatus('done')
     if (onConnected) onConnected(res.league)
     // Long enough to read the confirmation, short enough not to be a wait.
@@ -408,17 +567,27 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
 
   const label = 'font-mono text-[11px] tracking-[0.14em] text-teal'
 
+  /* The DIALOG carries the width, and the box inside fills it.
+
+     It was the other way round, and a phone paid for it: the browser's own
+     stylesheet caps a <dialog> at `100% - 2em - 6px`, which at 375 is 337px,
+     while the box inside asked for 92vw -- 345px. So every step of this
+     dialog on a phone could be pushed ten pixels sideways, with the
+     dialog's right border drawn across the box's own padding. Measured on
+     the platform step, the ESPN step and the Yahoo step alike, so it was
+     never about any one platform. `max-w-none` retires the UA cap, and 92vw
+     leaves a gutter either side at every width. */
   return (
     <dialog
       ref={dialogRef}
-      className="m-auto rounded-2xl border border-line-hairline bg-[#151920] p-0 text-white backdrop:bg-black/60"
+      className="m-auto w-[min(92vw,30rem)] max-w-none rounded-2xl border border-line-hairline bg-[#151920] p-0 text-white backdrop:bg-black/60"
       onClick={(e) => {
         // The convention every other dialog here uses: a click landing on
         // the dialog element itself is a click on the backdrop.
         if (e.target === dialogRef.current) close()
       }}
     >
-      <div className="w-[min(92vw,30rem)] p-6 sm:p-7">
+      <div className="w-full p-6 sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <span className={label}>CONNECT A LEAGUE</span>
@@ -437,6 +606,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                    this one. */
                 : status === 'private-form' || status === 'looking-private' || status === 'private-bad'
                   ? 'Sign in to ESPN'
+                : status === 'yahoo' || status === 'yahoo-checking' || status === 'yahoo-leaving'
+                  ? 'Sign in with Yahoo'
                   : isEspn
                     ? 'Your ESPN league ID'
                     : isCbs
@@ -469,11 +640,11 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 <li key={p.key}>
                   <button
                     type="button"
-                    disabled={!p.live}
-                    onClick={() => { setPlatform(p); setStatus('idle') }}
+                    disabled={!offered(p, beta)}
+                    onClick={() => pickPlatform(p)}
                     className={
                       'flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-150 ' +
-                      (p.live
+                      (offered(p, beta)
                         ? 'border-line-hairline hover:border-teal/60'
                         : 'cursor-default border-line-hairline/60 opacity-45')
                     }
@@ -481,12 +652,17 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                     <span className="min-w-0">
                       <span className="block truncate text-[15px] font-semibold text-white">
                         {p.name}
+                        {/* Said on the row, so a reader in beta knows this
+                            one has not been checked the way the others have. */}
+                        {!p.live && offered(p, beta) ? (
+                          <span className="ml-2 font-mono text-[11px] tracking-[0.1em] text-ink-muted">BETA</span>
+                        ) : null}
                       </span>
-                      {p.note ? (
+                      {p.note && offered(p, beta) ? (
                         <span className="mt-0.5 block text-[12px] text-ink-muted">{p.note}</span>
                       ) : null}
                     </span>
-                    {p.live ? (
+                    {offered(p, beta) ? (
                       <span className="shrink-0 text-[18px] text-ink-muted" aria-hidden="true">›</span>
                     ) : (
                       <Lock className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
@@ -507,12 +683,17 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 saying it the moment ESPN shipped — the stale-copy failure
                 this project keeps finding, in the dialog whose whole job is
                 to be accurate about which platforms work. */}
+            {/* LIVE_NAMES rather than a join written here: this read
+                "Sleeper and ESPN and CBS are what Juke reads today" once
+                there were three, and "the others" once there was one --
+                both measured on the rendered dialog. The list file already
+                joins names properly; the sentence names what is left. */}
             <p className="mt-3.5 text-meta leading-[1.4] text-voidInk-body">
               {LIVE_PLATFORMS.length === PLATFORMS.length
                 ? 'Juke reads all of these.'
-                : `${LIVE_PLATFORMS.map((p) => p.name).join(' and ')} ${
-                    LIVE_PLATFORMS.length > 1 ? 'are' : 'is'
-                  } what Juke reads today. The others are not connected yet.`}
+                : `${LIVE_NAMES} ${LIVE_PLATFORMS.length > 1 ? 'are' : 'is'} what Juke reads today. ${
+                    PLATFORMS.filter((p) => !p.live).map((p) => p.name).join(' and ')
+                  } ${PLATFORMS.filter((p) => !p.live).length > 1 ? 'are' : 'is'} not connected yet.`}
             </p>
           </>
         ) : status === 'tier-limit' ? (
@@ -573,6 +754,62 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                 </button>
               </form>
             )}
+          </>
+        ) : status === 'yahoo' || status === 'yahoo-checking' || status === 'yahoo-leaving' ? (
+          /* Yahoo's middle step has no field in it, and that is the point.
+             It is the one platform with a real sign-in for third parties,
+             so what is asked of the reader is a press rather than a value
+             copied out of their browser -- and what Juke ends up holding is
+             a read-only grant they can switch off from Yahoo, rather than a
+             session that can act as them. */
+          <>
+            <button
+              type="button"
+              onClick={() => { setPlatform(null); setYahooNote(null); setStatus('platform') }}
+              className="-ml-1 mt-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-meta text-ink-muted transition-colors hover:text-white"
+            >
+              <span aria-hidden="true">‹</span> Not Yahoo?
+            </button>
+
+            <p className="mt-1.5 text-[14px] leading-[1.5] text-voidInk-body">
+              You sign in on Yahoo&apos;s own page and approve Juke there. Juke never sees your
+              Yahoo password, and it only ever reads &mdash; it never writes to your league.
+            </p>
+            <p className="mt-2 text-meta text-ink-muted">
+              What Yahoo gives Juke is permission to read your fantasy leagues and nothing else in
+              your Yahoo account. It is encrypted before it is stored, removed when you disconnect
+              your last Yahoo league or delete your account, and you can switch it off from your
+              Yahoo account at any time.
+            </p>
+
+            {yahooNote === 'denied' ? (
+              <p className="mt-3 text-meta text-flow-rose">
+                Yahoo did not approve it, so nothing was connected. Continue to try again.
+              </p>
+            ) : yahooNote === 'bad' ? (
+              <p className="mt-3 text-meta text-flow-rose">
+                That Yahoo sign-in did not match this session, so nothing was stored. Start it
+                again from here.
+              </p>
+            ) : yahooNote === 'off' ? (
+              <p className="mt-3 text-meta text-flow-rose">
+                Yahoo is not switched on for this deployment yet. Nothing was sent to Yahoo.
+              </p>
+            ) : yahooNote === 'error' ? (
+              <p className="mt-3 text-meta text-flow-rose">
+                Could not reach Yahoo just now. Try again in a moment.
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={continueToYahoo}
+              disabled={status !== 'yahoo' || yahooNote === 'off'}
+              className="mt-4 w-full rounded-full px-5 py-3 text-[15px] font-bold text-surface-page transition-transform duration-150 hover:scale-[1.01] disabled:opacity-40"
+              style={{ background: 'linear-gradient(100deg,#44D4E2,#82A1F6)' }}
+            >
+              {status === 'yahoo-leaving' ? 'Opening Yahoo…' : status === 'yahoo-checking' ? 'Checking…' : 'Continue to Yahoo'}
+            </button>
           </>
         ) : status === 'done' ? (
           <p className="mt-4 flex items-center gap-2 text-[15px] text-mint">
@@ -715,6 +952,11 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                   {oneLeague?.season ? ` · ${oneLeague.season}` : ''} · Juke reads this league
                   and never writes to it.
                 </>
+              ) : isYahoo ? (
+                <>
+                  Signed in with <b className="font-semibold text-white">Yahoo</b>. Juke reads this
+                  league and never writes to it.
+                </>
               ) : (
                 <>
                   Signed in as <b className="font-semibold text-white">{sleeperUser?.name}</b>. Juke
@@ -774,7 +1016,11 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
                               // only way somebody picks their own out of ten.
                               ? [lg.abbrev, lg.manager].filter(Boolean).join(' · ').toUpperCase()
                                 || 'TEAM ' + lg.teamId
-                              : `${lg.season}${lg.totalTeams ? ` · ${lg.totalTeams} TEAMS` : ''}`}
+                              /* Yahoo also knows which team in each league is
+                                 the reader's, and naming it is what tells
+                                 two leagues with similar names apart. */
+                              : [lg.season, lg.totalTeams ? `${lg.totalTeams} TEAMS` : null, lg.myTeamName]
+                                  .filter(Boolean).join(' · ').toUpperCase()}
                           </span>
                         </span>
                         {on ? <Check className="h-5 w-5 shrink-0 text-teal" /> : null}
@@ -789,6 +1035,8 @@ const ConnectLeagueModal = forwardRef(function ConnectLeagueModal({ onConnected 
               <p className="mt-4 text-meta text-flow-rose">
                 {connectError === 'private-unavailable'
                   ? 'Private leagues are not switched on for this deployment yet. Nothing was stored.'
+                  : connectError === 'private' && isYahoo
+                    ? 'Yahoo would not let Juke read that league. Close this and connect Yahoo again to sign in afresh.'
                   : connectError === 'private'
                     ? `${platform ? platform.name : 'That platform'} would not let Juke read that league as you. Your sign-in may have expired — go back and paste it again.`
                     : `Could not reach ${platform ? platform.name : 'the platform'} just now. Try again in a moment.`}

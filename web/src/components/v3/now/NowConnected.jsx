@@ -614,8 +614,14 @@ export default function NowConnected({ plan = null }) {
   const sheet = useWeekSheet(league, ready ? snapshot : null)
   const model = useLeagueModel(league, ready ? snapshot : null)
   /* A Sleeper league has no schedule on the snapshot; its week's pairing
-     comes off /sleeper/matchups, shared with the matchup page. */
-  const sleeperOn = ready && league && league.provider !== 'espn' && !(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length) && Number(snapshot.week) > 0
+     comes off /sleeper/matchups, shared with the matchup page.
+
+     Asked as "is this Sleeper" rather than "is this not ESPN". The second
+     sent a CBS league whose schedule failed to Sleeper's matchups route
+     with a CBS slug for an id, and would have done the same with a Yahoo
+     key -- a request to the wrong platform that can only fail. A league
+     stored before the provider column meant anything is a Sleeper one. */
+  const sleeperOn = ready && league && (league.provider || 'sleeper') === 'sleeper' && !(snapshot.schedule && snapshot.schedule.matchups && snapshot.schedule.matchups.length) && Number(snapshot.week) > 0
   const sw = useSleeperWeeks(sleeperOn ? league.leagueId : null, sleeperOn ? [Number(snapshot.week)] : [], sleeperOn ? Number(snapshot.week) : null)
   const sleeperEntry = sleeperOn ? sw[Number(snapshot.week)] : null
   const sleeperGame = sleeperEntry && sleeperEntry.view && sheet ? gameFor(sleeperWeekView(snapshot, sleeperEntry.view), sheet.mine) : null

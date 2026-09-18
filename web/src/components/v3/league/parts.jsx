@@ -211,6 +211,10 @@ export function KpiGrid({ items }) {
    does not exist on their platform. */
 export function CouldNotRead({ reason, platform, provider, onRetry, children }) {
   const cbs = provider === 'cbs'
+  /* Yahoo has no league setting to change either: a 403 is the grant --
+     expired past refreshing, or revoked from the reader's own Yahoo account
+     -- and the only fix is signing in to Yahoo again. */
+  const yahoo = provider === 'yahoo'
   return (
     <Sheet code="Could not read your league" aside={platform} role="alert">
       <p className="text-[18px] font-extrabold text-v3-ink">
@@ -226,6 +230,8 @@ export function CouldNotRead({ reason, platform, provider, onRetry, children }) 
           : reason === 'private'
             ? cbs
               ? 'Your saved CBS sign-in has stopped working. Reconnect the league from your account and paste a fresh key.'
+              : yahoo
+                ? 'Juke’s access to your Yahoo account has expired or was turned off in Yahoo. Reconnect the league from your account and sign in to Yahoo again.'
               : 'Either your saved ESPN sign-in has stopped working — reconnect the league from your account — or, if this league was public, check that visibility is still set to public in League Settings.'
             : 'Nothing is wrong with your league; this page could not fetch it. Try again in a moment.'}
       </p>

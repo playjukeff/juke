@@ -609,6 +609,100 @@ curl -H "Origin: http://localhost:8765" \
   "http://127.0.0.1:8787/espn/league?league=<a public league id>"
 ```
 
+## Yahoo
+
+`yahoo.js`, and the one platform here with a real OAuth grant. Measured 17
+September 2026: every anonymous Fantasy API request answers 401, so there is
+no public Yahoo league — and there does not need to be, because Yahoo lets a
+third party ask properly. The reader signs in on Yahoo's consent screen,
+Yahoo sends them back to `https://jukeff.com/connect/yahoo` with a one-time
+code, and the page trades the code here for a token scoped to Fantasy Sports
+read. No password or cookie ever reaches Juke.
+
+| Route | Guard | Does |
+|---|---|---|
+| `POST /yahoo/authorize` | `requireUser()` | the consent URL, with a signed `state` |
+| `POST /yahoo/token` | `requireUser()` | code → token, sealed; answers the reader's leagues |
+| `GET /yahoo/leagues` | `requireUser()` | the leagues again, from the stored token |
+| `DELETE /yahoo/leagues` | `requireUser()` | forget the token, if no connected league still reads through it |
+| `GET /yahoo/snapshot` | `originAllowed()` + the caller's token | one league, the same vocabulary as the rest |
+
+### Switching it on — owner only
+
+1. Create an app at <https://developer.yahoo.com/apps/create/>: **Web
+   Application**, redirect URI **`https://jukeff.com/connect/yahoo`**, API
+   permission **Fantasy Sports → Read**. The redirect URI must match exactly;
+   the return page lives at that path and may not move.
+2. Put the two values on the worker:
+
+   ```bash
+   wrangler secret put YAHOO_CLIENT_ID -c worker/wrangler.toml
+   wrangler secret put YAHOO_CLIENT_SECRET -c worker/wrangler.toml
+   ```
+
+3. `LEAGUE_CRED_KEY` must already be set (see Private leagues above) and
+   `0011` applied: the token is sealed exactly like an ESPN or CBS credential,
+   and without a key every Yahoo route answers `private-unavailable` before
+   Yahoo is involved. With no client id and secret they answer
+   `not-configured`, and the dialog says Yahoo is not switched on.
+
+`YAHOO_API_BASE`, `YAHOO_AUTH_BASE` and `YAHOO_REDIRECT_URI` exist to point
+the worker at a stub; nothing sets them in production.
+
+### Three decisions
+
+**One token per ACCOUNT, stored under `league_id = "*"`.** ESPN's and CBS's
+credentials are per league because they are pasted per league. A Yahoo grant
+is per person and reads every league they are in, and Yahoo may hand back a
+new refresh token when an old one is spent — copies per league would each go
+stale on their own. So a Yahoo connect writes the league row and nothing else,
+and disconnecting the **last** Yahoo league is what deletes the token.
+
+**The `state` binds a consent to the account that asked.** Without it,
+somebody could start a connect on their account, send the consent link to a
+victim, and read the victim's Yahoo leagues from their own account once the
+victim approved. `state` carries a hash of the account, an expiry and a nonce,
+HMAC-signed with the client secret, and `/yahoo/token` refuses a code whose
+state names a different account — **before** the code is sent to Yahoo. It
+also carries the origin the reader started on, because `www.jukeff.com`
+serves the site as its own origin and Yahoo can only return a reader to the
+one registered address.
+
+**Scoring is matched by the category's NAME, not its id.** The league's own
+settings print a name beside every stat id, and nothing here has been checked
+against a real Yahoo league yet — so an id table would be a table of guesses,
+and a wrong id scores the wrong category in silence. A name this does not
+recognise is reported in `scoringUnmapped` instead.
+
+### What is not measured yet
+
+**Everything about a league payload.** It is written against Yahoo's
+published format, and the readers in `yahoo-json.js` accept both the array
+and numbered-object forms Yahoo uses interchangeably so a wrong guess about a
+node cannot silently drop it. That is why `leaguePlatforms.js` marks Yahoo
+`beta` rather than `live`: the dialog offers it only to a browser that has set
+`localStorage["juke.beta.yahoo"] = "1"`. Read a real league through it,
+compare every roster, score and lineup against Yahoo's own screen, then flip
+`live`.
+
+Yahoo's public API publishes no per-player projection, so a Yahoo league's
+rooms use Juke's own projection under the league's scoring, and say so.
+Transactions, the draft board and played-week box scores are not read yet.
+
+### Testing it
+
+```bash
+node worker/test-yahoo.mjs   # offline; Node 22.13+ for node:sqlite
+```
+
+The adapter half runs against fixtures in Yahoo's published shape. The route
+half runs the real router, `requireUser()`, `credentials.js` and `store.js`'s
+own SQL against a real SQLite database built from `migrations/` with foreign
+keys on, and fakes only Yahoo — an OAuth endpoint that checks the client's
+Basic auth and a Fantasy API that checks the bearer. Every mutation of the
+state binding, the refresh, the grant deletion, the scoring names and the
+schedule dedupe was confirmed red.
+
 ## The cache database
 
 D1, bound as `DB`, created as `juke_db`. Two tables that matter and one that

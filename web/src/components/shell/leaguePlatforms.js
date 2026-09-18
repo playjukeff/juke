@@ -56,14 +56,45 @@
    claim into a roadmap — and it moves when the flags move, rather than
    being a second, hand-maintained copy of them. */
 
+/* ---- Yahoo is built and is `beta`, which is not `live` ----
+
+   worker/yahoo.js reads a Yahoo league through Yahoo's own OAuth grant, and
+   every part of it that can be proved offline has been. What has NOT
+   happened is a real league being read through it: that needs the Yahoo
+   app registered and a league to read, and every shape in a Yahoo league
+   payload is written against Yahoo's published format rather than
+   measured. A platform that connects and then draws the wrong roster is
+   worse than one that is not offered, so `live` stays false -- the caption
+   under every connect control still says "Yahoo soon", which is true.
+
+   `beta` is how it gets measured without being offered to everybody: a
+   browser that has set `juke.beta.yahoo` to "1" in localStorage is shown
+   Yahoo in the connect dialog as though it were live. Flip `live` once a
+   real league has been read and checked, and delete `beta` with it. */
 export const PLATFORMS = [
   { key: 'sleeper', name: 'Sleeper', live: true, note: 'Username only — no password' },
   { key: 'espn', name: 'ESPN', live: true, note: 'League ID — private leagues need your ESPN sign-in' },
   { key: 'cbs', name: 'CBS', live: true, note: 'League address — plus your CBS sign-in, always' },
-  { key: 'yahoo', name: 'Yahoo', live: false },
+  { key: 'yahoo', name: 'Yahoo', live: false, beta: true, note: 'Sign in with Yahoo — read-only, no password shared' },
 ]
 
 export const LIVE_PLATFORMS = PLATFORMS.filter((p) => p.live)
+
+/* Whether this browser has opted in to the platforms still in beta. Read
+   on demand and never during a render the prerender could see: it is a
+   fact about one browser's storage, and the server has none. */
+export function betaEnabled() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('juke.beta.yahoo') === '1'
+  } catch {
+    return false
+  }
+}
+
+/* Can this platform be chosen in the connect dialog right now. */
+export function offered(p, beta) {
+  return !!(p && (p.live || (p.beta && beta)))
+}
 
 /* Derived, not written down again.
 

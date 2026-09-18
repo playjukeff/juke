@@ -220,6 +220,15 @@ jobs:
       # section carries the date they were taken on.
       - name: Verify the CBS adapter
         run: node worker/test-cbs.mjs
+
+      # Yahoo, and its OAuth routes, through the real router against a real
+      # SQLite database built from worker/migrations -- `node:sqlite`, so
+      # Node 22.13 or newer, which the "22" pin above resolves to. The half
+      # that matters most here is the consent state: a code arriving with
+      # another account's state must be refused before it is spent. No
+      # network: Yahoo is faked at fetch() and anything else is refused.
+      - name: Verify the Yahoo adapter and its OAuth routes
+        run: node worker/test-yahoo.mjs
       - name: Verify the live injury vocabulary
         run: node worker/test-status.mjs
 

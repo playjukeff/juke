@@ -214,7 +214,7 @@ export function tradeDeadlineFromCbs(transactions) {
  * which is how you get a wall time in a named zone without a library. One
  * correction is enough here because the deadline is never within an hour of
  * a DST transition (those happen at 02:00 local). */
-function etInstant(y, mo, d, hh, mm) {
+export function etInstant(y, mo, d, hh, mm) {
   try {
     const guess = Date.UTC(y, mo - 1, d, hh, mm, 0);
     const fmt = new Intl.DateTimeFormat("en-US", {

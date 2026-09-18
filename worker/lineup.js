@@ -39,6 +39,8 @@
  * draft ran 14 rounds against 9 starters and 5 bench. Counting IR would
  * make it 15 and the last round would be a pick nobody made. */
 
+import { flat, members } from "./yahoo-json.js";
+
 const QB = 0, RB = 2, WR = 4, TE = 6, OP = 7, DST = 16, K = 17;
 const BENCH = 20, IR = 21, FLEX = 23;
 const RB_WR = 3, WR_TE = 5;
@@ -166,4 +168,78 @@ export function slotRank(lineupSlotId) {
   // lineup: an unknown seat is far likelier to be a bench variant than a
   // starter, and guessing it into the lineup would reorder a real one.
   return r === undefined ? 92 : r;
+}
+
+
+/* ----------------------------------------------------------
+   Yahoo
+   ---------------------------------------------------------- */
+
+/* Yahoo states its lineup as positions with counts, in words, the way
+ * Sleeper does -- `roster_positions` is a list of
+ * `{ roster_position: { position: "W/R/T", count: 1, is_starting_position: 1 } }`
+ * -- so this is a tally again rather than an id table.
+ *
+ * Its flex seats are spelled as the eligible positions joined by slashes,
+ * the same idea as CBS's hyphens: W/R/T is Juke's FLEX, and a seat that
+ * lists Q is a superflex. The narrower W/R, W/T and R/T fold into `flex`
+ * and are reported in `looseFlex`, for lineupFromEspn()'s reason: a seat
+ * modelled slightly loosely is a smaller error than a starter not counted.
+ *
+ * NOT MEASURED against a real league yet -- see yahoo.js. The positions
+ * below are Yahoo's documented spellings; anything else is reported in
+ * `unmapped` rather than guessed into a seat. */
+const YAHOO_STARTERS = { QB: "QB", RB: "RB", WR: "WR", TE: "TE", K: "K", DEF: "DST" };
+
+export function lineupFromYahoo(rosterPositions) {
+  const seats = members(rosterPositions, "roster_position").map(flat);
+  if (!seats.length) return null;
+
+  const starters = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+  let flex = 0, superflex = 0, bench = 0;
+  const looseFlex = [];
+  const unmapped = [];
+
+  for (const s of seats) {
+    const seat = String(s.position || "").toUpperCase();
+    const n = Number(s.count) || 0;
+    if (!seat || n <= 0) continue;
+
+    if (YAHOO_STARTERS[seat]) { starters[YAHOO_STARTERS[seat]] += n; continue; }
+    if (seat.includes("/")) {
+      if (seat.split("/").includes("Q")) { superflex += n; continue; }
+      flex += n;
+      if (seat !== "W/R/T") looseFlex.push(seat);
+      continue;
+    }
+    if (seat === "BN") { bench += n; continue; }
+    // IR and its variants are real seats and not rounds -- see above.
+    if (seat === "IR" || seat === "IR+" || seat === "NA") continue;
+    unmapped.push(seat);
+  }
+
+  const starting = Object.values(starters).reduce((a, b) => a + b, 0) + flex + superflex;
+  if (!starting) return null;
+
+  return {
+    starters, flex, superflex, bench,
+    rounds: starting + bench,
+    looseFlex: looseFlex.sort(),
+    unmapped: unmapped.sort(),
+  };
+}
+
+/* Where a Yahoo seat sits in a lineup -- app.js's SLOT_ORDER again, with
+   every flex spelling where FLEX goes and a Q-flex where SFLEX goes. A seat
+   nobody has named sorts after the lineup, for slotRank()'s reason. */
+export function yahooSeatRank(seat) {
+  const s = String(seat || "").toUpperCase();
+  if (s === "QB") return 0;
+  if (s === "RB") return 1;
+  if (s === "WR") return 2;
+  if (s === "TE") return 3;
+  if (s.includes("/")) return s.split("/").includes("Q") ? 5 : 4;
+  if (s === "DEF") return 6;
+  if (s === "K") return 7;
+  return 92;
 }
