@@ -191,7 +191,7 @@ export default function V3Team({ teamId }) {
 
   if (status === 'loading' || (connected && (snapStatus === 'loading' || snapStatus === 'none'))) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead label="League · team" title="Reading the team…" action={back} />
         <Sheet band={false} aria-busy="true"><Skeleton lines={8} /></Sheet>
       </div>
@@ -199,7 +199,7 @@ export default function V3Team({ teamId }) {
   }
   if (!connected) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead label="League · team" title="Team pages are for a connected league." lede="Every team in your league gets a page — its roster priced this week and for the season, its record and its schedule. Connect a league and they open from the standings." action={<>{back}<ConnectCall primary /></>} />
       </div>
     )
@@ -207,7 +207,7 @@ export default function V3Team({ teamId }) {
   const platform = platformFor(league.provider).name
   if (!ready) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead label="League · team" title={league.name} action={back} />
         <CouldNotRead reason={reason} platform={platform} onRetry={() => retrySnapshot(league.leagueId, league.provider)} />
       </div>
@@ -215,7 +215,7 @@ export default function V3Team({ teamId }) {
   }
   if (!team) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead label={`League · ${snapshot.name}`} title="No team by that address." lede={`${snapshot.name} has ${(snapshot.teams || []).length} teams and none of them answers to “${teamId}”. Every team opens from the standings.`} action={back} />
       </div>
     )

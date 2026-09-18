@@ -425,7 +425,7 @@ export default function V3Players() {
     : 'No week has finished yet, so the rate is still all preseason projection'
 
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-section">
       <PageHead
         label={situation ? `Players · ${situation.players} on tonight's board${situation.refreshed ? ` · refreshed ${situation.refreshed}` : ''}` : null}
         title="Every player on the board, priced."

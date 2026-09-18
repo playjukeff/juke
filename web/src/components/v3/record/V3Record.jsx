@@ -438,7 +438,7 @@ export default function V3Record() {
   ]
 
   return (
-    <div className="grid gap-8 sm:gap-10">
+    <div className="grid gap-section">
       <PageHead
         title="Every draft and every call, graded."
         lede="The mocks you have finished, each with the letter it earned beside where it finished in its room — and the calls Juke made on your real roster: what it said, what you did, what happened, and whether it was right."

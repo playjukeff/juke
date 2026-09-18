@@ -260,7 +260,7 @@ function WeekCall({ sheet, week }) {
   const matchWeek = game ? game.week : week
   const matchText = matchWeek ? `Week ${matchWeek} matchup` : 'The matchup'
   return (
-    <div className="rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
+    <div className="rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink)),var(--v3-shadow-raised)] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
       <div className="flex items-center justify-between gap-3">
         <Label>The one thing this week</Label>
         {call ? <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-white">{call.kind}</span> : null}
@@ -533,7 +533,7 @@ function SeasonOver({ league, snapshot, rank, total }) {
   return (
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
       <div>
-        <Label>Now · the season is over</Label>
+        <Label tier="page" as="p">Now · the season is over</Label>
         <Headline className="mt-3">No calls left this season.</Headline>
         <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
           {s ? `${s.won}-${s.lost}${s.tied ? '-' + s.tied : ''}${rank ? `, ${ordinal(rank)} of ${total}` : ''}. ` : ''}The one decision still ahead of you is next year&apos;s draft, and it is the only one you can practise.
@@ -578,7 +578,7 @@ function PreDraft({ league, snapshot }) {
   return (
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
       <div>
-        <Label>Now · before the draft</Label>
+        <Label tier="page" as="p">Now · before the draft</Label>
         <Headline className="mt-3">{title}</Headline>
         <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
           Rosters are empty until {snapshot.name || league.name} drafts. The week&apos;s calls — the lineup swap, the claim, the trade window, who might not play — start the morning after.
@@ -640,7 +640,7 @@ export default function NowConnected({ plan = null }) {
 
   if (!draftDone) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} />
         <PreDraft league={league} snapshot={snapshot} />
         {plan}
@@ -659,7 +659,7 @@ export default function NowConnected({ plan = null }) {
 
   if (seasonPhase(snapshot) === 'complete') {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         {/* No kickoff on a finished season: the page's own headline is that
             nothing is left to decide, and a countdown beside it says the
             opposite. Same rule SeasonBand keeps for the pages with no
@@ -691,7 +691,7 @@ export default function NowConnected({ plan = null }) {
   if (mine && total === null) facts.push('A starter has no projection yet, so there is no total to state.')
 
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-section">
       <SituationBand league={league} snapshot={snapshot} sheet={sheet} rank={st.rank} total={st.table.length} showKickoff={!mine} />
 
       {/* The opening sentence runs the full measure rather than being wrapped
@@ -701,7 +701,7 @@ export default function NowConnected({ plan = null }) {
           row, then the week's two cards side by side underneath. */}
       <div className="grid gap-8">
         <div>
-          <Label>Now · your call sheet{week ? ` · week ${week}` : ''}</Label>
+          <Label tier="page" as="p">Now · your call sheet{week ? ` · week ${week}` : ''}</Label>
           <Headline className="mt-3 max-w-[22ch]">{title}</Headline>
           <p className="mt-5 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2">
             {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}

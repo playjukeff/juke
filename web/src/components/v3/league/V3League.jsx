@@ -516,7 +516,7 @@ function Connected({ league }) {
 
   if (!ready) {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         {head}
         {status === 'loading' || status === 'none'
           ? <Sheet band={false} aria-busy="true"><Skeleton lines={8} /></Sheet>
@@ -571,7 +571,7 @@ export default function V3League() {
 
   if (status === 'loading') {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead title="League" lede="Checking which league is yours…" />
         <Sheet band={false} aria-busy="true"><Skeleton lines={6} /></Sheet>
       </div>
@@ -580,7 +580,7 @@ export default function V3League() {
 
   if (status === 'error') {
     return (
-      <div className="grid gap-10">
+      <div className="grid gap-section">
         <PageHead title="League" />
         <Sheet code="Could not load your leagues" role="alert">
           <p className="max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2">

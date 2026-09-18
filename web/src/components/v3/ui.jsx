@@ -118,9 +118,23 @@ export function cx(...parts) {
    data-hero-eyebrow needs on both Now heroes: an attribute says what an
    element IS, and the alternative here was a wrapper span that exists only
    to carry one. */
-export function Label({ children, className = '', as: Tag = 'span', ...rest }) {
+/* `tier="page"` is the eyebrow ABOVE a page's h1, and it is the only place
+   a Label is large. At 12px it read as a caption stuck to the headline — a
+   thing to skip rather than the first line of the sentence the page is
+   making. At 24/26 in the accent it is part of the composition, and it
+   carries the orientation the headline does not.
+
+   Deliberately NOT a change to the default. There are several hundred
+   Labels in v3 and almost all are exactly what they should be: a quiet
+   uppercase key beside a figure. Raising the tier globally would be
+   shouting in every card on the site. */
+const LABEL_TIER = {
+  default: 'text-[12px] tracking-[0.12em] text-v3-ink3',
+  page: 'text-[24px] leading-[1.1] tracking-[0.06em] text-v3-call sm:text-[26px]',
+}
+export function Label({ children, className = '', as: Tag = 'span', tier = 'default', ...rest }) {
   return (
-    <Tag {...rest} className={cx('font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-v3-ink3', className)}>
+    <Tag {...rest} className={cx('font-figure font-semibold uppercase', LABEL_TIER[tier] || LABEL_TIER.default, className)}>
       {children}
     </Tag>
   )
@@ -278,7 +292,7 @@ export function ThemeChoice({ className = '' }) {
 
 /* A headline. Sentence case, upright, heavy — the opposite of both earlier
    builds' italic caps. `size` picks a step on one scale. */
-const H = { page: 'text-[clamp(2.4rem,5.2vw,4.25rem)] leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
+const H = { page: 'text-[clamp(2.5rem,5vw,4.875rem)] leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
 export function Headline({ children, size = 'page', as: Tag = 'h1', className = '', ...rest }) {
   return (
     <Tag className={cx('font-sheet font-black tracking-[-0.025em] text-v3-ink [text-wrap:balance]', H[size], className)} {...rest}>
@@ -297,9 +311,12 @@ export function Headline({ children, size = 'page', as: Tag = 'h1', className = 
 export function PageHead({ label, title, lede, action }) {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-      <div className="max-w-[760px]">
-        {label && <Label>{label}</Label>}
-        <Headline className={label ? 'mt-2' : ''}>{title}</Headline>
+      <div className="max-w-[860px]">
+        {label && <Label tier="page" as="p">{label}</Label>}
+        {/* 24ch holds the headline to about three lines at the top of its
+            clamp — a team name is user-generated, and a long one must not
+            push the first card off the screen. */}
+        <Headline className={cx('max-w-[24ch] [text-wrap:balance]', label ? 'mt-3' : '')}>{title}</Headline>
         {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2" />}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}

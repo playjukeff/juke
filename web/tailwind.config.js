@@ -383,6 +383,10 @@ export default {
         divider: 'rgba(255,255,255,0.05)',
       },
       boxShadow: {
+        // The ONE elevation step v3 has, deliberately scarce: it belongs to
+        // the single highest-priority card on a screen and nothing else.
+        // Its value is a token so it can differ by theme.
+        'v3-raised': 'var(--v3-shadow-raised)',
         // resting glass panel: barely-there edge, no glow
         glass: '0 1px 0 0 rgb(255 255 255 / 0.04) inset',
         // hover state: a teal ring, and nothing else. It used to carry a
@@ -483,6 +487,9 @@ export default {
         // rail is 84px (RailNav.jsx), the handoff is describing its own
         // mockup, and a token nobody applies is a knob that turns nothing.
         'bar-track': '7px',
+        // The gap BETWEEN major blocks: 64 -> 96 -> 128 with the viewport,
+        // stepped in ONE place. Spacing inside a card never reads this.
+        section: 'var(--v3-space-section)',
       },
       transitionDuration: { hover: '160ms' },
       fontFamily: {
