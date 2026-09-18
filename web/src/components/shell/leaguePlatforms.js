@@ -63,8 +63,13 @@
    published format and proved offline, and a platform that connects and
    then draws the wrong roster is worse than one that is not offered. So it
    was shown only to a browser that had set `juke.beta.yahoo` to "1" in
-   localStorage, until a real league had been read through it and checked
-   against Yahoo's own screens. Then `live` flipped and `beta` came off it.
+   localStorage.
+
+   It went `live` on 18 September 2026 with its sign-in measured and its
+   league reading NOT: the owner's Yahoo account is in no league. That was
+   safe only because 'free' connects nothing and Season Pass is not on sale,
+   so a real Yahoo league has to be read and checked before either changes.
+   See the note on LEAGUE_CAP in web/src/lib/tiers.js.
 
    The mechanism stays for the next platform, and it is inert while nothing
    carries `beta`: `offered()` only ever reads the flag for a platform that

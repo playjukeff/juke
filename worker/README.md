@@ -679,11 +679,13 @@ recognise is reported in `scoringUnmapped` instead.
 **Everything about a league payload.** It is written against Yahoo's
 published format, and the readers in `yahoo-json.js` accept both the array
 and numbered-object forms Yahoo uses interchangeably so a wrong guess about a
-node cannot silently drop it. That is why `leaguePlatforms.js` marks Yahoo
-`beta` rather than `live`: the dialog offers it only to a browser that has set
-`localStorage["juke.beta.yahoo"] = "1"`. Read a real league through it,
-compare every roster, score and lineup against Yahoo's own screen, then flip
-`live`.
+node cannot silently drop it. The sign-in half IS measured: the app is
+registered, both secrets are set, and the owner has been through the real
+round trip. Yahoo is `live` in `leaguePlatforms.js` on the owner's call,
+because no account but theirs can connect a league yet. **Before Season Pass
+goes on sale, or any other account is moved off `free`, read a real league
+through it** and compare every roster, score and lineup against Yahoo's own
+screen. CLAUDE.md's Yahoo section says exactly what to compare.
 
 Yahoo's public API publishes no per-player projection, so a Yahoo league's
 rooms use Juke's own projection under the league's scoring, and say so.

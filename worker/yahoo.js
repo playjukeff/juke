@@ -39,15 +39,17 @@
  * CLAUDE.md records for `espn_id`, so the same name join espn.js and cbs.js
  * already make.
  *
- * **Everything about a league payload is NOT measured yet**, because it
- * cannot be without a registered app and a real league. It is written
- * against Yahoo's published response format, and the parsing below is
- * deliberately shape-tolerant for that reason: `flat()` and `members()`
- * accept both the array and the numbered-object forms Yahoo uses
+ * **Everything about a league payload is NOT measured yet.** The OAuth half
+ * is: the app is registered and the owner has signed in through it. But the
+ * owner's Yahoo account is in no league, so nothing below has read a real
+ * one. It is written against Yahoo's published response format, and the
+ * parsing is deliberately shape-tolerant for that reason: `flat()` and
+ * `members()` accept both the array and the numbered-object forms Yahoo uses
  * interchangeably, so a guess about which one a given node takes cannot
- * silently drop it. The platform stays locked in leaguePlatforms.js until a
- * real league has been read through this file -- a platform that connects
- * and draws the wrong roster is worse than one that is not offered.
+ * silently drop it. Yahoo is `live` in leaguePlatforms.js anyway, on the
+ * owner's call, because no account but theirs can connect a league yet; a
+ * real league has to be read through this file before that changes. See the
+ * note on LEAGUE_CAP in web/src/lib/tiers.js.
  *
  * ---- Failure is a value, never a throw ----
  *
