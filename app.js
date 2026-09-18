@@ -1234,6 +1234,10 @@ function gameFrom(event) {
     // entry written before this field existed has none, and a slate row
     // without one is simply not a link.
     id: (event && event.id) || null,
+    // The NFL week the game belongs to, for the ticker's day labels. ESPN's
+    // weeks run Wednesday to Tuesday, which is when the default scoreboard
+    // rolls over to the next week.
+    week: (event && event.week && event.week.number) || null,
     away: away.team && away.team.abbreviation,
     home: home.team && home.team.abbreviation,
     awayScore: away.score,
