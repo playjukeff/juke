@@ -72,7 +72,7 @@
   <header class="appbar">
    <div class="appbar-inner">
     <a class="home" href="../index.html" title="Juke home"
-       aria-label="Back to the Draft Room">
+       aria-label="Juke home">
     <!-- class="mark" is kept so .home's layout rules and the 560px hide rule
          still find it, and the size is overridden inline because .mark is
          31x36 - the shield's portrait aspect. The shark is 564:352, so 36
@@ -94,40 +94,49 @@
   <main class="doc">
 
     <p class="doc-intro">
-      Juke is a free fantasy football mock draft simulator. There's nothing to
-      buy, and nothing here that scales up into something more serious than a
-      draft board &mdash; these terms are short because the product is. There
-      is an optional account, which exists so your drafts follow you between
-      devices and for nothing else.
+      Juke is a fantasy football analyst for your draft and your season. It
+      runs mock drafts against a board built from real draft data and grades
+      every one. It reads the league you actually play in and makes the
+      week's calls on it &mdash; who to start, who to claim, whether a trade
+      is fair &mdash; with the arithmetic printed beside each one. And it
+      keeps every player, every team in your league and every draft you've
+      run on pages you can check. It only ever reads a league; it never
+      changes one.
     </p>
 
     <div class="note">
       Matched to what the app actually does today rather than copied from a
-      template. It hasn't been reviewed by a lawyer. Last updated 2 September
-      2026: accounts arrived, and the previous version of this page said Juke
-      had none.
+      template. It hasn't been reviewed by a lawyer. Last updated 18 September
+      2026: this page still described Juke as a mock draft simulator and
+      nothing more, long after it began reading real leagues. The update
+      before that, 2 September 2026, was accounts arriving, when the previous
+      version said Juke had none.
     </div>
 
     <div class="toc">
       <ol>
         <li><a href="#s01">Using Juke</a></li>
-        <li><a href="#s02">Your account</a></li>
-        <li><a href="#s03">Rooms and other people</a></li>
-        <li><a href="#s04">Where the data comes from</a></li>
-        <li><a href="#s05">No guarantees about the football</a></li>
-        <li><a href="#s06">The service as it is</a></li>
-        <li><a href="#s07">Limits on what we owe you</a></li>
-        <li><a href="#s08">Changes</a></li>
-        <li><a href="#s09">Contact</a></li>
+        <li><a href="#s02">Your account, and what costs money</a></li>
+        <li><a href="#s03">Connecting a league</a></li>
+        <li><a href="#s04">Rooms and other people</a></li>
+        <li><a href="#s05">Where the data comes from</a></li>
+        <li><a href="#s06">No guarantees about the football</a></li>
+        <li><a href="#s07">The service as it is</a></li>
+        <li><a href="#s08">Limits on what we owe you</a></li>
+        <li><a href="#s09">Changes</a></li>
+        <li><a href="#s10">Contact</a></li>
       </ol>
     </div>
 
     <h2 id="s01"><span class="no">01</span>Using Juke</h2>
     <p>
-      Open the page and draft &mdash; that's the whole of it. Nothing to
-      install, no age gate, and no account needed to use any of it. By using
-      the site you're agreeing to these terms; if that's not something you're
-      willing to do, the thing to do differently is not use it.
+      Most of Juke needs nothing from you: open the page and run a mock
+      draft, look up any player, or see what the week's calls look like on
+      a sample league. There's nothing to install, no age gate, and no
+      account needed for any of that. Reading your own league is the part
+      that needs an account &mdash; sections 02 and 03 cover it. By using
+      the site you're agreeing to these terms; if that's not something
+      you're willing to do, the thing to do differently is not use it.
     </p>
     <p>
       Don't try to abuse the service &mdash; scripting requests at it,
@@ -136,11 +145,12 @@
       Policy</a> for exactly what a room holds and for how long.
     </p>
 
-    <h2 id="s02"><span class="no">02</span>Your account</h2>
+    <h2 id="s02"><span class="no">02</span>Your account, and what costs money</h2>
     <p>
-      An account is optional and free. It exists so the draft you are in the
-      middle of, and the drafts you have finished, follow you between
-      browsers instead of living in one. Everything else works signed out.
+      An account is free to create. It does two things: it keeps the draft
+      you're in the middle of, and the drafts you've finished, following you
+      between browsers instead of living in one; and it holds the leagues
+      you connect. Everything else works signed out.
     </p>
     <p>
       Sign-in is handled by Clerk rather than by us, so their terms cover the
@@ -150,21 +160,52 @@
       somebody else.
     </p>
     <p>
-      You can delete your account from the account screen behind your avatar,
-      and that removes the drafts Juke stored against it as well &mdash; the
-      account and its data go together, with nothing left to ask us for.
-      Deleting a single draft from your locker deletes it from your account
-      too.
+      You can delete your account from <b>Profile and security</b> in the
+      Account menu, and that removes what Juke stored against it as well &mdash; your
+      drafts, the leagues you connected, and any sign-in you gave us to read
+      one. The account and its data go together, with nothing left to ask us
+      for. Deleting a single draft from your locker deletes it from your
+      account too.
     </p>
     <p>
-      Juke is free today. If that ever changes, it changes for things that do
-      not exist yet, and the free mock draft stays free &mdash; you won't be
+      <b>Nothing on Juke costs money today.</b> Mock drafts, the player pages
+      and the sample league are free. Reading a real league is part of a
+      plan called Season Pass, and reading more than one is part of
+      Multi-League; neither is on sale yet, and nobody is charged for either.
+      When they do go on sale, the price and what it includes will be on the
+      page before you pay. The mock draft stays free &mdash; and you won't be
       charged for something you are already using without being asked first.
     </p>
 
-    <h2 id="s03"><span class="no">03</span>Rooms and other people</h2>
+    <h2 id="s03"><span class="no">03</span>Connecting a league</h2>
     <p>
-      A shared room is other people's picks and other people's chat messages,
+      Connecting a league lets Juke read it from the platform that runs it
+      &mdash; Sleeper, ESPN or CBS today, with Yahoo being tested. It reads
+      the league's teams, rosters, settings, schedule and results, and that
+      is all it does with them. Juke never changes a league: nothing it does
+      can set a lineup, make a claim or propose a trade. Every call is advice
+      that you carry out yourself, on the platform, or don't.
+    </p>
+    <p>
+      Only connect a league you belong to, with your own details. Some
+      platforms need more than a league's id: a private ESPN league needs
+      your ESPN sign-in cookies, a CBS league needs your CBS cookie, and a
+      Yahoo league needs you to approve Juke on Yahoo's own page. The
+      <a href="privacy.html#s02">Privacy Policy</a> says exactly how each of
+      those is stored and when it is deleted. Disconnecting a league, from
+      <b>Account and leagues</b>, stops Juke reading it.
+    </p>
+    <p>
+      Your use of each platform is still covered by that platform's own
+      terms. Juke isn't affiliated with or endorsed by Sleeper, ESPN, CBS or
+      Yahoo, and a platform can change what it lets outside apps read
+      &mdash; so a connection that works today may stop working, and Juke
+      can't promise otherwise.
+    </p>
+
+    <h2 id="s04"><span class="no">04</span>Rooms and other people</h2>
+    <p>
+      A shared draft room is other people's picks and other people's chat messages,
       not just yours. Juke mechanically strips anything that isn't plain text
       or a real GIPHY link out of chat, and rate-limits how fast any one
       person can act &mdash; but it does not moderate what people say to each
@@ -172,54 +213,64 @@
       you send an invite link to.
     </p>
 
-    <h2 id="s04"><span class="no">04</span>Where the data comes from</h2>
+    <h2 id="s05"><span class="no">05</span>Where the data comes from</h2>
     <p>
-      Player data, ADP and statistics come from Sleeper and Fantasy Football
-      Calculator's public feeds; player news headlines come from Tank01.
-      Juke links to that news rather than republishing it, and doesn't claim
-      to have written any of it. Every rating, grade and suggestion on the
-      site is Juke's own calculation on top of that public data, not an
-      endorsement from any of those providers, and not expert analysis from
-      anybody on staff &mdash; there isn't one. See
-      <a href="draft-room-how-it-works.html">how it works</a> for exactly
-      how each number is computed.
+      Player data, projections, ADP and statistics come from public feeds:
+      Sleeper, Fantasy Football Calculator, nflverse and ffopportunity.
+      Player news headlines come from Tank01 and live scores from ESPN. A
+      league you connect is read from the platform that runs it. Juke links
+      to news rather than republishing it, and doesn't claim to have written
+      any of it.
+    </p>
+    <p>
+      Every rating, grade, ranking and call on the site is Juke's own
+      calculation on top of that data. The one exception is a platform's own
+      weekly projection for your league, which Juke shows where the platform
+      publishes one and labels as theirs. None of it is an endorsement from
+      any of those providers, and none of it is expert analysis from anybody
+      on staff &mdash; there isn't one. See
+      <a href="draft-room-how-it-works.html">how the Draft Room works</a> for
+      exactly how each number in a draft is computed.
     </p>
 
-    <h2 id="s05"><span class="no">05</span>No guarantees about the football</h2>
+    <h2 id="s06"><span class="no">06</span>No guarantees about the football</h2>
     <p>
-      Every grade, projection and suggestion in Juke is a model's best guess
-      at a game that hasn't been played yet, offered for a mock draft &mdash;
-      practice, not the real thing. None of it is a promise about how any
-      player will actually perform, and none of it is advice for money on the
-      line, in a real draft or anywhere else.
+      Every grade, projection, ranking and call in Juke is a model's best
+      guess at games that haven't been played yet. That is as true of a
+      lineup call on your real league as of a pick in a mock draft. None of
+      it is a promise about how any player will actually perform, and none
+      of it is advice about money &mdash; an entry fee, a prize or a bet.
+      What you do in your own league is your decision.
     </p>
 
-    <h2 id="s06"><span class="no">06</span>The service as it is</h2>
+    <h2 id="s07"><span class="no">07</span>The service as it is</h2>
     <p>
       Juke is provided as it stands, with no warranty that it will be
       available, uninterrupted or error-free. It depends on other people's
       servers &mdash; Sleeper, Fantasy Football Calculator, Tank01, ESPN, CBS,
-      Cloudflare &mdash; and an outage on their end can mean a feature here
-      goes quiet. The app is built to keep drafting even when that happens,
-      but that's an engineering goal, not a guarantee.
+      Yahoo, Clerk, Cloudflare &mdash; and an outage on their end can mean a
+      feature here goes quiet: a connected league stops updating, or a call
+      waits for the data it needs. The mock draft is built to keep working
+      even when that happens, but that's an engineering goal, not a
+      guarantee.
     </p>
 
-    <h2 id="s07"><span class="no">07</span>Limits on what we owe you</h2>
+    <h2 id="s08"><span class="no">08</span>Limits on what we owe you</h2>
     <p>
-      Juke is free, and to the extent the law allows it, is offered without
-      liability for damages arising from your use of it. Nothing here is
-      meant to override rights you have that can't be signed away where you
-      live.
+      Nothing on Juke costs money today, and to the extent the law allows
+      it, Juke is offered without liability for damages arising from your
+      use of it. Nothing here is meant to override rights you have that
+      can't be signed away where you live.
     </p>
 
-    <h2 id="s08"><span class="no">08</span>Changes</h2>
+    <h2 id="s09"><span class="no">09</span>Changes</h2>
     <p>
       The app changes, and these terms move with it when they need to
       &mdash; same rule as the Privacy Policy. The date at the top is when
       this page last changed.
     </p>
 
-    <h2 id="s09"><span class="no">09</span>Contact</h2>
+    <h2 id="s10"><span class="no">10</span>Contact</h2>
     <p>
       Questions about these terms: <a href="mailto:privacy@jukeff.com">privacy@jukeff.com</a>.
     </p>

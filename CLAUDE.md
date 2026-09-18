@@ -17,10 +17,19 @@ The Draft Room is still called The Draft Room on the screen that is one; the
 rule about naming the room in the app rather than the brand survives, it
 simply applies to one screen now instead of to the site.
 
-A fantasy football mock draft simulator, built for one specific ten-team
+A fantasy football draft and season analyst. **Corrected in place, 18
+September 2026**: this opened "A fantasy football mock draft simulator",
+which was the whole product once and is one part of it now — the terms of
+service said the same thing in its first sentence, and nothing failed.
+
+The Draft Room is still that simulator, built for one specific ten-team
 league and now configurable from the setup screen: 4 to 24 teams, 8 to 20
 rounds, any starting lineup, and standard, half or full PPR. That original
-league is still what every control defaults to.
+league is still what every control defaults to. Around it: a league
+connected from Sleeper, ESPN or CBS (Yahoo in testing), read-only; the
+week's lineup, wire and trade calls on it; and the player, league and
+record pages. Reading a real league is Season Pass, which is not on sale
+yet.
 
 Live at `jukeff.com`, served by **Cloudflare Pages**, built from `main` on
 every push. **It serves from the domain root, not a project path** — which is

@@ -1,7 +1,7 @@
 {
   "name": "Juke",
   "short_name": "Juke",
-  "description": "Instant fantasy football mock drafts, scored your way.",
+  "description": "Fantasy football mock drafts and weekly calls for your league, with the math shown.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1119",
