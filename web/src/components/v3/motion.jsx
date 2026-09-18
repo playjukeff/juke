@@ -452,82 +452,30 @@ export function StreamText({ text, as: Tag = 'span', className = '', max = STREA
   )
 }
 
-/* ---- Figures that tick ---- */
+/* ---- Figures ---- */
 
-/* A number that counts up to its value on first view — from 0, or from a
-   caller's `from` — and from its previous value whenever it changes. A
-   missing value is a dash, and a dash does not count. The last frame always
-   draws format(value) exactly, so an interrupted count never leaves an
-   intermediate on the page. At rest (first paint, reduced motion, a Still
-   subtree) it is simply format(value). */
-export function CountUp({ value, format = defaultFormat, from = 0, className = '', duration = DUR.count, as: Tag = 'span', ...rest }) {
-  const ref = useRef(null)
+/* A figure, drawn at its value.
+
+   It used to count up to that value on first view. It does not any more,
+   and the reason is a report rather than a preference: the playoff-odds
+   figure was captured reading 63%, then 71%, then 75% in consecutive
+   frames. A number that is still moving is a number a reader cannot act
+   on, and every figure in this product exists to be acted on — the whole
+   claim is that a call arrives with its arithmetic beside it. An
+   animation that makes the arithmetic unreadable for 600ms is spending
+   the one thing the page is for.
+
+   The component survives rather than its 17 call sites being edited: the
+   signature is unchanged, `format` and the dash for a missing value still
+   hold, and there is one place to look if this is ever reversed. `from`
+   and `duration` are accepted and ignored for the same reason.
+
+   Motion still belongs on this page — it is on the bar beside the figure
+   (BarFill), on a section arriving (useReveal), on a sentence being
+   written in (StreamText). None of those change what a number says. */
+export function CountUp({ value, format = defaultFormat, className = '', as: Tag = 'span', from, duration, ...rest }) {
   const valid = typeof value === 'number' && Number.isFinite(value)
-  const ok = useMotionOK()
-  const [shown, setShown] = useState(valid ? value : null)
-  const current = useRef(valid ? value : null)
-  const target = useRef(valid ? value : null)
-  const run = useRef(null)
-  const started = useRef(false)
-  const waiting = useRef(false)
-
-  const go = (a, b) => {
-    if (run.current && run.current.stop) run.current.stop()
-    if (!ok || a === b) { current.current = b; setShown(b); return }
-    run.current = animate(a, b, {
-      duration, ease: EASE.soft,
-      onUpdate: (v) => { current.current = v; setShown(v) },
-      onComplete: () => { current.current = b; setShown(b) },
-    })
-  }
-
-  // First view.
-  useIsoLayoutEffect(() => {
-    if (!valid || !ok) return undefined
-    const g = gateFor(ref.current)
-    if (g === 'rest') { started.current = true; return undefined }
-    current.current = from
-    setShown(from)
-    if (g === 'play') { started.current = true; go(from, target.current); return undefined }
-    waiting.current = true
-    return whenSeen(ref.current, () => {
-      waiting.current = false
-      started.current = true
-      if (typeof target.current === 'number') go(current.current, target.current)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Every change after it.
-  const lastValue = useRef(valid ? value : null)
-  useEffect(() => {
-    const next = valid ? value : null
-    if (next === lastValue.current) return
-    lastValue.current = next
-    target.current = next
-    if (next === null) {
-      if (run.current && run.current.stop) run.current.stop()
-      current.current = null
-      setShown(null)
-      return
-    }
-    // Waiting below the fold: the observer counts to target.current when it
-    // is seen. Not yet begun at all (the value arrived after mount): draw it.
-    if (!started.current) {
-      if (waiting.current) return
-      started.current = true
-      current.current = next
-      setShown(next)
-      return
-    }
-    const from0 = typeof current.current === 'number' ? current.current : next
-    go(from0, next)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, valid])
-
-  useEffect(() => () => { if (run.current && run.current.stop) run.current.stop() }, [])
-
-  return <Tag ref={ref} className={className} {...rest}>{shown === null || shown === undefined ? '—' : format(shown)}</Tag>
+  return <Tag className={className} {...rest}>{valid ? format(value) : '—'}</Tag>
 }
 
 function defaultFormat(v) {

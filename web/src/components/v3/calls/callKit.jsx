@@ -67,7 +67,7 @@ export function sampleBandItems(info, what) {
 
 export function SampleTag({ className = '' }) {
   return (
-    <span className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] bg-v3-warnWash px-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-warn', className)}>
+    <span className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] bg-v3-warnWash px-1.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-warn', className)}>
       Sample
     </span>
   )
@@ -138,10 +138,10 @@ export function StatusChip({ row }) {
   const out = row.onBye || row.severity === 'out'
   return (
     <span className="inline-flex flex-col items-end gap-0.5">
-      <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em]', out ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>
+      <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em]', out ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>
         {row.onBye ? 'Bye' : row.player.inj}
       </span>
-      <span className="font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{row.onBye ? 'not playing' : row.severity}</span>
+      <span className="font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{row.onBye ? 'not playing' : row.severity}</span>
     </span>
   )
 }
@@ -160,7 +160,7 @@ export function MarkedBar({ value, max = 1, tone = 'neutral', marker, label, cla
       {marker && (
         <>
           <span aria-hidden="true" className="absolute bottom-[-4px] top-[18px] w-[2px] -translate-x-1/2 bg-v3-ink" style={{ left: `${at}%` }} />
-          <span aria-hidden="true" className="absolute top-0 -translate-x-1/2 whitespace-nowrap font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-ink" style={{ left: `${at}%` }}>
+          <span aria-hidden="true" className="absolute top-0 -translate-x-1/2 whitespace-nowrap font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink" style={{ left: `${at}%` }}>
             {marker.label}
           </span>
         </>
@@ -217,7 +217,7 @@ export function FactCell({ label, value, note, tone }) {
   const color = tone === 'gain' ? 'text-v3-gain' : tone === 'cost' ? 'text-v3-cost' : 'text-v3-ink'
   return (
     <div className="min-w-0 rounded-[6px] bg-v3-paper p-3">
-      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className={cx('mt-1 truncate font-figure text-[24px] font-bold leading-none tabular-nums', color)}>{value}</dd>
       {note && <dd className="mt-1.5 text-[13px] leading-[1.45] text-v3-ink2">{note}</dd>}
     </div>

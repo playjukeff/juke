@@ -100,13 +100,13 @@ function ClassRow({ rank, row, open, onToggle, note }) {
           </div>
         </div>
         <div className="hidden text-right sm:block">
-          <Label className="block text-[11px] sm:sr-only">NFL draft</Label>
+          <Label className="block text-[12px] sm:sr-only">NFL draft</Label>
           <Fig className="text-[15px] font-semibold text-v3-ink">
             {d ? `Rd ${d.round} · #${d.overall}` : row.prospect && row.prospect.undrafted ? 'Undrafted' : '—'}
           </Fig>
         </div>
         <div className="text-right">
-          <Label className="block text-[11px] sm:sr-only">Over repl.</Label>
+          <Label className="block text-[12px] sm:sr-only">Over repl.</Label>
           {row.value === null ? <Fig className="text-[15px] text-v3-ink3">—</Fig> : <Delta value={row.value} className="text-[15px]" />}
         </div>
         <button
@@ -180,12 +180,12 @@ function ClassView({ c, engine }) {
         ) : (
           <>
             <div className="hidden grid-cols-[2rem_auto_minmax(0,1fr)_7rem_5rem_auto] items-end gap-3 border-b border-v3-rule px-5 py-2 sm:grid" aria-hidden="true">
-              <Label className="text-[11px]">#</Label>
+              <Label className="text-[12px]">#</Label>
               <span className="w-10" />
-              <Label className="text-[11px]">Player · college · team</Label>
-              <Label className="text-right text-[11px]">NFL draft</Label>
-              <Label className="text-right text-[11px]">Over repl.</Label>
-              <Label className="w-[132px] text-center text-[11px]">Evidence</Label>
+              <Label className="text-[12px]">Player · college · team</Label>
+              <Label className="text-right text-[12px]">NFL draft</Label>
+              <Label className="text-right text-[12px]">Over repl.</Label>
+              <Label className="w-[132px] text-center text-[12px]">Evidence</Label>
             </div>
             <ul aria-label="First-year players">
               {page.map((row, i) => (

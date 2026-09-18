@@ -511,7 +511,7 @@ function V3LiveRoom() {
                 return (
                   <button key={v.key} type="button" role="tab" aria-selected={on} onClick={() => setView(v.key)} className={cx('relative inline-flex h-12 items-center gap-2 px-3.5 text-[15px] font-semibold', FOCUS, on ? 'text-v3-ink' : 'text-v3-ink2 hover:text-v3-ink')}>
                     <Glyph name={v.icon} className="h-4 w-4" /> {v.label}
-                    <kbd className="hidden rounded-[3px] border border-v3-rule px-1 font-figure text-[11px] font-semibold text-v3-ink3 xl:inline">{v.kbd}</kbd>
+                    <kbd className="hidden rounded-[3px] border border-v3-rule px-1 font-figure text-[12px] font-semibold text-v3-ink3 xl:inline">{v.kbd}</kbd>
                     {on && <span className="absolute inset-x-3 bottom-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
                   </button>
                 )

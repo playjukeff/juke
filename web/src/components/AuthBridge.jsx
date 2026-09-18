@@ -19,16 +19,25 @@ import { useAuth } from '@clerk/clerk-react'
 // and calling whatever the latest one is is what keeps a caller from
 // holding a stale closure across a token refresh.
 export default function AuthBridge() {
-  const { isSignedIn, userId, getToken } = useAuth()
+  const { isSignedIn, userId, getToken, isLoaded } = useAuth()
 
   useEffect(() => {
-    window.JukeAuth = { isSignedIn: !!isSignedIn, userId: userId || null, getToken }
+    /* isLoaded is published as well as isSignedIn, because the two are not
+       the same fact and reading only the second cost a real defect: Clerk
+       answers isSignedIn `undefined` until it has resolved, `!!undefined`
+       is false, and "not answered yet" was therefore indistinguishable
+       from "signed out". A signed-in reader was shown the logged-out
+       marketing hero for the two or three seconds Clerk took, and then it
+       was thrown away. Anything deciding what to RENDER asks isLoaded
+       first; anything asking whether to send a token still asks
+       isSignedIn. */
+    window.JukeAuth = { isSignedIn: !!isSignedIn, userId: userId || null, getToken, isLoaded: !!isLoaded }
     // Same pattern headerInfo() already uses (see CLAUDE.md's note on
     // window.dispatchEvent(new Event("juke:header"))) — a plain DOM event
     // rather than a callback registry, so app.js can listen without this
     // bridge needing to know who, if anyone, is listening.
     window.dispatchEvent(new Event('juke:auth'))
-  }, [isSignedIn, userId, getToken])
+  }, [isSignedIn, userId, getToken, isLoaded])
 
   return null
 }

@@ -263,7 +263,7 @@ function WeekCall({ sheet, week }) {
     <div className="rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))] sm:p-5" data-now-weekcall={call ? call.kind.toLowerCase() : 'none'}>
       <div className="flex items-center justify-between gap-3">
         <Label>The one thing this week</Label>
-        {call ? <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{call.kind}</span> : null}
+        {call ? <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-white">{call.kind}</span> : null}
       </div>
       {call ? (
         <>
@@ -322,7 +322,7 @@ function LineupCall({ sheet, primary }) {
           </div>
           {swaps.length > 1 ? (
             <ol className="mt-4 grid gap-2 border-t border-v3-rule pt-3" aria-label="Other swaps, alternatives rather than additions">
-              <li><Label className="text-[11px]">Or instead — alternatives, not additions</Label></li>
+              <li><Label className="text-[12px]">Or instead — alternatives, not additions</Label></li>
               {swaps.slice(1, 3).map((s) => (
                 <li key={s.sit.id + ':' + s.start.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_7rem_3.5rem]">
                   <span className="truncate text-[15px] text-v3-ink2"><span className="text-v3-ink">{s.start.name}</span> over {s.sit.name}</span>
@@ -372,7 +372,7 @@ function WireCall({ sheet, snapshot, platform, primary }) {
             </div>
           </div>
           {top.length > 1 ? <ol className="mt-4 grid gap-2 border-t border-v3-rule pt-3" aria-label="Where a claim would help, best first">
-            <li><Label className="text-[11px]">Every position a claim would help</Label></li>
+            <li><Label className="text-[12px]">Every position a claim would help</Label></li>
             {top.map((g) => (
               <li key={g.pos} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_7rem_3.5rem]">
                 <span className="flex min-w-0 items-center gap-2 text-[15px] text-v3-ink2"><PosTag pos={g.pos} /><span className="truncate text-v3-ink">{g.best.player.name}</span></span>
@@ -424,12 +424,12 @@ function TradeCall({ sheet, snapshot }) {
       {sheet.value ? (
         <dl className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-[6px] bg-v3-paper p-3">
-            <dt><Label className="text-[11px]">Your roster</Label></dt>
+            <dt><Label className="text-[12px]">Your roster</Label></dt>
             <dd className="mt-0.5"><Delta value={sheet.value.total} className="text-[20px]" /></dd>
             <dd className="text-[12px] text-v3-ink3">{sheet.value.priced} of {sheet.value.held} priced</dd>
           </div>
           <div className="min-w-0 rounded-[6px] bg-v3-paper p-3">
-            <dt><Label className="text-[11px]">Top chip</Label></dt>
+            <dt><Label className="text-[12px]">Top chip</Label></dt>
             <dd className="mt-0.5 truncate text-[15px] font-semibold text-v3-ink">{chip ? chip.player.name : '—'}</dd>
             <dd className="text-[12px] text-v3-ink3">{chip ? <><Delta value={chip.value} className="text-[12px]" /> over repl.</> : 'Nobody priced'}</dd>
           </div>
@@ -489,12 +489,12 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
       {me ? (
         <dl className="grid grid-cols-2 gap-2">
           <div className="rounded-[6px] bg-v3-paper p-3">
-            <dt><Label className="text-[11px]">Record</Label></dt>
+            <dt><Label className="text-[12px]">Record</Label></dt>
             <dd className="mt-0.5 font-figure text-[20px] font-bold text-v3-ink">{recordText(me)}</dd>
             {recent.length ? <dd className="mt-1.5 flex flex-wrap gap-1">{recent.map((g) => <ResultChip key={g.week} result={g.result} />)}</dd> : null}
           </div>
           <div className="rounded-[6px] bg-v3-paper p-3">
-            <dt><Label className="text-[11px]">Playoff odds</Label></dt>
+            <dt><Label className="text-[12px]">Playoff odds</Label></dt>
             <dd className="mt-0.5 font-figure text-[20px] font-bold tabular-nums text-v3-ink"><CountText text={mine && typeof mine.playoffs === 'number' ? pct(mine.playoffs) : '—'} /></dd>
             <dd className="text-[12px] text-v3-ink3">{mine && typeof mine.playoffs === 'number' ? '10,000 seasons' : st.played ? 'Not simulable here' : 'After week one'}</dd>
           </div>
@@ -546,8 +546,8 @@ function SeasonOver({ league, snapshot, rank, total }) {
       {s ? (
         <Sheet code="The season, closed out" aside={`${s.played} weeks`}>
           <dl className="grid grid-cols-2 gap-2">
-            <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Points for</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{s.pointsFor.toFixed(1)}</dd></div>
-            <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Points against</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{s.pointsAgainst.toFixed(1)}</dd></div>
+            <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Points for</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{s.pointsFor.toFixed(1)}</dd></div>
+            <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Points against</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{s.pointsAgainst.toFixed(1)}</dd></div>
           </dl>
           <p className="mt-4 text-[15px] leading-[1.55] text-v3-ink2">
             {s.lost ? `${s.unlucky} of your ${s.lost} losses came in a week you still outscored the league's median.` : 'Not a single loss.'}

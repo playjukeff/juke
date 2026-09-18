@@ -110,7 +110,7 @@ function Components({ rep }) {
           return (
             <li key={b.key}>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[15px] font-bold text-v3-ink">{b.label}{low && <span className="ml-2 rounded-[3px] bg-v3-warnWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.08em] text-v3-warn">weakest</span>}</span>
+                <span className="text-[15px] font-bold text-v3-ink">{b.label}{low && <span className="ml-2 rounded-[3px] bg-v3-warnWash px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-v3-warn">weakest</span>}</span>
                 <span className="font-figure text-[12px] text-v3-ink3">×{Math.round(b.weight * 100)}% · {b.scaled ? 'vs room' : 'own scale'}</span>
               </div>
               <div className="mt-1.5 flex items-center gap-3">
@@ -257,7 +257,7 @@ function GradeFace({ grade, rank, teams }) {
       <span ref={letterRef} className="inline-block origin-bottom-left font-sheet text-[132px] font-black leading-[0.78] tracking-[-0.05em] text-v3-ink" aria-label={`Grade ${grade}`}>{grade}</span>
       <span ref={finishRef} className="inline-block pb-2">
         <Fig className="block whitespace-nowrap text-[24px] font-bold text-v3-ink">{ordinal(rank)} of {teams}</Fig>
-        <Label className="mt-1 block whitespace-nowrap text-[11px]">finish in this room</Label>
+        <Label className="mt-1 block whitespace-nowrap text-[12px]">finish in this room</Label>
       </span>
     </div>
   )
@@ -372,23 +372,23 @@ export default function V3Report() {
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <dl className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <div className="rounded-[4px] bg-v3-paper p-3">
-                <dt><Label className="text-[11px]">Net ADP value</Label></dt>
+                <dt><Label className="text-[12px]">Net ADP value</Label></dt>
                 <dd className="mt-1 text-[28px] leading-none"><Delta value={rep.value} count /></dd>
                 <dd className="mt-1 text-[12px] text-v3-ink3">picks, K and D/ST aside</dd>
               </div>
               <div className="rounded-[4px] bg-v3-paper p-3">
-                <dt><Label className="text-[11px]">Projected win %</Label></dt>
+                <dt><Label className="text-[12px]">Projected win %</Label></dt>
                 <dd className="mt-1 font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink"><CountUp value={typeof rep.winPct === 'number' ? rep.winPct * 100 : null} format={(v) => `${Math.round(v)}%`} /></dd>
                 <dd className="mt-1 text-[12px] text-v3-ink3">vs this room, an estimate</dd>
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-2">
                 <div className="min-w-0 rounded-[4px] bg-v3-paper p-3">
-                  <dt><Label className="text-[11px]">Best value</Label></dt>
+                  <dt><Label className="text-[12px]">Best value</Label></dt>
                   <dd className="mt-1 truncate text-[15px] font-bold text-v3-ink">{rep.bargain ? rep.bargain.name : '—'}</dd>
                   {rep.bargain && rep.bargain.gap > 0 && <dd className="mt-0.5 text-[12px]"><Delta value={rep.bargain.gap} /> <span className="text-v3-ink3">picks late</span></dd>}
                 </div>
                 <div className="min-w-0 rounded-[4px] bg-v3-paper p-3">
-                  <dt><Label className="text-[11px]">Biggest reach</Label></dt>
+                  <dt><Label className="text-[12px]">Biggest reach</Label></dt>
                   <dd className="mt-1 truncate text-[15px] font-bold text-v3-ink">{rep.reach ? rep.reach.name : 'None'}</dd>
                   {rep.reach && <dd className="mt-0.5 text-[12px]"><Delta value={-Math.abs(rep.reach.gap)} /> <span className="text-v3-ink3">picks early</span></dd>}
                 </div>
@@ -405,7 +405,7 @@ export default function V3Report() {
           {rep.missed && (
             <div className="shrink-0 text-right">
               <span className="block text-[52px] leading-none"><Delta value={-Math.round(rep.missed.delta)} count /></span>
-              <Label className="text-[11px]">starting lineup points</Label>
+              <Label className="text-[12px]">starting lineup points</Label>
             </div>
           )}
         </div>

@@ -207,7 +207,7 @@ function Contents({ toc, active, onJump, phone, className = '' }) {
         aria-expanded={open}
         className="flex min-h-[48px] w-full items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call"
       >
-        <Label as="span" className="shrink-0 text-[11px]">Contents</Label>
+        <Label as="span" className="shrink-0 text-[12px]">Contents</Label>
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-v3-ink">
           {current.no ? <span className="mr-2 font-figure text-[12px] text-v3-ink3">{current.no}</span> : null}{current.text}
         </span>

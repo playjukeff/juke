@@ -209,7 +209,7 @@ export function Choices({ label, options, value, onChange, disabled, onUnavailab
             )}
           >
             <span>{o.label}</span>
-            {o.sub && <span className={cx('mt-0.5 text-[11px] font-medium normal-case tracking-normal', on ? 'text-v3-bandInk' : 'text-v3-ink3')}>{o.sub}</span>}
+            {o.sub && <span className={cx('mt-0.5 text-[12px] font-medium normal-case tracking-normal', on ? 'text-v3-bandInk' : 'text-v3-ink3')}>{o.sub}</span>}
           </button>
         )
       })}
@@ -222,7 +222,7 @@ export function Headshot({ src, name, size = 32 }) {
   const text = (name || '').split(/\s+/).map((w) => w[0]).slice(0, 2).join('')
   return (
     <span
-      className="relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-v3-well font-figure text-[11px] font-semibold text-v3-ink2"
+      className="relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-v3-well font-figure text-[12px] font-semibold text-v3-ink2"
       style={{ width: size, height: size }}
     >
       {!failed && src ? (
@@ -238,7 +238,7 @@ export function InjuryTag({ code }) {
   const meta = code ? INJURY_META[code] : null
   if (!meta) return null
   return (
-    <span title={meta.label} aria-label={meta.label} className="inline-grid h-[20px] min-w-[22px] shrink-0 place-items-center rounded-[3px] border border-v3-warn/40 bg-v3-warnWash px-1 font-figure text-[11px] font-bold text-v3-warn">
+    <span title={meta.label} aria-label={meta.label} className="inline-grid h-[20px] min-w-[22px] shrink-0 place-items-center rounded-[3px] border border-v3-warn/40 bg-v3-warnWash px-1 font-figure text-[12px] font-bold text-v3-warn">
       {code}
     </span>
   )
@@ -246,7 +246,7 @@ export function InjuryTag({ code }) {
 
 export function DeepTag() {
   return (
-    <span title="No real draft has ever taken this player — ranked by Sleeper's own depth order." className="inline-grid h-[20px] shrink-0 place-items-center rounded-[3px] border border-v3-rule bg-v3-well px-1 font-figure text-[11px] font-semibold uppercase tracking-[0.06em] text-v3-ink2">
+    <span title="No real draft has ever taken this player — ranked by Sleeper's own depth order." className="inline-grid h-[20px] shrink-0 place-items-center rounded-[3px] border border-v3-rule bg-v3-well px-1 font-figure text-[12px] font-semibold uppercase tracking-[0.06em] text-v3-ink2">
       Deep
     </span>
   )
@@ -298,7 +298,7 @@ export function DraftButton({ onClick, disabled, reason, rank = 'row', size = 'm
 export function Stat({ label, children, sub, className = '' }) {
   return (
     <div className={cx('min-w-0 rounded-[4px] bg-v3-paper p-3', className)}>
-      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className="mt-1 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{children}</dd>
       {sub && <dd className="mt-1 truncate text-[12px] text-v3-ink3">{sub}</dd>}
     </div>

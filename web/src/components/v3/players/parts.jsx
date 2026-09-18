@@ -60,7 +60,7 @@ export function DeepTag({ className = '' }) {
   return (
     <span
       title="Past real ADP — no draft has ever taken this player"
-      className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] border border-v3-rule bg-v3-sheet px-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink3', className)}
+      className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] border border-v3-rule bg-v3-sheet px-1.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink3', className)}
     >
       Deep
     </span>
@@ -69,7 +69,7 @@ export function DeepTag({ className = '' }) {
 
 export function RookieTag({ className = '' }) {
   return (
-    <span className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] border border-v3-rule bg-v3-sheet px-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink2', className)}>
+    <span className={cx('inline-flex h-[22px] shrink-0 items-center rounded-[4px] border border-v3-rule bg-v3-sheet px-1.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink2', className)}>
       Rookie
     </span>
   )
@@ -85,7 +85,7 @@ export function LiveTag({ points, className = '' }) {
   return (
     <span
       title="Already scored in your connected league, as of the last refresh"
-      className={cx('inline-flex h-[22px] shrink-0 items-center gap-1 rounded-[4px] bg-v3-well px-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink2', className)}
+      className={cx('inline-flex h-[22px] shrink-0 items-center gap-1 rounded-[4px] bg-v3-well px-1.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink2', className)}
     >
       Live {points.toFixed(1)}
     </span>
@@ -185,7 +185,7 @@ export function Meter({ value }) {
 export function FigCell({ label, children, sub, className = '' }) {
   return (
     <div className={cx('min-w-0', className)}>
-      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className="mt-1 font-figure text-[22px] font-bold leading-none tabular-nums text-v3-ink">{children}</dd>
       {sub && <dd className="mt-1 truncate text-[12px] text-v3-ink3">{sub}</dd>}
     </div>

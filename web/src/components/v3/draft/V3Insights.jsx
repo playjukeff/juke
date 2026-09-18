@@ -124,7 +124,7 @@ export default function V3Insights() {
       {inProgress && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-v3-rule bg-v3-sheet px-4 py-3">
           <span className="min-w-0">
-            <Label className="block text-[11px]">In progress</Label>
+            <Label className="block text-[12px]">In progress</Label>
             <span className="mt-0.5 block truncate text-[15px] text-v3-ink">{inProgress.teams}-team {inProgress.scoring} · round {inProgress.round ?? '—'} · pick {inProgress.made + 1} of {inProgress.total}</span>
           </span>
           <QuietButton onClick={doResume} className="border-v3-ink">Resume <Glyph name="arrow" className="h-4 w-4" /></QuietButton>

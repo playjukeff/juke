@@ -34,7 +34,7 @@ export function XIcon({ name, className = 'h-5 w-5' }) {
 export function Stat({ label, value, note, className = '' }) {
   return (
     <div className={cx('min-w-0 rounded-[6px] bg-v3-paper p-3 sm:p-4', className)}>
-      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className="mt-1 truncate font-figure text-[24px] font-bold leading-tight tabular-nums text-v3-ink sm:text-[28px]">{value}</dd>
       {note ? <p className="mt-1 text-[13px] leading-[1.4] text-v3-ink3">{note}</p> : null}
     </div>

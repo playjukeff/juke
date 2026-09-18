@@ -133,7 +133,7 @@ function DraftRow({ e, onDelete }) {
           <span className="mt-0.5 block truncate font-figure text-[13px] text-v3-ink3">{when} · seat {e.seat}</span>
         </span>
         <span className="flex min-w-0 items-center gap-2">
-          <Label as="span" className="shrink-0 text-[11px] lg:hidden">Rd 1</Label>
+          <Label as="span" className="shrink-0 text-[12px] lg:hidden">Rd 1</Label>
           {e.round1Pick ? (
             <>
               {e.round1PickPos ? <PosTag pos={e.round1PickPos} /> : null}
@@ -147,7 +147,7 @@ function DraftRow({ e, onDelete }) {
         </span>
         <span className="hidden text-right lg:block">
           <Delta value={e.rosterVorp} className="text-[15px]" />
-          <span className="mt-0.5 block font-figure text-[11px] text-v3-ink3">lineup over repl.</span>
+          <span className="mt-0.5 block font-figure text-[12px] text-v3-ink3">lineup over repl.</span>
         </span>
       </a>
       <div className="flex items-center pr-2 sm:pr-3">
@@ -188,11 +188,11 @@ function DraftsSection({ locker, mode, onSeeAll }) {
       ) : (
         <>
           <div className="hidden grid-cols-[92px_minmax(0,1.2fr)_minmax(0,1fr)_150px_120px] gap-x-4 border-b border-v3-rule py-2.5 pl-5 pr-[68px] lg:grid" aria-hidden="true">
-            <Label className="text-[11px]">Grade</Label>
-            <Label className="text-[11px]">Format</Label>
-            <Label className="text-[11px]">Round 1</Label>
-            <Label className="text-[11px]">Finish</Label>
-            <Label className="text-right text-[11px]">Lineup</Label>
+            <Label className="text-[12px]">Grade</Label>
+            <Label className="text-[12px]">Format</Label>
+            <Label className="text-[12px]">Round 1</Label>
+            <Label className="text-[12px]">Finish</Label>
+            <Label className="text-right text-[12px]">Lineup</Label>
           </div>
           <ul>{rows.map((e) => <DraftRow key={e.id} e={e} onDelete={() => remove(e.id)} />)}</ul>
           {mode === 'peek' ? (
@@ -256,7 +256,7 @@ function CallRow({ d }) {
   const v = verdictOf(d.verdict)
   const cell = (label, text, strong) => (
     <div className="min-w-0">
-      <Label as="span" className="text-[11px] lg:hidden">{label}</Label>
+      <Label as="span" className="text-[12px] lg:hidden">{label}</Label>
       <p className={cx('break-words', strong ? 'text-[15px] font-semibold leading-[1.4] text-v3-ink' : 'text-[15px] leading-[1.45] text-v3-ink2', !text && 'text-v3-ink3')}>{text || '—'}</p>
     </div>
   )
@@ -304,20 +304,20 @@ function Ledger({ decisions }) {
     <>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-v3-rule px-4 py-3.5 sm:px-5">
         {rooms.length > 1 ? (
-          <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[11px]">Room</Label>
+          <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[12px]">Room</Label>
             {wrap(<Seg label="Room" value={room} onChange={reset(setRoom)} options={[{ value: 'All', label: 'All' }].concat(rooms.map((r) => ({ value: r, label: roomLabel(r) })))} />)}
           </div>
         ) : null}
-        <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[11px]">Outcome</Label>
+        <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[12px]">Outcome</Label>
           {wrap(<Seg label="Outcome" value={outcome} onChange={reset(setOutcome)} options={OUTCOMES.map((o) => ({ value: o, label: o }))} />)}
         </div>
-        <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[11px]">Confidence</Label>
+        <div className="min-w-0 max-w-full"><Label as="span" className="mb-1.5 block text-[12px]">Confidence</Label>
           {wrap(<Seg label="Confidence" value={confidence} onChange={reset(setConfidence)} options={CONFIDENCE_BUCKETS.map((o) => ({ value: o, label: o }))} />)}
         </div>
       </div>
       <div className="hidden grid-cols-[150px_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,210px)] gap-x-5 border-b border-v3-rule px-5 py-2.5 lg:grid" aria-hidden="true">
-        <Label className="text-[11px]">Room · week</Label>
-        {STEPS.map((s, i) => <Label key={s} className={cx('text-[11px]', i === STEPS.length - 1 && 'text-right')}>{s}</Label>)}
+        <Label className="text-[12px]">Room · week</Label>
+        {STEPS.map((s, i) => <Label key={s} className={cx('text-[12px]', i === STEPS.length - 1 && 'text-right')}>{s}</Label>)}
       </div>
       {page.length ? <ul data-call-rows>{page.map((d) => <CallRow key={d.id} d={d} />)}</ul> : (
         <p className="px-5 py-10 text-center text-[15px] text-v3-ink3">No calls match these filters.</p>

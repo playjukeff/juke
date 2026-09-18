@@ -109,7 +109,7 @@ function WeekStrip({ items, selected, label }) {
           if (w.divider) {
             return (
               <li key={w.key} className="flex items-center px-1" aria-hidden="true">
-                <span className="rounded-[4px] bg-v3-well px-1.5 py-1 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoffs</span>
+                <span className="rounded-[4px] bg-v3-well px-1.5 py-1 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoffs</span>
               </li>
             )
           }
@@ -284,7 +284,7 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
           <a href={teamHref(team)} className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
         ) : team ? <span className="min-w-0 truncate text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
           : <span className="text-[18px] font-extrabold text-v3-ink3 sm:text-[20px]">—</span>}
-        {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
+        {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
       </div>
       <p className="mt-1 font-figure text-[13px] text-v3-ink2">
         {recordNow ? 'Now ' : ''}{team ? recordText(team) : '—'}{st && st.rank ? ` · ${ordinal(st.rank)}` : ''}

@@ -98,7 +98,7 @@ function RosterTable({ team, pricing, snapshot }) {
               const season = p ? valueOf(p, gapOf) : null
               return [
                 bench && n > 0 && starting.has(ids[n - 1]) ? (
-                  <tr key="bench-rule" aria-hidden="true"><td colSpan={4} className="border-0 bg-v3-paper px-4 py-1.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-ink3 sm:px-5">Bench</td></tr>
+                  <tr key="bench-rule" aria-hidden="true"><td colSpan={4} className="border-0 bg-v3-paper px-4 py-1.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink3 sm:px-5">Bench</td></tr>
                 ) : null,
                 <tr key={id + n} className="border-b border-v3-rule last:border-b-0">
                   <td className="border-0 py-2.5 pl-4 sm:pl-5">
@@ -162,8 +162,8 @@ function Schedule({ team, snapshot, mine }) {
               <span className="text-[13px] text-v3-ink3">{opp ? (g.home ? 'vs' : 'at') : ''}</span>
               <span className="min-w-0 truncate text-[15px]">
                 {opp ? <a href={teamHref(opp)} className="font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
-                {g.playoff ? <span className="ml-2 font-figure text-[11px] uppercase tracking-[0.1em] text-v3-ink3">playoff</span> : null}
-                {now ? <span className="ml-2 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink">now</span> : null}
+                {g.playoff ? <span className="ml-2 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-ink3">playoff</span> : null}
+                {now ? <span className="ml-2 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink">now</span> : null}
               </span>
               <span className="flex items-center gap-2">
                 {typeof g.points === 'number' && typeof g.opponentPoints === 'number' && g.result ? (
