@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /* A9: a clipped label may not be the only copy of its value a reader can
    reach. Team and manager names wrap instead (there is room for them); what
@@ -21,7 +21,10 @@ import { useEffect, useState } from 'react'
    Screen readers never needed any of this: the full text is in the DOM. */
 
 const SEL = '[data-v3-root] .truncate'
-const INTERACTIVE = 'a,button,input,select,textarea,[tabindex],[role="button"]'
+// Things a keyboard can land on. [tabindex="-1"] is excluded on purpose:
+// <main> carries it so a skip link can focus it, and counting it as a
+// control meant nothing inside the page ever got its own stop.
+const INTERACTIVE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"]),[role="button"]'
 
 function mark(root) {
   root.querySelectorAll(SEL).forEach((el) => {
@@ -46,6 +49,7 @@ function clippedIn(target) {
 
 export default function FullValueTips() {
   const [tip, setTip] = useState(null)
+  const at = useRef(null)
 
   useEffect(() => {
     let raf = 0
@@ -58,11 +62,17 @@ export default function FullValueTips() {
   }, [])
 
   useEffect(() => {
-    const show = (el) => {
+    const place = (el) => {
       const r = el.getBoundingClientRect()
+      if (r.bottom < 0 || r.top > window.innerHeight) { at.current = null; setTip(null); return }
       setTip({ text: el.dataset.full, x: Math.max(8, Math.min(r.left, window.innerWidth - 328)), y: r.bottom + 6 })
     }
-    const hide = () => setTip(null)
+    const show = (el) => { at.current = el; place(el) }
+    const hide = () => { at.current = null; setTip(null) }
+    // Focusing an element scrolls it into view, so a tip that closed on
+    // scroll closed the instant a keyboard reached it. It follows instead,
+    // and leaves once its element is off screen.
+    const follow = () => { if (at.current) place(at.current) }
     const over = (e) => { if (e.pointerType === 'mouse') { const el = clippedIn(e.target); if (el) show(el) } }
     const out = (e) => { if (e.pointerType === 'mouse' && clippedIn(e.target)) hide() }
     const focus = (e) => { const el = clippedIn(e.target); if (el) show(el); else hide() }
@@ -78,7 +88,7 @@ export default function FullValueTips() {
     document.addEventListener('focusout', hide)
     document.addEventListener('pointerdown', tap)
     document.addEventListener('keydown', key)
-    window.addEventListener('scroll', hide, true)
+    window.addEventListener('scroll', follow, true)
     return () => {
       document.removeEventListener('pointerover', over)
       document.removeEventListener('pointerout', out)
@@ -86,7 +96,7 @@ export default function FullValueTips() {
       document.removeEventListener('focusout', hide)
       document.removeEventListener('pointerdown', tap)
       document.removeEventListener('keydown', key)
-      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('scroll', follow, true)
     }
   }, [])
 
