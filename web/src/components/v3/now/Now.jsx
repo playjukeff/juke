@@ -7,7 +7,6 @@ import {
 } from '../ui.jsx'
 import { CountUp, StreamText } from '../motion.jsx'
 import SampleBoard from '../draft/SampleBoard.jsx'
-import Landing from '../landing/Landing.jsx'
 import NowConnected from './NowConnected.jsx'
 import NowSeason from './NowSeason.jsx'
 import NowMember, { NowMemberLoading } from './NowMember.jsx'
@@ -91,10 +90,7 @@ export default function Now() {
   } else if (leagueStatus === 'connected') {
     page = <NowConnected plan={audience === 'free' ? <FreeLeagueNote /> : null} />
   } else if (audience === 'guest') {
-    // Workstream B1: a visitor gets the landing page in every phase of the
-    // season; it carries the week in its own eyebrow when one is being
-    // played. NowGuest and NowSeason are kept rather than deleted.
-    page = <Landing season={season} />
+    page = bucket === 'season' ? <NowSeason season={season} /> : <NowGuest season={season} post={bucket === 'post'} />
   } else if (leagueStatus === 'loading') {
     page = <NowMemberLoading />
   } else {
