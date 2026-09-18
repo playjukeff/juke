@@ -595,3 +595,33 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ---- The landing page (workstream B) ---- */
+
+/* A signed-in reader's first frame (theme.js sets the hint). */
+html[data-auth-hint='in'] [data-landing] { visibility: hidden; }
+
+/* B5: a radial accent glow, drifting on a 24s cycle. */
+.landing-glow {
+  background: radial-gradient(closest-side, rgb(var(--v3-call) / 0.16), rgb(var(--v3-call) / 0.05) 55%, transparent);
+  filter: blur(8px);
+  animation: landing-drift 24s ease-in-out infinite alternate;
+}
+@keyframes landing-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(8%, 6%, 0) scale(1.08); }
+}
+
+/* B5: a tiled type pattern, 1.8% ink, masked out of a flat fill so it
+   follows the theme. Decorative only (aria-hidden, unselectable). */
+.landing-tile {
+  background: rgb(var(--v3-ink) / 0.018);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80'%3E%3Ctext x='0' y='30' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%3C/text%3E%3Ctext x='-120' y='70' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%20%C2%B7%20PRICED%3C/text%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80'%3E%3Ctext x='0' y='30' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%3C/text%3E%3Ctext x='-120' y='70' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%20%C2%B7%20PRICED%3C/text%3E%3C/svg%3E");
+  -webkit-mask-size: 240px 80px;
+  mask-size: 240px 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-glow { animation: none; }
+}

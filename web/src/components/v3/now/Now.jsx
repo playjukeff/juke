@@ -7,6 +7,7 @@ import {
 } from '../ui.jsx'
 import { CountUp, StreamText } from '../motion.jsx'
 import SampleBoard from '../draft/SampleBoard.jsx'
+import Landing from '../landing/Landing.jsx'
 import NowConnected from './NowConnected.jsx'
 import NowSeason from './NowSeason.jsx'
 import NowMember, { NowMemberLoading } from './NowMember.jsx'
@@ -90,7 +91,11 @@ export default function Now() {
   } else if (leagueStatus === 'connected') {
     page = <NowConnected plan={audience === 'free' ? <FreeLeagueNote /> : null} />
   } else if (audience === 'guest') {
-    page = bucket === 'season' ? <NowSeason season={season} /> : <NowGuest season={season} post={bucket === 'post'} />
+    // In season a visitor gets the week (NowSeason: bring your league); a
+    // mock draft is not what anybody wants in October. Before and after the
+    // season the landing page leads with the draft, which is the one decision
+    // left. #294 gave every phase the landing page and was reverted for it.
+    page = bucket === 'season' ? <NowSeason season={season} /> : <Landing season={season} />
   } else if (leagueStatus === 'loading') {
     page = <NowMemberLoading />
   } else {
