@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CLERK_PUBLISHABLE_KEY } from '../../../clerkConfig.js'
 import { useSeason } from '../now/season.js'
 import { CallButton, Delta, Headline, Icon, Label, PosTag, QuietButton, Sheet, Skeleton, cx, useEngineData } from '../ui.jsx'
@@ -434,6 +434,36 @@ export function WelcomeRoute() {
 
 /* ---- The page ---- */
 
+/* ---- The closing call: the one place the shark appears as a character ----
+   Workstream C settled on geometry and data everywhere else, and the shark
+   in full colour exactly once, peering in at the end of the page. The mark
+   is the head crop the favicon already uses, so there is no new art. Its
+   eyes and teeth brighten once when the card scrolls into view; under
+   reduced motion it is simply there. */
+function ClosingCall() {
+  const ref = useRef(null)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect() }
+    }, { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return (
+    <section ref={ref} aria-labelledby="landing-close" className="relative isolate overflow-hidden rounded-[8px] border border-white/10 bg-[#0C1422] px-6 py-12 sm:px-12 sm:py-16">
+      <img src="/juke-favicon.svg" alt="" aria-hidden="true" width="380" height="380"
+        className={cx('landing-close-shark pointer-events-none absolute -bottom-20 -right-16 -z-10 w-[240px] select-none opacity-40 sm:-bottom-28 sm:right-4 sm:w-[460px] sm:opacity-100', seen && 'is-seen')} />
+      <p className="font-figure text-[12px] font-semibold uppercase tracking-[0.12em] text-[#9AA7B8]">Free, and no account needed</p>
+      <Headline as="h2" id="landing-close" className="mt-4 max-w-[12ch] text-[clamp(2.25rem,4.5vw,3.75rem)] leading-[1] text-white">Run your first mock.</Headline>
+      <p className="mt-4 max-w-[36ch] text-[18px] leading-[1.5] text-[#B5BFCD]">Tonight's board, nine CPU managers, and a grade the moment the last pick lands.</p>
+      <div className="mt-8"><CallButton href="#/draft">Run a free mock draft <Icon name="arrow" className="h-4 w-4" /></CallButton></div>
+    </section>
+  )
+}
+
 export default function Landing({ season, force = false }) {
   useClearAuthHint(force)
   return (
@@ -482,6 +512,7 @@ export default function Landing({ season, force = false }) {
           visual={<Sonar />}
         />
         <Comparison />
+        <ClosingCall />
       </div>
     </div>
   )

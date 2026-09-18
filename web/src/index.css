@@ -645,3 +645,10 @@ html[data-auth-hint='in'] [data-landing] { visibility: hidden; }
 @keyframes sonar-name { 0% { opacity: 0; } 3% { opacity: 1; } 14% { opacity: 1; } 38% { opacity: 0; } 100% { opacity: 0; } }
 @keyframes sonar-ring { 0% { opacity: .8; transform: scale(.4); } 18% { opacity: 0; transform: scale(1.4); } 100% { opacity: 0; } }
 @keyframes sonar-dot { 0% { fill: #00E5FF; } 30% { fill: #00E5FF; } 60% { fill: #9AA7B8; } 100% { fill: #9AA7B8; } }
+
+/* The landing's closing shark (Landing.jsx ClosingCall): its eyes and teeth
+   brighten once as the card comes into view. Reduced motion: no flash. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-close-shark.is-seen { animation: landing-close-glint 1.6s ease-out 1 .2s both; }
+}
+@keyframes landing-close-glint { 0% { filter: brightness(.75); } 35% { filter: brightness(1.45) drop-shadow(0 0 18px rgba(0,229,255,.45)); } 100% { filter: none; } }
