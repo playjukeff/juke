@@ -42,10 +42,14 @@ import { dirname, join, resolve } from 'node:path'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PUB = join(ROOT, 'web', 'public')
 
-// The one sentence on the card. It is the manifest's description, which is the
-// short form of the homepage's meta description: say the same thing everywhere
-// a link to Juke gets summarised.
-const TAGLINE = 'Fantasy football mock drafts and weekly calls for your league, with the math shown.'
+// The line on the card, one entry per line. Where it breaks is part of the
+// design, so it is written down rather than left to a wrap. Short on purpose:
+// a preview is usually drawn at about a quarter of this size (iMessage, Slack),
+// where a sentence set at 30px comes out near 8px and nobody reads it. The four
+// verbs are the decisions a fantasy manager makes, so the card says what the
+// product is without spelling out "fantasy football", which the page title
+// beside it already does. Chosen by the owner, 18 September 2026.
+const TAGLINE = ['Start. Sit. Draft. Trade.', 'With the math shown.']
 const URL_TEXT = 'JUKEFF.COM'
 
 // Read off the designed card. Coordinates are its canvas pixels.
@@ -61,10 +65,17 @@ const SPEC = {
   // The mark's INK box, not its image box: the SVG has margin around the shark.
   mark: { cx: 289.5, cy: 263, inkWidth: 294 },
   textLeft: 472,                                     // ink left of every line
-  textRight: 1090,                                   // wrap width for the tagline
-  word: { capHeight: 74, baseline: 272, color: '#F2F5FA', tracking: -0.045 },
-  tagline: { size: 30, weight: 400, pitch: 42, gapFromWord: 63, color: '#A2B0BE' },
-  url: { size: 20, weight: 600, gapFromTagline: 58, color: '#00E5FF' },
+  textRight: 1090,                                   // no line may run past this
+  // The text block is centred where the designed card centred its own:
+  // wordmark cap top 199 to URL baseline 435. The mark moves with it.
+  blockCenter: 317,
+  word: { capHeight: 74, color: '#F2F5FA', tracking: -0.045 },
+  // capGap is the space above a line's capitals, measured off the design: 41px
+  // from the wordmark's baseline to the tagline, 45px from the tagline's last
+  // baseline to the URL. The tagline is set larger than the design's 30px
+  // because it is a third of the length, and a line pitch of 1.4 goes with it.
+  tagline: { size: 40, weight: 500, pitch: 56, capGap: 41, color: '#A2B0BE' },
+  url: { size: 20, weight: 600, capGap: 45, color: '#00E5FF' },
 }
 
 const font = (file) => readFileSync(join(PUB, 'fonts', file)).toString('base64')
@@ -167,20 +178,30 @@ const result = await page.evaluate(async ({ SPEC, FONTS, MARK_SVG, TAGLINE, URL_
   const capAt100 = x.measureText('JUKE').actualBoundingBoxAscent
   const wordSize = Math.round((SPEC.word.capHeight / capAt100) * 100 * 10) / 10
 
-  // Tagline: wrapped to the column, and the whole block moves up half a line
-  // for every line past two, so the composition stays where the design put it.
-  const t = SPEC.tagline
-  x.font = `${t.weight} ${t.size}px "Archivo"`
+  // Tagline and URL: each set by its own cap height, so the gaps measured off
+  // the design hold whatever size the tagline is. Refuse a line that would run
+  // past the column rather than wrap it: the breaks are the design's.
+  const t = SPEC.tagline, u = SPEC.url
   x.letterSpacing = '0px'
-  const maxW = SPEC.textRight - SPEC.textLeft
-  const lines = []
-  for (const word of TAGLINE.split(' ')) {
-    const trial = lines.length ? lines[lines.length - 1] + ' ' + word : word
-    if (lines.length && x.measureText(trial).width <= maxW) lines[lines.length - 1] = trial
-    else if (!lines.length) lines.push(word)
-    else lines.push(word)
+  x.font = `${t.weight} ${t.size}px "Archivo"`
+  const tagCap = x.measureText('H').actualBoundingBoxAscent
+  for (const line of TAGLINE) {
+    const w = x.measureText(line).width
+    if (w > SPEC.textRight - SPEC.textLeft) return { error: `"${line}" is ${Math.round(w)}px, wider than the column` }
   }
-  const shift = -Math.round(((lines.length - 2) * t.pitch) / 2)
+  x.font = `${u.weight} ${u.size}px "IBM Plex Mono"`
+  const urlCap = x.measureText('H').actualBoundingBoxAscent
+
+  // Lay the block out from a baseline of 0, then move all of it so its middle
+  // sits where the designed card's did. The mark moves by the same amount, so
+  // the two stay where the design put them relative to each other.
+  const layout = [['JUKE', 0]]
+  let base = t.capGap + tagCap
+  TAGLINE.forEach((line, i) => { if (i) base += t.pitch; layout.push([line, base]) })
+  const urlBase = base + u.capGap + urlCap
+  layout.push([URL_TEXT, urlBase])
+  const blockTop = -SPEC.word.capHeight
+  const shift = Math.round(SPEC.blockCenter - (blockTop + urlBase) / 2)
 
   const drawLeft = (text, baseline) => {
     const m = x.measureText(text)
@@ -188,33 +209,31 @@ const result = await page.evaluate(async ({ SPEC, FONTS, MARK_SVG, TAGLINE, URL_
     return m
   }
 
-  const wordBase = SPEC.word.baseline + shift
   x.font = `900 ${wordSize}px "Archivo"`
   x.letterSpacing = `${SPEC.word.tracking * wordSize}px`
   x.fillStyle = SPEC.word.color
-  drawLeft('JUKE', wordBase)
+  drawLeft('JUKE', shift)
 
   x.font = `${t.weight} ${t.size}px "Archivo"`
   x.letterSpacing = '0px'
   x.fillStyle = t.color
-  let lineBase = wordBase + t.gapFromWord
-  lines.forEach((line, i) => { if (i) lineBase += t.pitch; drawLeft(line, lineBase) })
+  for (const [line, b] of layout.slice(1, -1)) drawLeft(line, b + shift)
 
-  const u = SPEC.url
   x.font = `${u.weight} ${u.size}px "IBM Plex Mono"`
   x.fillStyle = u.color
-  drawLeft(URL_TEXT, lineBase + u.gapFromTagline)
+  drawLeft(URL_TEXT, urlBase + shift)
 
   // --------------------------------------------------------------- the mark
+  // The designed card's mark sat at y 263 with its wordmark baseline at 272.
   const scale = SPEC.mark.inkWidth / ink.w
-  const cy = SPEC.mark.cy + shift
+  const cy = SPEC.mark.cy - 272 + shift
   const dx = SPEC.mark.cx - (ink.x + ink.w / 2) * scale
   const dy = cy - (ink.y + ink.h / 2) * scale
   x.drawImage(mark, dx, dy, mark.naturalWidth * scale, mark.naturalHeight * scale)
 
   return {
     png: c.toDataURL('image/png').split(',')[1],
-    lines, wordSize, shift,
+    lines: TAGLINE, wordSize, wordBaseline: shift,
     markInk: { x: Math.round(dx + ink.x * scale), y: Math.round(dy + ink.y * scale),
                w: Math.round(ink.w * scale), h: Math.round(ink.h * scale) },
   }
@@ -233,7 +252,7 @@ if (result.error) {
     writeFileSync(out, bytes)
     console.log(`  ${out}  ${SPEC.w}x${SPEC.h}  ${verify(out)}b`)
   }
-  console.log(`  wordmark ${result.wordSize}px, tagline in ${result.lines.length} lines, block shifted ${result.shift}px`)
+  console.log(`  wordmark ${result.wordSize}px, wordmark baseline at y ${result.wordBaseline}`)
   result.lines.forEach((l) => console.log(`    | ${l}`))
   console.log(`  mark ink box`, result.markInk)
 }

@@ -386,7 +386,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
         </Sheet>
       </div>
 
-      <section aria-label="The working" className="grid gap-4">
+      <section aria-label="The math" className="grid gap-4">
         <div className="overflow-x-auto">
           <Seg
             label="Trade views"
