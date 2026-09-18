@@ -9,13 +9,13 @@
        reason: this page shares style.css and has no toggle of its own, so it
        has to honour a choice made next door rather than reverting to light
        halfway through a visit. -->
-  <script src="../theme.js?v=202609180130"></script>
+  <script src="../theme.js?v=202609180215"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../style.css?v=202609180130">
+  <link rel="stylesheet" href="../style.css?v=202609180215">
 
   <link rel="icon" href="../juke-icon-tile.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="../juke-icon-tile-32.png">
@@ -23,26 +23,49 @@
   <link rel="icon" href="../favicon.ico" sizes="any">
 
   <style>
-    /* Identical to draft-room-how-it-works.html's own <style> block — same
-       page shape, same reason: this is layout for a page of prose, which the
-       app has no use for, so it lives here rather than in style.css. Not
-       pulled into a shared file, for the same reason the how-it-works page
-       never was: there is exactly one other page this could serve today,
-       and a shared stylesheet for two consumers is the kind of abstraction
-       this project's own conventions argue against building early. */
-    .doc { max-width: 720px; margin: 0 auto; padding: 26px 18px 70px; }
-    .appbar-inner { max-width: 720px; }
+    /* Began as a copy of draft-room-how-it-works.html's own <style> block --
+       same page shape, same reason: this is layout for a page of prose,
+       which the app has no use for, so it lives here rather than in
+       style.css. Not pulled into a shared file, for the same reason the
+       how-it-works page never was: a shared stylesheet for two consumers is
+       the kind of abstraction this project's own conventions argue against
+       building early.
+
+       It is no longer identical, and the differences are deliberate: the
+       width, the section headings and numbers, the note and the phone
+       table below were reworked 18 September 2026, each against a
+       measurement noted beside it. terms.html and the how-it-works page
+       still carry the original block. */
+    /* 600, down from 720, because a full line ran 90 characters at 720 --
+       measured as the column over the paragraph's own average glyph width,
+       not guessed from `ch` -- and prose reads best nearer 70. At 600 it is
+       74. Header and body move together so their left edges still align. */
+    .doc { max-width: 600px; margin: 0 auto; padding: 26px 18px 70px; }
+    .appbar-inner { max-width: 600px; }
     .doc-intro { font-size: var(--fs-base); line-height: 1.7; color: var(--ink-mid); margin: 0 0 10px; }
+    /* Section headings take --fs-xl, the step the scale's own comment
+       reserves for them. At --fs-lg they sat 1.19x over 16px body text,
+       too close to read as a step. */
     .doc h2 {
-      margin: 40px 0 12px; padding-top: 18px;
+      display: flex; align-items: baseline; gap: .55em;
+      margin: 44px 0 12px; padding-top: 18px;
       border-top: 1px solid var(--line);
-      font-family: var(--font-display); font-size: var(--fs-lg);
-      font-weight: 700; letter-spacing: -0.01em;
+      font-family: var(--font-display); font-size: var(--fs-xl);
+      font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
     }
+    /* The section number, inline at the heading's own size, and kept
+       because the text refers back to it ("sections 01 and 03").
+
+       It was a 10px cyan label stacked ABOVE the heading: below any
+       readable size, 2.68:1 against the light page (measured; 4.5 is the
+       floor), and it named a typeface outright where every other rule
+       here uses the tokens. Inline, flex-none, so a long heading that
+       wraps on a phone hangs clear of its number rather than running
+       under it. */
     .doc h2 .no {
-      display: block; margin-bottom: 5px;
-      font-family: Inter, sans-serif; font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: .12em; color: var(--cyan);
+      flex: none; min-width: 1.35em;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-light);
     }
     .doc h3 { margin: 22px 0 8px; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
     .doc p  { line-height: 1.72; margin: 0 0 13px; }
@@ -52,13 +75,28 @@
     .doc td { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); vertical-align: top; }
     .doc tr:last-child td { border-bottom: 0; }
     .doc td.k { font-weight: 600; white-space: nowrap; }
+    /* A phone stacks each row: the key above its explanation.
+
+       Side by side, the key column refuses to wrap and took over half of a
+       375px screen, squeezing every explanation to three or four words a
+       line -- measured and screenshotted. A two-column table is the wrong
+       shape for a key and a paragraph on a narrow screen. */
+    @media (max-width: 560px) {
+      .doc table, .doc tbody, .doc tr, .doc td { display: block; }
+      .doc td.k { white-space: normal; border-bottom: 0; padding-bottom: 2px; }
+      .doc td.k + td { padding-top: 2px; }
+    }
     .doc code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: .89em; background: var(--fill); border-radius: var(--r-xs); padding: 1px 5px;
     }
+    /* A quiet hairline box. It was a 3px stripe down the left in the
+       TIGHT END's colour -- a position colour, which everywhere else on
+       this site means a position, spent here as decoration on a note about
+       how the page was written. */
     .note {
-      border-left: 3px solid var(--te); background: var(--t-bye-bg);
-      border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 12px 15px; margin: 0 0 14px;
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      padding: 12px 15px; margin: 0 0 14px;
       font-size: var(--fs-sm); line-height: 1.65; color: var(--ink-mid);
     }
     .toc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 18px; margin: 22px 0 6px; }
@@ -407,7 +445,7 @@
 
   </main>
 
-  <script src="../back-to-top.js?v=202609180130" data-auto></script>
+  <script src="../back-to-top.js?v=202609180215" data-auto></script>
 
 </body>
 </html>

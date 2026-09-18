@@ -700,6 +700,10 @@ body {
 .doc-head p {
   font-family: var(--font-body);
   font-size: var(--fs-xs); font-weight: 500;
+  /* Its own leading, because the 1.15 it inherits from .appbar-text p is
+     for the Draft Room's one-line pick number. Here it is a sentence, and
+     on a phone it wraps. */
+  line-height: 1.4;
   color: var(--ink-mid);
 }
 
