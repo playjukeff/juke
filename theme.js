@@ -86,3 +86,35 @@
     }
   } catch (err) {}
 })();
+
+/* Hold errors until the error reporter arrives.
+
+   web/src/lib/errorMonitoring.js loads Sentry late, after the splash, so a
+   report does not cost the reveal a stutter. That leaves a window in which
+   nothing is listening — and it contains the worst failure this site has:
+   a throw during app.js's boot, which kills the draft engine for the whole
+   page. This file is parser-blocking in <head>, so these listeners exist
+   before app.js runs; nothing else on the page is early enough.
+
+   It only holds, never sends. Twenty at most, because a page throwing in a
+   loop must not grow memory without bound, and it costs nothing on a page
+   without the reporter (the docs pages, a build with no DSN): the array
+   simply fills and nobody reads it. The reporter calls stop() in the same
+   tick it installs its own handlers. */
+(function () {
+  var items = [];
+  function hold(err) { if (items.length < 20) items.push({ error: err, at: Date.now() }); }
+  function onError(ev) { hold(ev.error || ev.message); }
+  function onRejection(ev) { hold(ev.reason); }
+  try {
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    window.__jukeEarlyErrors = {
+      items: items,
+      stop: function () {
+        window.removeEventListener("error", onError);
+        window.removeEventListener("unhandledrejection", onRejection);
+      }
+    };
+  } catch (err) {}
+})();

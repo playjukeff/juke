@@ -381,3 +381,12 @@ jobs:
       # unwanted, and the Insights cards are kept on purpose.
       - name: What the app cannot reach
         run: node scripts/check_dead_components.mjs .
+
+      # What a browser error report may say about where the reader was.
+      #
+      # Every query string comes off before a report reaches Sentry, because
+      # an address here can be a capability: #/draft/live?room=ABC1 IS the
+      # invite. Confirmed red by leaving the hash route's query on - three
+      # failures, each naming an invite shape.
+      - name: Error reports carry no query strings
+        run: node scripts/test_scrub_url.mjs
