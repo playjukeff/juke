@@ -67,11 +67,7 @@ const CASES = [
      stats.js lands. That is not a hydration mismatch — the swap happens in
      an effect after hydration, the same shape as useHashRoute() resolving
      one tick late — and it was confirmed clean: zero #418/#423. */
-  /* Since workstream B the guest home is the landing page in every phase
-     of the season, so there is one headline. Its line break is a <br>,
-     so the stem is what is pinned. */
-  { hash: "#/", needs: "Every call," },
-  { hash: "#/welcome", needs: "Every call," },
+  { hash: "#/", needs: ["Every call, with the math shown.", "Bring your league."] },
   { hash: "#/draft", needs: "Draft against tonight's board." },
   { hash: "#/draft/insights", needs: "Your insights." },
   { hash: "#/players", needs: "Every player on the board, priced." },
