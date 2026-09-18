@@ -4,7 +4,12 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import App from './App.jsx'
 import AuthBridge from './components/AuthBridge.jsx'
 import { CLERK_PUBLISHABLE_KEY, CLERK_APPEARANCE } from './clerkConfig.js'
+import { startErrorMonitoring } from './lib/errorMonitoring.js'
 import './index.css'
+
+// A no-op without VITE_SENTRY_DSN. Loads the SDK after the splash; errors
+// before that are held by theme.js's early queue — see errorMonitoring.js.
+startErrorMonitoring()
 
 /* ---- The two portals are gone, and the subtree behind them with it ----
  *

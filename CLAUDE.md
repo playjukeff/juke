@@ -147,7 +147,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/index.html` | The real homepage entry Vite builds from. Loads the legacy files above as root-relative classic scripts, alongside Vite's own hashed module bundle for React. The Draft Room markup lives here too, hidden — see the Stack section. |
 | `web/src/components/v3/` | **The site.** Five places — Now, League, Players, Draft, Record — plus the calls, the account and the method docs. `V3App.jsx` carries the route table and is the only thing that decides which page an address draws; `app.js`'s `canonicalHash()` is what gets every older address there. The directory is still called `v3` because that is where the files live, which is now a fact about the repository rather than about the product. |
 | `web/src/components/v2/` | The comparison record, at `#/v2`, and the one prefix `canonicalHash()` never rewrites. It costs one branch in `App.jsx` and it is the only way to see what was proposed beside what shipped. Not advertised anywhere on the site — unadvertised is not the same as absent. |
-| `theme.js` | The stored theme, applied before anything paints, for **both** themes the page has: `data-theme` (the legacy pages) and `data-v3-theme` (the site). Parser-blocking in `<head>` because `app.js` is at the foot of the body and by the time it runs the flash has happened. Its v3 key and attribute are written down a second time in `web/src/components/v3/theme.js`; they must not drift. |
+| `theme.js` | The stored theme, applied before anything paints, for **both** themes the page has: `data-theme` (the legacy pages) and `data-v3-theme` (the site). Parser-blocking in `<head>` because `app.js` is at the foot of the body and by the time it runs the flash has happened. Its v3 key and attribute are written down a second time in `web/src/components/v3/theme.js`; they must not drift. Also holds the early error queue (`window.__jukeEarlyErrors`) the error reporter takes over — it is the only script that runs before `app.js`. |
 | `web/src/components/phone/` | The phone-only screens, mounted below `sm` (`usePhoneWidth()`): the draft room, the floating nav pill. Each is a different screen from its desktop counterpart rather than a narrower one — see "The mobile pass" below for why that is a product decision and what it costs. **Two have left**: the homepage (`HomeAlive.jsx`) and the Mock Drafts Lobby (`DraftRoomEntry.jsx`) are one responsive screen at every width now — see "Flow v3" below for why that handoff reverses the split for those two specifically and not for the draft room. |
 | `web/src/components/decision/` | The decision system's five primitives — a KPI strip, a bar and its row, the one light stake card, the run-next card, and a confidence that is never a bare percentage. `tokens.js` holds only the few values a style prop needs at runtime; everything else is a Tailwind token. One `<StakeCard>` per route, warned about in dev. |
 | `web/src/components/insights/` | The Your Insights panel — the rail, the four views, the habits sidebar and the two data-series colours the page draws with. Draws only: every figure and every sentence on it comes off `insightsReport()`/`insightsMock()` in app.js section 11d2, so the sidebar's habit card and the centre panel's pick table are two readings of one audit and cannot disagree. Replaced the eight-card analytics grid, which is unrendered rather than deleted. |
@@ -155,6 +155,7 @@ the Stack section above, not a one-time migration hiccup.
 | `web/src/components/PracticeScenarios.jsx` | The Mock Drafts lobby's "Practice a scenario" grid — four preset drafts that launch with their settings already chosen. Draws only; `practiceScenarios.js` beside it decides which four, and `engine.startScenario()` is what turns a card into a draft. |
 | `web/src/components/shell/leaguePlatforms.js` | Which platforms Juke can read a league from, and which it cannot yet. The one list — it was prose in seven places, and prose cannot be wrong in a way anything notices. |
 | `web/src/clerkConfig.js` | The publishable key (from `VITE_CLERK_PUBLISHABLE_KEY`, public by design) and the one appearance object every Clerk component is themed by. Two hand-tuned copies of "make Clerk look like Juke" would drift the first time either changed. |
+| `web/src/lib/errorMonitoring.js`, `sentryInit.js`, `scrubUrl.js` | Browser error reporting to Sentry. **Inert without `VITE_SENTRY_DSN`** — the SDK is tree-shaken out of the build entirely. With one, `sentryInit.js` (30 KB gzipped, named imports so replay/feedback are dropped) loads after the splash; `theme.js` holds errors from before that. Every URL loses its query first (`#/draft/live?room=` is an invite), and session tracking is off so nothing is sent unless something breaks. `scripts/test_scrub_url.mjs` covers the scrubber. See ceiling 4 below. |
 | `web/src/components/AuthBridge.jsx` | Writes `window.JukeAuth` and fires `juke:auth`, so `app.js` — a classic script, where Clerk's hooks cannot reach — can read who is signed in. `window.JukeEngine` pointing the other way. Renders nothing. |
 | `web/src/hooks/useAccountUiReady.js` | "Is it safe to render Clerk's components yet": a key exists *and* we are past the first client pass. Both halves fail silently on their own — see the Accounts section. |
 | `web/.env.example` | The local-dev template. Keeps a `pk_test_` key on purpose: production's `pk_live_` belongs in the Pages dashboard, and a developer running `vite dev` against the production Clerk instance would be polluting the real user list. |
@@ -544,6 +545,18 @@ Ranked by what a measurement supports, not by what sounds alarming.
    It is not error tracking: it watches CI rather than real users, so it sees
    what a clean run in a browser we drive does and nothing about what a phone
    in a stadium does. The ceiling above is unchanged for that.
+
+   **The other half is wired, 18 September 2026, and it is off until a DSN
+   is set.** `web/src/lib/errorMonitoring.js` reports to Sentry once
+   `VITE_SENTRY_DSN` is in the Pages Production environment (plus
+   `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` for source maps, which
+   are uploaded and then deleted from `dist/`). Verified against a real
+   build with the ingest host intercepted: an `app.js` boot throw is caught
+   by `theme.js`'s queue and reported once the SDK lands, an invite code in
+   the hash never leaves the page, and exactly one envelope goes per error.
+   **Session tracking is removed deliberately** — it posted on every page
+   load, five envelopes for two errors, and the privacy policy says a report
+   goes only when something breaks. Turn it back on only with that sentence.
 
 **What is genuinely fine, so nobody spends effort here.** Pages is a CDN and
 the site is static; a Durable Object is one per room and shards by
