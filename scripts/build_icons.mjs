@@ -92,6 +92,17 @@ const SVGS = {
     viewBox: '450 182 380 380', width: 380, height: 380,
     tile: `<rect x="450" y="182" width="380" height="380" rx="84" fill="${TILE_INK}"/>\n`,
   }),
+  // The installed-app icon: the WHOLE mark, fins and all, centred on a
+  // full-bleed navy square with no radius of its own. iOS and Android cut
+  // their own corners, so a baked-in rx rounds twice, and the head crop above
+  // cuts the fins off at the tile edge - which is what an iPhone home screen
+  // showed. 640 units puts the 564-wide mark at 88% of the square, inside
+  // the corner mask iOS applies. Centre is the full mark's own centre, 640,386.
+  'juke-app-icon.svg': svg({
+    viewBox: '320 66 640 640', width: 640, height: 640,
+    tile: `<rect x="320" y="66" width="640" height="640" fill="${TILE_INK}"/>
+`,
+  }),
   // The transparent icon variant the package lists as optional: same head
   // crop, no tile, for anywhere the icon should float rather than sit on navy.
   'juke-favicon.svg': svg({ viewBox: '450 182 380 380', width: 380, height: 380 }),
@@ -121,6 +132,13 @@ const JOBS = [
     ['juke-icon-tile-180.png', 180, 180],
     ['juke-icon-tile-192.png', 192, 192],
     ['juke-icon-tile-512.png', 512, 512],
+  ]],
+  ['juke-app-icon.svg', [
+    ['juke-app-icon-180.png', 180, 180],
+    // iOS asks for this path by name, whatever the page links; it 404'd.
+    ['apple-touch-icon.png', 180, 180],
+    ['juke-app-icon-192.png', 192, 192],
+    ['juke-app-icon-512.png', 512, 512],
   ]],
   ['juke-favicon.svg', [
     ['juke-favicon-16.png', 16, 16],
