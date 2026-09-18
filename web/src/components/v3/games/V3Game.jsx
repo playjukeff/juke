@@ -26,6 +26,7 @@ import { useMinWidth } from '../../../hooks/useBreakpoint.js'
 import { useV3Theme } from '../theme.js'
 import { gameColors } from '../../../lib/teamColors.js'
 import { useSlate } from '../now/season.js'
+import { GameChip } from './ScoresTicker.jsx'
 import { leagueWeekPts, injurySeverity } from '../../rooms/strategyBoard.js'
 import { InjuryChip } from '../league/parts.jsx'
 
@@ -542,26 +543,7 @@ function GameStrip({ currentId }) {
   if (rows.length < 2) return null
   return (
     <nav aria-label="Other games this week" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-8 sm:px-8">
-      {rows.map((g) => {
-        const on = String(g.id) === String(currentId)
-        const scored = g.state !== 'pre'
-        return (
-          <a
-            key={g.id}
-            href={`#/games/${encodeURIComponent(g.id)}`}
-            aria-current={on ? 'page' : undefined}
-            className={cx('flex min-h-[48px] shrink-0 items-center gap-2 rounded-full border px-3 font-figure text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
-              on ? 'border-transparent bg-v3-ink text-v3-paper' : 'border-v3-rule bg-v3-sheet text-v3-ink hover:border-v3-ink3')}
-          >
-            <img src={logo(g.away)} alt="" width="22" height="22" className="h-[22px] w-[22px]" />
-            <span className="grid leading-tight">
-              {scored ? <span className="font-bold">{g.awayScore}–{g.homeScore}</span> : <span className="font-bold">{g.away} · {g.home}</span>}
-              <span className={cx('text-[11px] uppercase', g.state === 'in' ? 'font-bold text-v3-cost' : on ? 'text-v3-paper/80' : 'text-v3-ink3')}>{g.detail || ''}</span>
-            </span>
-            <img src={logo(g.home)} alt="" width="22" height="22" className="h-[22px] w-[22px]" />
-          </a>
-        )
-      })}
+      {rows.map((g) => <GameChip key={g.id} g={g} on={String(g.id) === String(currentId)} />)}
     </nav>
   )
 }
