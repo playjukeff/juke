@@ -59,7 +59,7 @@ function SituationBand({ league, snapshot, sheet, rank, total, showKickoff = tru
   const me = sheet && sheet.mine
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-[6px] bg-v3-band px-4 py-2.5 font-figure text-[13px] text-v3-bandInk">
-      <span className="min-w-0 truncate font-bold uppercase tracking-[0.14em] text-white">{snapshot.name || league.name}</span>
+      <span className="min-w-0 break-words [overflow-wrap:anywhere] font-bold uppercase tracking-[0.14em] text-white">{snapshot.name || league.name}</span>
       <span>{platform} · read-only</span>
       {snapshot.week ? <span>Week <Fig className="font-bold text-white">{snapshot.week}</Fig></span> : null}
       {me ? (
@@ -141,9 +141,9 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
         ].map((r) => (
           <div key={r.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]">
             {r.href ? (
-              <a href={r.href} className="truncate text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a>
+              <a href={r.href} className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a>
             ) : (
-              <span className="truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
+              <span className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>
             )}
             <ValueBar value={r.value} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
             <CountUp value={r.value} format={(v) => v.toFixed(1)} className="text-right font-figure text-[18px] font-bold tabular-nums text-v3-ink" />
@@ -512,7 +512,7 @@ function LeagueCall({ league, snapshot, sheet, odds }) {
                 <li key={g.week} className="flex min-h-[44px] items-center gap-3 border-b border-v3-rule text-[15px] last:border-b-0">
                   <a href={matchupHref(g.week)} aria-label={`Week ${g.week} matchup`} className="inline-flex min-h-[44px] w-12 shrink-0 items-center font-figure text-v3-ink2 underline decoration-v3-rule underline-offset-4 hover:text-v3-ink hover:decoration-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">W{g.week}</a>
                   <span className="text-v3-ink3">{g.home ? 'vs' : 'at'}</span>
-                  {opp ? <a href={teamHref(opp)} className="min-w-0 truncate font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
+                  {opp ? <a href={teamHref(opp)} className="min-w-0 break-words [overflow-wrap:anywhere] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{opp.teamName}</a> : <span className="text-v3-ink3">Bye</span>}
                 </li>
               )
             })}

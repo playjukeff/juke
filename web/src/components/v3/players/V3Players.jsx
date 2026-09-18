@@ -5,7 +5,7 @@ import {
   FORMATS, FORMAT_LABEL, MODE_LABEL, MODE_SORT, POSITIONS, SORTS, filterRows, liveFormat, posWord, readIndex,
   scoringName, seasonModes, sortRows, weightNote,
 } from './playerData.js'
-import { Chips, DeepTag, InjuryTag, LiveTag, PlayerFace, RookieTag, SelectField, ViewTabs } from './parts.jsx'
+import { Chips, DeepTag, InjuryTag, LiveTag, PLAYERS_PREFS, PlayerFace, RookieTag, SelectField, TenureControl } from './parts.jsx'
 import { useBoardKey } from './useBoardKey.js'
 import { LAYOUT_ROW, motion } from '../motion.jsx'
 import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
@@ -48,7 +48,7 @@ import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
    the index failing at the one thing it is for. */
 
 const PAGE = 50
-const STORE = 'juke.v3.players'
+const STORE = PLAYERS_PREFS
 
 function loadPrefs() {
   try {
@@ -62,12 +62,6 @@ function loadPrefs() {
 function savePrefs(p) {
   try { sessionStorage.setItem(STORE, JSON.stringify(p)) } catch { /* private mode: the index still works, it just forgets */ }
 }
-
-const TENURE = [
-  { value: 'all', label: 'All' },
-  { value: 'rookie', label: 'Rookies' },
-  { value: 'vet', label: 'Vets' },
-]
 
 /* The table's columns, in reading order, per mode. `sort` is a key into
    SORTS, so every heading here is a real order the list can take. The last
@@ -213,7 +207,7 @@ function RowTags({ row, moved = false, live }) {
    reaches into React". */
 function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
   return (
-    <div className="hidden overflow-x-auto md:block">
+    <div className="relative hidden overflow-x-auto md:block">
       <table className="w-full min-w-[900px] table-fixed border-collapse bg-v3-sheet border-0 [&_th]:border-0 [&_th]:bg-v3-sheet [&_td]:border-0">
         <caption className="sr-only">Players on tonight&apos;s board. Column headers sort the table.</caption>
         <thead>
@@ -249,7 +243,7 @@ function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
                   <div className="flex min-w-0 items-center gap-3">
                     <PlayerFace photo={r.photo} initials={r.initials} pos={r.pos} size={32} />
                     <div className="min-w-0">
-                      <a href={href} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{r.name}</a>
+                      <a href={href} className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{r.name}</a>
                       <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden"><RowTags row={r} live={liveById ? liveById.get(r.id) : undefined} /></div>
                     </div>
                   </div>
@@ -295,7 +289,7 @@ function PhoneList({ rows, cols, sort, mode, deepAt, liveById }) {
             <a href={href} data-player-row={r.id} className="flex min-h-[64px] items-center gap-3 px-4 py-2.5 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call">
               <PlayerFace photo={r.photo} initials={r.initials} pos={r.pos} size={40} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-v3-ink">{r.name}</span>
+                <span className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>
                 <span className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
                   <RowTags row={r} moved={mode === 'ros' && shown !== 'delta'} live={liveById ? liveById.get(r.id) : undefined} />
                   {r.inj && <InjuryTag code={r.inj} />}
@@ -323,7 +317,7 @@ export default function V3Players() {
   const [q, setQ] = useState(saved.q || '')
   const [pos, setPos] = useState(saved.pos || 'ALL')
   const [team, setTeam] = useState(saved.team || 'ALL')
-  const [tenure, setTenure] = useState(saved.tenure || 'all')
+  const [tenure, setTenure] = useState(saved.tenure === 'vet' ? 'vet' : 'all')
   const [sort, setSort] = useState(saved.sort || { key: 'adp', dir: 'asc' })
   const [limit, setLimit] = useState(saved.limit || PAGE)
   const [more, setMore] = useState(false)
@@ -432,7 +426,6 @@ export default function V3Players() {
         lede={season
           ? `Week ${season.week} of the ${season.season} season. Rank them by the weeks that are left, by what they have actually scored, or by the preseason board they were drafted off — three orders, never blended into one number.`
           : "Projected points, the gap over the player a league your size would start instead, and Juke's score — for everybody, under the scoring you pick. Sort any column; open anyone for the whole page."}
-        action={<ViewTabs current="all" />}
       />
 
       <Sheet
@@ -508,7 +501,7 @@ export default function V3Players() {
             </SelectField>
             <div className="grid justify-items-start gap-1">
               <Label>Tenure</Label>
-              <Seg label="Tenure" value={tenure} onChange={setTenure} options={TENURE} />
+              <TenureControl current={tenure} onChange={setTenure} />
             </div>
           </div>
           </div>

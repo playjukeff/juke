@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Label, TOUCH, cx } from '../ui.jsx'
+import { Icon, Label, TOUCH, cx } from '../ui.jsx'
 import { injuryWord } from './playerData.js'
 
 /* Parts the Players place needs that ui.jsx does not carry. Presentation
@@ -92,33 +92,53 @@ export function LiveTag({ points, className = '' }) {
   )
 }
 
-/* The two views of the Players place. Links rather than buttons, because
-   each is an address; ink marks the one you are on. */
-export function ViewTabs({ current }) {
-  const items = [
-    { key: 'all', label: 'Every player', href: '#/players' },
-    { key: 'rookies', label: 'Rookies', href: '#/players/rookies' },
-  ]
+/* Tenure — who is on the list by how long they have been in the league
+   (A10). It used to be two controls for one concept: an "Every player /
+   Rookies" pair of tabs floating beside the intro, and an All / Rookies /
+   Vets group in the filter panel a few pixels below it. Now it is one, and
+   it lives with the other filters.
+
+   Rookies is the rookie view rather than a filter on this table, because
+   that view already IS the rookie list, with more on it: what is on file
+   for each first-year player and the class still in college. So on the
+   index, All and Vets filter in place and Rookies is a link; on the rookie
+   view, Rookies is where you are and All and Vets are links back, which
+   carry the choice with them through the index's own saved preferences.
+   Links where the choice is an address, buttons where it is a filter —
+   same look either way. */
+export const PLAYERS_PREFS = 'juke.v3.players'
+const TENURE_OPTS = [
+  { value: 'all', label: 'All' },
+  { value: 'rookie', label: 'Rookies' },
+  { value: 'vet', label: 'Vets' },
+]
+function presetTenure(t) {
+  try {
+    const raw = sessionStorage.getItem(PLAYERS_PREFS)
+    const p = raw ? JSON.parse(raw) : {}
+    sessionStorage.setItem(PLAYERS_PREFS, JSON.stringify({ ...p, tenure: t }))
+  } catch { /* private mode: the index opens on All, which is still right */ }
+}
+export function TenureControl({ current, onChange }) {
+  const onRookies = current === 'rookie'
+  const seg = (on) => cx(
+    TOUCH,
+    'inline-flex min-h-[36px] items-center rounded-[4px] px-3 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+    on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
+  )
   return (
-    <nav aria-label="Players views" className="inline-flex rounded-[6px] border border-v3-rule bg-v3-sheet p-[3px]">
-      {items.map((it) => {
-        const on = it.key === current
-        return (
-          <a
-            key={it.key}
-            href={it.href}
-            aria-current={on ? 'page' : undefined}
-            className={cx(
-              TOUCH,
-              'inline-flex min-h-[38px] items-center justify-center rounded-[4px] px-4 text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
-              on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
-            )}
-          >
-            {it.label}
-          </a>
-        )
+    <div role="group" aria-label="Tenure" className="inline-flex rounded-[6px] border border-v3-rule bg-v3-sheet p-[3px]">
+      {TENURE_OPTS.map((o) => {
+        const on = o.value === current
+        if (o.value === 'rookie') {
+          return <a key={o.value} href="#/players/rookies" aria-current={on ? 'page' : undefined} className={seg(on)}>{o.label}</a>
+        }
+        if (onRookies) {
+          return <a key={o.value} href="#/players" onClick={() => presetTenure(o.value)} className={seg(false)}>{o.label}</a>
+        }
+        return <button key={o.value} type="button" aria-pressed={on} onClick={() => onChange(o.value)} className={seg(on)}>{o.label}</button>
       })}
-    </nav>
+    </div>
   )
 }
 
@@ -152,16 +172,17 @@ export function Chips({ label, options, value, onChange, className = '' }) {
    (CLAUDE.md: every field is 16px on a touch screen). */
 export function SelectField({ id, label, value, onChange, children, className = '' }) {
   return (
-    <label htmlFor={id} className={cx('grid gap-1', className)}>
+    <label htmlFor={id} className={cx('relative grid gap-1', className)}>
       <Label>{label}</Label>
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+        className="min-h-[44px] w-full cursor-pointer appearance-none rounded-[6px] border border-v3-rule bg-v3-sheet pl-3 pr-9 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] text-v3-ink transition-colors duration-150 hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call [@media(pointer:coarse)]:text-[16px]"
       >
         {children}
       </select>
+      <Icon name="arrow" className="pointer-events-none absolute bottom-[14px] right-3 h-4 w-4 rotate-90 text-v3-ink2" />
     </label>
   )
 }

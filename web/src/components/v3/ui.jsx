@@ -269,7 +269,7 @@ export function Seg({ label, options, value, onChange, className = '' }) {
             onClick={() => onChange(o.value)}
             className={cx(
               TOUCH,
-              'min-h-[34px] rounded-[4px] px-3 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+              'min-h-[36px] rounded-[4px] px-3 font-figure text-[13px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
               on ? 'bg-v3-band text-white' : 'text-v3-ink2 hover:text-v3-ink',
             )}
           >

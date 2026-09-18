@@ -63,6 +63,27 @@ function CallsWhere({ signedIn, leagueStatus }) {
 
 /* ---- The summary ---- */
 
+/* A12. Four tiles of em-dashes read as a page that failed to render, not
+   as a record with nothing in it yet. When a half of the summary has no
+   figure worth a tile it says so once, in one block: a muted mark, why it
+   is empty, and the one thing that fills it. A dash stays the answer for
+   a single missing value beside real ones -- that is this project's rule
+   about a missing number -- and is no longer a way of drawing absence. */
+function EmptyFigures({ icon, title, reason, action }) {
+  return (
+    <div className="mt-4 flex items-start gap-4 rounded-[6px] border border-dashed border-v3-rule px-4 py-5">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-v3-well text-v3-ink3" aria-hidden="true">
+        <Icon name={icon} className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[15px] font-semibold text-v3-ink">{title}</p>
+        <p className="mt-1 max-w-[52ch] text-[15px] leading-[1.55] text-v3-ink2">{reason}</p>
+        {action ? <div className="mt-3">{action}</div> : null}
+      </div>
+    </div>
+  )
+}
+
 function Summary({ locker, stats, calls, callsStatus, signedIn, sync, leagueStatus }) {
   const draftFigures = !locker.ready ? null : [
     { label: 'Drafts', value: stats.count, note: stats.count ? `${stats.formats} ${stats.formats === 1 ? 'format' : 'formats'} run` : 'None finished yet' },
@@ -87,18 +108,47 @@ function Summary({ locker, stats, calls, callsStatus, signedIn, sync, leagueStat
       <section aria-labelledby="rec-sum-drafts" className="min-w-0">
         <Headline as="h2" size="block" id="rec-sum-drafts">Mock drafts</Headline>
         <div className="mt-2"><DraftsWhere signedIn={signedIn} sync={sync} count={stats.count} /></div>
-        {draftFigures ? (
+        {!draftFigures ? <Skeleton lines={3} className="mt-4" /> : stats.count === 0 ? (
+          <EmptyFigures
+            icon="draft"
+            title="No mock drafts finished yet"
+            reason="Your best finish, how often you land in the top half and your last draft all count from finished mocks. A draft you leave halfway is not graded."
+            action={<GoLink href="#/draft">Start a mock draft</GoLink>}
+          />
+        ) : (
           <dl className="mt-4 grid grid-cols-2 gap-2">{draftFigures.map((f) => <Stat key={f.label} {...f} />)}</dl>
-        ) : <Skeleton lines={3} className="mt-4" />}
+        )}
       </section>
       <section aria-labelledby="rec-sum-calls" className="min-w-0">
         <Headline as="h2" size="block" id="rec-sum-calls">Calls Juke gave you</Headline>
         <div className="mt-2"><CallsWhere signedIn={signedIn} leagueStatus={leagueStatus} /></div>
-        {/* Four tiles of em-dashes state "no calls" a second time, directly
-            above an empty state that states it in prose. One sentence until
-            there is a figure worth a tile. */}
-        {callsStatus === 'loading' ? <Skeleton lines={3} className="mt-4" /> : noCalls ? (
-          <p className="mt-4 text-[15px] leading-[1.55] text-v3-ink3">No calls recorded yet — they land here as Juke makes them on your roster.</p>
+        {callsStatus === 'loading' ? <Skeleton lines={3} className="mt-4" /> : !signedIn ? (
+          <EmptyFigures
+            icon="record"
+            title="No calls to count"
+            reason="A call is advice about a real roster, so calls are kept against an account with a connected league. Good calls, bad calls and your hit rate start there."
+            action={<GoLink href="#/account">Sign in and connect a league</GoLink>}
+          />
+        ) : leagueStatus !== 'connected' ? (
+          <EmptyFigures
+            icon="league"
+            title="No league connected"
+            reason="Juke writes calls against your own roster, and this account has none to write against yet."
+            action={<GoLink href="#/account">Connect a league</GoLink>}
+          />
+        ) : !known ? (
+          <EmptyFigures
+            icon="info"
+            title="Your calls could not be read just now"
+            reason="The record of calls lives with your account and did not answer. Nothing is lost; it retries when you come back to this tab."
+          />
+        ) : noCalls ? (
+          <EmptyFigures
+            icon="lineup"
+            title="No calls recorded yet"
+            reason="A call is written down when Juke gives you one on your roster, and graded once the week it was about has been played."
+            action={<GoLink href="#/">See this week's calls</GoLink>}
+          />
         ) : (
           <dl className="mt-4 grid grid-cols-2 gap-2">{callFigures.map((f) => <Stat key={f.label} {...f} />)}</dl>
         )}
