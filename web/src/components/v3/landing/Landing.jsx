@@ -53,35 +53,6 @@ import { COMPARISON } from './comparison.js'
    be substantiated yet; the social-proof slot is empty on purpose and
    says so in its own component. */
 
-/* ---- Motion: fade-and-rise on section entry (B6) ----
-
-   This is the one surface in the app where a section rises as it scrolls
-   into view. motion.jsx argues against that for the product's own pages —
-   a reader hunting for a number should not wait for it — and that
-   argument does not apply to a page whose job is to be read top to
-   bottom once. It stays scoped here.
-
-   CSS does the moving (index.css, [data-lsec]). A section already on
-   screen at mount is never armed, so the first paint — and the
-   prerendered HTML — is the page at rest. A transition that is
-   interrupted retargets from wherever it is, so rapid scrolling always
-   lands on the final state. Reduced motion: never armed. */
-function useSectionRise(ref) {
-  const ok = useMotionOK()
-  useEffect(() => {
-    const el = ref.current
-    if (!el || !ok || typeof IntersectionObserver === 'undefined') return undefined
-    const r = el.getBoundingClientRect()
-    if (r.top < window.innerHeight) return undefined
-    el.querySelectorAll('[data-lrise]').forEach((k, i) => k.style.setProperty('--i', String(Math.min(i, 6))))
-    el.setAttribute('data-armed', '')
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) { el.setAttribute('data-in', ''); io.disconnect() }
-    }, { rootMargin: '0px 0px -12% 0px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [ok, ref])
-}
 
 /* Hover lift for a product card (B6): 3px and the one elevation token,
    150ms, and nothing under reduced motion. */
@@ -297,7 +268,6 @@ function Feature({ icon, label, children }) {
 
 function Section({ id, eyebrow, title, support, features, visual, flip = false, tile = false }) {
   const ref = useRef(null)
-  useSectionRise(ref)
   return (
     <section ref={ref} data-lsec="" aria-labelledby={id} className="relative isolate overflow-x-clip">
       {tile ? <TypeTile className="-inset-y-16" /> : null}
@@ -395,7 +365,7 @@ export default function Landing({ season, force = false }) {
     <div data-landing="" className="grid">
       <Hero season={season} />
       <ProofStrip />
-      <div className="mt-section grid gap-section pb-section">
+      <div className="mt-section grid gap-section">
         <Section
           id="landing-draft"
           eyebrow="Draft"
