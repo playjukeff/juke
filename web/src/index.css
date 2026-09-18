@@ -625,3 +625,23 @@ html[data-auth-hint='in'] [data-landing] { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .landing-glow { animation: none; }
 }
+
+/* The landing's sonar (Landing.jsx). At rest: every blip grey, the top
+   three named, no beam - which is also what reduced motion keeps. */
+.sonar .sonar-dot { fill: #9AA7B8; }
+.sonar .sonar-ring { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.sonar .sonar-name { opacity: 0; }
+.sonar .sonar-top .sonar-name { opacity: 1; }
+.sonar .sonar-top .sonar-dot { fill: #00E5FF; }
+.sonar .sonar-beam { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .sonar .sonar-beam { display: inline; animation: sonar-sweep var(--sweep) linear infinite; }
+  .sonar .sonar-blip .sonar-name,
+  .sonar .sonar-blip .sonar-ring { animation: sonar-name var(--sweep) linear infinite; animation-delay: var(--d); animation-fill-mode: backwards; opacity: 0; }
+  .sonar .sonar-blip .sonar-dot { animation: sonar-dot var(--sweep) linear infinite; animation-delay: var(--d); }
+  .sonar .sonar-blip .sonar-ring { animation-name: sonar-ring; }
+}
+@keyframes sonar-sweep { from { transform: rotate(var(--from)); } to { transform: rotate(var(--to)); } }
+@keyframes sonar-name { 0% { opacity: 0; } 3% { opacity: 1; } 14% { opacity: 1; } 38% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes sonar-ring { 0% { opacity: .8; transform: scale(.4); } 18% { opacity: 0; transform: scale(1.4); } 100% { opacity: 0; } }
+@keyframes sonar-dot { 0% { fill: #00E5FF; } 30% { fill: #00E5FF; } 60% { fill: #9AA7B8; } 100% { fill: #9AA7B8; } }

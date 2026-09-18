@@ -145,7 +145,7 @@ function readSonar(engine) {
     rows.push({ id: p.id, name: p.name, pos: p.pos, gap })
   }
   rows.sort((a, b) => b.gap - a.gap)
-  return rows.slice(0, 14)
+  return rows.slice(0, 10)
 }
 
 function shortName(n) {
@@ -153,34 +153,49 @@ function shortName(n) {
   return parts.length > 1 ? parts[0][0] + '. ' + parts.slice(1).join(' ') : n
 }
 
+/* The sweep runs left to right across the arc in SWEEP_MS and starts over.
+   Each blip's flash and name are one CSS animation on the same period,
+   delayed to the moment the beam reaches its angle, so nothing runs per
+   frame in React. Names fade, figures never count. Under reduced motion
+   there is no beam and the top three are labelled at rest. */
+const SWEEP_MS = 6000
+const A0 = 0.12, A1 = 0.88 // the beam's travel, in fractions of pi
+
 function Sonar({ className = '' }) {
   const rows = useEngineData(readSonar)
   const W = 420, H = 270, cx = W / 2, cy = H - 18, R = 225
   const max = rows && rows.length ? rows[0].gap : 1
+  const deg = (f) => (f - 0.5) * 180
   return (
     <Sheet code="Tonight's board, by points over replacement" aside="Tonight" className={className} bodyClass="p-0">
       {!rows ? <div className="p-4"><Skeleton lines={5} /></div> : (
         <div className="bg-[#0C1422]">
-          <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label={`Sonar: ${shortName(rows[0].name)} is the farthest ping, ${Math.round(rows[0].gap)} points over replacement`}>
+          <svg viewBox={`0 0 ${W} ${H}`} className="sonar block w-full" role="img" aria-label={`Sonar of tonight's board: ${rows.slice(0, 3).map((r) => `${r.name} +${Math.round(r.gap)}`).join(', ')}`}
+            style={{ '--sweep': `${SWEEP_MS}ms`, '--from': `${deg(A0)}deg`, '--to': `${deg(A1)}deg` }}>
             <g fill="none" stroke="#00E5FF" strokeOpacity=".2">
               {[0.25, 0.5, 0.75, 1].map((f) => <circle key={f} cx={cx} cy={cy} r={R * f} />)}
             </g>
-            <path d={`M${cx} ${cy}L${cx - R * 0.72} ${cy - R * 0.69}A${R} ${R} 0 0 1 ${cx - R * 0.1} ${cy - R}Z`} fill="#00E5FF" fillOpacity=".07" />
             {[0.25, 0.5, 0.75, 1].map((f) => (
-              <text key={f} x={cx + R * f - 3} y={cy - 4} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#9AA7B8" opacity=".7">+{Math.round(max * f)}</text>
+              <text key={f} x={Math.min(cx + R * f - 3, W - 4)} y={cy - 4} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#9AA7B8" opacity=".7">+{Math.round(max * f)}</text>
             ))}
+            <g className="sonar-beam" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+              <path d={`M${cx} ${cy}L${cx - Math.sin(0.35) * R} ${cy - Math.cos(0.35) * R}A${R} ${R} 0 0 1 ${cx} ${cy - R}Z`} fill="#00E5FF" fillOpacity=".1" />
+              <line x1={cx} y1={cy} x2={cx} y2={cy - R} stroke="#00E5FF" strokeOpacity=".7" strokeWidth="1.5" />
+            </g>
             {rows.map((r, i) => {
-              const a = i === 0 ? Math.PI * 0.4 : Math.PI * (0.2 + (0.6 * ((i * 0.618) % 1)))
+              const f = 0.2 + 0.6 * ((i * 0.618 + 0.33) % 1) // golden-ratio spread, so neighbours in rank land far apart
+              const aRad = Math.PI * f
               const d = R * (r.gap / max)
-              const x = cx - Math.cos(a) * d, y = cy - Math.sin(a) * d
-              if (i === 0) return (
-                <g key={r.id}>
-                  <circle cx={x} cy={y} r="14" fill="none" stroke="#00E5FF" strokeOpacity=".5" />
-                  <circle cx={x} cy={y} r="6" fill="#00E5FF" />
-                  <text x={x > cx ? x - 18 : x + 18} textAnchor={x > cx ? 'end' : 'start'} y={y + 4} fontFamily="IBM Plex Mono, monospace" fontSize="11" fontWeight="600" fill="#E7ECF3">{shortName(r.name).toUpperCase()} · +{Math.round(r.gap)}</text>
+              const x = cx - Math.cos(aRad) * d, y = cy - Math.sin(aRad) * d
+              const delay = `${Math.round(((f - A0) / (A1 - A0)) * SWEEP_MS)}ms`
+              const right = x > cx
+              return (
+                <g key={r.id} className={i < 3 ? 'sonar-blip sonar-top' : 'sonar-blip'} style={{ '--d': delay }}>
+                  <circle className="sonar-ring" cx={x} cy={y} r="12" fill="none" stroke="#00E5FF" />
+                  <circle className="sonar-dot" cx={x} cy={y} r={i === 0 ? 5 : 3.5} />
+                  <text className="sonar-name" x={right ? x - 10 : x + 10} textAnchor={right ? 'end' : 'start'} y={y + 4} fontFamily="IBM Plex Mono, monospace" fontSize="10.5" fontWeight="600" fill="#E7ECF3">{shortName(r.name).toUpperCase()} {'·'} +{Math.round(r.gap)}</text>
                 </g>
               )
-              return <circle key={r.id} cx={x} cy={y} r="3.5" fill="#9AA7B8"><title>{r.name} +{Math.round(r.gap)}</title></circle>
             })}
             <image href="/juke-shark-mark.svg" x={cx - 30} y={cy - 22} width="60" height="37" />
           </svg>
