@@ -102,7 +102,7 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
   const both = !!(games && movers.length)
 
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-section">
       {inSeason || bucket === 'post' ? <SeasonBand season={season} kickoffAt={kickoffAt} /> : <SituationBand />}
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
@@ -187,7 +187,7 @@ const BLOCK = 'animate-pulse rounded-[6px] bg-v3-well motion-reduce:animate-none
 
 export function NowMemberLoading({ note = 'Checking which league is yours…' }) {
   return (
-    <div className="grid gap-10" aria-busy="true">
+    <div className="grid gap-section" aria-busy="true">
       <div className={cx('h-[44px]', BLOCK)} />
       <div className="grid gap-8">
         <div className="grid gap-4">

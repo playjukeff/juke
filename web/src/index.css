@@ -78,7 +78,24 @@
   --v3-warn-wash: 251 240 220;
   /* the colour a shadow is cast in: the ink on paper, pure black at night */
   --v3-shade: 12 20 34;
+
+  /* ---- Rhythm ----
+     The gap BETWEEN major blocks, as one token rather than a margin chosen
+     per page. Density INSIDE a card never reads it: that density is correct
+     and was never what was wrong. */
+  --v3-space-section: 4rem;
+
+  /* ---- Elevation ----
+     One step, scarce on purpose. Every card here is a 1px rule on a lifted
+     surface, which is right for a sheet of equal blocks — and it left the
+     ONE card that is the week's actual call reading as a sibling of the
+     reference material beside it. A shadow on every card is a shadow on
+     none of them. */
+  --v3-shadow-raised: 0 1px 2px rgb(var(--v3-shade) / 0.06), 0 8px 24px -12px rgb(var(--v3-shade) / 0.28);
 }
+
+@media (min-width: 768px) { :root { --v3-space-section: 6rem; } }
+@media (min-width: 1024px) { :root { --v3-space-section: 8rem; } }
 html[data-v3-theme='dark'] {
   --v3-paper: 13 18 25;
   --v3-sheet: 21 28 39;
@@ -101,6 +118,9 @@ html[data-v3-theme='dark'] {
   --v3-warn: 242 182 75;
   --v3-warn-wash: 53 39 15;
   --v3-shade: 0 0 0;
+  /* A cast shadow barely reads on a dark ground, so the dark step leans on
+     spread rather than opacity — still one step, still one place. */
+  --v3-shadow-raised: 0 1px 2px rgb(var(--v3-shade) / 0.5), 0 10px 30px -14px rgb(var(--v3-shade) / 0.85);
   color-scheme: dark;
 }
 html[data-v3-theme='light'] {
@@ -421,6 +441,17 @@ body {
    outside v3, which is where teal is still the accent. */
 [data-v3-root] :where(a, button, [role='button'], [role='radio'], [role='tab'], summary, input, select, textarea, [tabindex]):focus-visible {
   outline-color: rgb(var(--v3-call));
+}
+
+/* A button's cursor. `<a href>` gets the hand from the browser; `<button>`
+   does not — its UA default is `default` and Tailwind's preflight leaves it
+   there. So every control that is a real button rather than a link showed an
+   arrow, on exactly the controls the page most wants pressed. There were
+   zero `cursor-pointer` in the whole of v3. :where() keeps specificity at
+   zero, and :disabled is excluded rather than overridden — a disabled
+   control is genuinely not clickable and says so already. */
+[data-v3-root] :where(button, [role='button'], summary, label[for]):not(:disabled) {
+  cursor: pointer;
 }
 
 /* Browser surfaces the design system should own rather than inherit.

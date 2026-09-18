@@ -312,7 +312,7 @@ function TabBar({ current }) {
 
 function Footer() {
   return (
-    <footer className="mt-24 border-t border-v3-rule bg-v3-sheet">
+    <footer className="mt-section border-t border-v3-rule bg-v3-sheet">
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <JukeLogo size={20} markWidth={40} onLight color="rgb(var(--v3-ink))" />
@@ -445,7 +445,7 @@ export default function V3App({ sub = '' }) {
               Skip to content
             </a>
             <TopBar current={current} />
-            <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-8 focus:outline-none sm:px-8 sm:pt-12 md:pb-0">{page}</main>
+            <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-12 focus:outline-none sm:px-8 sm:pt-24 md:pb-0">{page}</main>
             <p aria-live="polite" className="sr-only">{announce}</p>
             <Footer />
             <TabBar current={current} />

@@ -174,13 +174,13 @@ function RecordBlock() {
 function NowGuest({ season, post = false }) {
   const kickoffAt = useNextKickoffAt()
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-section">
       {post ? <SeasonBand season={season} kickoffAt={kickoffAt} /> : <SituationBand />}
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <div className="lg:sticky lg:top-[92px]">
           {/* data-hero-eyebrow - see NowSeason.jsx's note. Both season
               states carry it, because either can be the page. */}
-          <Label data-hero-eyebrow>{post ? 'Juke · the season is over' : 'Juke · fantasy football, priced'}</Label>
+          <Label tier="page" as="p" data-hero-eyebrow>{post ? 'Juke · the season is over' : 'Juke · fantasy football, priced'}</Label>
           <Headline className="mt-3">Every call, with the math shown.</Headline>
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
             {post ? 'The season is over, and next year’s draft is the one decision left. ' : ''}A rank tells you who goes first. Juke tells you by how much — in points over the player your league would start instead, under your scoring. Here is tonight&apos;s sharpest disagreement with the market. Change the position or the scoring and watch it move.

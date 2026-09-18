@@ -35,7 +35,7 @@ export default function NowSeason({ season }) {
   const week = season.week
   const both = !!(games && movers.length)
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-section">
       <SeasonBand season={season} kickoffAt={kickoffAt} />
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
@@ -45,7 +45,7 @@ export default function NowSeason({ season }) {
               rather than the words, because the words are seasonal here and
               uppercased in CSS - the two ways that match has already broken.
               Its twin is on Now.jsx's own eyebrow. */}
-          <Label data-hero-eyebrow>{['Now', week ? `week ${week}` : 'in season', season.season].filter(Boolean).join(' · ')}</Label>
+          <Label tier="page" as="p" data-hero-eyebrow>{['Now', week ? `week ${week}` : 'in season', season.season].filter(Boolean).join(' · ')}</Label>
           <Headline className="mt-3">{week ? `Week ${week} is here.` : 'The season is on.'} Bring your league.</Headline>
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
             Juke reads your league and makes the week’s calls — who to start, who to claim, whether a trade is fair — each with the arithmetic printed beside it. This is what that looks like on a sample league, on tonight’s real players.
