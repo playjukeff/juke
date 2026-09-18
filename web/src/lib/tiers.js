@@ -11,6 +11,14 @@
 
 export const TIER_LABEL = { free: 'Free', pro: 'Season Pass', allaccess: 'Multi-League' }
 
+/* BEFORE ANY ACCOUNT BUT THE OWNER'S CAN CONNECT A LEAGUE — Season Pass going
+   on sale, or an account moved off 'free' by hand — a real Yahoo league has to
+   be read and checked against Yahoo's own screens. Yahoo went live on 18
+   September 2026 with only its sign-in measured, because 'free' connects
+   nothing and the owner's was the only other account; the moment that stops
+   being true, an unmeasured league reader reaches real users. CLAUDE.md's
+   Yahoo section, "What is measured, and what has to be before Season Pass
+   sells", says what to compare. */
 export const LEAGUE_CAP = { free: 0, pro: 1, allaccess: 20 }
 
 export function tierLabel(tier) {

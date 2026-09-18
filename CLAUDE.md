@@ -26,10 +26,12 @@ The Draft Room is still that simulator, built for one specific ten-team
 league and now configurable from the setup screen: 4 to 24 teams, 8 to 20
 rounds, any starting lineup, and standard, half or full PPR. That original
 league is still what every control defaults to. Around it: a league
-connected from Sleeper, ESPN or CBS (Yahoo in testing), read-only; the
+connected from Sleeper, ESPN, CBS or Yahoo, read-only; the
 week's lineup, wire and trade calls on it; and the player, league and
 record pages. Reading a real league is Season Pass, which is not on sale
-yet.
+yet. **Before it is — or before any account but the owner's is moved off
+`free` by hand — a real Yahoo league has to be read and checked**; see "What
+is measured, and what has to be before Season Pass sells" under Yahoo.
 
 Live at `jukeff.com`, served by **Cloudflare Pages**, built from `main` on
 every push. **It serves from the domain root, not a project path** — which is
@@ -10511,8 +10513,10 @@ write it.**
 
 ## Yahoo, the one platform that asks properly
 
-Built 18 September 2026, on `feat/yahoo-adapter`, and **`beta` rather than
-`live`** — see the last part of this section for why and what flips it.
+Built 18 September 2026, on `feat/yahoo-adapter`, and shipped **`beta`**.
+**`live` the same day, with its league-reading half still unmeasured** — the
+owner's call, recorded with the requirement it came with in the last part of
+this section.
 
 **Measured first: Yahoo has no public half at all.** Every anonymous Fantasy
 API request — the game metadata, the stat categories, a league's settings —
@@ -10594,24 +10598,44 @@ charges each band alone, Juke charges `fgmiss` on every miss and adds a band
 increment, so `fgmiss` is Yahoo's 0–19 charge and each band is its Yahoo
 charge less that. Yahoo's 50+ is both of Juke's top bands, made and missed.
 
-### What is not measured, and what flips it to live
+### What is measured, and what has to be before Season Pass sells
 
-**Every shape in a league payload is written against Yahoo's published
+**The OAuth half is measured; the league half is not.** On 18 September 2026
+the owner registered the Yahoo app (Web Application, Confidential Client,
+redirect `https://jukeff.com/connect/yahoo`, Fantasy Sports → Read), set
+`YAHOO_CLIENT_ID` and `YAHOO_CLIENT_SECRET`, and signed in to Yahoo through
+the real dialog on the real site. That round trip is the consent page, the
+return page, the code exchange with the secret and the sealed token, so it
+proves the registration, both secrets and `LEAGUE_CRED_KEY` together. The
+owner's Yahoo account is in no league, so nothing past the league list has
+ever read a real payload: **every shape in a league — settings, scoring,
+rosters, standings, the schedule — is still written against Yahoo's published
 format, not measured.** The readers in `yahoo-json.js` accept both forms Yahoo
-uses for a list, so a wrong guess about a node cannot silently drop it — but
-tolerant parsing is not the same as a measurement, and a platform that
-connects and draws the wrong roster is worse than one that is not offered. So
-`leaguePlatforms.js` marks Yahoo `beta`: the dialog offers it only to a
-browser with `localStorage["juke.beta.yahoo"] = "1"`, and every caption on the
-site still says "Yahoo soon", which is true.
+uses for a list, so a wrong guess about a node cannot silently drop it, but
+tolerant parsing is not a measurement.
 
-To flip it: the owner registers the Yahoo app and sets `YAHOO_CLIENT_ID` and
-`YAHOO_CLIENT_SECRET` (worker/README.md, "Switching it on"); somebody connects
-a real Yahoo league in a beta browser and compares rosters, lineup order,
-records, scoring and the schedule against Yahoo's own screens; then `live:
-true` and delete `beta`. Correct this section with what was actually measured
-when that happens — anything that turns out wrong here is the adapter's
-comment and this file's to fix, not just the code's.
+**It went `live` anyway, and the reason is who can reach it.** A platform that
+connects and draws the wrong roster is worse than one that is not offered —
+that is why it shipped `beta` — but on the day of the flip exactly one account
+existed and it was the owner's, on `allaccess`. Every other account is `free`,
+whose `LEAGUE_CAP` is 0, and Season Pass is not on sale. So an unmeasured
+reader could reach nobody but the person who chose to ship it, and the check
+moved from "before live" to the first moment somebody else could connect.
+
+**The requirement, and it is a gate rather than a nice-to-have: before
+Season Pass goes on sale, or before any account other than the owner's is
+moved off `free` by hand, a real Yahoo league must be connected and compared
+against Yahoo's own screens.** Compare every team's roster, the reader's
+starters in lineup order, records and points for, the scoring (a lineup's
+totals under the league's rules, and `scoringUnmapped` for anything Juke could
+not name), and the schedule and this week's matchup. An undrafted private
+league the owner creates can check settings and scoring alone — the riskiest
+part, because a scoring category is matched by NAME and a wrong match scores
+the wrong thing silently — so change a few values from Yahoo's defaults first.
+Rosters, records and matchups need a drafted league. Correct this section with
+what was measured, and fix the adapter's own comments with it, not just its
+code. The same sentence sits beside `LEAGUE_CAP` in `web/src/lib/tiers.js`,
+which is the table somebody reads when they open a paid tier.
 
 **Not built:** per-player projections (Yahoo's public API publishes none, so
 the rooms use Juke's under the league's scoring and say so), transactions,

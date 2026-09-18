@@ -38,7 +38,7 @@ derived from *your* league shape, with a post-draft grade that breaks into four
 visible weighted components.
 
 The same analysis layer extends across a season: a league connected
-read-only from Sleeper, ESPN or CBS (Yahoo in testing), the week's lineup,
+read-only from Sleeper, ESPN, CBS or Yahoo, the week's lineup,
 wire and trade calls on it, and the player, league and record pages.
 **[repo]** Since the 14 September 2026 cutover these are five places —
 Now, League, Players, Draft, Record — with the calls as tools rather than

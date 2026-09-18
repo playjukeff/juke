@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SignInButton, SignUpButton, useClerk, useUser } from '@clerk/clerk-react'
 import ConnectLeagueModal from '../../shell/ConnectLeagueModal.jsx'
-import { LINE as PLATFORM_LINE, LIVE_NAMES, platformFor } from '../../shell/leaguePlatforms.js'
+import { LINE as PLATFORM_LINE, LIVE_NAMES, MORE_COMING, platformFor } from '../../shell/leaguePlatforms.js'
 import { noteLeagueConnected } from '../../../hooks/useLeague.js'
 import { useAccountUiReady } from '../../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../../hooks/useAuthState.js'
@@ -344,7 +344,7 @@ function SignedInAccount({ ready }) {
 function GuestAccount({ ready }) {
   const adds = [
     { icon: 'draft', text: 'Your drafts, synced to every browser you sign in on — not just this one.' },
-    { icon: 'league', text: `A connected league — ${LIVE_NAMES} today, more to come. Read-only; Juke never edits it.` },
+    { icon: 'league', text: `A connected league — ${LIVE_NAMES}${MORE_COMING ? " today, more to come" : ""}. Read-only; Juke never edits it.` },
     { icon: 'now', text: 'Now becomes your week: the lineup swap, the claim, the trade window, and every call kept on the record.' },
   ]
   const signup = <CallButton>Create a free account <Icon name="arrow" className="h-4 w-4" /></CallButton>

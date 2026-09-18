@@ -126,7 +126,7 @@ const CLERK_GATED = "signed-in rendering is Clerk's, and a keyed build ignores t
 const text = (page) => page.locator("#view-home").innerText();
 
 test.describe("a connected league", () => {
-  test("nothing on the site claims four working platforms", async ({ context }) => {
+  test("the site claims exactly the platforms the list says work", async ({ context }) => {
     const page = await openApp(context, "#/");
     await page.waitForSelector("#view-home h1");
 
@@ -136,21 +136,31 @@ test.describe("a connected league", () => {
        and it is one shared constant so it cannot drift back into a claim in
        six places at once.
 
-       Asserted as a property rather than as the caption's exact words,
-       because those words move every time a platform ships: this went from
-       "Sleeper now · ESPN, Yahoo, CBS soon" to "Sleeper and ESPN now ·
-       Yahoo, CBS soon" the day ESPN landed, and a literal here would have
-       gone red for the feature working. What must stay true is the split —
-       something is named as available and something as not — and that the
-       undifferentiated list never comes back. */
+       This asserted the split itself for a while — something named "now",
+       something named "soon" — and that went red the day the last platform
+       shipped, for the feature working: with all four live there is no
+       "soon" half to find. It was already a property rather than the
+       caption's exact words for the same reason one level down ("Sleeper
+       now · ESPN, Yahoo, CBS soon" became "Sleeper and ESPN now · Yahoo, CBS
+       soon" the day ESPN landed). So it reads the list the caption is built
+       from and asserts against that: every platform the list calls live is
+       named as available, and only those. */
+    const { PLATFORMS } = await import("../web/src/components/shell/leaguePlatforms.js");
     const body = await text(page);
     expect(body).not.toContain("Sleeper · ESPN · Yahoo · CBS");
     expect(body).not.toContain("Sleeper, ESPN, Yahoo or CBS");
-    expect(body, "says what is available now").toMatch(/\bnow\b/);
-    expect(body, "and what is not yet").toMatch(/\bsoon\b/);
-    /* Sleeper is on the live side of that split, and naming it here is what
-       stops the caption degrading into "· soon" with nothing before it. */
-    expect(body).toMatch(/Sleeper[^·]*\bnow\b/);
+
+    /* The caption's "now" half, wherever the page draws it. Sleeper is in it
+       whatever else ships, which is what stops this matching nothing. */
+    const nowHalf = (body.match(/Sleeper[^·\n]*\bnow\b/) || [""])[0];
+    expect(nowHalf, "the caption names what works").not.toBe("");
+    for (const p of PLATFORMS) {
+      if (p.live) expect(nowHalf, `${p.name} is live and named as available`).toContain(p.name);
+      else expect(nowHalf, `${p.name} is not live and must not be named as available`).not.toContain(p.name);
+    }
+    const locked = PLATFORMS.filter((p) => !p.live);
+    if (locked.length) expect(body, "and what is not yet").toMatch(/\bsoon\b/);
+    else expect(body, "nothing is left to call 'soon'").not.toMatch(/\bnow\s*·[^\n]*\bsoon\b/);
 
     await page.close();
   });
