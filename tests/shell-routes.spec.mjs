@@ -67,7 +67,10 @@ const CASES = [
      stats.js lands. That is not a hydration mismatch — the swap happens in
      an effect after hydration, the same shape as useHashRoute() resolving
      one tick late — and it was confirmed clean: zero #418/#423. */
-  { hash: "#/", needs: ["Every call, with the math shown.", "Bring your league."] },
+  /* The landing page out of season (its <br> means the stem is pinned),
+     NowSeason in it. Pinning one would write today's date into the test. */
+  { hash: "#/", needs: ["Every call,", "Bring your league."] },
+  { hash: "#/welcome", needs: "Every call," },
   { hash: "#/draft", needs: "Draft against tonight's board." },
   { hash: "#/draft/insights", needs: "Your insights." },
   { hash: "#/players", needs: "Every player on the board, priced." },
