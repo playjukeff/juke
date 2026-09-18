@@ -118,7 +118,7 @@ export default function SampleBoard({ className = '' }) {
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <SampleTag />
-          <Label className="truncate text-[11px]">A draft playing itself</Label>
+          <Label className="truncate text-[12px]">A draft playing itself</Label>
         </span>
         {control}
       </div>
@@ -146,7 +146,7 @@ export default function SampleBoard({ className = '' }) {
               animate={{ opacity: 1, scale: 1 }}
               transition={SPRING.land}
               style={{ ...place, background: POS_CHALK[p.pos] || '#D5DBE3', color: CELL_INK }}
-              className="grid place-items-center rounded-[3px] font-figure text-[11px] font-bold leading-none"
+              className="grid place-items-center rounded-[3px] font-figure text-[12px] font-bold leading-none"
             >
               {p.pos === 'DST' ? 'D' : p.pos}
             </motion.span>

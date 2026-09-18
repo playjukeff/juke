@@ -107,7 +107,7 @@ function SettingsPage({ engine }) {
           ['CPU autopick', league.cpuAutopick === false ? 'Off' : 'On'],
         ].map(([k, v]) => (
           <div key={k} className="rounded-[4px] bg-v3-paper px-3 py-2">
-            <dt><Label className="text-[11px]">{k}</Label></dt>
+            <dt><Label className="text-[12px]">{k}</Label></dt>
             <dd className="mt-0.5 truncate font-figure text-[15px] font-bold text-v3-ink">{v}</dd>
           </div>
         ))}
@@ -179,7 +179,7 @@ function RoomPage({ engine, room }) {
             <span className={cx('min-w-0 flex-1 truncate text-[15px]', chair.you ? 'font-bold text-white' : 'text-v3-ink')}>
               {chair.you ? 'You' : chair.taken ? (chair.name || 'Manager') : 'CPU'}
             </span>
-            {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
+            {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[12px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
           </li>
         ))}
       </ol>

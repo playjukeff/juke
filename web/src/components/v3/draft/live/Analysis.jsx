@@ -37,7 +37,7 @@ function Band({ part }) {
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[15px] font-bold text-v3-ink">{part.label}</span>
         <span className="flex items-baseline gap-2">
-          <span className="font-figure text-[11px] text-v3-ink3">×{Math.round(part.weight * 100)}% · {part.scaled ? 'vs room' : 'own scale'}</span>
+          <span className="font-figure text-[12px] text-v3-ink3">×{Math.round(part.weight * 100)}% · {part.scaled ? 'vs room' : 'own scale'}</span>
           <span className="font-figure text-[22px] font-bold leading-none tabular-nums text-v3-ink">{part.pct.toFixed(1)}</span>
         </span>
       </div>

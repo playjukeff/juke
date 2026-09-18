@@ -104,16 +104,16 @@ export default function Board({ engine, version, onOpen, phone }) {
         <table ref={grid} className="border-separate border-spacing-0 bg-v3-sheet">
           <thead className="sticky top-0 z-10">
             <tr>
-              <th scope="col" className="sticky left-0 z-20 w-[46px] border-b border-r border-v3-rule bg-v3-sheet font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink3">Rd</th>
+              <th scope="col" className="sticky left-0 z-20 w-[46px] border-b border-r border-v3-rule bg-v3-sheet font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink3">Rd</th>
               {teams.map((s) => {
                 const mine = s === mySlot
                 const strip = engine.rosterStrip ? engine.rosterStrip(s) : []
                 return (
                   <th key={s} scope="col" style={{ minWidth: cellW, maxWidth: cellW }} className={cx('relative border-b px-2 py-2 text-left align-bottom', mine ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet')}>
-                    <span className={cx('block truncate font-figure text-[11px] font-bold uppercase tracking-[0.08em]', mine ? 'text-v3-bandInk' : 'text-v3-ink3')}>{mine ? 'You' : `Seat ${s + 1}`}</span>
+                    <span className={cx('block truncate font-figure text-[12px] font-bold uppercase tracking-[0.08em]', mine ? 'text-v3-bandInk' : 'text-v3-ink3')}>{mine ? 'You' : `Seat ${s + 1}`}</span>
                     <span className={cx('block truncate text-[13px] font-bold', mine ? 'text-white' : 'text-v3-ink')}>{mine ? 'Your team' : engine.teamLabel(s)}</span>
                     {!!strip.length && (
-                      <span className={cx('mt-1 flex gap-1 font-figure text-[11px] tabular-nums', mine ? 'text-v3-bandInk' : 'text-v3-ink3')} aria-label="Roster so far">
+                      <span className={cx('mt-1 flex gap-1 font-figure text-[12px] tabular-nums', mine ? 'text-v3-bandInk' : 'text-v3-ink3')} aria-label="Roster so far">
                         {strip.map((x) => <span key={x.pos} className={x.count ? (mine ? 'text-white' : 'text-v3-ink') : ''}>{x.pos === 'DST' ? 'D' : x.pos[0]}{x.count}</span>)}
                       </span>
                     )}
@@ -153,7 +153,7 @@ export default function Board({ engine, version, onOpen, phone }) {
                             style={{ background: fill, color: CELL_INK }}
                           >
                             <span className="block truncate text-[13px] font-bold leading-tight">{engine.shortName(pick.player)}</span>
-                            <span className="flex items-center justify-between gap-1 font-figure text-[11px] leading-none" style={{ color: CELL_SUB }}>
+                            <span className="flex items-center justify-between gap-1 font-figure text-[12px] leading-none" style={{ color: CELL_SUB }}>
                               <span className="truncate font-bold">{pick.player.pos === 'DST' ? 'D/ST' : pick.player.pos} · {pick.player.team || 'FA'}</span>
                               <span data-pick-code className="shrink-0 tabular-nums">{code}</span>
                             </span>
@@ -172,13 +172,13 @@ export default function Board({ engine, version, onOpen, phone }) {
                           />
                         )}
                         <div aria-current={live ? 'step' : undefined} className={cx('flex h-full flex-col justify-between rounded-[4px] px-2 py-1', live ? 'bg-v3-sheet' : 'border border-dashed border-v3-rule')}>
-                          <span className="flex items-center justify-between font-figure text-[11px] tabular-nums">
+                          <span className="flex items-center justify-between font-figure text-[12px] tabular-nums">
                             <span data-pick-code className={live ? 'font-bold text-v3-ink' : 'text-v3-ink3'}>{code}</span>
                             <span className="text-v3-ink3" aria-hidden="true">{lastOfRound ? '↓' : forward ? '→' : '←'}</span>
                           </span>
                           {live
-                            ? <span className="font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink">{mine ? 'Your pick' : 'On the clock'}</span>
-                            : <span className="font-figure text-[11px] tabular-nums text-v3-ink3">#{overall}</span>}
+                            ? <span className="font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink">{mine ? 'Your pick' : 'On the clock'}</span>
+                            : <span className="font-figure text-[12px] tabular-nums text-v3-ink3">#{overall}</span>}
                         </div>
                       </td>
                     )
