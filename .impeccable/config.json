@@ -14,6 +14,21 @@
         "value": "cubic-bezier(0.22, 1.25, 0.36, 1)",
         "createdAt": "2026-09-09T20:33:49.434Z",
         "reason": "insDeal, same family and commit. A dealt card settling with a 1.25 overshoot and no undershoot is domain-appropriate motion in a draft product. prefers-reduced-motion covers it. Decision delegated to Claude, not a user judgment on the motion."
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "docs/privacy.html"
+        ],
+        "createdAt": "2026-09-18T01:42:13.947Z",
+        "reason": ".sug.top, a legacy Draft Room suggestion card in shared style.css (rgba(44,107,237,.09)). No .sug element exists on this page, so the shadow never renders here; the detector reads the whole linked stylesheet. File-scoped because the rule offers no narrower value."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-18T01:43:27.504Z",
+        "reason": "Inter is the site's committed body face (--font-body in style.css, fontFamily in tailwind.config.js), kept deliberately through the rebrand that moved the display face off Poppins. Marked intentional by the user, 18 September 2026."
       }
     ]
   }
