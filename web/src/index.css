@@ -78,6 +78,12 @@
   --v3-warn-wash: 251 240 220;
   /* the colour a shadow is cast in: the ink on paper, pure black at night */
   --v3-shade: 12 20 34;
+  /* The two sides of an NFL game on the game page: the win-probability
+     line, the team-stat bars. Neither is cobalt (that is "yours") nor
+     gain/cost (good and bad), so a side's colour never reads as a verdict.
+     Each clears 3:1 as a mark on sheet in its own theme. */
+  --v3-away: 176 72 140;
+  --v3-home: 176 110 0;
 
   /* ---- Rhythm ----
      The gap BETWEEN major blocks, as one token rather than a margin chosen
@@ -118,6 +124,8 @@ html[data-v3-theme='dark'] {
   --v3-warn: 242 182 75;
   --v3-warn-wash: 53 39 15;
   --v3-shade: 0 0 0;
+  --v3-away: 232 128 196;
+  --v3-home: 242 182 75;
   /* A cast shadow barely reads on a dark ground, so the dark step leans on
      spread rather than opacity — still one step, still one place. */
   --v3-shadow-raised: 0 1px 2px rgb(var(--v3-shade) / 0.5), 0 10px 30px -14px rgb(var(--v3-shade) / 0.85);

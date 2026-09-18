@@ -1230,6 +1230,10 @@ function gameFrom(event) {
   const home = c.competitors.filter((x) => x.homeAway === "home")[0];
   if (!away || !home) return null;
   return {
+    // ESPN's event id — the game page's address, #/games/<id>. A cached
+    // entry written before this field existed has none, and a slate row
+    // without one is simply not a link.
+    id: (event && event.id) || null,
     away: away.team && away.team.abbreviation,
     home: home.team && home.team.abbreviation,
     awayScore: away.score,
@@ -13510,6 +13514,11 @@ window.JukeEngine = {
   statOf:       statOf,
   pointsUnder:  pointsUnder,
   rulesForFormat: rulesForFormat,
+  // A connected league's own table merged onto the defaults, or null when
+  // it names no rule this app knows — the same function every connected
+  // pricing path already uses, bridged so the game page scores a box score
+  // under the league's rules without writing the merge a second time.
+  rulesFromLeague: rulesFromLeague,
   statKeys:     () => (typeof STAT_KEYS === "undefined" ? null : STAT_KEYS),
   forcedLate:   () => FORCED_LATE,
   /* The grade's own four weights, for anything that draws the components
