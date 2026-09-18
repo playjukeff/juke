@@ -94,7 +94,7 @@ function Glow({ className = '' }) {
   return <div aria-hidden="true" className={cx('landing-glow pointer-events-none absolute -z-10 select-none', className)} />
 }
 
-/* A tiled type pattern, masked out of ink at 3.5%: the word the product is
+/* A tiled type pattern, masked out of ink at 1.8%: the word the product is
    about, repeated. Low enough that it cannot be read as content, and
    aria-hidden and unselectable so nothing reads it as content either. */
 function TypeTile({ className = '' }) {
@@ -203,8 +203,11 @@ function LineupSample({ className = '' }) {
 
 function Hero({ season }) {
   const inSeason = season && season.phase === 'regular' && season.week
+  // overflow-x-clip: the glow and the offset table are decoration and may
+  // not widen the page. Clip, not hidden, so nothing here becomes a scroll
+  // container and the vertical overhang still shows.
   return (
-    <section aria-labelledby="landing-title" className="relative isolate pt-8 lg:pt-[144px]">
+    <section aria-labelledby="landing-title" className="relative isolate overflow-x-clip pt-8 lg:pt-[84px]">
       <Glow className="-left-[20%] -top-[10%] h-[720px] w-[720px] lg:-left-[10%]" />
       <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
         <div>
@@ -227,9 +230,9 @@ function Hero({ season }) {
 
         {/* Real product surfaces, overlapping: the live call in front, the
             priced table behind it and offset. On a phone they stack. */}
-        <div className="relative">
+        <div className="relative lg:pr-10 xl:pr-16">
           <div className={cx('relative z-10', LIFT)}><TheCall /></div>
-          <div className="relative mt-6 lg:absolute lg:-bottom-24 lg:-right-8 lg:mt-0 lg:w-[62%] xl:-right-16">
+          <div className="relative mt-6 lg:absolute lg:-bottom-44 lg:right-0 lg:mt-0 lg:w-[58%]">
             <PricedTable className={cx('shadow-v3-raised', LIFT)} />
           </div>
         </div>
@@ -257,7 +260,7 @@ function ProofStrip() {
     { k: 'Account needed to draft', v: 'None', note: 'Mocks run in your browser' },
   ]
   return (
-    <section aria-label="What Juke is working from" className="mt-16 lg:mt-40">
+    <section aria-label="What Juke is working from" className="mt-16 lg:mt-60">
       {PROOF.length ? (
         <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {PROOF.map((p) => (
@@ -296,8 +299,8 @@ function Section({ id, eyebrow, title, support, features, visual, flip = false, 
   const ref = useRef(null)
   useSectionRise(ref)
   return (
-    <section ref={ref} data-lsec="" aria-labelledby={id} className="relative isolate">
-      {tile ? <TypeTile className="-inset-x-[50vw] -inset-y-16" /> : null}
+    <section ref={ref} data-lsec="" aria-labelledby={id} className="relative isolate overflow-x-clip">
+      {tile ? <TypeTile className="-inset-y-16" /> : null}
       <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
         <div className={cx(flip && 'lg:order-2')}>
           <Label tier="page" as="p" data-lrise="">{eyebrow}</Label>

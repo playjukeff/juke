@@ -612,10 +612,10 @@ html[data-auth-hint='in'] [data-landing] { visibility: hidden; }
   to { transform: translate3d(8%, 6%, 0) scale(1.08); }
 }
 
-/* B5: a tiled type pattern, 3.5% ink, masked out of a flat fill so it
+/* B5: a tiled type pattern, 1.8% ink, masked out of a flat fill so it
    follows the theme. Decorative only (aria-hidden, unselectable). */
 .landing-tile {
-  background: rgb(var(--v3-ink) / 0.035);
+  background: rgb(var(--v3-ink) / 0.018);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80'%3E%3Ctext x='0' y='30' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%3C/text%3E%3Ctext x='-120' y='70' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%20%C2%B7%20PRICED%3C/text%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80'%3E%3Ctext x='0' y='30' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%3C/text%3E%3Ctext x='-120' y='70' font-family='monospace' font-size='18' font-weight='700' letter-spacing='3'%3EPRICED%20%C2%B7%20PTS%20%C2%B7%20PRICED%3C/text%3E%3C/svg%3E");
   -webkit-mask-size: 240px 80px;
