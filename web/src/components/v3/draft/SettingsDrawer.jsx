@@ -211,8 +211,8 @@ function DraftOrderList({ engine, league, onChange }) {
                     Position {r.slot + 1}{r.firstPick ? ` · first pick #${r.firstPick}` : ''}
                   </span>
                 </span>
-                {r.you && <span className="shrink-0 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">Your seat</span>}
-                {r.open && <span className="shrink-0 font-figure text-[11px] uppercase tracking-[0.1em] text-v3-ink3">Open</span>}
+                {r.you && <span className="shrink-0 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-white">Your seat</span>}
+                {r.open && <span className="shrink-0 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-ink3">Open</span>}
               </button>
             </li>
           )

@@ -115,7 +115,7 @@ function NextMock({ engine, ready, roomActive, problem, startProblem, onStart, o
           ['Clock', clockLabel(clock), clock ? 'per pick' : 'no limit'],
         ].map(([k, v, sub]) => (
           <div key={k} className="min-w-0 rounded-[4px] bg-v3-paper p-3">
-            <dt><Label className="text-[11px]">{k}</Label></dt>
+            <dt><Label className="text-[12px]">{k}</Label></dt>
             <dd className="mt-1 font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink">{v}</dd>
             <dd className="mt-1 truncate font-figure text-[12px] text-v3-ink3">{sub}</dd>
           </div>
@@ -281,7 +281,7 @@ function Scenarios({ engine, ready, tick, roomActive }) {
             onClick={() => launch(s)}
             className={cx('group flex min-h-[112px] flex-col gap-1 rounded-[4px] border border-v3-rule bg-v3-sheet p-4 text-left hover:border-v3-ink disabled:cursor-not-allowed disabled:bg-v3-paper', LIFT, FOCUS)}
           >
-            <Label className="text-[11px]">{launching === s.id ? 'Starting…' : s.eyebrow}</Label>
+            <Label className="text-[12px]">{launching === s.id ? 'Starting…' : s.eyebrow}</Label>
             <span className="text-[18px] font-extrabold leading-tight tracking-[-0.01em] text-v3-ink">{s.title}</span>
             <span className="text-[13px] leading-[1.45] text-v3-ink2">{sublineOf(s)}</span>
             <span className="mt-auto inline-flex items-center gap-1 pt-1 text-[13px] font-semibold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 group-hover:decoration-v3-ink">

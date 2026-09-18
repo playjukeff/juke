@@ -86,7 +86,7 @@ function WeekStrip({ weeks, selected, onSelect }) {
           if (w.divider) {
             return (
               <li key={w.key} className="flex items-center px-1" aria-hidden="true">
-                <span className="rounded-[4px] bg-v3-well px-1.5 py-1 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoffs</span>
+                <span className="rounded-[4px] bg-v3-well px-1.5 py-1 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoffs</span>
               </li>
             )
           }
@@ -100,10 +100,10 @@ function WeekStrip({ weeks, selected, onSelect }) {
             <>
               <span>{w.now ? `W${w.key} · now` : w.label}</span>
               {w.result ? (
-                <span className={cx('text-[11px] font-bold', on ? 'text-white' : w.result === 'W' ? 'text-v3-gain' : w.result === 'L' ? 'text-v3-cost' : 'text-v3-ink2')}>
+                <span className={cx('text-[12px] font-bold', on ? 'text-white' : w.result === 'W' ? 'text-v3-gain' : w.result === 'L' ? 'text-v3-cost' : 'text-v3-ink2')}>
                   {w.result}{w.mark ? (w.mark === 'bad' ? ' ✕' : ' ✓') : ''}
                 </span>
-              ) : w.mark ? <span className={cx('text-[11px]', on ? 'text-white' : w.mark === 'bad' ? 'text-v3-cost' : 'text-v3-gain')}>{w.mark === 'bad' ? '✕' : '✓'}</span> : null}
+              ) : w.mark ? <span className={cx('text-[12px]', on ? 'text-white' : w.mark === 'bad' ? 'text-v3-cost' : 'text-v3-gain')}>{w.mark === 'bad' ? '✕' : '✓'}</span> : null}
             </>
           )
           return (
@@ -182,7 +182,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
           <ul className="mt-2 grid">
             {rows.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-v3-rule py-2.5 last:border-b-0">
-                <span className="font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-v3-ink3">{d.room || 'call'}</span>
+                <span className="font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-v3-ink3">{d.room || 'call'}</span>
                 <span className="min-w-0 flex-1 text-[15px] text-v3-ink">{d.said || '—'} <span className="text-v3-ink3">→ {d.did || '—'}</span></span>
                 <Verdict verdict={d.verdict} />
               </li>
@@ -282,7 +282,7 @@ function Standings({ snapshot, ownerId, odds }) {
                     <td colSpan={hasOdds ? 6 : 5} className="border-0 px-4 py-1.5 sm:px-5">
                       <div className="flex items-center gap-2">
                         <span className="h-px flex-1 border-t-2 border-dashed border-v3-ink3" />
-                        <span className="font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoff line · top {cut} today</span>
+                        <span className="font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink2">Playoff line · top {cut} today</span>
                         <span className="h-px flex-1 border-t-2 border-dashed border-v3-ink3" />
                       </div>
                     </td>
@@ -298,7 +298,7 @@ function Standings({ snapshot, ownerId, odds }) {
                   <td className="border-0 w-full max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
                       <a href={teamHref(t)} className="min-w-0 truncate text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
-                      {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
+                      {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
                     </span>
                     {t.manager && t.manager !== t.teamName ? <span className="mt-0.5 block truncate text-[13px] text-v3-ink3">{t.manager}</span> : null}
                   </td>

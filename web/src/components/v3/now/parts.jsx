@@ -67,7 +67,7 @@ function SampleRow({ href, label, children, aside }) {
     <li className="border-t border-v3-rule first:border-t-0">
       <a href={href} className="group grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call sm:px-5">
         <div className="min-w-0">
-          <Label className="text-[11px]">{label}</Label>
+          <Label className="text-[12px]">{label}</Label>
           <div className="mt-1">{children}</div>
         </div>
         <span className="flex items-center gap-3">
@@ -283,7 +283,7 @@ export function LockerCard({ summary, compact = false, className = '' }) {
           {inProgress ? (
             <a href="#/draft" className="mb-4 flex min-h-[56px] items-center justify-between gap-3 rounded-[6px] border border-v3-rule bg-v3-paper px-3 py-2.5 transition-colors hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
               <span className="min-w-0">
-                <Label className="text-[11px]">A mock left mid-way</Label>
+                <Label className="text-[12px]">A mock left mid-way</Label>
                 <span className="mt-0.5 block truncate text-[15px] font-semibold text-v3-ink">
                   <Fig>{inProgress.made}</Fig> of <Fig>{inProgress.total}</Fig> picks · {inProgress.pickPosition} seat{inProgress.leagueType ? ` · ${inProgress.leagueType}` : ''}
                 </span>
@@ -296,17 +296,17 @@ export function LockerCard({ summary, compact = false, className = '' }) {
           ) : (
             <dl className={cx('grid gap-2', compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3')}>
               <div className="rounded-[6px] bg-v3-paper p-3">
-                <dt><Label className="text-[11px]">Mocks</Label></dt>
+                <dt><Label className="text-[12px]">Mocks</Label></dt>
                 <dd className="mt-0.5 font-figure text-[22px] font-bold tabular-nums text-v3-ink"><CountUp value={stats.count} /></dd>
               </div>
               <div className="rounded-[6px] bg-v3-paper p-3">
-                <dt><Label className="text-[11px]">Best finish</Label></dt>
+                <dt><Label className="text-[12px]">Best finish</Label></dt>
                 <dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{stats.best ? stats.best.grade : '—'}</dd>
                 {stats.best ? <dd className="font-figure text-[12px] text-v3-ink3">{ordinal(stats.best.rank)} of {stats.best.teams}</dd> : null}
               </div>
               {!compact ? (
                 <div className="col-span-2 rounded-[6px] bg-v3-paper p-3 sm:col-span-1">
-                  <dt><Label className="text-[11px]">Last mock</Label></dt>
+                  <dt><Label className="text-[12px]">Last mock</Label></dt>
                   <dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{last && last.grade ? last.grade : '—'}</dd>
                   {last && last.rank && last.teams ? <dd className="font-figure text-[12px] text-v3-ink3">{ordinal(last.rank)} of {last.teams}</dd> : null}
                 </div>

@@ -157,7 +157,7 @@ function Leagues() {
                 <div className="min-w-0 flex-1 basis-[180px]">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-[15px] font-bold text-v3-ink">{lg.name}</span>
-                    {on ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">In use</span> : null}
+                    {on ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-white">In use</span> : null}
                   </div>
                   <div className="mt-0.5 truncate font-figure text-[13px] text-v3-ink3">
                     {plat.name}{lg.season ? ` · ${lg.season}` : ''}{lg.totalTeams ? ` · ${lg.totalTeams} teams` : ''} · read-only

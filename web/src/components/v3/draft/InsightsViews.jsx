@@ -24,7 +24,7 @@ const TONE_TEXT = { good: 'text-v3-gain', bad: 'text-v3-cost', warn: 'text-v3-wa
 export function Kpi({ kpi }) {
   return (
     <div className="min-w-0 rounded-[6px] border border-v3-rule bg-v3-sheet p-4">
-      <Label className="block text-[11px]">{kpi.label}</Label>
+      <Label className="block text-[12px]">{kpi.label}</Label>
       <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
         <span className="font-figure text-[28px] font-bold leading-none tabular-nums text-v3-ink">{kpi.value}</span>
         {kpi.delta && <span className={cx('font-figure text-[13px] font-semibold tabular-nums', (/[1-9]/.test(kpi.delta) && TONE_TEXT[kpi.tone]) || 'text-v3-ink2')}>{kpi.delta}</span>}
@@ -69,7 +69,7 @@ export function ViewLeft({ report, mock, selectedId, hover, onHover, onSelect })
                     ink. Selection is the ink rule under the column, never a
                     lighter bar — opacity is not a way to say "not chosen". */}
                 <span className={cx('block rounded-t-[2px]', b.aboveRoom ? 'bg-v3-cost' : 'bg-v3-ink3')} style={{ height: Math.max(4, b.share * H) }} />
-                <span className={cx('absolute inset-x-0 bottom-1 text-center font-figure text-[11px] tabular-nums', on ? 'font-bold text-v3-ink' : 'text-v3-ink3')}>{b.n}</span>
+                <span className={cx('absolute inset-x-0 bottom-1 text-center font-figure text-[12px] tabular-nums', on ? 'font-bold text-v3-ink' : 'text-v3-ink3')}>{b.n}</span>
                 {on && <span className="absolute inset-x-1 bottom-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
               </button>
             )
@@ -88,13 +88,13 @@ export function ViewLeft({ report, mock, selectedId, hover, onHover, onSelect })
         </div>
         <div className="text-right">
           <span className="block text-[40px] leading-none"><Delta value={-mock.total} /></span>
-          <Label className="text-[11px]">Left on the board</Label>
+          <Label className="text-[12px]">Left on the board</Label>
         </div>
       </div>
 
       <div className="mt-3 overflow-hidden rounded-[4px] border border-v3-rule">
         <div className="hidden grid-cols-[52px_minmax(0,1fr)_minmax(0,1fr)_140px_60px] gap-3 border-b border-v3-rule bg-v3-paper px-3 py-2 sm:grid">
-          {['Slot', 'Your pick', 'Best available', 'Left', 'Win %'].map((h, i) => <Label key={h} className={cx('text-[11px]', i >= 3 && 'text-right')}>{h}</Label>)}
+          {['Slot', 'Your pick', 'Best available', 'Left', 'Win %'].map((h, i) => <Label key={h} className={cx('text-[12px]', i >= 3 && 'text-right')}>{h}</Label>)}
         </div>
         <ul className="divide-y divide-v3-rule bg-v3-sheet">
           {mock.picks.map((p) => {
@@ -110,7 +110,7 @@ export function ViewLeft({ report, mock, selectedId, hover, onHover, onSelect })
                   <span className="mt-0.5 block truncate text-[12px] text-v3-ink2 sm:hidden">{p.best ? <>over <span className="font-semibold text-v3-ink">{p.best.name}</span> ({p.best.pos === 'DST' ? 'D/ST' : p.best.pos})</> : 'top of the board'}</span>
                 </span>
                 <span className="hidden min-w-0 items-center gap-1.5 sm:flex" data-pick-best={p.best ? p.best.pos : 'none'}>
-                  {p.best ? <><span className="shrink-0 font-figure text-[11px] text-v3-ink3">over</span><PosTag pos={p.best.pos} /><span className="truncate text-[13px] text-v3-ink">{p.best.name}</span></> : <span className="text-[13px] text-v3-ink3">— top of the board</span>}
+                  {p.best ? <><span className="shrink-0 font-figure text-[12px] text-v3-ink3">over</span><PosTag pos={p.best.pos} /><span className="truncate text-[13px] text-v3-ink">{p.best.name}</span></> : <span className="text-[13px] text-v3-ink3">— top of the board</span>}
                 </span>
                 <span className="flex items-center justify-end gap-2">
                   <span className="hidden flex-1 sm:block">{cost ? <ValueBar value={Math.max(0.03, p.share)} max={1} tone="cost" /> : <ValueBar value={null} />}</span>
@@ -146,18 +146,18 @@ export function ViewLeverage({ mock, onOpen }) {
               <button type="button" onClick={onOpen} className={cx('w-full rounded-[4px] border border-v3-rule bg-v3-sheet p-4 text-left hover:border-v3-ink', FOCUS)}>
                 <span className="flex items-start justify-between gap-4">
                   <span className="min-w-0">
-                    <Label className="text-[11px]">{f.code} · {f.mockLabel}</Label>
+                    <Label className="text-[12px]">{f.code} · {f.mockLabel}</Label>
                     <span className="mt-1.5 block text-[18px] font-extrabold leading-tight text-v3-ink">{f.title}</span>
                     <span className="mt-1.5 block text-[15px] leading-[1.5] text-v3-ink2">{f.note}</span>
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-[28px] leading-none"><Delta value={f.winDelta} digits={1} /></span>
-                    <Label className="text-[11px]">Win % swing</Label>
+                    <Label className="text-[12px]">Win % swing</Label>
                   </span>
                 </span>
                 {/* Zero is the centre line: a regret grows left, a good call right. */}
                 <ValueBar value={f.winDelta} max={max} zero className="mt-3 h-2.5" />
-                <span className="mt-1.5 block text-center font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{f.axisNote}</span>
+                <span className="mt-1.5 block text-center font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{f.axisNote}</span>
               </button>
             </li>
           ))}
@@ -194,7 +194,7 @@ export function ViewField({ report, hover, onHover, onOpen }) {
       </div>
       <div className="mt-5 grid grid-cols-[56px_minmax(0,1fr)] gap-3 px-2.5 sm:grid-cols-[164px_minmax(0,1fr)_160px]" aria-hidden="true">
         <span />
-        <span className="flex justify-between font-figure text-[11px] uppercase tracking-[0.1em] text-v3-ink3"><span>Rd 1</span><span>Rd {hi}</span></span>
+        <span className="flex justify-between font-figure text-[12px] uppercase tracking-[0.1em] text-v3-ink3"><span>Rd 1</span><span>Rd {hi}</span></span>
       </div>
       <ul className="mt-1">
         {rows.map((r) => (
@@ -256,7 +256,7 @@ export function ViewTrust({ report, onRun, roomActive }) {
           <div role="table" aria-label="Mocks per seat and format" className="inline-flex min-w-max flex-col gap-1">
             <div role="row" className="flex gap-1">
               <span role="columnheader" className="w-[110px] shrink-0"><span className="sr-only">Format</span></span>
-              {Array.from({ length: cov.seats }, (_, i) => <span key={i} role="columnheader" className="w-10 shrink-0 text-center font-figure text-[11px] text-v3-ink3">{i + 1}</span>)}
+              {Array.from({ length: cov.seats }, (_, i) => <span key={i} role="columnheader" className="w-10 shrink-0 text-center font-figure text-[12px] text-v3-ink3">{i + 1}</span>)}
             </div>
             {cov.rows.map((row) => (
               <div key={row.key} role="row" className="flex items-center gap-1">
@@ -316,8 +316,8 @@ export function Habits({ report, roomActive, onRun, onOpenHabit }) {
           <p className="text-[20px] font-extrabold leading-[1.2] tracking-[-0.01em] text-v3-ink">{top.title}</p>
           <p className="mt-2.5 text-[15px] leading-[1.55] text-v3-ink2">{top.evidence}</p>
           <dl className="mt-3.5 grid grid-cols-2 gap-2">
-            <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[11px]">Cost</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={-Math.round(top.costPoints)} unit="pts" /></dd></div>
-            <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[11px]">Win %</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={top.winPct} digits={1} /></dd></div>
+            <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[12px]">Cost</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={-Math.round(top.costPoints)} unit="pts" /></dd></div>
+            <div className="rounded-[4px] bg-v3-paper px-3 py-2"><dt><Label className="text-[12px]">Win %</Label></dt><dd className="mt-1 text-[22px] leading-none"><Delta value={top.winPct} digits={1} /></dd></div>
           </dl>
           {run && (
             <button type="button" onClick={() => onRun(run.scoring, run.seat)} disabled={roomActive} className={cx('mt-3.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[6px] border border-v3-ink bg-v3-sheet px-4 text-[15px] font-semibold text-v3-ink hover:bg-v3-band hover:text-white disabled:cursor-not-allowed disabled:border-v3-rule disabled:bg-v3-well disabled:text-v3-ink3', FOCUS)}>

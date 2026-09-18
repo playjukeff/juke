@@ -51,7 +51,15 @@ export function cx(...parts) {
    Eight steps, and a new rule picks one of them rather than a number that
    looked right in the box it was written for:
 
-     11  a micro label, where 12 will not fit
+     11  the LIVE DRAFT BOARD only, where 12 will not fit. Everywhere
+         else it is retired: 110 instances across the content pages went
+         to 12 on 17 September 2026, because 11px carrying meaning is
+         below the floor a reader should be asked to work at and the tier
+         had drifted rather than been chosen — Record had "ahead of 8 of
+         9" at 12 and "lineup over repl." at 11 inside one card. It is
+         kept on the board because those cells are a GRID sized around
+         the label, so raising it there trades legibility for density on
+         the one screen whose density is the product
      12  Label -- the standard uppercase label, and the commonest step here
      13  meta and secondary text: a caption, a sub-line, a note
      15  BODY. The default for anything a person reads a sentence of

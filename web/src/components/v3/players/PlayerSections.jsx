@@ -61,7 +61,7 @@ function Note({ children, className = '' }) {
 function Cellule({ label, sub, children, tone = 'ink', className = '' }) {
   return (
     <div className={cx('min-w-0 rounded-[6px] bg-v3-paper p-3', className)}>
-      <dt><Label className="text-[11px]">{label}</Label></dt>
+      <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className={cx('mt-1 text-[22px] font-bold leading-none', tone === 'dim' ? 'text-v3-ink3' : 'text-v3-ink')}>{children}</dd>
       {sub && <dd className="mt-1 text-[12px] leading-[1.35] text-v3-ink3">{sub}</dd>}
     </div>
@@ -351,7 +351,7 @@ export function ProjectionSheet({ d }) {
               ['vs market', unranked ? <Fig key="d" className="text-v3-ink3">—</Fig> : <Delta key="d" value={s.vsAdp} />],
             ].map(([k, v]) => (
               <div key={k} className="rounded-[6px] bg-v3-paper p-3">
-                <dt><Label className="text-[11px]">{k}</Label></dt>
+                <dt><Label className="text-[12px]">{k}</Label></dt>
                 <dd className="mt-1 text-[22px] leading-none text-v3-ink">{v}</dd>
               </div>
             ))}
@@ -368,7 +368,7 @@ export function ProjectionSheet({ d }) {
               <dl className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {s.stats.map((st) => (
                   <div key={st.key} className="rounded-[4px] border border-v3-rule px-2 py-2 text-center">
-                    <dt className="font-figure text-[11px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{st.label}</dt>
+                    <dt className="font-figure text-[12px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{st.label}</dt>
                     <dd className="mt-0.5 font-figure text-[15px] font-bold tabular-nums text-v3-ink">{st.value}</dd>
                   </div>
                 ))}
@@ -605,7 +605,7 @@ export function DepthSheet({ engine, d }) {
           <dl className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
             {RANK_LABELS.filter(([k]) => ranks[k]).map(([k, label]) => (
               <div key={k} className="rounded-[4px] bg-v3-paper px-2 py-2">
-                <dt className="truncate font-figure text-[11px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{label}</dt>
+                <dt className="truncate font-figure text-[12px] font-semibold uppercase tracking-[0.08em] text-v3-ink3">{label}</dt>
                 <dd className="mt-0.5 font-figure text-[15px] font-bold text-v3-ink">{ordinal(ranks[k].rank)}</dd>
               </div>
             ))}
@@ -675,7 +675,7 @@ export function FitSheet({ fit, player }) {
       <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {rows.map((r) => (
           <div key={r.k} className={cx('rounded-[6px] border p-3', r.warn ? 'border-v3-warn bg-v3-warnWash' : 'border-v3-rule')}>
-            <dt><Label className={cx('text-[11px]', r.warn ? 'text-v3-warn' : '')}>{r.k}</Label></dt>
+            <dt><Label className={cx('text-[12px]', r.warn ? 'text-v3-warn' : '')}>{r.k}</Label></dt>
             <dd className="mt-1 font-figure text-[20px] font-bold leading-none text-v3-ink">{r.v}</dd>
             <dd className="mt-1 text-[13px] leading-[1.45] text-v3-ink2">{r.note}</dd>
           </div>

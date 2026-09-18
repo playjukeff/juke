@@ -168,19 +168,46 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
 /* Signed in, and the league store has not answered yet. The page's own
    frame with nothing in it — never the guest page, which would offer to
    connect a league somebody may already have. */
-export function NowMemberLoading() {
+/* The shape of the page that is coming, not a generic box.
+
+   A skeleton earns its place by being the FINAL layout with the figures
+   missing: the situation band, the copy block on its own full-width row,
+   the matchup and the week's call side by side beneath it, then the six
+   call cards. Anything else is a second layout, and a second layout means
+   a second swap — which is the whole defect this stands in front of.
+
+   It moved when the hero did (the copy used to be wrapped by the narrower
+   of two columns) and it has to keep moving with it. A skeleton that has
+   drifted from the page it precedes is worse than none: it promises an
+   arrangement that then rearranges.
+
+   The pulse is motion, so it is off under reduced motion — the blocks are
+   still there, they simply hold still. */
+const BLOCK = 'animate-pulse rounded-[6px] bg-v3-well motion-reduce:animate-none'
+
+export function NowMemberLoading({ note = 'Checking which league is yours…' }) {
   return (
     <div className="grid gap-10" aria-busy="true">
-      <div className="h-[44px] animate-pulse rounded-[6px] bg-v3-well" />
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+      <div className={cx('h-[44px]', BLOCK)} />
+      <div className="grid gap-8">
         <div className="grid gap-4">
-          <div className="h-4 w-40 animate-pulse rounded-[4px] bg-v3-well" />
-          <div className="h-16 w-4/5 animate-pulse rounded-[6px] bg-v3-well" />
-          <div className="h-20 w-full animate-pulse rounded-[6px] bg-v3-well" />
+          <div className={cx('h-4 w-40', BLOCK)} />
+          <div className={cx('h-[112px] w-full max-w-[22ch]', BLOCK)} />
+          <div className={cx('h-12 w-full max-w-[62ch]', BLOCK)} />
         </div>
-        <Sheet band={false}><div className="h-48 animate-pulse rounded-[4px] bg-v3-well" /></Sheet>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-8">
+          <Sheet band={false}><div className={cx('h-56', BLOCK)} /></Sheet>
+          <Sheet band={false}><div className={cx('h-56', BLOCK)} /></Sheet>
+        </div>
       </div>
-      <p className="font-figure text-[13px] uppercase tracking-[0.1em] text-v3-ink3">Checking which league is yours…</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-6">
+        <div className="lg:col-span-3"><Sheet band={false}><div className={cx('h-32', BLOCK)} /></Sheet></div>
+        <div className="lg:col-span-3"><Sheet band={false}><div className={cx('h-32', BLOCK)} /></Sheet></div>
+        <div className="lg:col-span-2"><Sheet band={false}><div className={cx('h-28', BLOCK)} /></Sheet></div>
+        <div className="lg:col-span-2"><Sheet band={false}><div className={cx('h-28', BLOCK)} /></Sheet></div>
+        <div className="lg:col-span-2"><Sheet band={false}><div className={cx('h-28', BLOCK)} /></Sheet></div>
+      </div>
+      <p className="font-figure text-[13px] uppercase tracking-[0.1em] text-v3-ink3">{note}</p>
     </div>
   )
 }

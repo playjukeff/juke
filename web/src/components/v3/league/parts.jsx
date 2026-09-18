@@ -37,7 +37,7 @@ export function pct(p) {
    distance from the explanation, not the card. */
 export function SampleTag({ className = '' }) {
   return (
-    <span className={cx('inline-flex shrink-0 items-center rounded-[4px] bg-v3-warnWash px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-v3-warn', className)}>
+    <span className={cx('inline-flex shrink-0 items-center rounded-[4px] bg-v3-warnWash px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-warn', className)}>
       Sample
     </span>
   )
@@ -153,7 +153,7 @@ export function WinBar({ p, read, className = '' }) {
   const fill = read === 'favoured' ? 'bg-v3-gain' : read === 'behind' ? 'bg-v3-cost' : 'bg-v3-ink2'
   return (
     <div className={cx('relative pt-4', className)}>
-      <span className="absolute left-1/2 top-0 -translate-x-1/2 font-figure text-[11px] uppercase tracking-[0.1em] text-v3-ink3">even</span>
+      <span className="absolute left-1/2 top-0 -translate-x-1/2 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-ink3">even</span>
       <div className="relative h-3 overflow-hidden rounded-full bg-v3-well" role="img" aria-label={`Win probability ${pct(p)}`}>
         <BarFill width={Math.max(0, Math.min(1, p || 0)) * 100} className={cx('absolute inset-y-0 left-0 rounded-full', fill)} style={{ width: `${Math.max(0, Math.min(1, p || 0)) * 100}%` }} />
         <span className="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 bg-v3-ink" aria-hidden="true" />

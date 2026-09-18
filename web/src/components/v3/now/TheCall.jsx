@@ -37,7 +37,7 @@ function Side({ tag, p, winner, verdictLabel }) {
     <div className={winner ? 'flex flex-col gap-3 rounded-[6px] border border-v3-ink bg-v3-sheet p-4 shadow-[inset_0_0_0_1px_rgb(var(--v3-ink))]' : 'flex flex-col gap-3 rounded-[6px] border border-v3-rule bg-v3-paper p-4'}>
       <div className="flex items-center justify-between gap-2">
         <Label>{tag}</Label>
-        {winner && <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase tracking-[0.12em] text-white">{verdictLabel}</span>}
+        {winner && <span className="rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-white">{verdictLabel}</span>}
       </div>
       <div className="flex items-center gap-3">
         {p.photo ? (
@@ -51,9 +51,9 @@ function Side({ tag, p, winner, verdictLabel }) {
         </div>
       </div>
       <dl className="grid grid-cols-3 gap-2 border-t border-v3-rule pt-3">
-        <div><dt><Label className="text-[11px]">ADP</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.adp === 'number' ? p.adp : null} format={(v) => v.toFixed(decimals(p.adp))} /></dd></div>
-        <div><dt><Label className="text-[11px]">Proj pts</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.pts === 'number' ? p.pts : null} format={(v) => v.toFixed(decimals(p.pts))} /></dd></div>
-        <div><dt><Label className="text-[11px]">Over repl.</Label></dt><dd className="mt-0.5 text-[18px]"><Delta value={p.vorp} count /></dd></div>
+        <div><dt><Label className="text-[12px]">ADP</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.adp === 'number' ? p.adp : null} format={(v) => v.toFixed(decimals(p.adp))} /></dd></div>
+        <div><dt><Label className="text-[12px]">Proj pts</Label></dt><dd className="mt-0.5 font-figure text-[18px] font-bold tabular-nums text-v3-ink"><CountUp value={typeof p.pts === 'number' ? p.pts : null} format={(v) => v.toFixed(decimals(p.pts))} /></dd></div>
+        <div><dt><Label className="text-[12px]">Over repl.</Label></dt><dd className="mt-0.5 text-[18px]"><Delta value={p.vorp} count /></dd></div>
       </dl>
     </div>
   )

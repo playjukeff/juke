@@ -158,7 +158,7 @@ function SortHead({ col, sort, onSort }) {
         )}
       >
         {col.label}
-        <span aria-hidden="true" className={cx('inline-block w-2.5 text-[11px]', on ? '' : 'invisible')}>{sort.dir === 'asc' ? '▲' : '▼'}</span>
+        <span aria-hidden="true" className={cx('inline-block w-2.5 text-[12px]', on ? '' : 'invisible')}>{sort.dir === 'asc' ? '▲' : '▼'}</span>
       </button>
     </th>
   )
@@ -218,7 +218,7 @@ function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
         <caption className="sr-only">Players on tonight&apos;s board. Column headers sort the table.</caption>
         <thead>
           <tr className="border-b border-v3-rule">
-            <th scope="col" className="w-[52px] px-3 text-left align-bottom"><span className="inline-flex min-h-[40px] items-center"><Label className="text-[11px]">#</Label></span></th>
+            <th scope="col" className="w-[52px] px-3 text-left align-bottom"><span className="inline-flex min-h-[40px] items-center"><Label className="text-[12px]">#</Label></span></th>
             <th scope="col" aria-sort={sort.key === 'name' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-2 text-left align-bottom">
               <button
                 type="button"
@@ -226,7 +226,7 @@ function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
                 className={cx('inline-flex min-h-[40px] items-center gap-1 rounded-[4px] px-1.5 font-figure text-[12px] font-semibold uppercase tracking-[0.1em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', sort.key === 'name' ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}
               >
                 Player
-                <span aria-hidden="true" className={cx('inline-block w-2.5 text-[11px]', sort.key === 'name' ? '' : 'invisible')}>{sort.dir === 'asc' ? '▲' : '▼'}</span>
+                <span aria-hidden="true" className={cx('inline-block w-2.5 text-[12px]', sort.key === 'name' ? '' : 'invisible')}>{sort.dir === 'asc' ? '▲' : '▼'}</span>
               </button>
             </th>
             {cols.map((c) => <SortHead key={c.key} col={c} sort={sort} onSort={onSort} />)}
@@ -303,7 +303,7 @@ function PhoneList({ rows, cols, sort, mode, deepAt, liveById }) {
               </span>
               <span className="shrink-0 text-right">
                 <span className="block leading-none"><Cell col={col} row={r} big /></span>
-                <span className="mt-1 block font-figure text-[11px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{label}</span>
+                <span className="mt-1 block font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{label}</span>
               </span>
             </a>
           </motion.li>

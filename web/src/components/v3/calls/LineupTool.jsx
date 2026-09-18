@@ -281,7 +281,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
                       <span className="flex items-center gap-3">
                         {row.player && typeof row.player.actualPts === 'number' ? <LiveMark /> : null}
                         {row.player && row.player.inj ? (
-                          <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[11px] font-bold uppercase', injurySeverity(row.player.inj) === 'out' ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>{row.player.inj}</span>
+                          <span className={cx('rounded-[4px] px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase', injurySeverity(row.player.inj) === 'out' ? 'bg-v3-costWash text-v3-cost' : 'bg-v3-warnWash text-v3-warn')}>{row.player.inj}</span>
                         ) : null}
                         <Pts value={pointsFor(row)} />
                       </span>
@@ -418,9 +418,9 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
         />
       ) : null}
       <dl className="mt-5 grid grid-cols-3 gap-2">
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">You</Label></dt><dd className="mt-1"><Pts value={total} /></dd></div>
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Them</Label></dt><dd className="mt-1"><Pts value={oppTotal} /></dd></div>
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Margin</Label></dt><dd className="mt-1"><Delta value={margin} digits={1} className="text-[15px]" /></dd></div>
+        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">You</Label></dt><dd className="mt-1"><Pts value={total} /></dd></div>
+        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Them</Label></dt><dd className="mt-1"><Pts value={oppTotal} /></dd></div>
+        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Margin</Label></dt><dd className="mt-1"><Delta value={margin} digits={1} className="text-[15px]" /></dd></div>
       </dl>
       <p className="mt-4 text-[13px] leading-[1.55] text-v3-ink2">
         {pct !== null && mineWeek

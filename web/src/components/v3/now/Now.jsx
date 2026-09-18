@@ -1,6 +1,6 @@
 import { useLeagueFresh, useTierFresh } from '../../v2/stores.js'
 import { readLocker, readLeagueShape } from '../../v2/v2data.js'
-import { useSignedIn } from '../../../hooks/useAuthState.js'
+import { useAuthResolved, useSignedIn } from '../../../hooks/useAuthState.js'
 import { meetsTier } from '../../../lib/tiers.js'
 import {
   CallButton, GoLink, Headline, Icon, Label, QuietButton, Sheet, Skeleton, ordinal, useEngineData,
@@ -61,6 +61,7 @@ export { SituationBand, TheCall }
 
 export default function Now() {
   const signedIn = useSignedIn()
+  const authResolved = useAuthResolved()
   const { status: leagueStatus } = useLeagueFresh()
   const { status: tierStatus, tier, refresh: refreshTier } = useTierFresh()
   const season = useSeason()
@@ -70,8 +71,23 @@ export default function Now() {
     : tierStatus === 'ready' ? (meetsTier(tier, 'pro') ? 'sub' : 'free')
     : 'unknown'
 
+  /* Nothing is decided until the question has been answered.
+
+     `!signedIn` used to mean two different things — "signed out" and
+     "Clerk has not said yet" — and the guest branch below claimed both.
+     A signed-in reader therefore got the logged-out marketing hero for
+     the two or three seconds Clerk took, and then watched it be thrown
+     away and replaced by their dashboard: two full layout swaps, the
+     first of which showed them a login screen they did not need.
+
+     The skeleton is the shape of what is coming, so the only thing that
+     changes when the answer lands is that the figures arrive. See
+     useAuthResolved() for the two cases that resolve without Clerk ever
+     answering — no key at all, and a key whose Clerk never loads. */
   let page
-  if (leagueStatus === 'connected') {
+  if (!authResolved) {
+    page = <NowMemberLoading note="Reading your session…" />
+  } else if (leagueStatus === 'connected') {
     page = <NowConnected plan={audience === 'free' ? <FreeLeagueNote /> : null} />
   } else if (audience === 'guest') {
     page = bucket === 'season' ? <NowSeason season={season} /> : <NowGuest season={season} post={bucket === 'post'} />
@@ -83,7 +99,7 @@ export default function Now() {
   // data-* for the verification harness and for anybody reading the DOM:
   // which cell of the matrix this is, stated rather than inferred.
   return (
-    <div data-now-audience={leagueStatus === 'connected' ? 'league' : audience} data-now-phase={season.phase} data-now-source={season.source}>
+    <div data-now-audience={!authResolved ? 'unresolved' : leagueStatus === 'connected' ? 'league' : audience} data-now-phase={season.phase} data-now-source={season.source}>
       {page}
     </div>
   )
@@ -99,7 +115,7 @@ function DraftBlock() {
       {shape ? (
         <dl className="mt-4 grid grid-cols-4 gap-2 rounded-[6px] bg-v3-paper p-3">
           {[['Teams', shape.teams], ['Rounds', shape.rounds], ['Seat', shape.seat ? ordinal(shape.seat) : '—'], ['Scoring', shape.format]].map(([k, v]) => (
-            <div key={k} className="min-w-0"><dt><Label className="text-[11px]">{k}</Label></dt><dd className="mt-0.5 truncate font-figure text-[15px] font-bold text-v3-ink">{v}</dd></div>
+            <div key={k} className="min-w-0"><dt><Label className="text-[12px]">{k}</Label></dt><dd className="mt-0.5 truncate font-figure text-[15px] font-bold text-v3-ink">{v}</dd></div>
           ))}
         </dl>
       ) : <div className="mt-4"><Skeleton lines={2} /></div>}
@@ -146,8 +162,8 @@ function RecordBlock() {
         <StreamText as="p" text="Nothing here yet. Your first mock lands here with a letter, where it finished in its room, and the four parts that add up to it." className="mt-2 text-[15px] leading-[1.55] text-v3-ink2" />
       ) : (
         <dl className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Drafts</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold tabular-nums text-v3-ink"><CountUp value={locker.count} /></dd></div>
-          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[11px]">Best finish</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{locker.best ? `${locker.best.grade} · ${locker.best.projectedRank}` : '—'}</dd></div>
+          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Drafts</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold tabular-nums text-v3-ink"><CountUp value={locker.count} /></dd></div>
+          <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Best finish</Label></dt><dd className="mt-0.5 font-figure text-[22px] font-bold text-v3-ink">{locker.best ? `${locker.best.grade} · ${locker.best.projectedRank}` : '—'}</dd></div>
         </dl>
       )}
       <div className="mt-auto pt-5"><GoLink href="#/record">Open your record</GoLink></div>

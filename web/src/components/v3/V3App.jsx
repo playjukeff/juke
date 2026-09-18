@@ -5,6 +5,7 @@ import { useAccountUiReady } from '../../hooks/useAccountUiReady.js'
 import { useSignedIn } from '../../hooks/useAuthState.js'
 import { countdownParts } from '../../lib/countdown.js'
 import { Icon, Label, Headline, CallButton, QuietButton, cx, TOUCH } from './ui.jsx'
+import { useMotionOK } from './motion.jsx'
 import { THEME_CHOICES, mountTheme, useV3Theme } from './theme.js'
 import { MotionRoot, SPRING, motion } from './motion.jsx'
 import Now from './now/Now.jsx'
@@ -90,10 +91,28 @@ export const NAV = [
 ]
 
 /* The next NFL kickoff, counted down — production's own nextKickoff(), and
-   nothing drawn when there is nothing honest to count to. */
+   nothing drawn when there is nothing honest to count to.
+
+   It ticks in persistent chrome, which is the one place a moving number is
+   defensible: a clock IS the fact, where a projection that moves is a
+   projection nobody can read. Two things keep it from being noise anyway.
+   aria-live is off explicitly rather than by omission — a second-by-second
+   region would talk over everything else on the page — and under reduced
+   motion it goes coarse and slow: "47m" re-read once a minute rather than
+   a seconds digit turning sixty times. */
+function coarseKickoff(ms) {
+  if (!(ms > 0)) return null
+  const mins = Math.floor(ms / 60000)
+  if (mins < 60) return `${Math.max(1, mins)}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
 function Kickoff() {
   const [text, setText] = useState(null)
   const at = useRef(null)
+  const motionOK = useMotionOK()
   useEffect(() => {
     let alive = true
     const tick = () => {
@@ -102,17 +121,21 @@ function Kickoff() {
         at.current = e.nextKickoff() || null
         if (!at.current && e.primeScores) e.primeScores().then(() => { if (alive && e.nextKickoff) at.current = e.nextKickoff() || null })
       }
-      if (alive) setText(at.current ? countdownParts(at.current - Date.now()) : null)
+      if (!alive) return
+      if (!at.current) { setText(null); return }
+      const ms = at.current - Date.now()
+      const parts = countdownParts(ms)
+      setText(motionOK ? (parts ? parts.full || parts.compact : null) : coarseKickoff(ms))
     }
     tick()
-    const id = setInterval(tick, 1000)
+    const id = setInterval(tick, motionOK ? 1000 : 60000)
     return () => { alive = false; clearInterval(id) }
-  }, [])
+  }, [motionOK])
   if (!text) return null
   return (
-    <span className="hidden items-center gap-2 font-figure text-[13px] text-v3-ink2 lg:inline-flex" aria-label={`Next kickoff in ${text.full || text.compact}`}>
+    <span aria-live="off" className="hidden items-center gap-2 font-figure text-[13px] text-v3-ink2 lg:inline-flex" aria-label={`Next kickoff in ${text}`}>
       <span className="font-semibold uppercase tracking-[0.1em] text-v3-ink3">Kickoff</span>
-      <span className="font-bold tabular-nums text-v3-ink">{text.full || text.compact}</span>
+      <span className="font-bold tabular-nums text-v3-ink">{text}</span>
     </span>
   )
 }
@@ -274,7 +297,7 @@ function TabBar({ current }) {
               key={n.key}
               href={n.href}
               aria-current={on ? 'page' : undefined}
-              className={cx('relative flex min-h-[58px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold', on ? 'text-v3-ink' : 'text-v3-ink3')}
+              className={cx('relative flex min-h-[58px] flex-col items-center justify-center gap-0.5 text-[12px] font-semibold', on ? 'text-v3-ink' : 'text-v3-ink3')}
             >
               {on && <motion.span layoutId="v3-tab-mark" transition={SPRING.layout} className="absolute inset-x-4 top-0 h-[3px] bg-v3-ink" aria-hidden="true" />}
               <Icon name={n.icon} className="h-[22px] w-[22px]" />
