@@ -27,6 +27,8 @@ import { useV3Theme } from '../theme.js'
 import { gameColors } from '../../../lib/teamColors.js'
 import { useSlate } from '../now/season.js'
 import { GameChip } from './ScoresTicker.jsx'
+import Crumbs, { longDate } from './Crumbs.jsx'
+import { findOnBoard, sourceText, useFantasy } from './fantasy.js'
 import { leagueWeekPts, injurySeverity } from '../../rooms/strategyBoard.js'
 import { InjuryChip } from '../league/parts.jsx'
 
@@ -138,6 +140,15 @@ function useStake(game) {
 
 const logo = (abbr) => `https://sleepercdn.com/images/team_logos/nfl/${boardTeam(abbr).toLowerCase()}.png`
 const pts = (v) => (v === null || v === undefined ? '—' : v.toFixed(1))
+const pts2 = (x) => (x ? x.v.toFixed(2) : '—')
+
+/* A player's page, remembering the game he was opened from so that page
+   can offer the way back. */
+export const playerHref = (id, gameId) => `#/players/${encodeURIComponent(id)}${gameId ? `?from=${encodeURIComponent(gameId)}` : ''}`
+function PlayerName({ id, gameId, children, className }) {
+  if (!id) return <span className={className}>{children}</span>
+  return <a href={playerHref(id, gameId)} className={cx('hover:text-v3-call hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', className)}>{children}</a>
+}
 
 function kickoffText(iso) {
   try {
@@ -215,23 +226,27 @@ function Hero({ game }) {
 
 /* ---- The stake ---- */
 
-function StakePlayer({ p, opp }) {
+function StakePlayer({ p, opp, fx, gameId }) {
+  const x = p.kd ? null : fx.pointsFor(p.id, p.points)
   return (
     <div className={cx('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-v3-call/20 px-4 py-3 sm:px-5', opp && 'opacity-90')}>
       <p className="flex min-w-0 items-center gap-2 font-bold">
         {opp ? <span className="font-figure text-[11px] font-bold tracking-[0.1em] text-v3-ink3">OPP</span> : <PosTag pos={p.pos} />}
-        <span className="truncate">{p.name}</span>
+        <PlayerName id={p.id} gameId={gameId} className="truncate">{p.name}</PlayerName>
       </p>
-      <Fig className="row-span-2 text-right text-[26px] font-extrabold">{pts(p.points)}</Fig>
+      <div className="row-span-2 text-right">
+        <Fig className="block text-[26px] font-extrabold leading-none">{pts2(x)}</Fig>
+        {x ? <span className="font-figure text-[10px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{sourceText(x)}</span> : null}
+      </div>
       <p className="truncate font-figure text-[13px] text-v3-ink2">{p.kd ? 'Kickers and defenses are not scored off the box score' : p.line || 'No stats yet'}</p>
     </div>
   )
 }
 
-function StakeBanner({ stake, game }) {
+function StakeBanner({ stake, game, fx }) {
   const { mine, theirs, opponent } = stake
   if (!mine.length && !theirs.length) return null
-  const sum = (rows) => rows.reduce((a, p) => a + (p.points || 0), 0)
+  const sum = (rows) => rows.reduce((a, p) => { const x = p.kd ? null : fx.pointsFor(p.id, p.points); return a + (x ? x.v : 0) }, 0)
   const ms = sum(mine)
   const ts = sum(theirs)
   const oppName = opponent ? opponent.teamName || opponent.name || 'Your opponent' : null
@@ -244,10 +259,10 @@ function StakeBanner({ stake, game }) {
         {oppName ? <Label>vs {oppName}</Label> : null}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2">
-        {mine.length ? mine.map((p) => <StakePlayer key={p.id} p={p} />) : (
+        {mine.length ? mine.map((p) => <StakePlayer key={p.id} p={p} fx={fx} gameId={game.id} />) : (
           <p className="col-span-full border-b border-v3-call/20 px-5 py-3 text-[14px] text-v3-ink2">None of your starters are in this game.</p>
         )}
-        {theirs.length ? theirs.map((p) => <StakePlayer key={p.id} p={p} opp />) : (
+        {theirs.length ? theirs.map((p) => <StakePlayer key={p.id} p={p} opp fx={fx} gameId={game.id} />) : (
           <p className="col-span-full px-5 py-3 text-[14px] text-v3-ink2">
             {oppName ? `${oppName} has no one in this game. Everything here is yours.` : 'No opponent this week, so nothing here counts against you.'}
           </p>
@@ -261,7 +276,7 @@ function StakeBanner({ stake, game }) {
         <Label>{theirs.length && mine.length ? `${ms.toFixed(1)} – ${ts.toFixed(1)}` : 'unopposed'}</Label>
       </div>
       <p className="col-span-full border-t border-v3-call/30 px-5 py-2 text-[12px] leading-[1.5] text-v3-ink3">
-        {stake.scoring === 'Your league' ? 'Scored under your league’s rules' : 'Scored under Juke’s default rules'} from ESPN’s box score{game.state === 'in' ? ', updating every 30 seconds' : ''}. Two-point conversions and return touchdowns are not on the box score, so your platform’s own total can differ.
+        {fx.platform ? `A figure marked “from ${fx.platform}” is ${fx.platform}’s own total for that player; one marked “Juke calc” is ESPN’s box score scored under your league’s rules until ${fx.platform} publishes its number` : 'Scored under Juke’s default rules from ESPN’s box score'}{game.state === 'in' ? ', updating every 30 seconds' : ''}.
       </p>
     </section>
   )
@@ -290,15 +305,51 @@ function LineScore({ game }) {
   )
 }
 
-function Leaders({ game }) {
-  const rows = game.leaders.filter((l) => /passing|rushing|receiving/i.test(l.category))
+/* Everybody who touched the ball, ranked by what the reader's league paid
+   for it: the platform's own figure for a rostered player, Juke's
+   calculation under the league's rules for everyone else, each labelled.
+   ESPN's own "leaders" are stat leaders -- yards -- which is not the same
+   list on a fantasy site: the passer with the most yards is not the player
+   who scored the most points. */
+export function gamePlayers(game, fx) {
+  const out = new Map()
+  for (const side of [game.away, game.home]) {
+    for (const c of game.box[side.abbr] || []) {
+      if (!SCORED_CATEGORIES.includes(c.name)) continue
+      for (const row of c.rows) {
+        const k = `${side.abbr}|${normName(row.name)}`
+        const e = out.get(k) || { abbr: side.abbr, name: row.name, calc: 0, line: playerLine(game, side.abbr, row.name) }
+        e.calc += linePoints(c.name, c.labels, row.stats, fx.rules) || 0
+        out.set(k, e)
+      }
+    }
+  }
+  return [...out.values()].map((e) => {
+    const bp = findOnBoard(fx.index, e.abbr, e.name)
+    const id = bp ? String(bp.id) : null
+    return { ...e, id, pos: bp ? bp.pos : null, owner: id ? fx.owners.get(id) || null : null, x: fx.pointsFor(id, e.calc) }
+  }).filter((e) => e.x).sort((a, b) => b.x.v - a.x.v)
+}
+
+function Leaders({ game, fx }) {
+  const rows = useMemo(() => (game.state === 'pre' ? [] : gamePlayers(game, fx).slice(0, 6)), [game, fx])
   if (!rows.length) return null
   return (
-    <Sheet code="Top performers" bodyClass="grid gap-3 px-4 py-4 sm:px-5">
-      {rows.map((l, i) => (
-        <div key={i}>
-          <p className="flex items-center font-bold">{l.name}<span className="ml-2 font-figure text-[12px] font-normal text-v3-ink3">{l.pos} · {l.team}</span></p>
-          <p className="font-figure text-[14px] text-v3-ink2">{l.category} · {l.line}</p>
+    <Sheet code="Fantasy leaders" aside={fx.label} bodyClass="px-4 py-1 sm:px-5">
+      {rows.map((e) => (
+        <div key={`${e.abbr}|${e.name}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-v3-rule/60 py-2.5 last:border-b-0">
+          <div className="min-w-0">
+            <p className="flex min-w-0 items-center font-bold">
+              <PlayerName id={e.id} gameId={game.id} className="truncate">{e.name}</PlayerName>
+              {e.owner && e.owner.mine ? <Badge kind="mine" /> : null}
+            </p>
+            {e.owner && !e.owner.mine ? <p className="truncate font-figure text-[11px] font-semibold text-v3-ink2">{e.owner.opp ? 'Your opponent · ' : ''}{e.owner.name}</p> : null}
+            <p className="truncate font-figure text-[12px] text-v3-ink3">{e.pos ? `${e.pos} · ` : ''}{e.abbr} · {e.line}</p>
+          </div>
+          <div className="text-right">
+            <Fig className="block text-[19px] font-extrabold leading-none">{pts2(e.x)}</Fig>
+            <span className="font-figure text-[10px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{sourceText(e.x)}</span>
+          </div>
         </div>
       ))}
     </Sheet>
@@ -438,7 +489,7 @@ function WinChart({ game, isMine }) {
 
 /* ---- Box score ---- */
 
-function BoxScore({ game, marks, rules, scoring }) {
+function BoxScore({ game, marks, rules, scoring, fx }) {
   const [side, setSide] = useState(game.away.abbr)
   const cats = game.box[side] || []
   return (
@@ -476,7 +527,7 @@ function BoxScore({ game, marks, rules, scoring }) {
                   return (
                     <tr key={i} className={cx('border-t border-v3-rule', mark === 'mine' && 'bg-v3-call/15', mark === 'theirs' && 'bg-v3-ink/[0.04]')}>
                       <td className={cx('py-2 pr-2 font-sheet font-semibold', mark === 'mine' && 'shadow-[inset_3px_0_0_rgb(var(--v3-call))] pl-2')}>
-                        <span className="inline-flex items-center whitespace-nowrap">{r.name}{mark ? <Badge kind={mark} /> : null}</span>
+                        <span className="inline-flex items-center whitespace-nowrap"><PlayerName id={(findOnBoard(fx.index, side, r.name) || {}).id} gameId={game.id}>{r.name}</PlayerName>{mark ? <Badge kind={mark} /> : null}</span>
                       </td>
                       {r.stats.map((v, j) => <td key={j} className="px-1.5 py-2 text-right">{v}</td>)}
                       {scored ? <td className="py-2 pl-1.5 text-right font-bold text-v3-call">{pts(linePoints(c.name, c.labels, r.stats, rules))}</td> : null}
@@ -635,23 +686,24 @@ function useClubPlayers(game, stake) {
   }, [game, engine, stake])
 }
 
-function LeagueCell({ r, right, started }) {
+function LeagueCell({ r, right, started, fx, gameId }) {
   if (!r) return <div />
+  const x = started ? fx.pointsFor(r.id, r.actual) : null
   return (
     <div className={cx('min-w-0 py-2', right && 'text-right')}>
       {r.owner ? (
         <p className={cx('truncate font-figure text-[11px] font-semibold', r.owner.mine ? 'text-v3-call' : 'text-v3-ink3')}>{r.owner.mine ? 'Your team' : r.owner.name}</p>
       ) : null}
-      <p className={cx('truncate font-bold', r.owner && r.owner.mine && 'text-v3-call')}>{r.name}</p>
+      <p className={cx('truncate font-bold', r.owner && r.owner.mine && 'text-v3-call')}><PlayerName id={r.id} gameId={gameId}>{r.name}</PlayerName></p>
       <p className="font-figure text-[12px] text-v3-ink3">{r.pos === 'DST' ? 'D/ST' : r.pos} · {r.abbr}</p>
       <p className="font-figure text-[13px] text-v3-ink2">
-        {started ? <><span className="text-[16px] font-extrabold text-v3-ink">{pts(r.actual)}</span> <span className="text-v3-ink3">/ {pts(r.proj)} proj</span></> : <>{pts(r.proj)} <span className="text-v3-ink3">proj</span></>}
+        {started ? <><span className="text-[16px] font-extrabold text-v3-ink" title={sourceText(x)}>{pts2(x)}</span> <span className="text-v3-ink3">/ {pts(r.proj)} proj</span></> : <>{pts(r.proj)} <span className="text-v3-ink3">proj</span></>}
       </p>
     </div>
   )
 }
 
-function InYourLeague({ game, stake, clubs }) {
+function InYourLeague({ game, stake, clubs, fx }) {
   if (!clubs || !clubs.groups.length) return null
   const started = game.state !== 'pre'
   return (
@@ -669,8 +721,8 @@ function InYourLeague({ game, stake, clubs }) {
           </div>
           {Array.from({ length: Math.max(g.away.length, g.home.length) }, (_, i) => (
             <div key={i} className="grid grid-cols-2 gap-4 border-b border-v3-rule/60 last:border-b-0">
-              <LeagueCell r={g.away[i]} started={started} />
-              <LeagueCell r={g.home[i]} right started={started} />
+              <LeagueCell r={g.away[i]} started={started} fx={fx} gameId={game.id} />
+              <LeagueCell r={g.home[i]} right started={started} fx={fx} gameId={game.id} />
             </div>
           ))}
         </div>
@@ -744,6 +796,7 @@ export default function V3Game({ gameId }) {
   const { status, game } = useGame(gameId)
   const stake = useStake(game)
   const clubs = useClubPlayers(game, stake)
+  const fx = useFantasy(game ? game.week : null)
   const wide = useMinWidth(768)
   const { resolved } = useV3Theme()
   const colors = useMemo(() => (game ? gameColors(game.away, game.home, resolved === 'light' ? 'light' : 'dark') : null), [game, resolved])
@@ -790,28 +843,35 @@ export default function V3Game({ gameId }) {
   // stat bar and watermark below reads them through the --v3-away/--v3-home
   // tokens without being told whose colours they are.
   const vars = colors ? { '--v3-away': colors.away, '--v3-home': colors.home } : undefined
+  const crumbs = (
+    <Crumbs
+      items={[{ label: 'Scores', href: '#/scores' }, { label: 'NFL', href: '#/scores' }, { label: `${game.away.abbr} @ ${game.home.abbr} · ${longDate(game.date)}` }]}
+      back={{ label: 'All scores', href: game.week ? `#/scores?week=${game.week}` : '#/scores' }}
+    />
+  )
 
   if (!wide) {
     return (
       <div className="grid gap-5" style={vars}>
         <GameStrip currentId={game.id} />
+        {crumbs}
         <h1 className="sr-only">{game.away.name} at {game.home.name}</h1>
         <HeroPhone game={game} />
         <WinChart game={game} isMine={isMine} />
-        <StakeBanner stake={stake} game={game} />
+        <StakeBanner stake={stake} game={game} fx={fx} />
         <PhoneTabs tab={tab} setTab={setTab} />
         {tab === 'plays' ? <Drives game={game} isMine={isMine} /> : null}
         {tab === 'stats' ? (
           <div className="grid gap-5">
-            <InYourLeague game={game} stake={stake} clubs={clubs} />
-            <Leaders game={game} />
+            <InYourLeague game={game} stake={stake} clubs={clubs} fx={fx} />
+            <Leaders game={game} fx={fx} />
             <TeamStats game={game} />
             <LineScore game={game} />
             <Injuries game={game} clubs={clubs} />
             <GameInfo game={game} />
           </div>
         ) : null}
-        {tab === 'box' ? <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} /> : null}
+        {tab === 'box' ? <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} fx={fx} /> : null}
       </div>
     )
   }
@@ -819,21 +879,22 @@ export default function V3Game({ gameId }) {
   return (
     <div className="grid gap-6" style={vars}>
       <GameStrip currentId={game.id} />
+      {crumbs}
       <h1 className="sr-only">{game.away.name} at {game.home.name}</h1>
       <Hero game={game} />
-      <StakeBanner stake={stake} game={game} />
+      <StakeBanner stake={stake} game={game} fx={fx} />
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
         <div className="grid gap-5">
           <LineScore game={game} />
-          <Leaders game={game} />
+          <Leaders game={game} fx={fx} />
           <TeamStats game={game} />
           <Injuries game={game} clubs={clubs} />
           <GameInfo game={game} />
         </div>
         <div className="grid min-w-0 gap-5">
           <WinChart game={game} isMine={isMine} />
-          <InYourLeague game={game} stake={stake} clubs={clubs} />
-          <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} />
+          <InYourLeague game={game} stake={stake} clubs={clubs} fx={fx} />
+          <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} fx={fx} />
         </div>
         <div className="grid gap-5">
           <Drives game={game} isMine={isMine} />

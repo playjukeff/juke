@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CallButton, Delta, Fig, Headline, Icon, Label, PageHead, PosTag, QuietButton, Skeleton, cx } from '../ui.jsx'
 import { injuryWord, posWord, readPlayer } from './playerData.js'
 import { DeepTag, FigCell, InjuryTag, PlayerFace, RookieTag } from './parts.jsx'
@@ -8,6 +8,8 @@ import {
 } from './PlayerSections.jsx'
 import { useBoardKey, useHeaderTick } from './useBoardKey.js'
 import { CountUp } from '../motion.jsx'
+import Crumbs from '../games/Crumbs.jsx'
+import PlayerWeek from '../games/PlayerWeek.jsx'
 
 /* One player, as a page — #/players/<sleeperId>, and a defense's id is
    its club (SEA). Production's player sheet is an overlay inside the Draft
@@ -151,6 +153,30 @@ function Header({ d, fit, engine }) {
   )
 }
 
+/* Where this page sits -- Players / NFL / name -- and, when he was opened
+   from a game, the way back to it. The game id rides on the address
+   (?from=) rather than in memory, so a shared link keeps it and a reload
+   does not lose it. */
+function PlayerCrumbs({ name }) {
+  const [back, setBack] = useState(null)
+  useEffect(() => {
+    const read = () => {
+      const q = (window.location.hash.split('?')[1] || '')
+      const from = new URLSearchParams(q).get('from')
+      if (!from || !/^\d{1,12}$/.test(from)) { setBack(null); return }
+      const e = window.JukeEngine
+      Promise.resolve(e && e.primeScores ? e.primeScores() : null).then((games) => {
+        const g = Array.isArray(games) ? games.find((x) => String(x.id) === from) : null
+        setBack({ href: `#/games/${from}`, label: g ? `${g.away} @ ${g.home}` : 'Back to the game' })
+      }, () => setBack({ href: `#/games/${from}`, label: 'Back to the game' }))
+    }
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
+  return <Crumbs items={[{ label: 'Players', href: '#/players' }, { label: 'NFL', href: '#/players' }, { label: name }]} back={back} />
+}
+
 export default function V3Player({ playerId }) {
   const key = useBoardKey()
   const tick = useHeaderTick()
@@ -176,7 +202,7 @@ export default function V3Player({ playerId }) {
 
   return (
     <article className="grid gap-8" aria-label={d.player.name}>
-      <BackLink />
+      <PlayerCrumbs name={d.player.name} />
       <Header d={d} fit={fit} engine={engine} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-8">
@@ -192,6 +218,7 @@ export default function V3Player({ playerId }) {
           <LogsSheet key={d.player.id} engine={engine} player={d.player} />
         </div>
         <div className={cx('grid min-w-0 gap-6')}>
+          <PlayerWeek player={d.player} />
           <FitSheet fit={fit} player={d.player} />
           <ProspectSheet d={d} />
           <RecordSheet record={d.record} />

@@ -25,6 +25,7 @@ import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
 import V3Game from './games/V3Game.jsx'
 import ScoresTicker from './games/ScoresTicker.jsx'
+import V3Scores from './games/V3Scores.jsx'
 import { WelcomeRoute } from './landing/Landing.jsx'
 import YahooReturn from '../shell/YahooReturn.jsx'
 import FullValueTips from './FullValue.jsx'
@@ -457,6 +458,7 @@ function route(sub) {
   if (a === 'draft') return { page: <V3DraftHome /> }
   if (a === 'record') return { page: <V3Record /> }
   if (a === 'games' && b) return { page: <V3Game gameId={b} /> }
+  if (a === 'scores') return { page: <V3Scores /> }
   if (a === 'account') return { page: <V3Account /> }
   if (a === 'method') return { page: <V3Method doc={b || 'how-it-works'} /> }
   if (a === 'welcome') return { page: <WelcomeRoute /> }

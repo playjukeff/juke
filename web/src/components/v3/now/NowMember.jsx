@@ -4,9 +4,10 @@ import { CallButton, GoLink, Headline, Icon, Label, QuietButton, Sheet, cx } fro
 import { ConnectCall } from '../league/parts.jsx'
 import { TheCall, SituationBand } from './TheCall.jsx'
 import {
-  LockerCard, Movers, PassCard, SampleWeek, SeasonBand, Slate, StillDrafting, Welcome, useLockerSummary,
+  LockerCard, Movers, PassCard, SampleWeek, SeasonBand, StillDrafting, Welcome, useLockerSummary,
 } from './parts.jsx'
-import { bucketOf, useMovers, useNextKickoffAt, useSlate } from './season.js'
+import { bucketOf, useMovers, useNextKickoffAt } from './season.js'
+import WeekGames from '../games/WeekGames.jsx'
 
 /* Now, signed in, with no league Juke can read.
 
@@ -61,7 +62,6 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
   const week = season.week
   const kickoffAt = useNextKickoffAt()
   const locker = useLockerSummary()
-  const games = useSlate(inSeason)
   const movers = useMovers(inSeason)
   const plan = audience === 'sub' ? tierLabel(tier) : audience === 'free' ? tierLabel('free') : null
   const leagueFailed = leagueStatus === 'error'
@@ -99,7 +99,6 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
   if (inSeason) right = audience === 'free' ? <PassCard week={week} primary inSeason /> : <SampleWeek week={week} code={audience === 'sub' ? 'What Now becomes · sample' : 'Sample week · what Now shows'} />
   else right = <LockerCard summary={locker} />
 
-  const both = !!(games && movers.length)
 
   return (
     <div className="grid gap-section">
@@ -137,13 +136,11 @@ export default function NowMember({ audience, tier, season, leagueStatus, tierSt
               <LockerCard summary={locker} compact />
             </div>
           ) : null}
-          {games || movers.length ? (
-            <section aria-labelledby="v3-now-week" className="grid gap-5">
-              <h2 id="v3-now-week" className="sr-only">This week in the NFL</h2>
-              <div className={cx('grid grid-cols-1 items-start gap-4', both && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]')}>
-                <Slate games={games} kickoffAt={kickoffAt} />
-                <Movers rows={movers} week={week} />
-              </div>
+          <WeekGames />
+          {movers.length ? (
+            <section aria-labelledby="v3-now-movers" className="grid gap-5 lg:max-w-[calc(5/12*100%)]">
+              <h2 id="v3-now-movers" className="sr-only">Movers</h2>
+              <Movers rows={movers} week={week} />
             </section>
           ) : null}
           <StillDrafting />

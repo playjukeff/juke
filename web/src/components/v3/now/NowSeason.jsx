@@ -1,8 +1,9 @@
 import { tierLabel } from '../../../lib/tiers.js'
 import { LINE as PLATFORM_LINE } from '../../shell/leaguePlatforms.js'
 import { Headline, Label, cx } from '../ui.jsx'
-import { ConnectWayIn, Movers, SampleWeek, SeasonBand, Slate, StillDrafting } from './parts.jsx'
-import { useMovers, useNextKickoffAt, useSlate } from './season.js'
+import { ConnectWayIn, Movers, SampleWeek, SeasonBand, StillDrafting } from './parts.jsx'
+import { useMovers, useNextKickoffAt } from './season.js'
+import WeekGames from '../games/WeekGames.jsx'
 
 /* Now, signed out, during the regular season.
 
@@ -30,10 +31,8 @@ import { useMovers, useNextKickoffAt, useSlate } from './season.js'
 
 export default function NowSeason({ season }) {
   const kickoffAt = useNextKickoffAt()
-  const games = useSlate(true)
   const movers = useMovers(true)
   const week = season.week
-  const both = !!(games && movers.length)
   return (
     <div className="grid gap-section">
       <SeasonBand season={season} kickoffAt={kickoffAt} />
@@ -58,13 +57,11 @@ export default function NowSeason({ season }) {
         <SampleWeek week={week} />
       </div>
 
-      {games || movers.length ? (
-        <section aria-labelledby="v3-now-week" className="grid gap-5">
-          <h2 id="v3-now-week" className="sr-only">This week in the NFL</h2>
-          <div className={cx('grid grid-cols-1 items-start gap-4', both && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]')}>
-            <Slate games={games} kickoffAt={kickoffAt} />
-            <Movers rows={movers} week={week} />
-          </div>
+      <WeekGames />
+      {movers.length ? (
+        <section aria-labelledby="v3-now-movers" className="grid gap-5 lg:max-w-[calc(5/12*100%)]">
+          <h2 id="v3-now-movers" className="sr-only">Movers</h2>
+          <Movers rows={movers} week={week} />
         </section>
       ) : null}
 
