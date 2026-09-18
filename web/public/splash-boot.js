@@ -133,6 +133,16 @@
   // visible jump if it lands late.
   var started = false
 
+  // The mark is held hidden until the pass starts. Its `form` variant renders
+  // on upgrade with its own animation already running, so on a machine whose
+  // first paint is late the rise could FINISH before the pass below calls
+  // replay() — the finished shark showed for a moment, vanished on replay,
+  // and then rose again. Reported from a cold launch, 18 September 2026.
+  // Hidden before first paint, shown in the same pass as replay(), so the
+  // only rise anybody sees is the one that shares the layers' zero.
+  var heldMark = el.querySelector('juke-mark')
+  if (heldMark) heldMark.style.visibility = 'hidden'
+
   function startPass() {
     if (started) return
     var mark = el.querySelector('juke-mark')
@@ -153,6 +163,7 @@
       layers[i].style.animation = layers[i].getAttribute('data-anim')
     }
     try { mark.replay() } catch (e) { /* the layers still run */ }
+    mark.style.visibility = ''
 
     // main.jsx holds from here — see its own note. An attribute rather than a
     // global so there is one fact on the element itself, the same way
