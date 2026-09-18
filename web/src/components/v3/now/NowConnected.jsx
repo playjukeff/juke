@@ -131,7 +131,7 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
     )
   }
   const max = Math.max(total || 0, oppTotal || 0, 1)
-  const word = read === 'favoured' ? 'Favoured' : read === 'behind' ? 'Behind' : read === 'close' ? 'Close' : null
+  const word = read === 'favoured' ? 'Favored' : read === 'behind' ? 'Behind' : read === 'close' ? 'Close' : null
   return (
     <Sheet code={`The matchup · week ${game.week}`} aside={game.home ? 'Home' : 'Away'}>
       <div className="grid gap-2.5">
@@ -536,7 +536,7 @@ function SeasonOver({ league, snapshot, rank, total }) {
         <Label tier="page" as="p">Now · the season is over</Label>
         <Headline className="mt-3">No calls left this season.</Headline>
         <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.55] text-v3-ink2">
-          {s ? `${s.won}-${s.lost}${s.tied ? '-' + s.tied : ''}${rank ? `, ${ordinal(rank)} of ${total}` : ''}. ` : ''}The one decision still ahead of you is next year&apos;s draft, and it is the only one you can practise.
+          {s ? `${s.won}-${s.lost}${s.tied ? '-' + s.tied : ''}${rank ? `, ${ordinal(rank)} of ${total}` : ''}. ` : ''}The one decision still ahead of you is next year&apos;s draft, and it is the only one you can practice.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <CallButton href="#/draft">Mock a {snapshot.totalTeams}-team board <Icon name="arrow" className="h-4 w-4" /></CallButton>

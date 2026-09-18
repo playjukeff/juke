@@ -303,7 +303,7 @@ function ProbabilityBlock({ winProb, read, meanA, sd, framing }) {
   if (winProb === null || winProb === undefined) {
     return <p className="text-[15px] leading-[1.5] text-v3-ink2">{framing.none}</p>
   }
-  const word = read === 'favoured' ? 'Favoured' : read === 'behind' ? 'Behind' : 'Close'
+  const word = read === 'favoured' ? 'Favored' : read === 'behind' ? 'Behind' : 'Close'
   return (
     <>
       <div className="flex items-baseline justify-between gap-3">

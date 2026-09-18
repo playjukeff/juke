@@ -217,8 +217,8 @@ export default function TradeLive({ league, snapshot, status, reason, tab, onRet
       : Math.abs(swing.you) < 5
         ? { text: 'Close to even', cls: 'text-v2-ink2' }
         : swing.you > 0
-          ? { text: 'This favours you', cls: 'text-v2-volt' }
-          : { text: 'This favours them', cls: 'text-v2-loss' }
+          ? { text: 'This favors you', cls: 'text-v2-volt' }
+          : { text: 'This favors them', cls: 'text-v2-loss' }
 
   const builder = (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px_minmax(0,1fr)]">

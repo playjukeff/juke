@@ -37,9 +37,12 @@ board carrying real ADP, real projections, and tiers and replacement level
 derived from *your* league shape, with a post-draft grade that breaks into four
 visible weighted components.
 
-Five further rooms — Prospect, Waiver, Trade, Strategy, plus My League above
-them — extend the same analysis layer across a season. **[repo]** `ROOMS` in
-`app.js`.
+The same analysis layer extends across a season: a league connected
+read-only from Sleeper, ESPN or CBS (Yahoo in testing), the week's lineup,
+wire and trade calls on it, and the player, league and record pages.
+**[repo]** Since the 14 September 2026 cutover these are five places —
+Now, League, Players, Draft, Record — with the calls as tools rather than
+the six rooms this line used to name; `V3App.jsx`'s route table is the map.
 
 Success is somebody returning unprompted, and being able to answer "why is this
 number what it is" from the screen they are already on.

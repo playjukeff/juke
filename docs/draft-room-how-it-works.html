@@ -10,7 +10,7 @@
        made next door rather than reverting to light halfway through a
        visit. The only other script here is the back-to-top control, at the
        foot of the page. -->
-  <script src="../theme.js?v=202609182000"></script>
+  <script src="../theme.js?v=202609182100"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,8 +19,8 @@
   <!-- The app's stylesheet, for the brand colours, the fonts and the table
        styling. Everything below is layout for a page of prose, which the app
        has no use for, so it lives here rather than bloating style.css. -->
-  <!-- Same ?v=202609182000 as index.html, and bumped with it. See the note there. -->
-  <link rel="stylesheet" href="../style.css?v=202609182000">
+  <!-- Same ?v=202609182100 as index.html, and bumped with it. See the note there. -->
+  <link rel="stylesheet" href="../style.css?v=202609182100">
 
   <link rel="icon" href="../juke-icon-tile.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="../juke-icon-tile-32.png">
@@ -184,7 +184,7 @@
          about fifteen thousand pixels long. The <svg> stays aria-hidden and
          the name lives on the link, or a screen reader announces a shape. -->
     <a class="home" href="../index.html" title="Juke home"
-       aria-label="Back to the Draft Room">
+       aria-label="Juke home">
     <!-- class="mark" is kept so .home's layout rules and the 560px hide rule
          still find it, and the size is overridden inline because .mark is
          31x36 - the shield's portrait aspect. The shark is 564:352, so 36
@@ -206,9 +206,9 @@
   <main class="doc">
 
     <p class="doc-intro">
-      There is no panel of experts behind this app. Every rating, grade and
-      suggestion is worked out from public data by rules that fit on this page.
-      This is all of them.
+      There is no panel of experts behind Juke. Every rating, grade and
+      suggestion in the Draft Room is worked out from public data by rules
+      that fit on this page. This is all of them.
     </p>
 
     <div class="toc">
@@ -230,8 +230,14 @@
     <h2 id="s01"><span class="no">01</span>What this is</h2>
 
     <p>
-      A mock draft simulator. You take one seat, seven to thirteen computer
-      opponents take the rest, and everyone drafts until the rounds run out.
+      The Draft Room is Juke's mock draft simulator, and it is what this page
+      covers. The rest of Juke &mdash; reading a league you play in, and
+      making the week's calls on it &mdash; starts from the same player data
+      but is not described here.
+    </p>
+    <p>
+      You take one seat, computer opponents take the rest, and everyone
+      drafts until the rounds run out.
       Drafting on your own, nothing leaves your browser and no server is
       involved. You can also send a link and draft with your league instead,
       which does use one &mdash; section 09 is how that works.
@@ -644,7 +650,7 @@
       one at a position and you lost 6 &mdash; and it never once fired,
       because it sat exactly where every computer team lands. Measured across
       a full room, all ten teams held four running backs and one quarterback
-      and every one of them scored a flat 100, which made fifteen per cent of
+      and every one of them scored a flat 100, which made fifteen percent of
       the grade a constant. Graded instead of a cliff, the same room came out
       as seven different scores.
     </div>
@@ -887,15 +893,18 @@
     <h2 id="s10"><span class="no">10</span>What it deliberately does not do</h2>
 
     <ul>
-      <li><b>No expert rankings, news or analyst commentary.</b> That content
-        belongs to the sites that produce it. Everything here is worked out
-        from public statistics.</li>
-      <li><b>No trade or keeper handling.</b> This simulates one snake draft.</li>
+      <li><b>No expert rankings, articles or analyst commentary.</b> That
+        content belongs to the sites that produce it. Player news is a
+        headline and a link back to where it was published, and everything
+        else here is worked out from public statistics.</li>
+      <li><b>No trades or keepers inside a draft.</b> The Draft Room runs one
+        draft, start to finish. Trades are a separate part of Juke: a call
+        it makes during the season, on a league you connect.</li>
       <li><b>Nothing to install, and no account required.</b> Opening the page
         is the whole of it, and a draft on your own, signed out, asks nothing
-        of anybody's server. An account is offered and optional: it exists so
-        your drafts follow you between devices, and changes nothing about how
-        a draft works.</li>
+        of anybody's server. An account is optional here: it keeps your
+        drafts following you between devices and holds any league you
+        connect, and it changes nothing about how a draft works.</li>
     </ul>
 
     <p class="method">
@@ -912,7 +921,7 @@
   <!-- This page is long enough that getting back to the contents is a real
        scroll. Same control and same stylesheet as the app, so it looks and
        behaves like one thing rather than a page that grew its own button. -->
-  <script src="../back-to-top.js?v=202609182000" data-auto></script>
+  <script src="../back-to-top.js?v=202609182100" data-auto></script>
 
 </body>
 </html>
