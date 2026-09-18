@@ -22,6 +22,12 @@ import {
   SUMMARY_URL, SCORED_CATEGORIES, boardTeam, linePoints, normName, parseSummary, playShortName, playerLine, playerPoints,
 } from '../../../lib/gameSummary.js'
 import { Fig, GoLink, Label, PosTag, QuietButton, Sheet, Skeleton, cx } from '../ui.jsx'
+import { useMinWidth } from '../../../hooks/useBreakpoint.js'
+import { useV3Theme } from '../theme.js'
+import { gameColors } from '../../../lib/teamColors.js'
+import { useSlate } from '../now/season.js'
+import { leagueWeekPts, injurySeverity } from '../../rooms/strategyBoard.js'
+import { InjuryChip } from '../league/parts.jsx'
 
 /* ---- Data ---- */
 
@@ -88,14 +94,22 @@ function useStake(game) {
 
   return useMemo(() => {
     const fallback = engine && engine.rulesForFormat ? engine.rulesForFormat('half') : null
-    const base = { league: null, rules: fallback, scoring: 'Juke default', mine: [], theirs: [], opponent: null, reason: null }
+    // The week's scorer and who owns whom, for the page's "In your league"
+    // block. A guest gets Juke's own projection and no owners.
+    const guestWeek = engine ? leagueWeekPts(engine, game ? { week: game.week } : null) : null
+    const base = { league: null, rules: fallback, scoring: 'Juke default', mine: [], theirs: [], opponent: null, reason: null, weekPts: guestWeek, owners: new Map(), mineTeam: null }
     if (!game || !league || !ready) return base
     const rules = (engine && engine.rulesFromLeague && engine.rulesFromLeague(snapshot.rules)) || fallback
     const scoring = engine && engine.rulesFromLeague && engine.rulesFromLeague(snapshot.rules) ? 'Your league' : 'Juke default'
-    const out = { ...base, league: snapshot.name || league.name, rules, scoring }
-    if (!game.week || Number(snapshot.week) !== Number(game.week)) return { ...out, reason: 'week' }
-
     const mineTeam = myTeam(snapshot, league)
+    const owners = new Map()
+    for (const t of snapshot.teams || []) {
+      for (const id of t.players || []) owners.set(String(id), { name: t.teamName || t.name || 'A team', mine: !!mineTeam && t === mineTeam })
+    }
+    const sameWeek = !!game.week && Number(snapshot.week) === Number(game.week)
+    const out = { ...base, league: snapshot.name || league.name, rules, scoring, owners, mineTeam, weekPts: sameWeek && pricing.weekPts ? pricing.weekPts : guestWeek }
+    if (!sameWeek) return { ...out, reason: 'week' }
+
     let opponent = sheet && sheet.opponent ? sheet.opponent : null
     if (!opponent && sleeperOn) {
       const e = sw[Number(snapshot.week)]
@@ -299,7 +313,7 @@ function TeamStats({ game }) {
     return m ? Number(m[1]) * 60 + Number(m[2]) : parseFloat(v) || 0
   }
   return (
-    <Sheet code="Team stats" aside={<><span className="text-v3-away">{game.away.abbr}</span> · <span className="text-v3-home">{game.home.abbr}</span></>} bodyClass="grid gap-3 px-4 py-4 sm:px-5">
+    <Sheet code="Team stats" aside={<><span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-away align-middle" />{game.away.abbr} · <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-home align-middle" />{game.home.abbr}</>} bodyClass="grid gap-3 px-4 py-4 sm:px-5">
       {rows.map((r) => {
         const a = val(r.away)
         const h = val(r.home)
@@ -378,9 +392,9 @@ function WinChart({ game, isMine }) {
           </defs>
           {[1, 0.75, 0.25, 0].map((v) => <line key={v} x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="stroke-v3-rule" strokeOpacity="0.5" />)}
           <line x1={L} x2={W - R} y1={midY} y2={midY} className="stroke-v3-rule" strokeDasharray="4 4" />
-          <text x={L - 6} y={y(1) + 4} textAnchor="end" className="fill-v3-home font-figure" fontSize="11">{game.home.abbr}</text>
+          <text x={L - 6} y={y(1) + 4} textAnchor="end" className="fill-v3-ink2 font-figure" fontSize="11">{game.home.abbr}</text>
           <text x={L - 6} y={midY + 4} textAnchor="end" className="fill-v3-ink3 font-figure" fontSize="11">50%</text>
-          <text x={L - 6} y={y(0) + 4} textAnchor="end" className="fill-v3-away font-figure" fontSize="11">{game.away.abbr}</text>
+          <text x={L - 6} y={y(0) + 4} textAnchor="end" className="fill-v3-ink2 font-figure" fontSize="11">{game.away.abbr}</text>
           {quarters.map((o) => (
             <g key={o.q}>
               <line x1={x(o.i)} x2={x(o.i)} y1={T} y2={H - B} className="stroke-v3-rule" strokeOpacity="0.6" />
@@ -411,7 +425,7 @@ function WinChart({ game, isMine }) {
               <span>{p.play && p.play.period ? `${p.play.period > 4 ? 'OT' : `Q${p.play.period}`} · ${p.play.clock || ''}` : 'Kickoff'}</span>
               <span className="text-v3-ink">{game.away.abbr} {p.play && p.play.away !== null ? p.play.away : 0} – {p.play && p.play.home !== null ? p.play.home : 0} {game.home.abbr}</span>
             </div>
-            <p className={cx('my-1 font-figure text-[22px] font-extrabold', p.home >= 0.5 ? 'text-v3-home' : 'text-v3-away')}>{fav.abbr} {favPct}%</p>
+            <p className="my-1 flex items-center gap-2 font-figure text-[22px] font-extrabold"><span aria-hidden="true" className={cx('h-3 w-3 rounded-full', p.home >= 0.5 ? 'bg-v3-home' : 'bg-v3-away')} />{fav.abbr} {favPct}%</p>
             <p className={cx('text-[13px] leading-[1.4] text-v3-ink2', p.play && isMine(p.play.text) && 'border-l-[3px] border-v3-call pl-2')}>{(p.play && p.play.text) || '—'}</p>
           </div>
         ) : null}
@@ -511,11 +525,247 @@ function Drives({ game, isMine }) {
   )
 }
 
+/* ---- Other games, as Sleeper's strip does it ----
+
+   The week's slate off the same scoreboard the header's kickoff pill reads,
+   the game on screen first and ringed. Scrolls sideways; a game without an
+   event id (a stale cached scoreboard) is left out rather than drawn dead. */
+function GameStrip({ currentId }) {
+  const games = useSlate(true)
+  const rows = useMemo(() => {
+    if (!Array.isArray(games)) return []
+    const order = { in: 0, pre: 1, post: 2 }
+    return games.filter((g) => g && g.id)
+      .slice()
+      .sort((a, b) => (String(a.id) === String(currentId) ? -1 : String(b.id) === String(currentId) ? 1 : 0) || (order[a.state] ?? 3) - (order[b.state] ?? 3))
+  }, [games, currentId])
+  if (rows.length < 2) return null
+  return (
+    <nav aria-label="Other games this week" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-8 sm:px-8">
+      {rows.map((g) => {
+        const on = String(g.id) === String(currentId)
+        const scored = g.state !== 'pre'
+        return (
+          <a
+            key={g.id}
+            href={`#/games/${encodeURIComponent(g.id)}`}
+            aria-current={on ? 'page' : undefined}
+            className={cx('flex min-h-[48px] shrink-0 items-center gap-2 rounded-full border px-3 font-figure text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+              on ? 'border-transparent bg-v3-ink text-v3-paper' : 'border-v3-rule bg-v3-sheet text-v3-ink hover:border-v3-ink3')}
+          >
+            <img src={logo(g.away)} alt="" width="22" height="22" className="h-[22px] w-[22px]" />
+            <span className="grid leading-tight">
+              {scored ? <span className="font-bold">{g.awayScore}–{g.homeScore}</span> : <span className="font-bold">{g.away} · {g.home}</span>}
+              <span className={cx('text-[11px] uppercase', g.state === 'in' ? 'font-bold text-v3-cost' : on ? 'text-v3-paper/80' : 'text-v3-ink3')}>{g.detail || ''}</span>
+            </span>
+            <img src={logo(g.home)} alt="" width="22" height="22" className="h-[22px] w-[22px]" />
+          </a>
+        )
+      })}
+    </nav>
+  )
+}
+
+/* The phone's hero: each club's abbreviation set huge and faint in its own
+   colour behind the name, the way Sleeper does it -- the one place the page
+   spends colour on identity rather than on a mark. */
+function HeroPhone({ game }) {
+  const played = game.state !== 'pre'
+  const last = game.wp.length ? game.wp[game.wp.length - 1].home : null
+  const side = (t, right) => (
+    <div className={cx('relative min-h-[88px] overflow-hidden', right ? 'text-right' : '')}>
+      <span aria-hidden="true" className={cx('pointer-events-none absolute top-1/2 -translate-y-1/2 select-none font-black italic leading-none opacity-30', right ? '-right-2 text-v3-home' : '-left-2 text-v3-away')} style={{ fontSize: 58 }}>{t.abbr}</span>
+      <div className="relative pt-4">
+        <p className="text-[22px] font-extrabold leading-none">{t.name}</p>
+        <p className="mt-1 font-figure text-[13px] text-v3-ink2">{t.record || ''}</p>
+      </div>
+    </div>
+  )
+  return (
+    <section aria-label="Score" className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        {side(game.away, false)}
+        <div className="grid justify-items-center gap-0.5 text-center">
+          {played ? (
+            <p className="font-figure text-[34px] font-extrabold leading-none">
+              <span className={cx(game.state === 'post' && game.home.score > game.away.score && 'text-v3-ink3')}>{game.away.score}</span>
+              <span className="mx-1 text-v3-ink3">–</span>
+              <span className={cx(game.state === 'post' && game.away.score > game.home.score && 'text-v3-ink3')}>{game.home.score}</span>
+            </p>
+          ) : null}
+          <p className={cx('font-figure text-[13px] font-bold uppercase tracking-[0.06em]', game.state === 'in' ? 'text-v3-cost' : 'text-v3-ink2')}>
+            {game.state === 'pre' ? kickoffText(game.date) : game.detail}
+          </p>
+          {game.network ? <p className="font-figure text-[12px] text-v3-ink3">{game.network}</p> : null}
+        </div>
+        {side(game.home, true)}
+      </div>
+      {last !== null ? (
+        <p className="flex justify-between font-figure text-[12px] font-semibold uppercase tracking-[0.1em]">
+          <span className="text-v3-ink2"><span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-away align-middle" />{game.away.abbr} {Math.round((1 - last) * 100)}%</span>
+          <span className="text-v3-ink3">to win</span>
+          <span className="text-v3-ink2"><span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-home align-middle" />{game.home.abbr} {Math.round(last * 100)}%</span>
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+/* ---- In your league ----
+
+   Sleeper's fantasy view of a game: both clubs' fantasy-relevant players
+   side by side by position, each with the week's projection and -- once the
+   game has started -- what the box score has scored them. For a connected
+   reader, whose fantasy team holds each one; for a guest, just the figures.
+   Players are the board's, so a practice-squad body the board does not
+   carry is not listed. */
+const POS_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+const POS_DEPTH = { QB: 1, RB: 3, WR: 4, TE: 2, K: 1, DST: 1 }
+
+function useClubPlayers(game, stake) {
+  const engine = typeof window !== 'undefined' ? window.JukeEngine : null
+  return useMemo(() => {
+    if (!game || !engine || !engine.board) return null
+    const board = engine.board()
+    if (!board || !board.length) return null
+    const clubs = { [boardTeam(game.away.abbr)]: game.away.abbr, [boardTeam(game.home.abbr)]: game.home.abbr }
+    const proj = (p) => { try { const v = stake.weekPts ? stake.weekPts(p) : null; return Number.isFinite(v) ? v : null } catch { return null } }
+    const rows = board.filter((p) => clubs[String(p.team || '').toUpperCase()] && POS_ORDER.includes(p.pos)).map((p) => {
+      const abbr = clubs[String(p.team).toUpperCase()]
+      const kd = p.pos === 'K' || p.pos === 'DST'
+      const owner = stake.owners.get(String(p.id)) || null
+      return {
+        id: String(p.id), name: p.name, pos: p.pos, abbr, inj: p.inj || '', owner,
+        proj: proj(p),
+        actual: game.state === 'pre' || kd ? null : playerPoints(game, abbr, p.name, stake.rules),
+      }
+    })
+    const out = []
+    for (const pos of POS_ORDER) {
+      const pick = (abbr) => rows.filter((r) => r.pos === pos && r.abbr === abbr)
+        .sort((a, b) => (!!b.owner - !!a.owner) || (b.proj ?? -1) - (a.proj ?? -1))
+        .filter((r, i) => i < POS_DEPTH[pos] || (r.owner && r.owner.mine))
+      const away = pick(game.away.abbr)
+      const home = pick(game.home.abbr)
+      if (away.length || home.length) out.push({ pos, away, home })
+    }
+    return { groups: out, all: rows }
+  }, [game, engine, stake])
+}
+
+function LeagueCell({ r, right, started }) {
+  if (!r) return <div />
+  return (
+    <div className={cx('min-w-0 py-2', right && 'text-right')}>
+      {r.owner ? (
+        <p className={cx('truncate font-figure text-[11px] font-semibold', r.owner.mine ? 'text-v3-call' : 'text-v3-ink3')}>{r.owner.mine ? 'Your team' : r.owner.name}</p>
+      ) : null}
+      <p className={cx('truncate font-bold', r.owner && r.owner.mine && 'text-v3-call')}>{r.name}</p>
+      <p className="font-figure text-[12px] text-v3-ink3">{r.pos === 'DST' ? 'D/ST' : r.pos} · {r.abbr}</p>
+      <p className="font-figure text-[13px] text-v3-ink2">
+        {started ? <><span className="text-[16px] font-extrabold text-v3-ink">{pts(r.actual)}</span> <span className="text-v3-ink3">/ {pts(r.proj)} proj</span></> : <>{pts(r.proj)} <span className="text-v3-ink3">proj</span></>}
+      </p>
+    </div>
+  )
+}
+
+function InYourLeague({ game, stake, clubs }) {
+  if (!clubs || !clubs.groups.length) return null
+  const started = game.state !== 'pre'
+  return (
+    <Sheet code={stake.league ? `In ${stake.league}` : 'Fantasy view'} aside={started ? 'Scored / projected' : 'Projected this week'} bodyClass="px-4 pb-2 sm:px-5">
+      <div className="flex justify-between pt-3 font-figure text-[12px] font-bold uppercase tracking-[0.1em]">
+        <span className="text-v3-ink2"><span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-away align-middle" />{game.away.abbr}</span>
+        <span className="text-v3-ink2"><span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-v3-home align-middle" />{game.home.abbr}</span>
+      </div>
+      {clubs.groups.map((g) => (
+        <div key={g.pos}>
+          <div className="my-2 flex items-center gap-3">
+            <span className="h-px flex-1 bg-v3-rule" />
+            <PosTag pos={g.pos} />
+            <span className="h-px flex-1 bg-v3-rule" />
+          </div>
+          {Array.from({ length: Math.max(g.away.length, g.home.length) }, (_, i) => (
+            <div key={i} className="grid grid-cols-2 gap-4 border-b border-v3-rule/60 last:border-b-0">
+              <LeagueCell r={g.away[i]} started={started} />
+              <LeagueCell r={g.home[i]} right started={started} />
+            </div>
+          ))}
+        </div>
+      ))}
+      <p className="py-2 text-[12px] text-v3-ink3">
+        {stake.league ? 'Owners from your league’s rosters. ' : 'Connect a league to see who owns each player. '}
+        Projections are {stake.scoring === 'Your league' ? 'under your league’s rules' : 'Juke’s default scoring'}; kickers and defenses are not scored off the box score.
+      </p>
+    </Sheet>
+  )
+}
+
+function Injuries({ game, clubs }) {
+  const [side, setSide] = useState(game.away.abbr)
+  if (!clubs) return null
+  const hurt = clubs.all.filter((r) => r.inj && injurySeverity(r.inj))
+  if (!hurt.length) return null
+  const rows = hurt.filter((r) => r.abbr === side)
+  return (
+    <Sheet code="Injury report" aside="Fantasy players only" bodyClass="">
+      <div role="tablist" aria-label="Team" className="flex gap-2 border-b border-v3-rule px-4 py-3 sm:px-5">
+        {[game.away, game.home].map((t) => (
+          <button key={t.abbr} type="button" role="tab" aria-selected={side === t.abbr} onClick={() => setSide(t.abbr)}
+            className={cx('min-h-[40px] rounded-full border px-4 text-[14px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', side === t.abbr ? 'border-transparent bg-v3-ink text-v3-paper' : 'border-v3-rule text-v3-ink2')}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {rows.length ? rows.map((r) => (
+        <div key={r.id} className="flex items-center justify-between gap-3 border-b border-v3-rule px-4 py-2.5 last:border-b-0 sm:px-5">
+          <p className="min-w-0 truncate font-semibold">{r.name} <span className="font-figure text-[12px] font-normal text-v3-ink3">{r.pos === 'DST' ? 'D/ST' : r.pos}</span></p>
+          <InjuryChip severity={injurySeverity(r.inj)} code={r.inj} />
+        </div>
+      )) : <p className="px-5 py-3 text-[14px] text-v3-ink2">No designations on this side.</p>}
+    </Sheet>
+  )
+}
+
+function GameInfo({ game }) {
+  return (
+    <Sheet band={false} bodyClass="grid gap-1 px-4 py-3 text-[14px] text-v3-ink2 sm:px-5">
+      <p>{kickoffText(game.date)}</p>
+      {game.venue ? <p>{game.venue.name}{game.venue.city ? `, ${game.venue.city}` : ''}</p> : null}
+      {game.network ? <p>{game.network}</p> : null}
+    </Sheet>
+  )
+}
+
+/* The phone's three views of one game, as Sleeper splits feed from stats. */
+const PHONE_TABS = [
+  { key: 'plays', label: 'Plays' },
+  { key: 'stats', label: 'Stats' },
+  { key: 'box', label: 'Box score' },
+]
+function PhoneTabs({ tab, setTab }) {
+  return (
+    <div role="tablist" aria-label="Game views" className="grid grid-cols-3 gap-1 rounded-full border border-v3-rule bg-v3-sheet p-1">
+      {PHONE_TABS.map((t) => (
+        <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+          className={cx('min-h-[44px] rounded-full text-[15px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call', tab === t.key ? 'bg-v3-ink text-v3-paper' : 'text-v3-ink2')}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /* ---- Page ---- */
 
 export default function V3Game({ gameId }) {
   const { status, game } = useGame(gameId)
   const stake = useStake(game)
+  const clubs = useClubPlayers(game, stake)
+  const wide = useMinWidth(768)
+  const { resolved } = useV3Theme()
+  const colors = useMemo(() => (game ? gameColors(game.away, game.home, resolved === 'light' ? 'light' : 'dark') : null), [game, resolved])
+  const [tab, setTab] = useState('plays')
 
   const marks = useMemo(() => {
     const m = new Map()
@@ -554,12 +804,39 @@ export default function V3Game({ gameId }) {
     )
   }
 
+  // The two clubs' colours, set once on the page root so every chart line,
+  // stat bar and watermark below reads them through the --v3-away/--v3-home
+  // tokens without being told whose colours they are.
+  const vars = colors ? { '--v3-away': colors.away, '--v3-home': colors.home } : undefined
+
+  if (!wide) {
+    return (
+      <div className="grid gap-5" style={vars}>
+        <GameStrip currentId={game.id} />
+        <h1 className="sr-only">{game.away.name} at {game.home.name}</h1>
+        <HeroPhone game={game} />
+        <WinChart game={game} isMine={isMine} />
+        <StakeBanner stake={stake} game={game} />
+        <PhoneTabs tab={tab} setTab={setTab} />
+        {tab === 'plays' ? <Drives game={game} isMine={isMine} /> : null}
+        {tab === 'stats' ? (
+          <div className="grid gap-5">
+            <InYourLeague game={game} stake={stake} clubs={clubs} />
+            <Leaders game={game} />
+            <TeamStats game={game} />
+            <LineScore game={game} />
+            <Injuries game={game} clubs={clubs} />
+            <GameInfo game={game} />
+          </div>
+        ) : null}
+        {tab === 'box' ? <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} /> : null}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid gap-6">
-      <nav aria-label="Breadcrumb" className="text-[14px] text-v3-ink3">
-        <a href="#/" className="text-v3-ink2 hover:text-v3-ink">Now</a>
-        {game.week ? <> / Week {game.week}</> : null} / {game.away.abbr} at {game.home.abbr}
-      </nav>
+    <div className="grid gap-6" style={vars}>
+      <GameStrip currentId={game.id} />
       <h1 className="sr-only">{game.away.name} at {game.home.name}</h1>
       <Hero game={game} />
       <StakeBanner stake={stake} game={game} />
@@ -568,14 +845,12 @@ export default function V3Game({ gameId }) {
           <LineScore game={game} />
           <Leaders game={game} />
           <TeamStats game={game} />
-          {game.venue ? (
-            <Sheet band={false} bodyClass="px-4 py-3 text-[14px] text-v3-ink2 sm:px-5">
-              {kickoffText(game.date)}<br />{game.venue.name}{game.venue.city ? `, ${game.venue.city}` : ''}
-            </Sheet>
-          ) : null}
+          <Injuries game={game} clubs={clubs} />
+          <GameInfo game={game} />
         </div>
         <div className="grid min-w-0 gap-5">
           <WinChart game={game} isMine={isMine} />
+          <InYourLeague game={game} stake={stake} clubs={clubs} />
           <BoxScore game={game} marks={marks} rules={stake.rules} scoring={stake.scoring} />
         </div>
         <div className="grid gap-5">

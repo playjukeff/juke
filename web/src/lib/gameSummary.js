@@ -85,6 +85,9 @@ export function parseSummary(json) {
     abbr: String(c.team.abbreviation || ''),
     name: String(c.team.name || c.team.displayName || ''),
     location: String(c.team.location || ''),
+    // Club colours as ESPN states them; teamColors.js makes them legible.
+    color: c.team.color ? String(c.team.color) : null,
+    alternateColor: c.team.alternateColor ? String(c.team.alternateColor) : null,
     score: num(c.score),
     record: c.record && c.record[0] ? String(c.record[0].summary || c.record[0].displayValue || '') : null,
     lines: Array.isArray(c.linescores) ? c.linescores.map((l) => num(l.displayValue !== undefined ? l.displayValue : l.value)) : [],

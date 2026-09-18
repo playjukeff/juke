@@ -272,6 +272,10 @@ jobs:
       # player on no scored table is null rather than a zero somebody reads.
       - name: The game page's box score
         run: node scripts/test_game_summary.mjs
+      # Club colours on the game page: legible against the sheet in both
+      # themes, and two clubs of one hue told apart.
+      - name: The game page's team colours
+        run: node scripts/test_team_colors.mjs
 
       # What each room has at stake, for the rail and the rooms grid.
       #
