@@ -28,26 +28,34 @@
   <link rel="icon" href="../favicon.ico" sizes="any">
 
   <style>
-    .doc { max-width: 720px; margin: 0 auto; padding: 26px 18px 70px; }
+    /* 600, down from 720, for the reason privacy.html's block records: at 720
+       a full line of body text ran 90 characters, and prose reads best
+       nearer 70. The formulas already wrap with a hanging indent, and the
+       widest table row (key, number, description) still fits. */
+    .doc { max-width: 600px; margin: 0 auto; padding: 26px 18px 70px; }
 
     /* The shared .appbar-inner centres on 1120px, which is the app's content
-       width. This page's column is 720, so the header narrows to match and
+       width. This page's column is 600, so the header narrows to match and
        the mark lines up with the prose underneath it rather than sitting
-       200px to its left. */
-    .appbar-inner { max-width: 720px; }
+       far to its left. */
+    .appbar-inner { max-width: 600px; }
 
     .doc-intro { font-size: var(--fs-base); line-height: 1.7; color: var(--ink-mid); margin: 0 0 10px; }
 
+    /* Section headings and their numbers: see privacy.html's block for the
+       measurements (the old 10px cyan number measured 2.68:1 on the light
+       page) and why the number sits inline rather than above. */
     .doc h2 {
-      margin: 40px 0 12px; padding-top: 18px;
+      display: flex; align-items: baseline; gap: .55em;
+      margin: 44px 0 12px; padding-top: 18px;
       border-top: 1px solid var(--line);
-      font-family: var(--font-display); font-size: var(--fs-lg);
-      font-weight: 700; letter-spacing: -0.01em;
+      font-family: var(--font-display); font-size: var(--fs-xl);
+      font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
     }
     .doc h2 .no {
-      display: block; margin-bottom: 5px;
-      font-family: Inter, sans-serif; font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: .12em; color: var(--cyan);
+      flex: none; min-width: 1.35em;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-light);
     }
     .doc h3 {
       margin: 22px 0 8px;
@@ -59,9 +67,12 @@
 
     /* A derivation, set apart from the prose. The point of this page is that
        these are formulas and not fixed numbers, so they get to look like it. */
+    /* One even hairline. It carried a 3px cyan stripe down the left as
+       well, the same side-stripe the notes had; the monospace, the card
+       and the bold terms already say "formula" without it. */
     .formula {
       background: var(--card); border: 1px solid var(--line);
-      border-left: 3px solid var(--cyan); border-radius: var(--r-sm);
+      border-radius: var(--r-sm);
       padding: 13px 15px; margin: 0 0 14px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: var(--fs-sm); line-height: 1.75; color: var(--ink);
@@ -82,10 +93,19 @@
       background: var(--sunken); border: 1px solid var(--line);
       border-radius: var(--r-sm); padding: 13px 15px; margin: 0 0 14px;
     }
-    .worked-title {
-      margin: 0 0 7px; font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: .07em; text-transform: uppercase; color: var(--ink-light);
-    }
+    /* Sentence case, set apart from the example by weight alone.
+
+       It was capitals with letter-spacing, and each title is a full
+       sentence ("Worked through, at the default settings"): capitals make a
+       sentence slower to read, and PRODUCT.md rejects uppercase labels.
+
+       It also declared a 10px size, a tertiary colour and a 7px bottom
+       margin, and NONE of the three ever rendered: the title is a <p>, and
+       `.worked p` below is more specific, so it has always been 14px in
+       --ink-mid with no margin -- measured, not read off this rule. Those
+       declarations are gone rather than kept as a description of a title
+       nobody has seen. The spacing under it comes from `.worked p + p`. */
+    .worked-title { font-weight: 700; }
     .worked p, .worked ul { margin-bottom: 0; font-size: var(--fs-sm); color: var(--ink-mid); }
     /* Worked examples were one paragraph each until the Juke score needed two.
        Without this they butt together into a single block of text. */
@@ -96,15 +116,37 @@
     .doc tr:last-child td { border-bottom: 0; }
     .doc td.k { font-weight: 600; white-space: nowrap; }
     .doc td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* On a phone each row becomes a small grid: the key across the top,
+       then the number and its description side by side. The unwrapping key
+       column otherwise takes over half of a 375px screen and squeezes every
+       description to a few words a line. A key cell left empty -- the
+       continuation rows under "need" -- is dropped rather than shown as a
+       blank line. Two-column rows (key, description) simply stack.
+       privacy.html carries the same rule. */
+    @media (max-width: 560px) {
+      .doc table, .doc tbody { display: block; }
+      .doc tr { display: grid; grid-template-columns: auto 1fr; }
+      .doc td { display: block; }
+      .doc td.k { grid-column: 1 / -1; white-space: normal; border-bottom: 0; padding-bottom: 2px; }
+      .doc td.k:empty { display: none; }
+      .doc td.k:not(:empty) ~ td { padding-top: 2px; }
+      /* One width for every row's number, because each row is its own grid:
+         sized by content, "never" pushed its description right of the
+         "0.80" above it. 4.75em holds "never" plus its padding. */
+      .doc td.n { grid-column: 1; min-width: 4.75em; text-align: left; }
+      .doc td:not(.k):not(.n) { grid-column: 2; }
+    }
 
     .doc code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: .89em; background: var(--fill); border-radius: var(--r-xs); padding: 1px 5px;
     }
 
+    /* A hairline box, not a stripe in the tight end's position colour --
+       see privacy.html's block. */
     .note {
-      border-left: 3px solid var(--te); background: var(--t-bye-bg);
-      border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 12px 15px; margin: 0 0 14px;
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      padding: 12px 15px; margin: 0 0 14px;
       font-size: var(--fs-sm); line-height: 1.65; color: var(--ink-mid);
     }
 

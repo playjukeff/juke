@@ -19,21 +19,24 @@
   <link rel="icon" href="../favicon.ico" sizes="any">
 
   <style>
-    /* Byte-identical to privacy.html's own block — see the comment there on
-       why this isn't shared out to its own file yet. */
-    .doc { max-width: 720px; margin: 0 auto; padding: 26px 18px 70px; }
-    .appbar-inner { max-width: 720px; }
+    /* The same page shape as privacy.html's own block, and kept in step with
+       it -- see the comment there on why this isn't shared out to its own
+       file yet, and on the measurements behind each rule below. This page
+       has no tables, so it carries none of the table rules. */
+    .doc { max-width: 600px; margin: 0 auto; padding: 26px 18px 70px; }
+    .appbar-inner { max-width: 600px; }
     .doc-intro { font-size: var(--fs-base); line-height: 1.7; color: var(--ink-mid); margin: 0 0 10px; }
     .doc h2 {
-      margin: 40px 0 12px; padding-top: 18px;
+      display: flex; align-items: baseline; gap: .55em;
+      margin: 44px 0 12px; padding-top: 18px;
       border-top: 1px solid var(--line);
-      font-family: var(--font-display); font-size: var(--fs-lg);
-      font-weight: 700; letter-spacing: -0.01em;
+      font-family: var(--font-display); font-size: var(--fs-xl);
+      font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
     }
     .doc h2 .no {
-      display: block; margin-bottom: 5px;
-      font-family: Inter, sans-serif; font-size: var(--fs-2xs); font-weight: 700;
-      letter-spacing: .12em; color: var(--cyan);
+      flex: none; min-width: 1.35em;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-light);
     }
     .doc h3 { margin: 22px 0 8px; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
     .doc p  { line-height: 1.72; margin: 0 0 13px; }
@@ -44,8 +47,8 @@
       font-size: .89em; background: var(--fill); border-radius: var(--r-xs); padding: 1px 5px;
     }
     .note {
-      border-left: 3px solid var(--te); background: var(--t-bye-bg);
-      border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 12px 15px; margin: 0 0 14px;
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      padding: 12px 15px; margin: 0 0 14px;
       font-size: var(--fs-sm); line-height: 1.65; color: var(--ink-mid);
     }
     .toc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 18px; margin: 22px 0 6px; }
