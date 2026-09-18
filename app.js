@@ -1252,8 +1252,119 @@ function gameFrom(event) {
     // ~220KB, it is already cached for a minute, and a second parse of the
     // same payload is the "written down twice" rule with a network cost
     // attached.
-    kickoff: (event && event.date) || null
+    kickoff: (event && event.date) || null,
+    // What the scores page and the homepage cards draw beside the score:
+    // each side's record and club name, where and on what it is shown, and
+    // ESPN's own stat leaders (season-to-date before kickoff, this game's
+    // after). All of it rides on the response already fetched.
+    awayRec: sideRecord(away),
+    homeRec: sideRecord(home),
+    awayName: (away.team && (away.team.shortDisplayName || away.team.name)) || null,
+    homeName: (home.team && (home.team.shortDisplayName || home.team.name)) || null,
+    network: broadcastName(c),
+    venue: (c.venue && c.venue.fullName) || null,
+    city: c.venue && c.venue.address ? [c.venue.address.city, c.venue.address.state].filter(Boolean).join(", ") : null,
+    note: (c.notes && c.notes[0] && c.notes[0].headline) || null,
+    leaders: gameLeaders(c, away, home)
   };
+}
+
+function sideRecord(side) {
+  const r = side && side.records && side.records[0];
+  return (r && (r.summary || r.displayValue)) || null;
+}
+
+function broadcastName(c) {
+  const b = c && c.broadcasts && c.broadcasts[0];
+  return (b && b.names && b.names[0]) || (c && c.broadcast) || null;
+}
+
+/* ESPN's stat leaders, one list: the game's own leaders once it has started
+   (competition.leaders), each side's season leaders before it has (each
+   competitor's leaders). Names are ESPN's -- the page matches them to the
+   board by name and club, the join worker/names.js already makes. */
+function gameLeaders(c, away, home) {
+  const one = function (block, side) {
+    const top = block && block.leaders && block.leaders[0];
+    const a = top && top.athlete;
+    if (!a) return null;
+    const teamId = (top.team && top.team.id) || (a.team && a.team.id) || null;
+    const abbr = side || (teamId && away.team && String(away.team.id) === String(teamId) ? away.team.abbreviation
+      : teamId && home.team && String(home.team.id) === String(teamId) ? home.team.abbreviation : null);
+    return {
+      team: abbr || null,
+      cat: block.shortDisplayName || block.abbreviation || "",
+      name: a.shortName || a.displayName || "",
+      full: a.fullName || a.displayName || "",
+      pos: (a.position && a.position.abbreviation) || "",
+      line: top.displayValue || "",
+      head: typeof a.headshot === "string" ? a.headshot : (a.headshot && a.headshot.href) || null
+    };
+  };
+  const out = [];
+  if (Array.isArray(c.leaders) && c.leaders.length) {
+    c.leaders.forEach(function (b) { const x = one(b, null); if (x) out.push(x); });
+  } else {
+    [away, home].forEach(function (side) {
+      (side.leaders || []).slice(0, 1).forEach(function (b) {
+        const x = one(b, side.team && side.team.abbreviation); if (x) out.push(x);
+      });
+    });
+  }
+  return out;
+}
+
+/* Any week's slate, for the scores page's week tabs. The current week is
+   the shared one-minute cache above; another week is ESPN's own scoreboard
+   for that week, held in memory for the session (a played week does not
+   change, and a future one changes only when kickoffs move). */
+const WEEK_SCORES = {};
+function scoresForWeek(week, season) {
+  const w = Number(week);
+  if (!Number.isInteger(w) || w < 1 || w > 18) return Promise.resolve(null);
+  const key = (season || "") + ":" + w;
+  if (WEEK_SCORES[key]) return WEEK_SCORES[key];
+  const url = SCORES_URL + "?seasontype=2&week=" + w + (season ? "&dates=" + encodeURIComponent(season) : "");
+  WEEK_SCORES[key] = fetch(url, { mode: "cors" })
+    .then(function (res) { if (!res.ok) throw new Error("scores " + res.status); return res.json(); })
+    .then(function (data) {
+      return {
+        week: (data.week && data.week.number) || w,
+        season: (data.season && data.season.year) || null,
+        games: (data.events || []).map(gameFrom).filter(Boolean)
+      };
+    })
+    .catch(function () { delete WEEK_SCORES[key]; return null; });
+  return WEEK_SCORES[key];
+}
+
+/* The league table, off ESPN's standings: every club's record, points and
+   seed, by conference. Five minutes is plenty -- it moves once per game. */
+const STANDINGS_URL = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings";
+let STANDINGS = null;
+function nflStandings() {
+  if (STANDINGS && Date.now() - STANDINGS.at < 5 * 60000) return STANDINGS.p;
+  const p = fetch(STANDINGS_URL, { mode: "cors" })
+    .then(function (res) { if (!res.ok) throw new Error("standings " + res.status); return res.json(); })
+    .then(function (data) {
+      const stat = function (e, n) { const x = (e.stats || []).filter(function (s) { return s.name === n; })[0]; return x ? x.displayValue : null; };
+      return (data.children || []).map(function (conf) {
+        return {
+          name: conf.abbreviation || conf.name,
+          teams: ((conf.standings && conf.standings.entries) || []).map(function (e) {
+            return {
+              abbr: e.team && e.team.abbreviation, name: e.team && (e.team.shortDisplayName || e.team.name),
+              w: Number(stat(e, "wins")) || 0, l: Number(stat(e, "losses")) || 0, t: Number(stat(e, "ties")) || 0,
+              pct: stat(e, "winPercent"), seed: Number(stat(e, "playoffSeed")) || null,
+              pf: Number(stat(e, "pointsFor")) || 0, pa: Number(stat(e, "pointsAgainst")) || 0, streak: stat(e, "streak")
+            };
+          })
+        };
+      });
+    })
+    .catch(function () { STANDINGS = null; return null; });
+  STANDINGS = { at: Date.now(), p: p };
+  return p;
 }
 
 /* The next game that has not started, as an epoch millisecond, or null.
@@ -1282,7 +1393,7 @@ function nextKickoff() {
 
 function cachedScores() {
   try {
-    const raw = JSON.parse(sessionStorage.getItem("juke.scores"));
+    const raw = JSON.parse(sessionStorage.getItem("juke.scores.v2"));
     return raw && (Date.now() - raw.at) < SCORES_TTL ? raw.games : null;
   } catch (err) { return null; }
 }
@@ -1347,7 +1458,7 @@ function fetchScores() {
     .then(function (data) {
       const games = (data.events || []).map(gameFrom).filter(Boolean);
       try {
-        sessionStorage.setItem("juke.scores", JSON.stringify({ at: Date.now(), games }));
+        sessionStorage.setItem("juke.scores.v2", JSON.stringify({ at: Date.now(), games }));
       } catch (err) {}                          // private mode, or a full quota
       return games;
     });
@@ -13394,6 +13505,8 @@ window.JukeEngine = {
   // once on mount so nextKickoff() has something to read; the strip's own
   // loadScores() is the DOM half and is not usable from here.
   primeScores: function () { return fetchScores().catch(function () { return null; }); },
+  scoresForWeek: scoresForWeek,
+  nflStandings: nflStandings,
   // Whether draft-engine.js/players.js/stats.js have landed — see the
   // deferred-data boot above. React reads this rather than reaching for
   // DraftEngine/PLAYERS/STAT_KEYS directly, the same way it reads board()

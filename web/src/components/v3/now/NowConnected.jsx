@@ -21,6 +21,7 @@ import {
 } from '../league/parts.jsx'
 import { LockerCard, useLockerSummary } from './parts.jsx'
 import { useNextKickoffAt } from './season.js'
+import WeekGames from '../games/WeekGames.jsx'
 
 /* Now, connected: this week's call sheet.
 
@@ -742,6 +743,7 @@ export default function NowConnected({ plan = null }) {
       ) : (
         <div className="max-w-[520px]"><LeagueCall league={league} snapshot={snapshot} sheet={sheet} odds={model.odds} /></div>
       )}
+      <WeekGames />
       {plan}
     </div>
   )

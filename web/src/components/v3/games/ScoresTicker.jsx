@@ -140,6 +140,13 @@ function Ticker({ games }) {
   return (
     <div className="border-t border-v3-rule">
       <nav aria-label="This week's games" className="mx-auto flex max-w-[1320px] gap-3 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] sm:px-8">
+        {/* Every game of the week, and the standings, a press away. */}
+        <section aria-label="All NFL scores" className="flex shrink-0 flex-col gap-1.5">
+          <span aria-hidden="true" className="font-figure text-[11px] font-semibold uppercase tracking-[0.12em] text-transparent">.</span>
+          <a href="#/scores" className="flex min-h-[48px] flex-col items-center justify-center rounded-[10px] border border-v3-rule bg-v3-sheet px-3.5 font-figure text-[12px] font-extrabold leading-[1.1] tracking-[0.08em] text-v3-ink hover:border-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
+            <span>ALL</span><span>NFL</span>
+          </a>
+        </section>
         {me && me.oppName && !me.bye && (<section aria-label="Your matchup" className="flex shrink-0 flex-col gap-1.5"><span className="font-figure text-[11px] font-semibold uppercase tracking-[0.12em] text-v3-ink3">Your matchup</span>
           <a
             href="#/league/matchup"
@@ -154,7 +161,7 @@ function Ticker({ games }) {
           </a>
         </section>)}
         {days.map((d, i) => (
-          <section key={d.key} aria-label={d.label} className={cx('flex shrink-0 flex-col gap-1.5', (i > 0 || (me && me.oppName && !me.bye)) && 'border-l border-v3-rule pl-3')}>
+          <section key={d.key} aria-label={d.label} className={cx('flex shrink-0 flex-col gap-1.5', 'border-l border-v3-rule pl-3')}>
             <span className="font-figure text-[11px] font-semibold uppercase tracking-[0.12em] text-v3-ink3">{d.label}</span>
             <div className="flex gap-2">
               {d.rows.map((g) => <GameChip key={g.id} g={g} />)}
