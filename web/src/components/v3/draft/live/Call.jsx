@@ -115,7 +115,7 @@ function LastsLine({ c, nextOverall, myTurn, big = false }) {
   return (
     <div className={cx('rounded-[4px] bg-v3-paper', big ? 'px-3 py-2.5' : 'px-2.5 py-2')}>
       <div className="flex items-baseline justify-between gap-2">
-        <Label className="text-[11px]">{nextOverall ? `Lasts to #${nextOverall}` : 'No pick after this'}</Label>
+        <Label className="text-[12px]">{nextOverall ? `Lasts to #${nextOverall}` : 'No pick after this'}</Label>
         <span className={cx('whitespace-nowrap font-figure text-[13px]', w.tone)}>{nextOverall ? w.label : '—'}</span>
       </div>
       {nextOverall && (
@@ -135,7 +135,7 @@ function Lead({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, queue
   const costs = myTurn ? whatItCosts(engine, p, counts, nextOverall) : null
   return (
     <div className={compact ? 'p-3' : 'p-4'}>
-      <Label className="block text-[11px]">{myTurn ? c.label : 'If Juke picked now'}</Label>
+      <Label className="block text-[12px]">{myTurn ? c.label : 'If Juke picked now'}</Label>
       <div className="mt-1.5 flex items-start gap-2">
         <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 flex-1 items-center gap-3 rounded-[4px] text-left', FOCUS)}>
           <Headshot src={engine.photoUrl(p)} name={p.name} size={compact ? 40 : 48} />
@@ -151,12 +151,12 @@ function Lead({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, queue
         <StarButton on={queued} onClick={() => engine.queueToggle(p.name)} name={p.name} className="h-11 w-11" />
       </div>
       <dl className={cx('mt-3 grid gap-2', myTurn ? 'grid-cols-4' : 'grid-cols-3')}>
-        <div className="min-w-0"><dt><Label className="text-[11px]"><abbr title="Projected points over a replacement starter" className="no-underline">Vs repl</abbr></Label></dt><dd className="mt-0.5 text-[20px] leading-none"><Delta value={c.vorp} /></dd></div>
-        <div className="min-w-0"><dt><Label className="text-[11px]">Juke</Label></dt><dd className="mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{c.juke == null ? '—' : Math.round(c.juke)}</dd></div>
-        <div className="min-w-0"><dt><Label className="text-[11px]"><abbr title="Players left in his tier at his position" className="no-underline">In tier</abbr></Label></dt><dd className="mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{c.tierLeft ?? '—'}</dd></div>
+        <div className="min-w-0"><dt><Label className="text-[12px]"><abbr title="Projected points over a replacement starter" className="no-underline">Vs repl</abbr></Label></dt><dd className="mt-0.5 text-[20px] leading-none"><Delta value={c.vorp} /></dd></div>
+        <div className="min-w-0"><dt><Label className="text-[12px]">Juke</Label></dt><dd className="mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{c.juke == null ? '—' : Math.round(c.juke)}</dd></div>
+        <div className="min-w-0"><dt><Label className="text-[12px]"><abbr title="Players left in his tier at his position" className="no-underline">In tier</abbr></Label></dt><dd className="mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{c.tierLeft ?? '—'}</dd></div>
         {myTurn && (
           <div className="min-w-0">
-            <dt><Label className="text-[11px]"><abbr title={nextOverall ? `Chance he is still there at your next pick, #${nextOverall}` : 'You have no pick after this one'} className="no-underline">Lasts</abbr></Label></dt>
+            <dt><Label className="text-[12px]"><abbr title={nextOverall ? `Chance he is still there at your next pick, #${nextOverall}` : 'You have no pick after this one'} className="no-underline">Lasts</abbr></Label></dt>
             <dd className={cx('mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums', c.survival != null && c.survival < 0.2 ? 'text-v3-warn' : 'text-v3-ink')}>{nextOverall ? pct(c.survival) : '—'}</dd>
           </div>
         )}
@@ -179,7 +179,7 @@ function Alternate({ engine, c, myTurn, canDraft, draftReason, onDraft, onOpen, 
       <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 flex-1 items-center gap-2.5 rounded-[4px] text-left', FOCUS)}>
         <PosTag pos={p.pos} />
         <span className="min-w-0">
-          <span className="block truncate font-figure text-[11px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{c.label}</span>
+          <span className="block truncate font-figure text-[12px] font-semibold uppercase tracking-[0.1em] text-v3-ink3">{c.label}</span>
           <span className="block truncate text-[15px] font-bold leading-tight text-v3-ink">{p.name}</span>
           <span className="block truncate font-figure text-[12px] tabular-nums text-v3-ink2">
             <Delta value={c.vorp} className="text-[12px]" /> vs repl
@@ -339,7 +339,7 @@ export function RoomRead({ engine, decide, phone }) {
   return (
     <div className={cx('flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-v3-rule bg-v3-sheet', phone ? 'px-3 py-2.5' : 'px-4 py-2.5')} aria-label="The room">
       <span className="flex min-w-0 items-center gap-2">
-        <Label className="shrink-0 text-[11px]">The room</Label>
+        <Label className="shrink-0 text-[12px]">The room</Label>
         <span className="min-w-0 text-[13px] leading-snug text-v3-ink2">
           {run
             ? <><span className="font-bold text-v3-warn">{run.pos === 'DST' ? 'D/ST' : run.pos} run</span> — {run.count} of the last six{run.depth != null ? ` · ${run.depth} starters’ worth left` : ''}</>
@@ -347,12 +347,12 @@ export function RoomRead({ engine, decide, phone }) {
         </span>
       </span>
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-        <Label className="shrink-0 text-[11px]">Left in the best tier</Label>
+        <Label className="shrink-0 text-[12px]">Left in the best tier</Label>
         {ladder.map((t) => {
           const warn = t.tier != null && t.left <= 2
           return (
             <span key={t.pos} className="inline-flex items-center gap-1.5" title={t.tier == null ? `${t.pos}: nobody tiered left` : `${t.pos}: ${t.left} left in tier ${t.tier}, the best still available`}>
-              <PosTag pos={t.pos} className="!h-[20px] !min-w-[30px] !text-[11px]" />
+              <PosTag pos={t.pos} className="!h-[20px] !min-w-[30px] !text-[12px]" />
               <span className={cx('font-figure text-[13px] tabular-nums', t.tier == null ? 'text-v3-ink3' : warn ? 'font-bold text-v3-warn' : 'font-semibold text-v3-ink')}>
                 {t.tier == null ? '—' : <>{t.left}<span className="ml-0.5 font-medium text-v3-ink3">·T{t.tier}</span></>}
               </span>
@@ -398,7 +398,7 @@ export function CallDock({ engine, decide, header, canDraft, draftReason, onDraf
           <Headshot src={engine.photoUrl(p)} name={p.name} size={40} />
           <span className="min-w-0">
             <span className="flex items-center gap-1.5">
-              <Label className="shrink-0 text-[11px] text-v3-ink">The call</Label>
+              <Label className="shrink-0 text-[12px] text-v3-ink">The call</Label>
               <Glyph name="chevUp" className="h-3.5 w-3.5 shrink-0 text-v3-ink2" />
             </span>
             <span className="block truncate text-[15px] font-extrabold leading-tight text-v3-ink">{p.name}</span>

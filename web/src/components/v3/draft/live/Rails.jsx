@@ -19,12 +19,12 @@ export function RosterPanel({ engine, slot, onSlot, roster, counts, onOpen }) {
   const size = roster.seats.length + league.bench
   const row = (label, player, key, benched) => (
     <li key={key} className="flex min-h-[40px] items-center gap-2.5 border-b border-v3-rule py-1.5 last:border-b-0">
-      <span className={cx('w-[40px] shrink-0 font-figure text-[11px] font-bold uppercase tracking-[0.06em]', benched ? 'text-v3-ink3' : 'text-v3-ink')}>{label}</span>
+      <span className={cx('w-[40px] shrink-0 font-figure text-[12px] font-bold uppercase tracking-[0.06em]', benched ? 'text-v3-ink3' : 'text-v3-ink')}>{label}</span>
       {player ? (
         <button type="button" onClick={() => onOpen(player)} className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-[4px] text-left', FOCUS)}>
           <PosTag pos={player.pos} />
           <span className="min-w-0 flex-1 truncate text-[15px] text-v3-ink">{player.name}</span>
-          <span className="shrink-0 font-figure text-[11px] tabular-nums text-v3-ink3">{player.team}{player.bye ? ` · ${player.bye}` : ''}</span>
+          <span className="shrink-0 font-figure text-[12px] tabular-nums text-v3-ink3">{player.team}{player.bye ? ` · ${player.bye}` : ''}</span>
         </button>
       ) : <span className="text-[13px] text-v3-ink3">Empty</span>}
     </li>
@@ -45,7 +45,7 @@ export function RosterPanel({ engine, slot, onSlot, roster, counts, onOpen }) {
       </ul>
       {mine && counts && (
         <div className="mt-3 border-t border-v3-rule pt-3">
-          <Label className="text-[11px]">Still to fill</Label>
+          <Label className="text-[12px]">Still to fill</Label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {['QB', 'RB', 'WR', 'TE', 'K', 'DST'].map((pos) => {
               const c = counts[pos]
@@ -74,12 +74,12 @@ export function QueuePanel({ engine, board, canDraft, onDraft, onOpen, draftReas
         <ol className="space-y-1">
           {players.map((p, i) => (
             <li key={p.name} className="flex min-h-[44px] items-center gap-1 rounded-[4px] bg-v3-paper px-1 py-1">
-              <span className="w-5 shrink-0 text-center font-figure text-[11px] tabular-nums text-v3-ink3">{i + 1}</span>
+              <span className="w-5 shrink-0 text-center font-figure text-[12px] tabular-nums text-v3-ink3">{i + 1}</span>
               <button type="button" onClick={() => onOpen(p)} className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-[4px] text-left', FOCUS)}>
                 <PosTag pos={p.pos} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-semibold text-v3-ink">{p.name}</span>
-                  <span className="block font-figure text-[11px] text-v3-ink3">{p.team} · ADP {typeof p.adp === 'number' ? p.adp.toFixed(1) : '—'}</span>
+                  <span className="block font-figure text-[12px] text-v3-ink3">{p.team} · ADP {typeof p.adp === 'number' ? p.adp.toFixed(1) : '—'}</span>
                 </span>
               </button>
               <span className="flex shrink-0 flex-col">
@@ -123,11 +123,11 @@ export function PicksFeed({ engine, sniped, onOpen, limit = 16 }) {
               <li key={p.overall} data-flip={p.overall}>
                 <button type="button" onClick={() => onOpen(p.player)} className={cx('relative flex min-h-[44px] w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left hover:bg-v3-paper', FOCUS, snipe && 'bg-v3-warnWash')}>
                   {mine && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-v3-ink" aria-hidden="true" />}
-                  <span className="w-10 shrink-0 font-figure text-[11px] font-bold tabular-nums text-v3-ink3">{de ? de.pickCode(p.overall, league) : p.overall}</span>
+                  <span className="w-10 shrink-0 font-figure text-[12px] font-bold tabular-nums text-v3-ink3">{de ? de.pickCode(p.overall, league) : p.overall}</span>
                   <Headshot src={engine.photoUrl(p.player)} name={p.player.name} size={26} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5"><span className="truncate text-[13px] font-semibold text-v3-ink">{p.player.name}</span><InjuryTag code={p.player.inj} /></span>
-                    <span className="block truncate font-figure text-[11px] text-v3-ink2">{p.player.pos === 'DST' ? 'D/ST' : p.player.pos} · {mine ? 'you' : engine.teamLabel(p.slot)}{snipe ? ' · took him off your queue' : ''}</span>
+                    <span className="block truncate font-figure text-[12px] text-v3-ink2">{p.player.pos === 'DST' ? 'D/ST' : p.player.pos} · {mine ? 'you' : engine.teamLabel(p.slot)}{snipe ? ' · took him off your queue' : ''}</span>
                   </span>
                 </button>
               </li>
@@ -150,7 +150,7 @@ export function NextPicks({ engine, nextPicks, picksMade }) {
           {nextPicks.map((o) => (
             <li key={o} className="rounded-[4px] bg-v3-paper px-2.5 py-2">
               <span className="block font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{de.pickCode(o, league)}</span>
-              <span className="mt-1 block font-figure text-[11px] tabular-nums text-v3-ink2">#{o} · in {o - picksMade - 1} {o - picksMade - 1 === 1 ? 'pick' : 'picks'}</span>
+              <span className="mt-1 block font-figure text-[12px] tabular-nums text-v3-ink2">#{o} · in {o - picksMade - 1} {o - picksMade - 1 === 1 ? 'pick' : 'picks'}</span>
             </li>
           ))}
         </ol>

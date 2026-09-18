@@ -54,7 +54,7 @@ function Avatar({ name, seat, mine }) {
   return (
     <span
       aria-hidden="true"
-      className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full font-figure text-[11px] font-bold', mine ? 'bg-v3-band text-white' : 'bg-v3-well text-v3-ink2')}
+      className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full font-figure text-[12px] font-bold', mine ? 'bg-v3-band text-white' : 'bg-v3-well text-v3-ink2')}
     >
       {text}
     </span>
@@ -91,7 +91,7 @@ function Poll({ poll, id, onVote, blocked }) {
           )
         })}
       </ul>
-      <p className="mt-1.5 font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">
+      <p className="mt-1.5 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">
         {total} {total === 1 ? 'vote' : 'votes'}{poll.anon ? ' · anonymous' : ''}{closed ? ' · closed' : ''}
       </p>
     </div>
@@ -110,7 +110,7 @@ function Said({ entry, view, engine, grouped, onReact, blocked }) {
         {!grouped && (
           <p className="flex items-baseline gap-2">
             <span className={cx('truncate text-[13px] font-bold', mine ? 'text-v3-ink' : 'text-v3-ink')}>{who}</span>
-            <span className="shrink-0 font-figure text-[11px] tabular-nums text-v3-ink3">{timeOf(entry.at)}</span>
+            <span className="shrink-0 font-figure text-[12px] tabular-nums text-v3-ink3">{timeOf(entry.at)}</span>
           </p>
         )}
         {entry.text && <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.45] text-v3-ink2">{entry.text}</p>}
@@ -120,7 +120,7 @@ function Said({ entry, view, engine, grouped, onReact, blocked }) {
           <span className="mt-1 flex items-center gap-2">
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <audio src={media} controls preload="none" className="h-9 max-w-full" />
-            <span className="font-figure text-[11px] tabular-nums text-v3-ink3">{entry.seconds}s</span>
+            <span className="font-figure text-[12px] tabular-nums text-v3-ink3">{entry.seconds}s</span>
           </span>
         )}
         {entry.type === 'poll' && entry.poll && <Poll poll={entry.poll} id={entry.id} onVote={(id, i) => engine.votePoll(id, i)} blocked={blocked} />}
@@ -155,8 +155,8 @@ function Pick({ entry, view, engine }) {
   return (
     <li className="mt-3 px-3">
       <p className={cx('flex items-center gap-2 rounded-[4px] border-l-[3px] bg-v3-paper px-2.5 py-1.5', mine ? 'border-v3-ink' : 'border-v3-rule')}>
-        <span className="shrink-0 font-figure text-[11px] font-bold uppercase tracking-[0.08em] text-v3-ink3">#{entry.overall}</span>
-        {player && <PosTag pos={player.pos} className="!h-[18px] !min-w-[28px] !text-[11px]" />}
+        <span className="shrink-0 font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-v3-ink3">#{entry.overall}</span>
+        {player && <PosTag pos={player.pos} className="!h-[18px] !min-w-[28px] !text-[12px]" />}
         <span className="min-w-0 flex-1 truncate text-[13px] text-v3-ink">
           <span className="font-semibold">{seatNameOf(view, entry.seat, engine)}</span> took {entry.player}
         </span>
@@ -267,7 +267,7 @@ export default function RoomChat({ engine, view, className = '' }) {
           if (entry.kind === 'pick') { last = null; return <Pick key={`p${entry.overall}`} entry={entry} view={view} engine={engine} /> }
           if (entry.kind === 'system') {
             last = null
-            return <li key={`s${entry.id}`} className="mt-3 px-3 text-center font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{entry.text}</li>
+            return <li key={`s${entry.id}`} className="mt-3 px-3 text-center font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{entry.text}</li>
           }
           const grouped = !!last && last.seat === entry.seat && (entry.at || 0) - (last.at || 0) < GROUP_MS
           last = entry

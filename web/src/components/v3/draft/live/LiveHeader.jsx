@@ -54,7 +54,7 @@ function ClockReadout({ engine, header, phone }) {
     const n = Number(info.rightValue)
     return (
       <div className={cx('shrink-0', phone ? 'text-right' : '')}>
-        <Label className="block text-[11px]">{info.rightLabel === 'Your turn in' ? 'You’re up in' : info.rightLabel}</Label>
+        <Label className="block text-[12px]">{info.rightLabel === 'Your turn in' ? 'You’re up in' : info.rightLabel}</Label>
         <span className={cx('block font-figure font-bold leading-none tabular-nums text-v3-ink', phone ? 'text-[24px]' : 'text-[28px]')}>
           {info.rightValue}
           {info.rightLabel === 'Your turn in' && <span className="ml-1 font-figure text-[12px] font-medium text-v3-ink3">{n === 1 ? 'pick' : 'picks'}</span>}
@@ -65,7 +65,7 @@ function ClockReadout({ engine, header, phone }) {
   if (!clockLength) {
     return (
       <div className={cx('shrink-0', phone ? 'text-right' : '')}>
-        <Label className="block text-[11px]">No clock</Label>
+        <Label className="block text-[12px]">No clock</Label>
         <span className="block font-figure text-[13px] text-v3-ink2">Take your time</span>
       </div>
     )
@@ -73,7 +73,7 @@ function ClockReadout({ engine, header, phone }) {
   const caution = urgent || paused
   return (
     <div role="timer" aria-label={`${fmtClock(timeLeft)} left${paused ? ', paused' : ''}`} className={cx('shrink-0 rounded-[4px] px-2 py-1', phone ? 'text-right' : '', caution ? 'bg-v3-warnWash' : '')}>
-      <Label className={cx('block text-[11px]', caution && 'text-v3-warn')}>{paused ? 'Paused' : urgent ? 'Hurry' : 'Time left'}</Label>
+      <Label className={cx('block text-[12px]', caution && 'text-v3-warn')}>{paused ? 'Paused' : urgent ? 'Hurry' : 'Time left'}</Label>
       <span className={cx('block font-figure font-bold leading-none tabular-nums', phone ? 'text-[28px]' : 'text-[28px]', caution ? 'text-v3-warn' : 'text-v3-ink')}>{fmtClock(timeLeft)}</span>
     </div>
   )
@@ -146,7 +146,7 @@ export default function LiveHeader({ engine, header, phone, room = null, autopic
             </a>
           )}
           <div className="min-w-0 flex-1">
-            <span className={cx('block truncate font-figure text-[11px] font-bold uppercase tracking-[0.12em]', myTurn ? 'text-v3-ink' : 'text-v3-ink3')}>{state}</span>
+            <span className={cx('block truncate font-figure text-[12px] font-bold uppercase tracking-[0.12em]', myTurn ? 'text-v3-ink' : 'text-v3-ink3')}>{state}</span>
             <span className="flex items-baseline gap-2">
               <span className="font-figure text-[28px] font-extrabold leading-none tabular-nums text-v3-ink">{header.over ? 'Final' : header.code || '—'}</span>
               {header.round && <span className="truncate font-figure text-[12px] tabular-nums text-v3-ink3">Rd {header.round}/{header.rounds}</span>}
@@ -260,14 +260,14 @@ export function PickRibbon({ engine, header }) {
           className={cx('relative flex min-w-[132px] shrink-0 flex-col justify-center border-r border-v3-bandSoft px-3', c.current && 'bg-v3-bandSoft')}
         >
           {c.mine && <span className="absolute inset-x-3 bottom-0 h-[3px] bg-white" aria-hidden="true" />}
-          <span className="flex items-center gap-1.5 font-figure text-[11px] font-bold tabular-nums tracking-[0.08em]">
+          <span className="flex items-center gap-1.5 font-figure text-[12px] font-bold tabular-nums tracking-[0.08em]">
             <span className={c.current ? 'text-white' : 'text-v3-bandInk'}>{c.code}</span>
             {c.current && <span className="text-white">· ON THE CLOCK</span>}
             {c.mine && !c.current && <span className="text-white">· YOU</span>}
           </span>
           {c.made ? (
             <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
-              <PosTag pos={c.made.player.pos} className="!h-[18px] !min-w-[28px] !text-[11px]" />
+              <PosTag pos={c.made.player.pos} className="!h-[18px] !min-w-[28px] !text-[12px]" />
               <span className="truncate text-[13px] text-white">{engine.shortName(c.made.player)}</span>
             </span>
           ) : (

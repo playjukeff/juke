@@ -121,7 +121,7 @@ function FilterBar({ board, f, set, counts, total, priorYear, phone }) {
                 className={cx('flex min-h-[44px] min-w-[48px] shrink-0 flex-col items-center justify-center rounded-[4px] border px-2.5 font-figure text-[12px] font-semibold uppercase tracking-[0.05em] transition-colors', FOCUS, on ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:text-v3-ink')}
               >
                 <span>{pos === 'DST' ? 'D/ST' : pos}</span>
-                {c && pos !== 'FLEX' && <span className={cx('text-[11px] tabular-nums', on ? 'text-v3-bandInk' : c.short ? 'font-bold text-v3-ink' : 'text-v3-ink3')}>{c.text}</span>}
+                {c && pos !== 'FLEX' && <span className={cx('text-[12px] tabular-nums', on ? 'text-v3-bandInk' : c.short ? 'font-bold text-v3-ink' : 'text-v3-ink3')}>{c.text}</span>}
               </button>
             )
           })}
@@ -261,7 +261,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
                   <dl className="mt-2 grid grid-cols-4 gap-1 pl-[46px]">
                     {stats.map(({ c, raw }) => (
                       <div key={c.key}>
-                        <dt className="font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{c.label}</dt>
+                        <dt className="font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{c.label}</dt>
                         <dd className="text-[15px]"><Cell col={c} raw={raw} /></dd>
                       </div>
                     ))}
@@ -281,10 +281,10 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
     return (
       <th key={col.key} scope="col" aria-sort={on ? (f.sortDir === 'asc' ? 'ascending' : 'descending') : undefined} className="border-b border-v3-rule bg-v3-sheet p-0 text-right" style={{ minWidth: col.width + 10 }}>
         {col.sortable ? (
-          <button type="button" onClick={() => sort(col.key)} className={cx('inline-flex h-9 w-full items-center justify-end gap-0.5 px-2 font-figure text-[11px] font-bold uppercase tracking-[0.08em]', FOCUS, on ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
+          <button type="button" onClick={() => sort(col.key)} className={cx('inline-flex h-9 w-full items-center justify-end gap-0.5 px-2 font-figure text-[12px] font-bold uppercase tracking-[0.08em]', FOCUS, on ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
             {col.label}<span aria-hidden="true" className="w-2 text-[10px]">{on ? (f.sortDir === 'asc' ? '▲' : '▼') : ''}</span>
           </button>
-        ) : <span className="inline-flex h-9 items-center px-2 font-figure text-[11px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{col.label}</span>}
+        ) : <span className="inline-flex h-9 items-center px-2 font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{col.label}</span>}
       </th>
     )
   }
@@ -299,12 +299,12 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
           <thead className="sticky top-0 z-10">
             <tr>
               <th scope="col" rowSpan={2} className="sticky left-0 z-20 border-b border-v3-rule bg-v3-sheet px-3 text-left align-bottom">
-                <button type="button" onClick={() => sort('board')} aria-pressed={f.sortBy === 'board'} className={cx('inline-flex h-9 items-center font-figure text-[11px] font-bold uppercase tracking-[0.08em]', FOCUS, f.sortBy === 'board' ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
+                <button type="button" onClick={() => sort('board')} aria-pressed={f.sortBy === 'board'} className={cx('inline-flex h-9 items-center font-figure text-[12px] font-bold uppercase tracking-[0.08em]', FOCUS, f.sortBy === 'board' ? 'text-v3-ink' : 'text-v3-ink3 hover:text-v3-ink')}>
                   Player · board order
                 </button>
               </th>
               {groups.map((g) => (
-                <th key={g.label || 'ref'} scope="colgroup" colSpan={g.keys.length} className="border-l border-v3-rule bg-v3-sheet px-2 pt-2 text-center font-figure text-[11px] font-bold uppercase tracking-[0.14em] text-v3-ink3">
+                <th key={g.label || 'ref'} scope="colgroup" colSpan={g.keys.length} className="border-l border-v3-rule bg-v3-sheet px-2 pt-2 text-center font-figure text-[12px] font-bold uppercase tracking-[0.14em] text-v3-ink3">
                   {g.label === 'Projected' ? seasonLabel : g.label}
                 </th>
               ))}
@@ -334,7 +334,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
                             {p.deep && <DeepTag />}
                           </span>
                           <span className="flex items-center gap-1.5">
-                            <PosTag pos={p.pos} className="!h-[18px] !min-w-[30px] !text-[11px]" />
+                            <PosTag pos={p.pos} className="!h-[18px] !min-w-[30px] !text-[12px]" />
                             <span className="font-figure text-[12px] text-v3-ink3">{p.team || 'FA'}</span>
                           </span>
                         </span>

@@ -18,7 +18,7 @@ import { FOCUS } from '../kit.jsx'
    say something the measurement did not. */
 
 const TABLE = 'w-full bg-v3-sheet text-[13px]'
-const TH = 'whitespace-nowrap border-b border-v3-rule bg-v3-paper px-2.5 py-2 font-figure text-[11px] font-bold uppercase tracking-[0.08em] text-v3-ink3'
+const TH = 'whitespace-nowrap border-b border-v3-rule bg-v3-paper px-2.5 py-2 font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-v3-ink3'
 const TD = 'whitespace-nowrap border-b border-v3-rule px-2.5 py-2 font-figure tabular-nums'
 
 function Empty({ children }) {
@@ -28,7 +28,7 @@ function Empty({ children }) {
 function Box({ label, children, note, className = '' }) {
   return (
     <div className={cx('rounded-[4px] border border-v3-rule bg-v3-sheet px-3 py-2.5', className)}>
-      <Label className="block text-[11px]">{label}</Label>
+      <Label className="block text-[12px]">{label}</Label>
       <div className="mt-1 font-figure text-[20px] font-bold leading-tight tabular-nums text-v3-ink">{children}</div>
       {note && <p className="mt-0.5 text-[13px] leading-snug text-v3-ink2">{note}</p>}
     </div>
@@ -163,7 +163,7 @@ export function Projections({ summary, record }) {
           <div className="mt-2 grid grid-cols-3 gap-1.5">
             {summary.stats.map((s) => (
               <div key={s.label} className="rounded-[4px] bg-v3-paper px-2 py-1.5 text-center">
-                <p className="font-figure text-[11px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{s.label}</p>
+                <p className="font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-v3-ink3">{s.label}</p>
                 <p className="font-figure text-[15px] font-bold tabular-nums text-v3-ink">{s.value}</p>
               </div>
             ))}
@@ -276,7 +276,7 @@ export function News({ engine, player }) {
         <a key={n.url} href={n.url} target="_blank" rel="noopener noreferrer" className={cx('rounded-[4px] border border-v3-rule bg-v3-sheet p-3 hover:border-v3-ink', FOCUS)}>
           <p className="text-[15px] font-bold text-v3-ink">{n.title}</p>
           {n.summary && <p className="mt-1 text-[13px] leading-relaxed text-v3-ink2">{n.summary}</p>}
-          <p className="mt-1.5 font-figure text-[11px] uppercase tracking-[0.08em] text-v3-ink3">{n.source}{n.when ? ` · ${n.when}` : ''}</p>
+          <p className="mt-1.5 font-figure text-[12px] uppercase tracking-[0.08em] text-v3-ink3">{n.source}{n.when ? ` · ${n.when}` : ''}</p>
         </a>
       ))}
       <p className="text-[13px] leading-relaxed text-v3-ink3">Headlines from our news provider, linked rather than reproduced. Juke does not write these and does not endorse them.</p>

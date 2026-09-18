@@ -45,12 +45,12 @@ function Seat({ chair, index, held, canOrder, canClaim, onClaim, onHold, hostSea
       <span className={cx('w-5 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chair.you ? 'text-white' : 'text-v3-ink3')}>{index + 1}</span>
       <span className="min-w-0 flex-1 truncate text-[15px]">
         <span className={cx(chair.taken ? 'font-semibold' : '')}>{who}</span>
-        {index === hostSeat && <span className={cx('ml-1.5 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-ink3')}>host</span>}
+        {index === hostSeat && <span className={cx('ml-1.5 font-figure text-[12px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-ink3')}>host</span>}
       </span>
       {/* A chair somebody holds that the room is already picking for: they
           have dropped, and the room hands the seat to the CPU so the draft
           keeps moving. Said rather than left to look like a normal seat. */}
-      {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[11px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
+      {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[12px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
       {!chair.taken && <Glyph name="cpu" className={cx('h-4 w-4 shrink-0', chair.you ? 'text-white' : 'text-v3-ink3')} />}
     </>
   )

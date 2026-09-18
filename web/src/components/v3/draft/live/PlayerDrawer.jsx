@@ -103,7 +103,7 @@ export default function PlayerDrawer({ engine, player, onClose, canDraft, draftR
                 if (key === 'lasts' && raw != null) content = <span className={lastsTone(raw) === 'rose' ? 'text-v3-warn' : ''}>{raw}%</span>
                 return (
                   <div key={key} className="rounded-[4px] bg-v3-paper px-2.5 py-2">
-                    <dt><Label className="text-[11px]">{label}</Label></dt>
+                    <dt><Label className="text-[12px]">{label}</Label></dt>
                     <dd className="mt-0.5 font-figure text-[20px] font-bold leading-none tabular-nums text-v3-ink">{content}</dd>
                   </div>
                 )
