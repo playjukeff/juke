@@ -145,7 +145,7 @@ function Schedule({ team, snapshot, mine }) {
   if (!games) {
     return (
       <Sheet code="Schedule" aside="Not published">
-        <p className="text-[15px] leading-[1.55] text-v3-ink2">{platformFor(snapshot.provider).name} does not publish a season schedule on the snapshot, so there is no fixture list here. It publishes each week's pairing on its own, and the matchup page reads them.</p>
+        <p className="text-[15px] leading-[1.55] text-v3-ink2">{platformFor(snapshot.provider).name} does not publish a season schedule on the snapshot, so there is no schedule here. It publishes each week's pairing on its own, and the matchup page reads them.</p>
         <div className="mt-4"><GoLink href={matchupHref(snapshot.week, team, mine)}>{snapshot.week ? `Week ${snapshot.week}'s matchup, and every week` : 'The matchup page'}</GoLink></div>
       </Sheet>
     )

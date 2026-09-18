@@ -211,7 +211,7 @@ export function scenariosFor({ signedIn, league, history, stats, connectedLeague
       footer,
       // Only the guest half of the handoff promises "one tap"; a signed-in
       // manager below the floor is being told what the cards will become.
-      rightLabel: signedIn ? 'Run three mocks to personalise these' : 'One tap, settings preloaded',
+      rightLabel: signedIn ? 'Run three mocks to personalize these' : 'One tap, settings preloaded',
       derived: false,
     }
   }
