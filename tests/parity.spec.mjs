@@ -292,7 +292,7 @@ test("neither homepage contradicts the other about what Juke is", async ({ brows
    with different headlines, different sub-copy and different calls to
    action, so a line naming either alone writes today's date into an
    assertion — the trap shell-routes.spec.mjs already had to answer by
-   naming both headlines. SEASONAL below is lists, and one of each list has
+   naming both headlines. SEASONAL below is pairs, and one of each pair has
    to be on the page.
 
    And the in-season headline carries the week number ("Week 1 is here.
@@ -321,21 +321,16 @@ const REQUIRED = [
   "runs entirely in your browser",
 ];
 
-/* One of each list has to be present. Workstream B made the guest home
-   ONE page, the landing page, in every phase of the season: it carries the
-   week in its eyebrow rather than swapping headlines, so each list is a
-   single sentence today. They stay lists so a seasonal variant can come
-   back as a real pair. The old sentences are retired by design, not lost:
-   "Every call, with the math shown." became the landing's own headline and
-   section title, and "A rank tells you who goes first" is the method
-   section's support line. */
+/* One of each pair has to be present. Out of season first, in season
+   second — both read off the real page in their own state. */
 const SEASONAL = [
-  // The headline, whose line break is a <br>, so the stem is asserted.
-  ["Every call,"],
-  // The supporting line: the claim the whole product makes.
-  ["the player your league would start instead"],
+  // The headline.
+  ["Every call, with the math shown.", "Bring your league."],
+  /* The sub-copy's actual claim, which is a different claim in each state:
+     out of season it is about the board, in season about the week. */
+  ["A rank tells you who goes first", "who to start, who to claim, whether a trade is fair"],
   // The primary call to action.
-  ["Run a free mock draft"],
+  ["Start a free mock draft", "Connect your league"],
 ];
 
 test("each homepage carries its own agreed copy", async ({ browser }) => {
@@ -363,9 +358,7 @@ test("each homepage carries its own agreed copy", async ({ browser }) => {
      way this could pass while the page was wrong: a headline from each
      would satisfy every pair above and mean Now had rendered twice. */
   for (const [name, page] of [["desktop", desktop], ["the phone", phone]]) {
-    // Only a real pair can be in two states at once; a one-line entry is
-    // the same page in every season.
-    for (const alts of SEASONAL.filter((a) => a.length > 1)) {
+    for (const alts of SEASONAL) {
       const both = alts.every((a) => page.joined.toLowerCase().includes(a.toLowerCase()));
       expect(both, `${name} is in one season state, not both: ${alts[0]}`).toBe(false);
     }

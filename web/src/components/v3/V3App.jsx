@@ -23,7 +23,6 @@ import V3Call from './calls/V3Call.jsx'
 import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
-import { WelcomeRoute } from './landing/Landing.jsx'
 import YahooReturn from '../shell/YahooReturn.jsx'
 import FullValueTips from './FullValue.jsx'
 
@@ -452,7 +451,6 @@ function route(sub) {
   if (a === 'record') return { page: <V3Record /> }
   if (a === 'account') return { page: <V3Account /> }
   if (a === 'method') return { page: <V3Method doc={b || 'how-it-works'} /> }
-  if (a === 'welcome') return { page: <WelcomeRoute /> }
   return { page: <NotFound /> }
 }
 

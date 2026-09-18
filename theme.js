@@ -66,23 +66,3 @@
    someone who opened the site expecting to see it and did not. The owner
    reversed the scoping rather than the gate, so the overlay now plays on
    every cold load and nothing here needs to tell the two apart any more. */
-
-/* Is somebody probably signed in? (workstream B1)
-
-   The landing page is prerendered for a visitor, and before this a
-   signed-in reader saw it paint for a frame or more before the dashboard
-   replaced it. Clerk keeps a `__client_uat` cookie on the site's own
-   domain whose value is the last sign-in time, and "0" once signed out;
-   a non-zero value means a session probably exists. That is a HINT and
-   nothing reads it as proof: it only hides the landing page (index.css,
-   [data-auth-hint="in"] [data-landing]) until React has asked Clerk, and
-   Now removes it the moment the answer is "guest". A stale cookie costs a
-   visitor one blank frame; the alternative cost a reader a flash of the
-   wrong page on every load. Clerk may suffix the name, hence the pattern. */
-(function () {
-  try {
-    if (/(?:^|;\s*)__client_uat(?:_[\w-]+)?=([1-9]\d*)/.test(document.cookie)) {
-      document.documentElement.setAttribute("data-auth-hint", "in");
-    }
-  } catch (err) {}
-})();
