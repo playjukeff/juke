@@ -341,7 +341,7 @@ function Feature({ icon, label, children }) {
   )
 }
 
-function Section({ id, eyebrow, title, support, features, visual, flip = false, tile = false }) {
+function Section({ id, eyebrow, title, support, features, visual, flip = false, tile = false, actions = true }) {
   const ref = useRef(null)
   return (
     <section ref={ref} data-lsec="" aria-labelledby={id} className="relative isolate overflow-x-clip">
@@ -352,7 +352,7 @@ function Section({ id, eyebrow, title, support, features, visual, flip = false, 
           <Headline as="h2" id={id} data-lrise="" className="mt-4 text-[clamp(2.25rem,4.5vw,3.75rem)] leading-[1]">{title}</Headline>
           <p data-lrise="" className="mt-4 max-w-[40ch] text-[20px] leading-[1.45] text-v3-ink2">{support}</p>
           <ul className="mt-8 grid gap-6">{features}</ul>
-          <div data-lrise="" className="mt-10"><Actions /></div>
+          {actions ? <div data-lrise="" className="mt-10"><Actions /></div> : null}
         </div>
         <div data-lrise="" className={cx('relative', flip && 'lg:order-1', LIFT)}>{visual}</div>
       </div>
@@ -510,6 +510,7 @@ export default function Landing({ season, force = false }) {
             <Feature icon="record" label="Graded against itself">What was projected sits beside what happened, season by season.</Feature>
           </>}
           visual={<Sonar />}
+          actions={false}
         />
         <Comparison />
         <ClosingCall />
