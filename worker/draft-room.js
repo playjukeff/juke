@@ -42,7 +42,9 @@ import {
      took down. */
   nowSeconds,
   // Added with 0011: the sealed credential a private league needs.
-  putLeagueCredential, leagueCredentialBlob, credentialedLeagues
+  putLeagueCredential, leagueCredentialBlob, credentialedLeagues,
+  // Yahoo's one token per account, deleted with the account's last league.
+  deleteLeagueCredential
 } from "./store.js";
 
 /* Sleeper, read-only. Kept out of store.js for the same reason auth.js is:
@@ -60,6 +62,13 @@ import {
   lookupLeague as cbsLookupLeague, leagueSnapshot as cbsLeagueSnapshot,
   weekActuals as cbsWeekActuals
 } from "./cbs.js";
+import {
+  YAHOO_ACCOUNT, yahooConfigured, yahooLeagueKey, authorizeUrl as yahooAuthorizeUrl,
+  exchangeCode as yahooExchangeCode, refreshAccess as yahooRefreshAccess,
+  signState as yahooSignState, stateIsFor as yahooStateIsFor, yahooGet,
+  listLeagues as yahooListLeagues, lookupLeague as yahooLookupLeague,
+  leagueSnapshot as yahooLeagueSnapshot
+} from "./yahoo.js";
 
 /* Sealing the credential a private league needs. Kept out of store.js for
    the reason auth.js is: that file owns D1 and this owns the key, and a
@@ -1740,6 +1749,245 @@ async function cbsWeekRoute(request, env, ctx) {
   return new Response(JSON.stringify({ week: out.week }), { headers });
 }
 
+
+/* ---- Yahoo ----
+
+   The only platform here with a real OAuth grant, and so the only one whose
+   connect flow LEAVES the page: the reader signs in on Yahoo's own consent
+   screen, Yahoo sends them back to /connect/yahoo with a one-time code, and
+   the app trades that code here for a token scoped to Fantasy Sports read.
+   No password and no cookie ever reaches Juke. See yahoo.js's header.
+
+   Four routes, and every one of them needs an account -- there is no public
+   Yahoo league to read signed out, and the token belongs to somebody:
+
+     POST   /yahoo/authorize   the consent URL, with a signed `state`
+     POST   /yahoo/token       code -> token, sealed; answers the leagues
+     GET    /yahoo/leagues     the leagues again, from the stored token
+     DELETE /yahoo/leagues     forget the token, if no league still needs it
+     GET    /yahoo/snapshot    one league, the same vocabulary as the rest
+
+   One sealed row per ACCOUNT (`league_id = YAHOO_ACCOUNT`) rather than per
+   league, because the grant is per person and Yahoo may replace the refresh
+   token when it is spent -- a copy per league would go stale on its own. */
+
+function yahooJson(status, body, request) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: Object.assign({ "content-type": "application/json" }, corsFor(request))
+  });
+}
+
+/* A signed-in account's way of asking Yahoo something.
+
+   Answers `{ call }` or `{ call: null, reason }`. The access token lives an
+   hour, so it is refreshed when it is within a minute of expiring and again
+   if Yahoo answers 401 anyway -- at most once per request, however many
+   parallel reads hit the 401 together, because a refresh that raced itself
+   would spend the refresh token twice. A refreshed token is resealed and
+   written back, so the next request starts warm.
+
+   `needs-auth` is the grant being gone -- revoked from the reader's Yahoo
+   account, or never made -- and the fix is signing in to Yahoo again.
+   `offline` is Yahoo's token endpoint not answering, which is weather: it
+   must not send somebody back through a consent screen that would not help. */
+async function yahooCaller(env, clerkId) {
+  if (!clerkId || !yahooConfigured(env)) return { call: null, reason: "needs-auth" };
+  const scope = { clerkId, provider: "yahoo", leagueId: YAHOO_ACCOUNT };
+  const blob = await leagueCredentialBlob(env, clerkId, "yahoo", YAHOO_ACCOUNT);
+  let cred = blob ? await openCredential(blob, scope, env) : null;
+  if (!cred || !cred.refreshToken) return { call: null, reason: "needs-auth" };
+
+  let refreshing = null;
+  const refresh = () => {
+    if (!refreshing) {
+      refreshing = (async () => {
+        const t = await yahooRefreshAccess(env, cred.refreshToken);
+        if (!t.accessToken) {
+          return t.error === "offline" || /^http-5/.test(String(t.error)) ? "offline" : "needs-auth";
+        }
+        cred = Object.assign({}, cred, {
+          accessToken: t.accessToken,
+          refreshToken: t.refreshToken || cred.refreshToken,
+          expiresAt: t.expiresAt
+        });
+        const sealed = await sealCredential(cred, scope, env);
+        if (sealed) await putLeagueCredential(env, clerkId, "yahoo", YAHOO_ACCOUNT, sealed);
+        return true;
+      })();
+    }
+    return refreshing;
+  };
+
+  const warm = cred.accessToken && Number(cred.expiresAt) > Date.now() + 60 * 1000;
+  if (!warm) {
+    const ok = await refresh();
+    if (ok !== true) return { call: null, reason: ok };
+  }
+
+  const base = env.YAHOO_API_BASE || null;
+  const call = async (path) => {
+    const used = cred.accessToken;
+    let res = await yahooGet(path, used, base);
+    if (res.status === 401 && (await refresh()) === true && cred.accessToken !== used) {
+      res = await yahooGet(path, cred.accessToken, base);
+    }
+    return res;
+  };
+  return { call, reason: null };
+}
+
+/* The refusals a Yahoo route can answer before it asks Yahoo anything.
+
+   `not-configured` is this deployment having no Yahoo app registered --
+   YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET are worker secrets the account
+   owner sets once. `private-unavailable` is having no key to seal a token
+   with, and the one thing that must never happen then is keeping the token
+   in the clear -- credentials.js's rule, which applies to a scoped read
+   token exactly as it does to an ESPN session. */
+function yahooUnavailable(env, request) {
+  if (!yahooConfigured(env)) return yahooJson(503, { ok: false, error: "not-configured" }, request);
+  if (!canSealCredentials(env)) return yahooJson(503, { ok: false, error: "private-unavailable" }, request);
+  return null;
+}
+
+async function yahooAuthorizeRoute(request, env) {
+  const { user, error } = await requireUser(request, env);
+  if (error) return error;
+  const refused = yahooUnavailable(env, request);
+  if (refused) return refused;
+
+  /* The starting origin, only when it is one of the site's own production
+     addresses -- see signState(). A preview or localhost cannot complete a
+     Yahoo consent anyway: Yahoo returns to the registered address only. */
+  const origin = request.headers.get("Origin") || "";
+  const state = await yahooSignState(
+    user.id, env.YAHOO_CLIENT_SECRET, Date.now(), ALLOWED.indexOf(origin) >= 0 ? origin : null
+  );
+  /* The state goes back to the page as well as into the URL, so the page
+     can tell its own return from a link somebody sent it. That check is a
+     courtesy; the binding that matters is the signature, checked below. */
+  return yahooJson(200, { ok: true, url: yahooAuthorizeUrl(env, state), state }, request);
+}
+
+/* Code -> token, and the token sealed before anything is read with it.
+
+   The state is checked against the account PRESENTING the code, which is
+   the whole defence against somebody sending a victim their own consent
+   link: the victim's code, arriving with the attacker's state, is refused
+   here, so the victim's leagues never become readable from the attacker's
+   account. A bad state and a bad code are told apart only as far as a
+   reader can act on it -- both mean "start again". */
+async function yahooTokenRoute(request, env) {
+  const { user, error } = await requireUser(request, env);
+  if (error) return error;
+  const refused = yahooUnavailable(env, request);
+  if (refused) return refused;
+
+  let body = null;
+  try {
+    const text = await request.text();
+    body = text && text.length <= 4096 ? JSON.parse(text) : null;
+  } catch {
+    body = null;
+  }
+  const code = String((body && body.code) || "").slice(0, 1024);
+  const state = String((body && body.state) || "").slice(0, 1024);
+  if (!code || !state) return yahooJson(400, { ok: false, error: "bad-request" }, request);
+
+  if (!(await yahooStateIsFor(state, user.id, env.YAHOO_CLIENT_SECRET))) {
+    return yahooJson(400, { ok: false, error: "bad-state" }, request);
+  }
+
+  const t = await yahooExchangeCode(env, code);
+  if (!t.accessToken || !t.refreshToken) {
+    const offline = t.error === "offline" || /^http-5/.test(String(t.error));
+    return yahooJson(offline ? 503 : 400, { ok: false, error: offline ? "offline" : "bad-code" }, request);
+  }
+
+  const sealed = await sealCredential({
+    accessToken: t.accessToken,
+    refreshToken: t.refreshToken,
+    expiresAt: t.expiresAt,
+    guid: t.guid
+  }, { clerkId: user.id, provider: "yahoo", leagueId: YAHOO_ACCOUNT }, env);
+
+  /* The users row first: league_credentials references it, D1 enforces the
+     foreign key, and this can be the very first thing an account ever
+     writes -- the same trap upsertUser() records in store.js. */
+  await touchUser(env, user.id);
+  const kept = sealed && await putLeagueCredential(env, user.id, "yahoo", YAHOO_ACCOUNT, sealed);
+  if (!kept) return yahooJson(503, { ok: false, error: "private-unavailable" }, request);
+
+  const call = (path) => yahooGet(path, t.accessToken, env.YAHOO_API_BASE || null);
+  const found = await yahooListLeagues(call);
+  return yahooJson(200, { ok: true, leagues: found.leagues, reason: found.reason }, request);
+}
+
+async function yahooLeaguesRoute(request, env) {
+  const { user, error } = await requireUser(request, env);
+  if (error) return error;
+
+  /* Forget the token -- but only when no connected league still reads
+     through it. The dialog calls this when a reader signs in to Yahoo and
+     then closes it without connecting anything, so a grant nobody is using
+     does not sit in this database. Disconnecting the last Yahoo league
+     does the same from the other side; see meLeaguesRoute(). */
+  if (request.method === "DELETE") {
+    const still = (await listLeagues(env, user.id)).some((l) => l.provider === "yahoo");
+    if (!still) await deleteLeagueCredential(env, user.id, "yahoo", YAHOO_ACCOUNT);
+    return yahooJson(200, { ok: true, kept: still }, request);
+  }
+
+  if (!yahooConfigured(env)) return yahooJson(503, { ok: false, error: "not-configured" }, request);
+  const conn = await yahooCaller(env, user.id);
+  if (!conn.call) {
+    return yahooJson(conn.reason === "offline" ? 503 : 403, { ok: false, error: conn.reason }, request);
+  }
+  const found = await yahooListLeagues(conn.call);
+  if (found.reason) {
+    return yahooJson(found.reason === "private" ? 403 : 503,
+      { ok: false, error: found.reason === "private" ? "needs-auth" : found.reason }, request);
+  }
+  return yahooJson(200, { ok: true, leagues: found.leagues }, request);
+}
+
+/* One league, crosswalked. Credentialed like every CBS read, so it touches
+   the edge cache in neither direction -- a key of league and season alone
+   would serve one reader's rosters to anybody who asked for the same key. */
+async function yahooSnapshotRoute(request, env, ctx) {
+  if (!originAllowed(request)) {
+    return new Response(JSON.stringify({ error: "forbidden" }), {
+      status: 403, headers: { "content-type": "application/json" }
+    });
+  }
+  const key = yahooLeagueKey(new URL(request.url).searchParams.get("league"));
+  if (!key) return yahooJson(400, { error: "bad-request" }, request);
+
+  const conn = await yahooCaller(env, await optionalUser(request, env));
+  if (!conn.call) {
+    return yahooJson(conn.reason === "offline" ? 503 : 403,
+      { error: conn.reason === "offline" ? "offline" : "private" }, request);
+  }
+
+  const resolve = (wanted) => resolveSleeperIds(env, wanted);
+  const out = await yahooLeagueSnapshot(key, conn.call, resolve);
+  if (!out.snapshot) {
+    const status = out.reason === "private" ? 403 : out.reason === "not-found" ? 404 : 503;
+    return yahooJson(status, { error: out.reason }, request);
+  }
+
+  // The pool is what the crosswalk reads, and on a fresh deployment it is
+  // empty until the nightly cron first runs -- the same fill-on-demand the
+  // ESPN and CBS snapshots do, off the response path.
+  if (!out.snapshot.crosswalkReady) {
+    after(ctx, syncPlayerPool(env).then((n) => {
+      if (n) console.log("player pool filled on demand:", n);
+    }));
+  }
+  return yahooJson(200, out.snapshot, request);
+}
+
 /* An hour. Long enough that an open tab is not a poller, short enough that
    a draft moved this morning is right by this afternoon. A draft time moves
    rarely and a league name almost never; what this is really bounding is how
@@ -1858,6 +2106,21 @@ async function refreshActiveLeague(env, clerkId, league) {
       return;
     }
 
+    if (league.provider === "yahoo") {
+      /* Through the account's one token, refreshed if it needs to be --
+         which also keeps that token warm for somebody who has the app open
+         and never visits a league screen. */
+      const conn = await yahooCaller(env, clerkId);
+      if (!conn.call) return;
+      const found = await yahooLookupLeague(league.leagueId, conn.call);
+      if (!found.league) return;
+      await refreshLeagueCache(env, clerkId, Object.assign({}, found.league, {
+        provider: "yahoo",
+        leagueId: league.leagueId
+      }));
+      return;
+    }
+
     const snapshot = await leagueSnapshot(league.leagueId, env.SLEEPER_BASE || SLEEPER_API);
     if (!snapshot) return;
     await refreshLeagueCache(env, clerkId, Object.assign({}, snapshot, {
@@ -1944,7 +2207,10 @@ async function meLeaguesRoute(request, env, ctx) {
 
     const wantId = String((patch && patch.leagueId) || "").slice(0, 40);
     const wantProvider = String((patch && patch.provider) || "sleeper").slice(0, 16);
-    if (!/^[A-Za-z0-9_-]{1,40}$/.test(wantId) || !/^[a-z]{1,16}$/.test(wantProvider)) {
+    /* A dot is allowed because a Yahoo league is its key -- `461.l.123456`
+       -- and a switch refused on the shape of an id this route stored
+       itself would be a menu item that does nothing. */
+    if (!/^[A-Za-z0-9_.-]{1,40}$/.test(wantId) || !/^[a-z]{1,16}$/.test(wantProvider)) {
       return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
     }
 
@@ -1968,6 +2234,14 @@ async function meLeaguesRoute(request, env, ctx) {
       return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
     }
     const ok = await deleteLeague(env, user.id, provider, leagueId);
+    /* A Yahoo league has no credential of its own to delete -- they all
+       read through the account's one token -- so disconnecting the LAST
+       one is what deletes the token. Leaving it would keep a read grant on
+       somebody's Yahoo account after the gesture they believe removed it. */
+    if (ok && provider === "yahoo") {
+      const still = (await listLeagues(env, user.id)).some((l) => l.provider === "yahoo");
+      if (!still) await deleteLeagueCredential(env, user.id, "yahoo", YAHOO_ACCOUNT);
+    }
     return new Response(JSON.stringify({ ok }), { headers });
   }
 
@@ -1990,7 +2264,7 @@ async function meLeaguesRoute(request, env, ctx) {
      sent, because this value is a primary key column and a caller could
      otherwise invent a provider nothing can ever read back. */
   const provider = String((body && body.provider) || "sleeper").slice(0, 16);
-  if (provider !== "sleeper" && provider !== "espn" && provider !== "cbs") {
+  if (provider !== "sleeper" && provider !== "espn" && provider !== "cbs" && provider !== "yahoo") {
     return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
   }
 
@@ -2006,6 +2280,12 @@ async function meLeaguesRoute(request, env, ctx) {
   let leagueId = String((body && body.leagueId) || "").slice(0, 200);
   if (provider === "cbs") {
     leagueId = cbsSlug(leagueId) || "";
+    if (!leagueId) {
+      return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
+    }
+  } else if (provider === "yahoo") {
+    // A Yahoo league is its key, `<game>.l.<id>` -- see yahooLeagueKey().
+    leagueId = yahooLeagueKey(leagueId) || "";
     if (!leagueId) {
       return new Response(JSON.stringify({ error: "bad-request" }), { status: 400, headers });
     }
@@ -2178,6 +2458,45 @@ async function meLeaguesRoute(request, env, ctx) {
     } else {
       failure = found.reason || "not-found";
     }
+  } else if (provider === "yahoo") {
+    /* Read through the account's token, which the reader granted on
+       Yahoo's own consent screen moments ago (see /yahoo/token). Nothing is
+       sealed here: the token is per account and is already stored, so a
+       Yahoo connect writes the league row and nothing else -- and there is
+       no half-connected state for a failed second write to leave behind. */
+    if (!yahooConfigured(env)) {
+      return new Response(JSON.stringify({ ok: false, error: "not-configured" }), { status: 503, headers });
+    }
+    const conn = await yahooCaller(env, user.id);
+    if (!conn.call) {
+      return new Response(
+        JSON.stringify({ ok: false, error: conn.reason === "offline" ? "offline" : "private" }),
+        { status: conn.reason === "offline" ? 503 : 403, headers }
+      );
+    }
+    const found = await yahooLookupLeague(leagueId, conn.call);
+    if (found.league) {
+      /* Yahoo KNOWS which team is the reader's -- they are signed in as its
+         manager -- so its answer wins over whatever the page posted. The
+         posted one is only a fallback for a league Yahoo did not mark, and
+         is still checked against the league's own teams for the reason the
+         ESPN branch gives: an ownerId naming nobody is a roster no screen
+         can find. */
+      const posted = String((body && body.ownerId) || "").slice(0, 16);
+      const known = found.league.teams.some((t) => t.teamId === posted);
+      league = {
+        provider: "yahoo",
+        leagueId: found.league.leagueId,
+        ownerId: found.league.myTeamId || (known ? posted : null),
+        name: found.league.name,
+        season: found.league.season,
+        totalTeams: found.league.totalTeams,
+        draftAt: found.league.draftAt || null,
+        draftStatus: found.league.draftStatus || null
+      };
+    } else {
+      failure = found.reason || "not-found";
+    }
   } else {
     const snapshot = await leagueSnapshot(leagueId, env.SLEEPER_BASE || SLEEPER_API);
     if (snapshot) {
@@ -2197,7 +2516,10 @@ async function meLeaguesRoute(request, env, ctx) {
 
   if (!league) {
     // 403 for a private ESPN league: it exists, and the reader can fix it.
-    const status = failure === "private" ? 403 : 404;
+    // 503 for a platform that did not answer, which is weather and not a
+    // league that is missing -- "not found" would send somebody to re-check
+    // a key that was right.
+    const status = failure === "private" ? 403 : failure === "offline" ? 503 : 404;
     return new Response(JSON.stringify({ ok: false, error: failure }), { status, headers });
   }
 
@@ -2658,6 +2980,48 @@ const handler = {
         }, corsFor(request)) });
       }
       return cbsSnapshotRoute(request, env, ctx);
+    }
+
+    /* Yahoo's. Every one carries an Authorization header, so every
+       preflight names it -- the header lesson that took every league down
+       for half an hour on 16 September. /yahoo/leagues names DELETE for the
+       PATCH lesson: a verb the preflight does not name is a request that
+       never leaves the page. */
+    if (url.pathname === "/yahoo/authorize" || url.pathname === "/yahoo/token") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "POST",
+          "access-control-allow-headers": "content-type, authorization",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      if (request.method !== "POST") return yahooJson(405, { error: "method" }, request);
+      return url.pathname === "/yahoo/authorize"
+        ? yahooAuthorizeRoute(request, env)
+        : yahooTokenRoute(request, env);
+    }
+
+    if (url.pathname === "/yahoo/leagues") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET, DELETE",
+          "access-control-allow-headers": "content-type, authorization",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return yahooLeaguesRoute(request, env);
+    }
+
+    if (url.pathname === "/yahoo/snapshot") {
+      if (request.method === "OPTIONS") {
+        // See /sleeper/snapshot above for why "authorization" is here.
+        return new Response(null, { headers: Object.assign({
+          "access-control-allow-methods": "GET",
+          "access-control-allow-headers": "content-type, authorization",
+          "access-control-max-age": "86400"
+        }, corsFor(request)) });
+      }
+      return yahooSnapshotRoute(request, env, ctx);
     }
 
     if (url.pathname === "/me/leagues") {

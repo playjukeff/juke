@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Connecting Yahoo &middot; Juke</title>
+  <meta name="robots" content="noindex">
+  <!-- Where Yahoo sends a reader back after they approve Juke on its own
+       consent screen. Registered with the Yahoo app as
+       https://jukeff.com/connect/yahoo, so this path may not move.
+
+       It does one thing -- hand the one-time code to the app and go back --
+       and it does it in an external script because the site's CSP refuses
+       inline ones. Nothing here is ?v=-stamped on purpose: it loads no
+       shared asset, so there is no address for the nightly to keep in step,
+       and every path is absolute for 404.html's reason. -->
+  <link rel="icon" href="/juke-icon-tile.svg" type="image/svg+xml">
+  <style>
+    /* Brand navy, which is the same in both themes, and white on it -- the
+       one pairing a page with no stylesheet can name directly. */
+    html, body { margin: 0; background: #0a1119; color: #fff; }
+    main {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      padding: 24px 16px; box-sizing: border-box; text-align: center;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    a { color: #fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>Taking you back to Juke&hellip;</p>
+    <p><a href="/#/account">Continue</a></p>
+  </main>
+  <script src="/connect/yahoo.js"></script>
+</body>
+</html>

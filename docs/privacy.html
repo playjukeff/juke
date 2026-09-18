@@ -9,13 +9,13 @@
        reason: this page shares style.css and has no toggle of its own, so it
        has to honour a choice made next door rather than reverting to light
        halfway through a visit. -->
-  <script src="../theme.js?v=202609171523"></script>
+  <script src="../theme.js?v=202609180130"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../style.css?v=202609171523">
+  <link rel="stylesheet" href="../style.css?v=202609180130">
 
   <link rel="icon" href="../juke-icon-tile.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="../juke-icon-tile-32.png">
@@ -116,8 +116,11 @@
       Written to describe what the code actually does rather than to read
       like a generic policy &mdash; every claim below was checked against the
       source and the live configuration before being written down. It hasn't
-      been reviewed by a lawyer. Last updated 2 September 2026: accounts
-      arrived, and the previous version of this page said Juke had none.
+      been reviewed by a lawyer. Last updated 18 September 2026: Juke can
+      read a Yahoo league through a permission you grant on Yahoo's own
+      page, which is being tested before it is offered to everybody. The
+      update before that, 2 September 2026, was accounts arriving, when the
+      previous version of this page said Juke had none.
     </div>
 
     <div class="toc">
@@ -188,6 +191,7 @@
       <tr><td class="k">Your finished drafts</td><td>One row per completed mock: the picks, the league it was, and the grade report, against your account id and the date it finished.</td></tr>
       <tr><td class="k">Leagues you connected</td><td>For each one: which platform, its id, which team in it is yours, and a cached copy of its name, season and size so the header can draw without asking the platform again on every page.</td></tr>
       <tr><td class="k">The sign-in some leagues need</td><td><b>Only if you connect a private ESPN league, or any CBS league.</b> Neither offers a read-only key to third parties, so the only way to read one is with the value your own browser uses to sign in &mdash; two of them for ESPN, one for CBS &mdash; which you paste in yourself, and which we encrypt before storing. See below.</td></tr>
+      <tr><td class="k">Yahoo's permission to read</td><td><b>Only if you connect a Yahoo league.</b> You approve Juke on Yahoo's own page, and what Yahoo hands back is a permission to read your fantasy leagues &mdash; not your password, and not a cookie. One per account, encrypted before storing. See below.</td></tr>
     </table>
     <p>
       <b>That last row is the one worth reading twice.</b> Everywhere else on
@@ -217,6 +221,18 @@
       cookie is set to last until 2037, which means disconnecting the
       league &mdash; or deleting your account &mdash; is the only thing
       that ends it. That is why the dialog says so before you paste it.
+    </p>
+    <p>
+      <b>Yahoo is different from both, and is the one we would pick if every
+      platform offered it.</b> Yahoo lets a third party ask properly: you
+      sign in on Yahoo's own page, Yahoo asks whether Juke may read your
+      fantasy leagues, and if you say yes it gives us a permission for
+      exactly that &mdash; nothing else in your Yahoo account, and nothing
+      that can change a roster. We never see your Yahoo password. The
+      permission is encrypted and tied to your account like the others, and
+      it is deleted when you disconnect your last Yahoo league or delete
+      your account. You can also switch it off yourself at any time from
+      your Yahoo account, which ends it immediately whatever we hold.
     </p>
     <p>
       That is the whole of it. No behavioural profile, no record of what you
@@ -391,7 +407,7 @@
 
   </main>
 
-  <script src="../back-to-top.js?v=202609171523" data-auto></script>
+  <script src="../back-to-top.js?v=202609180130" data-auto></script>
 
 </body>
 </html>

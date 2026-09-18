@@ -673,6 +673,12 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
           <p className="text-[15px] leading-[1.55] text-v3-ink2">
             {league.provider === 'espn'
               ? `${platform}'s per-player box score for a played week is not read, so the final above is the whole of what ${platform} tells Juke about week ${week}. Juke's own recount of a played week agrees with ${platform}'s about four weeks in five, which is not good enough to print beside it, and today's rosters are not that week's lineups — so neither is shown in its place.`
+              /* Yahoo's box score is not read at all yet -- nothing asked
+                 for it -- so the sentence may not say it "could not be
+                 read", which is CBS's failure branch below and claims an
+                 attempt that never happened. */
+              : league.provider === 'yahoo'
+                ? `${platform}'s per-player box score for a played week is not read yet, so the final above is the whole of what ${platform} tells Juke about week ${week}. Today's rosters are not that week's lineups, so they are not shown in its place.`
               : cbsWeek && cbsWeek.status === 'loading'
                 ? `Reading ${platform}'s box score for week ${week}…`
                 : cbsWeek && cbsWeek.status === 'ready'

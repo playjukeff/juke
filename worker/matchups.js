@@ -213,3 +213,78 @@ export function scheduleFromCbs(sched) {
 export function scheduleFromSleeper() {
   return null;
 }
+
+/* ---- Yahoo, which publishes the season once per TEAM ----
+ *
+ * `league/<key>/teams/matchups` answers every team's whole season in one
+ * request, so every game arrives TWICE -- once from each side. yahoo.js
+ * flattens Yahoo's nesting into plain rows and this deduplicates them on
+ * (week, the two team ids), which is the one key both copies share.
+ *
+ * **Yahoo has no home and away.** A matchup lists two teams, in whichever
+ * order the team being asked about puts them -- so the two copies of one
+ * game disagree about who is first. The sides are ordered by team id here,
+ * which makes `home` a stable label rather than a claim about a stadium,
+ * and is the only way the dedupe can be exact.
+ *
+ * **The winner is Yahoo's `winner_team_key`, never the points**, for the
+ * reason scheduleFromEspn() already gives: comparing points calls an
+ * unplayed 0-0 week a draw. `is_tied` is Yahoo's own tie.
+ *
+ * **Played is the matchup's `status`.** `preevent` carries "0.00" on both
+ * sides, which is not a score; `midevent` carries the points so far, the
+ * same partial figure ESPN's `totalPoints` carries on a live Sunday; and
+ * `postevent` is final, zero included -- a real team can score 0.00.
+ *
+ * NOT MEASURED against a real league yet -- see yahoo.js. */
+export function scheduleFromYahoo(rows) {
+  if (!Array.isArray(rows) || !rows.length) return null;
+
+  const games = new Map();
+  for (const r of rows) {
+    if (!r) continue;
+    const week = Number(r.week);
+    if (!week) continue;
+    const sides = (Array.isArray(r.sides) ? r.sides : []).filter((s) => s && s.teamId);
+    if (!sides.length) continue;
+    sides.sort((a, b) => Number(a.teamId) - Number(b.teamId) || String(a.teamId).localeCompare(String(b.teamId)));
+    const key = week + "|" + sides.map((s) => s.teamId).join("|");
+    if (games.has(key)) continue;
+
+    const status = String(r.status || "").toLowerCase();
+    const scored = status === "postevent" || status === "midevent";
+    const side = (s) => {
+      if (!s) return null;
+      const pts = Number(s.points);
+      return {
+        teamId: String(s.teamId),
+        points: scored && s.points !== undefined && s.points !== null && s.points !== "" && Number.isFinite(pts) ? pts : null,
+      };
+    };
+    const [a, b] = sides;
+    let winner = UNPLAYED;
+    if (status === "postevent") {
+      if (r.isTied) winner = "TIE";
+      else if (r.winnerTeamKey && a && a.teamKey === r.winnerTeamKey) winner = "HOME";
+      else if (r.winnerTeamKey && b && b.teamKey === r.winnerTeamKey) winner = "AWAY";
+    }
+
+    games.set(key, {
+      week,
+      home: side(a),
+      away: side(b || null),
+      winner,
+      // A consolation game is played after the regular season too, and a
+      // screen stopping at the last real week has to stop before it.
+      playoff: !!(r.isPlayoffs || r.isConsolation),
+    });
+  }
+
+  const matchups = [...games.values()].sort((x, y) => x.week - y.week);
+  if (!matchups.length) return null;
+  return {
+    weeks: matchups.reduce((n, r) => Math.max(n, r.week), 0),
+    regularSeasonWeeks: matchups.reduce((n, r) => (r.playoff ? n : Math.max(n, r.week)), 0),
+    matchups,
+  };
+}

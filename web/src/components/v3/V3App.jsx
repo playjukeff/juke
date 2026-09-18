@@ -23,6 +23,7 @@ import V3Call from './calls/V3Call.jsx'
 import V3Record from './record/V3Record.jsx'
 import V3Account from './account/V3Account.jsx'
 import V3Method from './method/V3Method.jsx'
+import YahooReturn from '../shell/YahooReturn.jsx'
 
 /* Juke — "Call Sheet". This is the site as of the cutover: its own
    information architecture rather than a restyle of what came before, and
@@ -451,6 +452,9 @@ export default function V3App({ sub = '' }) {
             <TabBar current={current} />
           </>
         )}
+        {/* Finishes a Yahoo connect on whichever route Yahoo returned the
+            reader to. Draws nothing until there is one to finish. */}
+        <YahooReturn />
       </div>
     </MotionRoot>
   )

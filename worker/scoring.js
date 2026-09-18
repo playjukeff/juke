@@ -1,3 +1,5 @@
+import { flat, members } from "./yahoo-json.js";
+
 /* A connected league's own scoring, in Juke's vocabulary.
  *
  * Juke fetched every one of these and threw them away. The rooms scored a
@@ -378,4 +380,160 @@ export function rulesFromCbs(scoringRules) {
   }
 
   return { rules, unmapped: unmapped.sort() };
+}
+
+
+/* ----------------------------------------------------------
+   Yahoo
+   ---------------------------------------------------------- */
+
+/* Yahoo names its own categories, and this matches on the NAME.
+ *
+ * A league's settings carry two lists: `stat_categories`, each with a
+ * `stat_id` and the category's own `name` ("Passing Yards"), and
+ * `stat_modifiers`, each with a `stat_id` and the value it pays. The id is
+ * used only to join the two. What decides which Juke rule a category is, is
+ * the name the league itself printed beside it.
+ *
+ * That is deliberate, and it is the lesson ESPN's table cost: a wrong
+ * statId does not throw, it scores the wrong category in silence. Yahoo's
+ * ids are published, but nothing here has been checked against a real
+ * league yet -- so an id table would be a table of guesses, and a guess
+ * that is off by one pays receptions as rushing touchdowns. Matched on the
+ * name, the same mistake cannot happen: a category whose name this does
+ * not recognise is REPORTED in `unmapped`, where a screen can admit to it,
+ * rather than landing on the wrong rule.
+ *
+ * ---- Two names that differ by one letter ----
+ *
+ * "Interceptions" is a passer throwing one (offence); "Interception" is a
+ * defence making one. "Sacks" is a quarterback taken down; "Sack" is a
+ * defence doing it. The patterns are anchored so neither can match the
+ * other, and `position_type` is checked where Yahoo sends it as a second
+ * guard.
+ *
+ * ---- Absent means unscored ----
+ *
+ * Yahoo lists what a league pays in `stat_modifiers`, so a category Juke
+ * knows and the league does not list is a real zero -- the same reading
+ * rulesFromEspn() makes, and set explicitly so the client's default does
+ * not quietly re-add a rule the league switched off. */
+const YAHOO_NAMED = [
+  // Passing
+  [/^passing yards$/i, ["pass_yd"], "O"],
+  [/^passing (touchdowns?|tds?)$/i, ["pass_td"], "O"],
+  [/^interceptions$/i, ["pass_int"], "O"],
+  [/^passing attempts$/i, ["pass_att"], "O"],
+  [/^completions$/i, ["pass_cmp"], "O"],
+  [/^passing 1st downs$/i, ["pass_fd"], "O"],
+  // Rushing
+  [/^rushing yards$/i, ["rush_yd"], "O"],
+  [/^rushing (touchdowns?|tds?)$/i, ["rush_td"], "O"],
+  [/^rushing 1st downs$/i, ["rush_fd"], "O"],
+  // Receiving
+  [/^receptions$/i, ["rec"], "O"],
+  [/^receiving yards$/i, ["rec_yd"], "O"],
+  [/^receiving (touchdowns?|tds?)$/i, ["rec_td"], "O"],
+  [/^receiving 1st downs$/i, ["rec_fd"], "O"],
+  [/^40\+ yard receptions$/i, ["rec_40p"], "O"],
+  // Everybody on offence. Yahoo counts a return touchdown and a two-point
+  // conversion once each, and Juke keeps the roles apart, so the one rate
+  // is carried to every Juke rule it covers -- ESPN_SHARED_IDS's shape,
+  // by name.
+  [/^return (touchdowns?|tds?)$/i, ["kr_td", "pr_td"], "O"],
+  [/^2-?point conversions?$/i, ["pass_2pt", "rush_2pt", "rec_2pt"], "O"],
+  [/^fumbles lost$/i, ["fum_lost"], "O"],
+  // Kicking -- made. Yahoo's top band is 50+ and Juke has two above fifty,
+  // so the one rate is both.
+  [/^field goals 0-19 yards$/i, ["fgm_0_19"], "K"],
+  [/^field goals 20-29 yards$/i, ["fgm_20_29"], "K"],
+  [/^field goals 30-39 yards$/i, ["fgm_30_39"], "K"],
+  [/^field goals 40-49 yards$/i, ["fgm_40_49"], "K"],
+  [/^field goals 50\+ yards$/i, ["fgm_50_59", "fgm_60p"], "K"],
+  [/^point after attempt made$/i, ["xpm"], "K"],
+  [/^point after attempt missed$/i, ["xpmiss"], "K"],
+  // Defence / special teams
+  [/^sack$/i, ["sack"], "DT"],
+  [/^interception$/i, ["int"], "DT"],
+  [/^fumble recovery$/i, ["fum_rec"], "DT"],
+  [/^touchdown$/i, ["def_td"], "DT"],
+  [/^safety$/i, ["safe"], "DT"],
+  [/^block kick$/i, ["blk_kick"], "DT"],
+  [/^kickoff and punt return touchdowns$/i, ["def_st_td"], "DT"],
+  [/^points allowed 0 points$/i, ["pts_allow_0"], "DT"],
+  [/^points allowed 1-6 points$/i, ["pts_allow_1_6"], "DT"],
+  [/^points allowed 7-13 points$/i, ["pts_allow_7_13"], "DT"],
+  [/^points allowed 14-20 points$/i, ["pts_allow_14_20"], "DT"],
+  [/^points allowed 21-27 points$/i, ["pts_allow_21_27"], "DT"],
+  [/^points allowed 28-34 points$/i, ["pts_allow_28_34"], "DT"],
+  [/^points allowed 35\+ points$/i, ["pts_allow_35p"], "DT"],
+];
+
+/* A missed field goal is where the two vocabularies are shaped differently
+ * and the translation is still exact.
+ *
+ * Yahoo charges each distance band on its own. Juke charges every miss
+ * `fgmiss` and then ADDS a band's own increment -- and has no 0-19 band,
+ * because Sleeper sends none. So `fgmiss` is whatever Yahoo charges inside
+ * twenty, and each Juke band is its Yahoo band less that base: a 45-yard
+ * miss then costs `fgmiss + fgmiss_40_49`, which is Yahoo's 40-49 charge to
+ * the point. Yahoo's 50+ is both of Juke's top bands. */
+const YAHOO_MISS = /^field goals missed (0-19|20-29|30-39|40-49|50\+) yards$/i;
+const MISS_BANDS = {
+  "20-29": ["fgmiss_20_29"], "30-39": ["fgmiss_30_39"],
+  "40-49": ["fgmiss_40_49"], "50+": ["fgmiss_50_59", "fgmiss_60p"],
+};
+
+export function rulesFromYahoo(settings) {
+  const s = settings && typeof settings === "object" ? settings : {};
+  const cats = members(flat(s.stat_categories).stats, "stat").map(flat);
+  const mods = members(flat(s.stat_modifiers).stats, "stat").map(flat);
+  /* No categories means nothing can be matched by name, and matching by id
+     alone is the thing this translator refuses to do. So an unreadable
+     table is null -- the client falls back to the Draft Room's rules and
+     says so -- rather than a table of zeros that reads as a real league. */
+  if (!cats.length || !mods.length) return { rules: null, unmapped: [] };
+
+  const value = new Map();
+  const bonus = new Set();
+  for (const m of mods) {
+    const n = Number(m.value);
+    value.set(String(m.stat_id), Number.isFinite(n) ? n : 0);
+    if (m.bonuses && members(m.bonuses, "bonus").length) bonus.add(String(m.stat_id));
+  }
+
+  const rules = {};
+  YAHOO_NAMED.forEach(([, keys]) => keys.forEach((k) => { rules[k] = 0; }));
+  const miss = {};
+  const unmapped = [];
+
+  for (const c of cats) {
+    const id = String(c.stat_id);
+    const name = String(c.name || "").trim();
+    if (!name) continue;
+    const pts = value.has(id) ? value.get(id) : 0;
+    const type = c.position_type ? String(c.position_type).toUpperCase() : null;
+
+    const band = name.match(YAHOO_MISS);
+    if (band) { miss[band[1]] = pts; continue; }
+
+    const spec = YAHOO_NAMED.find(([re, , pos]) => re.test(name) && (!type || !pos || type === pos));
+    if (spec) {
+      spec[1].forEach((k) => { rules[k] = pts; });
+      /* A yardage bonus (300 passing yards, say) has no Juke rule. The base
+         rate still maps; the bonus is reported by name so it is not lost. */
+      if (bonus.has(id)) unmapped.push(name + " (bonus)");
+      continue;
+    }
+    if (pts !== 0 || bonus.has(id)) unmapped.push(name);
+  }
+
+  const base = miss["0-19"] || 0;
+  rules.fgmiss = base;
+  for (const [band, keys] of Object.entries(MISS_BANDS)) {
+    const charge = miss[band] === undefined ? base : miss[band];
+    keys.forEach((k) => { rules[k] = charge - base; });
+  }
+
+  return { rules, unmapped: [...new Set(unmapped)].sort() };
 }
