@@ -207,7 +207,7 @@ function RowTags({ row, moved = false, live }) {
    reaches into React". */
 function Table({ rows, cols, sort, onSort, deepAt, liveById }) {
   return (
-    <div className="hidden overflow-x-auto md:block">
+    <div className="relative hidden overflow-x-auto md:block">
       <table className="w-full min-w-[900px] table-fixed border-collapse bg-v3-sheet border-0 [&_th]:border-0 [&_th]:bg-v3-sheet [&_td]:border-0">
         <caption className="sr-only">Players on tonight&apos;s board. Column headers sort the table.</caption>
         <thead>

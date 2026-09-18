@@ -371,7 +371,7 @@ function Footer() {
     <footer className="mt-section border-t border-v3-rule bg-v3-sheet">
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-8 px-4 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <JukeLogo size={30} markWidth={60} onLight color="rgb(var(--v3-ink))" />
+          <JukeLogo size={28} markWidth={56} onLight color="rgb(var(--v3-ink))" />
           <p className="mt-3 max-w-[46ch] text-[15px] leading-[1.6] text-v3-ink2">
             A solo mock draft runs entirely in your browser — nothing you draft is sent anywhere. Connecting a league is read-only; Juke never edits it.
           </p>
