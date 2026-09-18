@@ -46,9 +46,17 @@
 # usage telemetry, no different in kind from the beacon host already
 # allowed above; blocking it buys nothing (it carries no script to run) and
 # costs a permanently red console entry on every page load.
+#
+# **connect-src `*.ingest.sentry.io`** (and its `us`/`de` regions) — browser
+# error reports, web/src/lib/errorMonitoring.js. connect-src only, and that
+# is the whole point of how it is built: the SDK is part of our own bundle,
+# loaded from 'self', so no script-src host is added and nothing third-party
+# ever runs in the page. A host wildcard because the DSN names a per-org
+# subdomain (o<id>.ingest.us.sentry.io); CSP3 lets `*.` match more than one
+# label. With no VITE_SENTRY_DSN nothing ever connects there.
 
 /*
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com https://*.clerk.accounts.dev https://clerk.jukeff.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://sleepercdn.com https://*.giphy.com https://img.clerk.com; connect-src 'self' https://juke-draft-room.jukeff.workers.dev wss://juke-draft-room.jukeff.workers.dev https://site.api.espn.com https://*.clerk.accounts.dev https://clerk.jukeff.com https://clerk-telemetry.com; worker-src 'self' blob:; frame-src https://challenges.cloudflare.com; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com https://*.clerk.accounts.dev https://clerk.jukeff.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://sleepercdn.com https://*.giphy.com https://img.clerk.com; connect-src 'self' https://juke-draft-room.jukeff.workers.dev wss://juke-draft-room.jukeff.workers.dev https://site.api.espn.com https://*.clerk.accounts.dev https://clerk.jukeff.com https://clerk-telemetry.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; worker-src 'self' blob:; frame-src https://challenges.cloudflare.com; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'

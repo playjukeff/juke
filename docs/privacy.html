@@ -9,13 +9,13 @@
        reason: this page shares style.css and has no toggle of its own, so it
        has to honour a choice made next door rather than reverting to light
        halfway through a visit. -->
-  <script src="../theme.js?v=202609190900"></script>
+  <script src="../theme.js?v=202609190901"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../style.css?v=202609190900">
+  <link rel="stylesheet" href="../style.css?v=202609190901">
 
   <link rel="icon" href="../juke-icon-tile.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="../juke-icon-tile-32.png">
@@ -171,7 +171,9 @@
       source and the live configuration before being written down. It hasn't
       been reviewed by a lawyer. Last updated September 18, 2026: Juke can
       read a Yahoo league through a permission you grant on Yahoo's own
-      page, which is being tested before it is offered to everybody. The
+      page, which is being tested before it is offered to everybody. Also
+      on September 18: when something on a page breaks, a report of the
+      error can go to Sentry so it gets fixed &mdash; see section 05. The
       same day, the opening stopped saying an account exists only for your
       drafts, which stopped being true when leagues could be connected. The
       update before that, September 2, 2026, was accounts arriving, when the
@@ -366,9 +368,11 @@
       <tr><td class="k">Live scores</td><td>ESPN's public scoreboard, only fetched while there are games actually being played.</td></tr>
       <tr><td class="k">Fonts</td><td>Google Fonts (Gabarito, Hanken Grotesk, Montserrat, Inter). Archivo and IBM Plex Mono are served from Juke's own domain instead.</td></tr>
       <tr><td class="k">Sign-in</td><td>Clerk, while you are signing up, logging in or signed in &mdash; see section 02. Its own bot check (Cloudflare Turnstile) and its avatar images load the same way.</td></tr>
+      <tr><td class="k">Error reports</td><td>Sentry, and only when something on the page actually breaks. A report carries the error itself, your browser and operating system, the page you were on with everything after a <code>?</code> removed (so an invite code never goes with it), and the last few things the page did before it broke &mdash; which page, which button &mdash; but never what you typed. No account id and nothing from your drafts or leagues. Juke uses it to find and fix bugs, and for nothing else.</td></tr>
     </table>
     <p>
-      None of these get anything from Juke beyond the ordinary fact that your
+      Apart from an error report, which is described in its own row, none of
+      these get anything from Juke beyond the ordinary fact that your
       browser asked for a file &mdash; no draft data, no room data, nothing
       you've typed.
     </p>
@@ -465,7 +469,7 @@
 
   </main>
 
-  <script src="../back-to-top.js?v=202609190900" data-auto></script>
+  <script src="../back-to-top.js?v=202609190901" data-auto></script>
 
 </body>
 </html>

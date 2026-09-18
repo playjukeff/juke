@@ -12,12 +12,14 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.61.3",
     "@clerk/themes": "^2.4.57",
+    "@sentry/react": "^10.75.0",
     "framer-motion": "^13.1.0",
     "lucide-react": "^1.32.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.4.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.39",
