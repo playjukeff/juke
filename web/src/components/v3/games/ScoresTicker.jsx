@@ -1,6 +1,8 @@
-/* The game-day ticker: a strip of the week's NFL games under the header,
-   drawn only while a game is live or one kicks off within three hours. The
-   rest of the week it draws nothing.
+/* The scores ticker: the current NFL week's games under the header, all
+   week. The slate is ESPN's default scoreboard, whose weeks run Wednesday
+   to Tuesday — so on Wednesday the strip rolls over to the next week's
+   games on its own. It draws nothing when there is no slate (the
+   offseason, or ESPN unreachable).
 
    Each chip is the game page's own chip (GameChip, shared with the strip at
    the top of #/games/<id>) and opens that game. A reader with a connected
@@ -13,7 +15,7 @@
    kickoff pill already fills, so this costs no request of its own. It is
    null on the server and on the first client pass, which keeps it out of
    the prerender and so out of hydration. */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
 import { myTeam } from '../../rooms/waiverBoard.js'
 import { usePricing, useWeekSheet } from '../league/leagueData.js'
@@ -24,7 +26,6 @@ import { useSlate } from '../now/season.js'
 import { cx } from '../ui.jsx'
 
 const logo = (abbr) => `https://sleepercdn.com/images/team_logos/nfl/${boardTeam(abbr).toLowerCase()}.png`
-const SOON_MS = 3 * 60 * 60 * 1000
 const ORDER = { in: 0, pre: 1, post: 2 }
 
 /* One game as a pill: both logos, the score over the clock (or the two
@@ -49,16 +50,9 @@ export function GameChip({ g, on = false }) {
   )
 }
 
-/* Game day: a game is live, or the next kicks off within three hours. */
-export function isGameDay(games, now = Date.now()) {
-  if (!Array.isArray(games)) return false
-  return games.some((g) => g && (g.state === 'in' ||
-    (g.state === 'pre' && g.kickoff && Date.parse(g.kickoff) - now <= SOON_MS && Date.parse(g.kickoff) - now > -SOON_MS)))
-}
 
 /* The reader's league, their team this week, and the clubs their starters
-   play for. Mounted only on game day, so an ordinary page load does not
-   read a snapshot for a strip it will not draw. */
+   play for. Mounted only when there is a slate to draw. */
 function useMyWeek() {
   const { league, status: ls } = useLeagueFresh()
   const connected = ls === 'connected' && league
@@ -98,8 +92,13 @@ function useMyWeek() {
   }, [ready, week, snapshot, league, hasSchedule, sw, pricing.byId, sheet])
 }
 
-/* "Today", "Yesterday", "Tomorrow", otherwise "Sun · Sep 20". */
-function dayLabel(t) {
+/* "Today", "Yesterday", "Tomorrow", otherwise "Sep 20", then the week:
+   "Yesterday · Wk 2". */
+function dayLabel(t, week) {
+  const wk = week ? ` · Wk ${week}` : ''
+  return dayOnly(t) + wk
+}
+function dayOnly(t) {
   if (!Number.isFinite(t)) return 'Time TBD'
   const d = new Date(t)
   const start = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
@@ -107,7 +106,7 @@ function dayLabel(t) {
   if (diff === 0) return 'Today'
   if (diff === -1) return 'Yesterday'
   if (diff === 1) return 'Tomorrow'
-  return d.toLocaleDateString(undefined, { weekday: 'short' }) + ' · ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : '—')
@@ -130,7 +129,7 @@ function Ticker({ games }) {
     }
     return [...groups.values()]
       .sort((a, b) => a.t - b.t)
-      .map((d) => ({ ...d, label: dayLabel(d.t), rows: d.rows.sort((a, b) => mineOf(a) - mineOf(b) || (ORDER[a.state] ?? 3) - (ORDER[b.state] ?? 3) || (Date.parse(a.kickoff) || 0) - (Date.parse(b.kickoff) || 0)) }))
+      .map((d) => ({ ...d, label: dayLabel(d.t, d.rows[0] && d.rows[0].week), rows: d.rows.sort((a, b) => mineOf(a) - mineOf(b) || (ORDER[a.state] ?? 3) - (ORDER[b.state] ?? 3) || (Date.parse(a.kickoff) || 0) - (Date.parse(b.kickoff) || 0)) }))
   }, [games, me])
   // Starters whose game has not finished. A club on bye has no game on the
   // slate, so its players are not counted as still to play.
@@ -169,11 +168,6 @@ function Ticker({ games }) {
 
 export default function ScoresTicker() {
   const games = useSlate(true)
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60000)
-    return () => clearInterval(id)
-  }, [])
-  if (!isGameDay(games, now)) return null
+  if (!Array.isArray(games) || !games.some((g) => g && g.id)) return null
   return <Ticker games={games} />
 }
