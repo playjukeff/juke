@@ -179,7 +179,7 @@ the Stack section above, not a one-time migration hiccup.
 | `stats.js` | **GENERATED.** Stats, projections, depth charts by Sleeper ID. `pp` holds what we projected for seasons already played, so a forecast can be graded against what happened. |
 | `scripts/build_players.py` | The pipeline that writes the two generated files. |
 | `.github/workflows/update-players.yml` | Runs the pipeline daily at 11:00 UTC, and bumps `?v=` in `web/index.html` (not the root `index.html`) alongside `404.html` and the how-it-works doc. |
-| `og-image.png` | 1200x630 link-preview card. **A designed asset now, not a generated one** — it arrived with the shark handoff. `scripts/build_og.html` still draws a plainer fallback from the same mark; running it replaces the designed card with a generated one. The copy that is actually served is `web/public/og-image.png`; see the note on the repo root below. |
+| `og-image.png` | 1200x630 link-preview card. **GENERATED** by `node scripts/build_og.mjs`, which writes both copies. The layout is the designed card that arrived with the shark handoff, measured off its pixels, since that PNG had no source; the mark is `juke-shark-mark.svg` and the faces are the self-hosted ones, so the card matches the header. Change the tagline or the layout in the script, never in the PNG. The copy that is actually served is `web/public/og-image.png`; see the note on the repo root below. |
 | `favicon.ico`, `juke-icon-tile-{16,32}.png` | The root favicons, named by `404.html` and all three `docs/` pages. **GENERATED** — the PNGs by `scripts/build_icons.mjs`, the `.ico` assembled from them by `scripts/build_favicon_ico.py`. Duplicated into `web/public/`, which is the copy a browser reaches. The old `favicon-{16,32,48}.png` are gone: the icon is the head crop now, not the full mark. |
 | `scripts/build_favicon_ico.py` | Wraps `juke-icon-tile-{16,32,48}.png` in an `.ico` container, payloads unmodified. Stdlib only, no encoder, and it re-traces nothing — if the mark changes, run `build_icons.mjs` and then this. |
 | `web/public/juke-mark.js` | **VENDOR — ship as-is, do not edit.** Design package 01/03's `<juke-mark>` custom element: the shark and every animation, in a shadow root, no dependencies. Twelve variants; the app uses `form` (cold launch), `loader` (in-app waits) and `static` (reduced motion). It is also the ONE copy of the mark's geometry — `build_icons.mjs` derives every SVG and PNG from its `ART`. |
@@ -3529,7 +3529,7 @@ a file is deployed.**
 **Anything a page names with a leading `/` therefore has to be under
 `web/public/` or in `LEGACY_FILES`.** There is no third place. The root copies
 of `og-image.png` and the favicons are kept because that is where git has
-always held them and where `scripts/build_og.html` and
+always held them and where `scripts/build_og.mjs` and
 `scripts/build_favicon_ico.py` write — but they reach nobody on their own, and
 a change made only there is a change nobody sees.
 
@@ -13646,21 +13646,37 @@ one of them can be checked.**
   because the whole point of the tool is to be believed. Redirect to a file
   instead, or `set -o pipefail`.
 
-- **Regenerating `og-image.png` needs node, not a click.** The card is drawn to
-  a canvas by `scripts/build_og.html`, which hangs the PNG off a download link.
-  That works in a real browser and does not work in a headless or sandboxed one
-  — the click lands a `.tmp` in Downloads that is cleaned up before it is
-  renamed. Playwright runs in node and has a filesystem, so it reads the same
-  data URL and writes the bytes: same artifact, no manual step, and no new
-  dependency, because the test runner is already here.
+- **Regenerating `og-image.png` is `node scripts/build_og.mjs`, not a click.**
+  It used to be `scripts/build_og.html`, a canvas page that hung the PNG off a
+  download link — which works in a real browser and not in a headless or
+  sandboxed one, where the click lands a `.tmp` in Downloads that is cleaned up
+  before it is renamed. The script draws the same kind of canvas inside
+  Playwright and writes the bytes itself: no manual step, and no new
+  dependency, because the test runner is already here. Pass a path to write
+  only that file, for a look before overwriting the real one.
 
-  **Refuse to write if the face did not load.** `document.fonts.check` before
-  reading the canvas — a share card silently generated in a fallback is worse
+  **Refuse to write if a face did not load, and the face's own status is the
+  test.** This note used to say `document.fonts.check` before reading the
+  canvas, and that check is vacuous for this job: it answers **true** for a
+  family nobody registered, because there is then nothing left to load.
+  Corrected in place 18 September 2026, found by feeding the generator a
+  truncated font. What refuses is `face.load()` rejecting, or `face.status`
+  not being `loaded`. A share card silently generated in a fallback is worse
   than not regenerating one, because it looks finished and fails in somebody
-  else's link preview.
+  else's link preview — **and the designed card is what that looks like**: it
+  shipped in Segoe UI Black, Segoe UI and Consolas, the Windows fallbacks for
+  faces its design tool did not have. So every face is inlined from
+  `web/public/fonts` rather than fetched or left to the machine.
 
   And read the PNG signature and dimensions back off the file afterwards. A
   byte count proves a file was written, not that it is an image.
+
+  **A link preview is cached by the platform that drew it**, so a new card at the
+  same URL does not reach a preview somebody has already seen, for however long
+  that platform keeps it. Facebook's and LinkedIn's sharing debuggers force a
+  re-scrape. A `?v=` on `og:image` would bust every cache at once, and would
+  also be restamped by the nightly's sed every morning, which is why it is not
+  there — a decision to revisit if a stale preview ever matters more than that.
 
 - **This repository lives in OneDrive, and OneDrive puts files back.** It is
   already recorded for `desktop.ini`; it also happens to real assets. A freshly

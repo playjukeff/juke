@@ -398,7 +398,7 @@ export default function Landing({ season, force = false }) {
           id="landing-math"
           eyebrow="The method"
           title="The math, shown."
-          support="A rank says who goes first. Juke says by how much, and shows the working."
+          support="A rank says who goes first. Juke says by how much, and shows the math."
           features={<>
             <Feature icon="info" label="Points over replacement">Every player priced against the one your league would start instead.</Feature>
             <Feature icon="check" label="Honest about kickers">Kickers and defenses are scored and never ranked — their order does not predict.</Feature>

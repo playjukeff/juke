@@ -26,18 +26,16 @@
 // bytes this script generated would be a false provenance claim.
 //
 // Playwright is already a dev dependency for the end-to-end suite, so this
-// adds no new tooling. Same argument as scripts/build_og.html being driven
-// from node rather than clicked: a headless browser has a filesystem, and a
-// download link does not survive one.
+// adds no new tooling. Same argument as scripts/build_og.mjs: a headless
+// browser has a filesystem, and a download link does not survive one.
 //
 //   node scripts/build_icons.mjs
 //   py scripts/build_favicon_ico.py     <- run this afterwards; the .ico is
 //                                          assembled from the PNGs this writes
 //
-// og-image.png is deliberately NOT in this list. It is a designed asset that
-// arrived with the shark handoff, not a generated one, and scripts/build_og.html
-// draws a plainer fallback - running it would quietly swap the designed card
-// for a machine-drawn one. See CLAUDE.md's Files table.
+// og-image.png is not in this list. It has its own generator,
+// scripts/build_og.mjs, which draws the designed card's layout from the
+// juke-shark-mark.svg this script writes - so run this first if the mark moves.
 
 import { chromium } from '@playwright/test'
 import { readFileSync, writeFileSync } from 'node:fs'

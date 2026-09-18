@@ -321,7 +321,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
       </div>
 
       {/* ---- The working ---- */}
-      <section aria-label="The working" className="grid gap-4">
+      <section aria-label="The math" className="grid gap-4">
         <div className="overflow-x-auto">
           <Seg label="Wire views" value={view} onChange={setView} options={tabs} className="min-w-max" />
         </div>
