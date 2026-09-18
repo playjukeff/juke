@@ -731,7 +731,16 @@ export async function leagueSnapshot(slug, season, base, resolve) {
       waiverBudget: null,
       waiver: waiverFromCbs(rules && rules.transactions),
       tradeDeadline: tradeDeadlineFromCbs(rules && rules.transactions),
-      scoring: scoring.rules,
+      /* `rules`, the name every reader uses -- ESPN's and Sleeper's
+         snapshots have always published it under this key, and every room
+         reads `snapshot.rules`. This shipped as `scoring:`, so no room ever
+         saw a CBS league's scoring: every CBS league was scored with the
+         default table while the screens honestly said "your league's
+         scoring could not be read". Nothing threw, because a field nobody
+         reads is a field nothing complains about; test-cbs.mjs only ever
+         checked rulesFromCbs() directly, never what the snapshot called
+         the answer. It asserts the key now. */
+      rules: scoring.rules,
       scoringUnmapped: scoring.unmapped,
       lineup: lineupFromCbs(rules),
       /* Every week of it, from one request. Null when CBS does not answer,

@@ -398,6 +398,15 @@ check("nothing here publishes an in-progress score, so actuals is null",
 check("the schedule is not built in this pass and says so rather than guessing",
   snap.schedule, null);
 
+/* The key, not the translation. rulesFromCbs() was tested above and was
+   right all along; the snapshot published its answer as `scoring`, which no
+   room reads, so every CBS league was scored with the default table. Every
+   reader asks for `snapshot.rules`, as ESPN's and Sleeper's have always
+   carried it. */
+check("the league's scoring is published as `rules`, the key every room reads",
+  [snap.rules && snap.rules.rec, snap.rules && snap.rules.pass_td], [1, 4]);
+check("and not under a key nothing reads", "scoring" in snap, false);
+
 check("the crosswalk ran", snap.crosswalkReady, true);
 check("the league's shape rides on the snapshot",
   [snap.totalTeams, snap.week, snap.draftStatus],

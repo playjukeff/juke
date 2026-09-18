@@ -10474,6 +10474,24 @@ own assertion — and the first attempt at one crashed rather than failed,
 which is not the same thing and was rewritten until it failed for its own
 reason.
 
+### The snapshot published its scoring under a key nothing read
+
+Found 18 September 2026 while building the Yahoo adapter, by grepping for
+what every room READS rather than for what the other adapters write. The CBS
+snapshot carried the league's translated scoring as `scoring:`; every
+consumer — the Strategy Room, the lineup call, the league pages,
+`leagueGap.js` — reads `snapshot.rules`, which is what ESPN's and Sleeper's
+have always published. So **every connected CBS league was scored with the
+default table** while the screens said, truthfully, that the league's scoring
+could not be read.
+
+`rulesFromCbs()` was right and was tested. Nothing tested what the snapshot
+CALLED its answer, which is the "right value, wrong column" shape this file
+keeps finding, landing on a field name. `test-cbs.mjs` asserts the key now,
+confirmed red with the old name put back. **When an adapter adds a snapshot
+field, grep for how the rooms read it, not only for how the other adapters
+write it.**
+
 ## The draft countdown, and the instant that outlives its draft
 
 Reported 5 September 2026: a connected league before its draft is ten teams
