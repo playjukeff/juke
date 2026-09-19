@@ -512,7 +512,12 @@ export default function V3App({ sub = '' }) {
               Skip to content
             </a>
             <TopBar current={current} ticker={current !== 'games'} />
-            <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-12 focus:outline-none sm:px-8 sm:pt-24 md:pb-0">{page}</main>
+            {/* pt-5 on a phone, not pt-12. Forty-eight pixels of air under a
+                sticky header is a desk's proportion: on a 390px screen it is
+                spent before the page's own eyebrow has started, and the
+                header is already a hard edge above it, so the gap is buying
+                separation that is not needed. sm: is untouched. */}
+            <main id="v3-main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1320px] px-4 pb-24 pt-5 focus:outline-none sm:px-8 sm:pt-24 md:pb-0">{page}</main>
             <p aria-live="polite" className="sr-only">{announce}</p>
             <Footer />
             <FullValueTips />

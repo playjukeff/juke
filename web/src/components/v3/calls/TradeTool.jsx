@@ -186,7 +186,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
     )
   const shell = (title, lede, body, act = action) => (
     <div className="grid gap-8">
-      <CallHead label={label} title={title} lede={lede} action={act} band={band} />
+      <CallHead label={label} title={title} reason={lede} action={act} band={band} />
       {body}
     </div>
   )

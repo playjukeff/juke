@@ -200,7 +200,7 @@ export default function V3Team({ teamId }) {
   if (!connected) {
     return (
       <div className="grid gap-section">
-        <PageHead label="League · team" title="Team pages are for a connected league." lede="Every team in your league gets a page — its roster priced this week and for the season, its record and its schedule. Connect a league and they open from the standings." action={<>{back}<ConnectCall primary /></>} />
+        <PageHead label="League · team" title="Team pages are for a connected league." reason="Every team in your league gets a page — its roster priced this week and for the season, its record and its schedule. Connect a league and they open from the standings." action={<>{back}<ConnectCall primary /></>} />
       </div>
     )
   }
@@ -216,7 +216,7 @@ export default function V3Team({ teamId }) {
   if (!team) {
     return (
       <div className="grid gap-section">
-        <PageHead label={`League · ${snapshot.name}`} title="No team by that address." lede={`${snapshot.name} has ${(snapshot.teams || []).length} teams and none of them answers to “${teamId}”. Every team opens from the standings.`} action={back} />
+        <PageHead label={`League · ${snapshot.name}`} title="No team by that address." reason={`${snapshot.name} has ${(snapshot.teams || []).length} teams and none of them answers to “${teamId}”. Every team opens from the standings.`} action={back} />
       </div>
     )
   }
@@ -238,7 +238,7 @@ export default function V3Team({ teamId }) {
 
   return (
     <div className="grid gap-8">
-      <PageHead label={`League · ${snapshot.name}${mine ? ' · your team' : ''}`} title={team.teamName} lede={lede} action={back} />
+      <PageHead label={`League · ${snapshot.name}${mine ? ' · your team' : ''}`} title={team.teamName} reason={lede} action={back} />
 
       <KpiGrid
         items={[

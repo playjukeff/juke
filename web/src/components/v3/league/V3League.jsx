@@ -522,7 +522,7 @@ function Connected({ league }) {
     ].filter(Boolean).join(' · ')
   } else if (status === 'loading') lede = `Reading ${league.name} from ${platform}…`
 
-  const head = <PageHead label={`League · ${platform} · read-only`} title={ready ? snapshot.name || league.name : league.name} lede={lede} action={<LeagueSwitcher />} />
+  const head = <PageHead label={`League · ${platform} · read-only`} title={ready ? snapshot.name || league.name : league.name} reason={lede} action={<LeagueSwitcher />} />
 
   if (!ready) {
     return (
@@ -582,7 +582,7 @@ export default function V3League() {
   if (status === 'loading') {
     return (
       <div className="grid gap-section">
-        <PageHead title="League" lede="Checking which league is yours…" />
+        <PageHead title="League" reason="Checking which league is yours…" />
         <Sheet band={false} aria-busy="true"><Skeleton lines={6} /></Sheet>
       </div>
     )

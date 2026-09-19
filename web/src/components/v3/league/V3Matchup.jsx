@@ -442,11 +442,16 @@ function ConnectedMatchup({ league, q }) {
   const mine = ready ? myTeam(snapshot, league) : null
   const asked = ready && q.team ? findTeam(snapshot, q.team) : null
   const focus = asked || mine || (view && view.games[0] ? view.games[0].sides[0].team : null)
+  /* `reason`, not `lede`: every branch of the sentence this builds is the
+     week's own state — a bye, a bracket that is not set yet, a schedule
+     that could not be read, or which week the figures below are priced
+     from. A phone that dropped it would show a table with no idea what it
+     was a table of. */
   const head = (title, lede, extra) => (
     <PageHead
       label={`League · matchup${ready && snapshot.name ? ` · ${snapshot.name}` : ''}`}
       title={title}
-      lede={lede}
+      reason={lede}
       action={<>{extra}<QuietButton href="#/league">League</QuietButton></>}
     />
   )
@@ -958,7 +963,7 @@ export default function V3Matchup() {
   if (status === 'loading') {
     return (
       <div className="grid gap-8">
-        <PageHead label="League · matchup" title="The matchup." lede="Checking which league is yours…" />
+        <PageHead label="League · matchup" title="The matchup." reason="Checking which league is yours…" />
         <Sheet band={false} aria-busy="true"><Skeleton lines={6} /></Sheet>
       </div>
     )

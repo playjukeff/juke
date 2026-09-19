@@ -325,6 +325,11 @@ export default function V3Players() {
   const [sort, setSort] = useState(saved.sort || { key: 'adp', dir: 'asc' })
   const [limit, setLimit] = useState(saved.limit || PAGE)
   const [more, setMore] = useState(false)
+  /* Closed on a phone, and `sm:block` on the paragraph itself is what
+     opens it at a desk — so the state is false on both sides of hydration
+     and the width is decided by CSS rather than by a render-time read of
+     the viewport, which is what React #418 costs this app when it is not. */
+  const [note, setNote] = useState(false)
   const [wanted, setWanted] = useState(saved.mode || null)
 
   const live = key ? liveFormat(engine) : 'half'
@@ -484,10 +489,13 @@ export default function V3Players() {
             <Chips label="Position" value={pos} onChange={setPos} options={['ALL', ...POSITIONS].map((p) => ({ value: p, label: p === 'DST' ? 'D/ST' : p === 'ALL' ? 'All' : p }))} />
           </div>
 
-          {/* Team and tenure. Always out at a desk; folded behind one button
-              on a phone, where six controls stacked above the list would put
-              the first player a screen and a half down. The button counts
-              what is set inside, so folded is still informative. */}
+          {/* Sort, team and tenure. Always out at a desk; folded behind one
+              button on a phone, where six controls stacked above the list
+              would put the first player a screen and a half down. The button
+              counts what is set inside, so folded is still informative.
+              Measured 19 September 2026: this block was 767px on a 390px
+              screen and the four things a reader came for were under all of
+              it. */}
           <button
             type="button"
             onClick={() => setMore((m) => !m)}
@@ -495,7 +503,7 @@ export default function V3Players() {
             aria-controls="v3-player-more"
             className="inline-flex min-h-[44px] items-center justify-between rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call md:hidden"
           >
-            <span>Team and tenure{extraSet ? <span className="ml-2 font-figure text-[13px] text-v3-ink2">· {extraSet} set</span> : null}</span>
+            <span>Sort, team and tenure{extraSet ? <span className="ml-2 font-figure text-[13px] text-v3-ink2">· {extraSet} set</span> : null}</span>
             <Icon name="arrow" className={cx('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', more ? '-rotate-90' : 'rotate-90')} />
           </button>
           <div id="v3-player-more" className={cx('grid-cols-1 items-end gap-3 md:grid md:grid-cols-[220px_auto]', more ? 'grid' : 'hidden')}>
@@ -507,32 +515,67 @@ export default function V3Players() {
               <Label>Tenure</Label>
               <TenureControl current={tenure} onChange={setTenure} />
             </div>
+            {/* Sorting joins the fold on a phone. A column head IS the sort
+                control at a desk, so this pair has always been md:hidden —
+                it was simply stacked above the table instead of inside the
+                one place a phone already keeps the controls it is not using
+                right now. A display:none grid child takes no track, so the
+                desktop panel above is unchanged. */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 md:hidden">
+              {/* Only this mode's own orders: offering "ROS pts" on a
+                  preseason list is a control that sorts by a column nobody
+                  can see, which is the sort arrow pointing at nothing in a
+                  different shape. */}
+              <SelectField id="v3-player-sort" label="Sort by" value={sort.key} onChange={(k) => setSort({ key: k, dir: SORTS[k].dir })}>
+                {['name', ...cols.map((c) => c.sort)].map((k) => <option key={k} value={k}>{SORTS[k].label}</option>)}
+              </SelectField>
+              <QuietButton
+                onClick={() => setSort((s) => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
+                aria-label={`Sort direction: ${sort.dir === 'asc' ? 'ascending' : 'descending'}. Reverse it.`}
+                className="px-4"
+              >
+                {sort.dir === 'asc' ? 'Low → high' : 'High → low'}
+              </QuietButton>
+            </div>
           </div>
-          </div>
-
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 md:hidden">
-            {/* Only this mode's own orders: offering "ROS pts" on a
-                preseason list is a control that sorts by a column nobody
-                can see, which is the sort arrow pointing at nothing in a
-                different shape. */}
-            <SelectField id="v3-player-sort" label="Sort by" value={sort.key} onChange={(k) => setSort({ key: k, dir: SORTS[k].dir })}>
-              {['name', ...cols.map((c) => c.sort)].map((k) => <option key={k} value={k}>{SORTS[k].label}</option>)}
-            </SelectField>
-            <QuietButton
-              onClick={() => setSort((s) => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
-              aria-label={`Sort direction: ${sort.dir === 'asc' ? 'ascending' : 'descending'}. Reverse it.`}
-              className="px-4"
-            >
-              {sort.dir === 'asc' ? 'Low → high' : 'High → low'}
-            </QuietButton>
           </div>
 
           {/* What the numbers on screen ARE, in the mode they are drawn in.
               A figure that changed meaning when a control moved and kept
               its caption would be this project's own right-value-wrong-
-              column bug, with a horizon instead of a table. */}
+              column bug, with a horizon instead of a table.
+
+              Folded on a phone, open at a desk. Measured at 390px it is
+              215px — the single largest thing in this block, larger than
+              any group of controls in it, sitting between the reader and
+              the table it is about.
+
+              This is a disclosure where PageHead's lede is simply dropped,
+              and the line between them is worth stating because it looks
+              inconsistent. A lede DESCRIBES a page whose content restates
+              it, so nothing is lost by dropping it. This DEFINES the
+              columns and is restated nowhere, so it cannot be dropped —
+              and a definition a reader needs once, then never again, is
+              exactly what a disclosure is for. It stays attached to the
+              table either way, which is the requirement above.
+
+              <details> rather than a button and state: it is one element,
+              it is open by default at a desk through the `open` attribute,
+              and a phone reader can find it by search-in-page, which a
+              conditionally-unmounted panel defeats. */}
           {key && (
-            <p className="max-w-[85ch] text-[13px] leading-[1.5] text-v3-ink3">
+            <div>
+              <button
+                type="button"
+                onClick={() => setNote((n) => !n)}
+                aria-expanded={note}
+                aria-controls="v3-player-note"
+                className="-mx-1 inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[13px] font-semibold text-v3-ink2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call sm:hidden"
+              >
+                What these numbers are
+                <Icon name="arrow" className={cx('h-3.5 w-3.5 transition-transform duration-150 motion-reduce:transition-none', note ? '-rotate-90' : 'rotate-90')} />
+              </button>
+              <p id="v3-player-note" className={cx('max-w-[85ch] text-[13px] leading-[1.5] text-v3-ink3 sm:block', note ? 'block' : 'hidden')}>
               {mode === 'ros' && (
                 <>
                   Rest of season is a rate for the weeks he has left — what he was projected to average, pulled toward what he has actually
@@ -555,7 +598,8 @@ export default function V3Players() {
                 </>
               )}
               Kickers and defenses keep their points and are never rated.
-            </p>
+              </p>
+            </div>
           )}
         </div>
 

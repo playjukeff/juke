@@ -277,13 +277,13 @@ function WeekCall({ sheet, week }) {
         <>
           <div className="mt-3 flex items-start gap-3">
             <PosTag pos={call.pos} className="mt-1.5" />
-            <p className="min-w-0 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">{call.title}</p>
+            <p className="min-w-0 text-[18px] font-black leading-tight tracking-[-0.01em] text-v3-ink sm:text-[22px]">{call.title}</p>
           </div>
           <p className="mt-2 font-figure text-[15px] text-v3-ink2">{call.figure}</p>
         </>
       ) : (
         <>
-          <p className="mt-3 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">Nothing needs doing this week.</p>
+          <p className="mt-3 text-[18px] font-black leading-tight tracking-[-0.01em] text-v3-ink sm:text-[22px]">Nothing needs doing this week.</p>
           <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">No swap on your bench clears a point, nothing on the wire beats what you hold, and every starter is available.</p>
         </>
       )}

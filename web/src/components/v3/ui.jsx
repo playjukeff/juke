@@ -128,9 +128,16 @@ export function cx(...parts) {
    Labels in v3 and almost all are exactly what they should be: a quiet
    uppercase key beside a figure. Raising the tier globally would be
    shouting in every card on the site. */
+/* `page` is 12px on a phone and 24/26 from `sm`, which is a change of ROLE
+   rather than a smaller version of one. At 24px above a 40px headline it is
+   part of the composition, and on a 390px screen that composition is three
+   wrapped lines of accent type above three more of headline — over 200px of
+   page furniture before anything a reader came for. At 12px it is the quiet
+   breadcrumb the default tier already is, and the accent is what keeps it
+   reading as the page's orientation rather than as a caption. */
 const LABEL_TIER = {
   default: 'text-[12px] tracking-[0.12em] text-v3-ink3',
-  page: 'text-[24px] leading-[1.1] tracking-[0.06em] text-v3-call sm:text-[26px]',
+  page: 'text-[12px] leading-[1.1] tracking-[0.12em] text-v3-call sm:text-[24px] sm:tracking-[0.06em] md:text-[26px]',
 }
 export function Label({ children, className = '', as: Tag = 'span', tier = 'default', ...rest }) {
   return (
@@ -292,7 +299,13 @@ export function ThemeChoice({ className = '' }) {
 
 /* A headline. Sentence case, upright, heavy — the opposite of both earlier
    builds' italic caps. `size` picks a step on one scale. */
-const H = { page: 'text-[clamp(2.5rem,5vw,4.875rem)] leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
+/* The page step starts at 26px rather than at the clamp's own 2.5rem floor.
+   A clamp whose minimum is 40px is a minimum nothing can get under, and at
+   390px a page title routinely wrapped to three lines of it — 126px spent on
+   a heading that is read once. 26px is still unmistakably the page's title
+   beside 15px body, and it costs one line or two. The clamp is untouched
+   from `sm` up, so no desktop heading moves. */
+const H = { page: 'text-[26px] leading-[1.1] sm:text-[clamp(2.5rem,5vw,4.875rem)] sm:leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
 export function Headline({ children, size = 'page', as: Tag = 'h1', className = '', ...rest }) {
   return (
     <Tag className={cx('font-sheet font-black tracking-[-0.025em] text-v3-ink [text-wrap:balance]', H[size], className)} {...rest}>
@@ -308,16 +321,44 @@ export function Headline({ children, size = 'page', as: Tag = 'h1', className = 
    is longer — never on a cold load, where it is simply there. A lede that IS
    data (a record, a rank, the arithmetic of a call) carries digits and so is
    never streamed. */
-export function PageHead({ label, title, lede, action }) {
+/* ---- `lede` and `reason` are two different promises ----
+
+   Measured on the built site at 390x844, 19 September 2026: the first real
+   figure on #/record was at y=1386 — a screenful and a half of prose before
+   a number — on #/league at y=843, and the first viewport of every page
+   carried 197 to 522 characters of it. Almost all of that is this component,
+   because almost every page opens with one.
+
+   A `lede` DESCRIBES a page whose content is right there underneath it:
+   "Rank them by the weeks that are left, by what they have actually scored,
+   or by the preseason board" sits above the three controls that say exactly
+   that. On a desk it is orientation. On a phone it is the thing standing
+   between a reader and the list, and it is the single most expensive habit
+   in v3. So a lede does not render below `sm`.
+
+   A `reason` is prose the page is BROKEN without: why a team page is empty,
+   what a refusal means, what the reader has to do next. An empty state whose
+   explanation is hidden is not tidier, it is a dead end — the rule this file
+   already keeps about a disabled Start button whose reason is folded away.
+   So a reason renders at every width, and it is the smaller step, because
+   what it has to do is be read rather than set a scene.
+
+   Deliberately not a disclosure. A collapsed "about this page" is a control
+   announcing that there is text you are not reading, which is worse on a
+   phone than the text simply not being there — and it would put a second
+   affordance on all twenty-four pages to recover copy that the screen
+   underneath already states. */
+export function PageHead({ label, title, lede, reason, action }) {
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-[860px]">
         {label && <Label tier="page" as="p">{label}</Label>}
         {/* 24ch holds the headline to about three lines at the top of its
             clamp — a team name is user-generated, and a long one must not
             push the first card off the screen. */}
-        <Headline className={cx('max-w-[24ch] [text-wrap:balance]', label ? 'mt-3' : '')}>{title}</Headline>
-        {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2" />}
+        <Headline className={cx('max-w-[24ch] [text-wrap:balance]', label ? 'mt-1 sm:mt-3' : '')}>{title}</Headline>
+        {lede && <StreamText as="p" text={lede} className="mt-4 hidden max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2 sm:block" />}
+        {reason && <p className="mt-3 max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2 sm:mt-4 sm:text-[18px]">{reason}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>

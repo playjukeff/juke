@@ -184,7 +184,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
     )
   const shell = (title, lede, body) => (
     <div className="grid gap-8">
-      <CallHead label={label} title={title} lede={lede} action={action} band={band} />
+      <CallHead label={label} title={title} reason={lede} action={action} band={band} />
       {body}
     </div>
   )

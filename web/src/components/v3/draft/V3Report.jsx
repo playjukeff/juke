@@ -266,7 +266,8 @@ function GradeFace({ grade, rank, teams }) {
 function Gate({ label, title, children, actions }) {
   return (
     <div className="grid grid-cols-1 gap-7 py-6">
-      <PageHead label={label} title={title} lede={children} />
+      {/* A gate says why it is a gate; that survives at every width. */}
+      <PageHead label={label} title={title} reason={children} />
       <div className="flex flex-wrap gap-2">{actions}</div>
     </div>
   )

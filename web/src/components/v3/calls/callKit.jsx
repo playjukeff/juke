@@ -44,11 +44,18 @@ export function BackToNow() {
 /* Every tool page opens the same way: the way back, the call as a sentence
    (the page's headline), its arithmetic in one line, and the situation band.
    `action` is the page's one primary action, when it has one. */
-export function CallHead({ label, title, lede, action, band }) {
+/* The line under a call's headline is `reason` rather than `lede`, at every
+   width, because on these three pages it is never a description of the page
+   — it is the call's own working ("you get 41 and send 38, so the swing is
+   +3 for you"), or the refusal that stands in for one ("Juke does not rank
+   a kicker, so it will not put a number on a trade containing one"). A
+   phone that showed the verdict and hid the arithmetic would be keeping the
+   half of this product anybody can get elsewhere. */
+export function CallHead({ label, title, reason, action, band }) {
   return (
     <div className="grid gap-5">
       <div><BackToNow /></div>
-      <PageHead label={label} title={title} lede={lede} action={action} />
+      <PageHead label={label} title={title} reason={reason} action={action} />
       {band}
     </div>
   )
