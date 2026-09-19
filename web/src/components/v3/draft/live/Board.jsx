@@ -113,7 +113,13 @@ export default function Board({ engine, version, onOpen, phone }) {
                     <span className={cx('block truncate font-figure text-[12px] font-bold uppercase tracking-[0.08em]', mine ? 'text-v3-bandInk' : 'text-v3-ink3')}>Seat {s + 1}</span>
                     <span className={cx('block truncate text-[13px] font-bold', mine ? 'text-white' : 'text-v3-ink')}>{mine ? 'Your team' : engine.teamLabel(s)}</span>
                     {!!strip.length && (
-                      <span className={cx('mt-1 flex gap-1 font-figure text-[12px] tabular-nums', mine ? 'text-v3-bandInk' : 'text-v3-ink3')} aria-label="Roster so far">
+                      /* Wraps: six position counts do not fit a 104px phone
+                         column, and the header is bottom-aligned with no
+                         fixed height, so a second line costs the board
+                         nothing where a cut count costs the reader a
+                         position. phone.spec's own sweep has reported this
+                         at over=9 on all ten columns. */
+                      <span className={cx('mt-1 flex flex-wrap gap-x-1 gap-y-0.5 font-figure text-[12px] tabular-nums', mine ? 'text-v3-bandInk' : 'text-v3-ink3')} aria-label="Roster so far">
                         {strip.map((x) => <span key={x.pos} className={x.count ? (mine ? 'text-white' : 'text-v3-ink') : ''}>{x.pos === 'DST' ? 'D' : x.pos[0]}{x.count}</span>)}
                       </span>
                     )}

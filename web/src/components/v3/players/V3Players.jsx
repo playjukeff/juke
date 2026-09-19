@@ -86,7 +86,11 @@ const MODE_COLS = {
     { key: 'rosDelta', label: 'Moved', sort: 'delta', w: 'w-[84px]' },
     { key: 'rosPts', label: 'ROS pts', sort: 'rosPts', w: 'w-[100px]' },
     { key: 'rosRate', label: 'Per game', sort: 'rosRate', w: 'w-[100px]' },
-    { key: 'rosGap', label: 'Over repl.', sort: 'rosGap', w: 'w-[110px]' },
+    /* Same label as pre's `vorp` column, so the same width: 110 was 8px
+       short of its own header and the sideways sweep has been reporting it
+       at 1440 for a while. A width hand-set against a string is wrong the
+       moment the string is longer than the guess. */
+    { key: 'rosGap', label: 'Over repl.', sort: 'rosGap', w: 'w-[124px]' },
     ...BYE_INJ,
   ],
   season: [
@@ -290,7 +294,7 @@ function PhoneList({ rows, cols, sort, mode, deepAt, liveById }) {
               <PlayerFace photo={r.photo} initials={r.initials} pos={r.pos} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>
-                <span className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
+                <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 overflow-hidden">
                   <RowTags row={r} moved={mode === 'ros' && shown !== 'delta'} live={liveById ? liveById.get(r.id) : undefined} />
                   {r.inj && <InjuryTag code={r.inj} />}
                 </span>

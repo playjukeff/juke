@@ -149,7 +149,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
   const pending = rows.length - good - bad
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <div>
         <Label>Week {n} · {isNow ? 'this week' : game && game.playoff ? 'playoff week' : 'result'}</Label>
         {scored ? (

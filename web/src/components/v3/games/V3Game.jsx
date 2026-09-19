@@ -601,37 +601,58 @@ function GameStrip({ currentId }) {
 
 /* The phone's hero: each club's abbreviation set huge and faint in its own
    colour behind the name, the way Sleeper does it -- the one place the page
-   spends colour on identity rather than on a mark. */
+   spends colour on identity rather than on a mark.
+
+   THE CLUBS HAVE THE ROW TO THEMSELVES, and the score and the status sit
+   under them. It was one three-track row -- club, meta, club -- and the meta
+   track is `auto` against two `minmax(0,1fr)` sides, so it takes its whole
+   max-content width and the sides yield to it. Measured at 390px: the
+   kickoff line "SUN, SEP 20 AT 12:00 PM" is 172px of a 342px row, leaving 85
+   for each club, and `overflow-hidden` -- which the watermark needs -- then
+   cut the name off rather than letting it wrap. "Panthers" wants 124 and
+   "Commanders" 162, so EVERY club was clipped on a phone, by 8px at best and
+   77 at worst, and the played state was no better: a 34px score is 110px of
+   centre and still leaves the sides 46 short of a long name.
+
+   There is no arrangement of that row that fits: two names need up to 324px
+   of a 342px row, so anything between them is 324 too many. The clubs get
+   the row, the meta gets its own line under it, and the score stays the
+   biggest thing in the block by being set large and centred rather than by
+   sitting in the middle of it. */
 function HeroPhone({ game }) {
   const played = game.state !== 'pre'
   const last = game.wp.length ? game.wp[game.wp.length - 1].home : null
   const side = (t, right) => (
-    <div className={cx('relative min-h-[88px] overflow-hidden', right ? 'text-right' : '')}>
+    <div className={cx('relative min-h-[76px] overflow-hidden', right ? 'text-right' : '')}>
       <span aria-hidden="true" className={cx('pointer-events-none absolute top-1/2 -translate-y-1/2 select-none font-black italic leading-none opacity-30', right ? '-right-2 text-v3-home' : '-left-2 text-v3-away')} style={{ fontSize: 58 }}>{t.abbr}</span>
       <div className="relative pt-4">
-        <p className="text-[22px] font-extrabold leading-none">{t.name}</p>
+        {/* Wraps rather than clips. Half a 390px row fits every club on the
+            board today with a few pixels to spare, so this never fires in
+            practice -- what it does is make the failure a second line
+            instead of a cut word the next time a name outgrows the box. */}
+        <p className="break-words text-[22px] font-extrabold leading-[1.05]">{t.name}</p>
         <p className="mt-1 font-figure text-[13px] text-v3-ink2">{t.record || ''}</p>
       </div>
     </div>
   )
   return (
     <section aria-label="Score" className="grid gap-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      <div className="grid grid-cols-2 items-start gap-2">
         {side(game.away, false)}
-        <div className="grid justify-items-center gap-0.5 text-center">
-          {played ? (
-            <p className="font-figure text-[34px] font-extrabold leading-none">
-              <span className={cx(game.state === 'post' && game.home.score > game.away.score && 'text-v3-ink3')}>{game.away.score}</span>
-              <span className="mx-1 text-v3-ink3">–</span>
-              <span className={cx(game.state === 'post' && game.away.score > game.home.score && 'text-v3-ink3')}>{game.home.score}</span>
-            </p>
-          ) : null}
-          <p className={cx('font-figure text-[13px] font-bold uppercase tracking-[0.06em]', game.state === 'in' ? 'text-v3-cost' : 'text-v3-ink2')}>
-            {game.state === 'pre' ? kickoffText(game.date) : game.detail}
-          </p>
-          {game.network ? <p className="font-figure text-[12px] text-v3-ink3">{game.network}</p> : null}
-        </div>
         {side(game.home, true)}
+      </div>
+      <div className="grid justify-items-center gap-0.5 text-center">
+        {played ? (
+          <p className="font-figure text-[34px] font-extrabold leading-none">
+            <span className={cx(game.state === 'post' && game.home.score > game.away.score && 'text-v3-ink3')}>{game.away.score}</span>
+            <span className="mx-1 text-v3-ink3">–</span>
+            <span className={cx(game.state === 'post' && game.away.score > game.home.score && 'text-v3-ink3')}>{game.home.score}</span>
+          </p>
+        ) : null}
+        <p className={cx('font-figure text-[13px] font-bold uppercase tracking-[0.06em]', game.state === 'in' ? 'text-v3-cost' : 'text-v3-ink2')}>
+          {game.state === 'pre' ? kickoffText(game.date) : game.detail}
+          {game.network ? <span className="text-v3-ink3"> · {game.network}</span> : null}
+        </p>
       </div>
       {last !== null ? (
         <p className="flex justify-between font-figure text-[12px] font-semibold uppercase tracking-[0.1em]">
