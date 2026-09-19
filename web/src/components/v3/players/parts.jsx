@@ -208,7 +208,14 @@ export function FigCell({ label, children, sub, className = '' }) {
     <div className={cx('min-w-0', className)}>
       <dt><Label className="text-[12px]">{label}</Label></dt>
       <dd className="mt-1 font-figure text-[22px] font-bold leading-none tabular-nums text-v3-ink">{children}</dd>
-      {sub && <dd className="mt-1 truncate text-[12px] text-v3-ink3">{sub}</dd>}
+      {/* Two lines rather than one truncated one. The strip's own caption
+          note records 105px a cell at 375px, which is about seventeen
+          characters -- and what shipped in it was "High · rest of se…", a
+          caption cut in the middle of the horizon it exists to name. A
+          clamp at two keeps the worst case bounded (the cells are a grid
+          row, so the tallest sets the height for all five) while letting a
+          caption that carries real arithmetic land whole. */}
+      {sub && <dd className="mt-1 line-clamp-2 text-[12px] leading-[1.35] text-v3-ink3">{sub}</dd>}
     </div>
   )
 }

@@ -76,15 +76,80 @@ function Header({ d, fit, engine }) {
      read as one number that changed its mind. */
   const ros = d.season ? d.season.ros : null
   const pre = (sub) => (d.season ? (sub ? `preseason · ${sub}` : 'preseason') : sub)
-  /* The horizon goes LAST here and first in pre(), which is not a slip. A
-     FigCell's sub truncates, and at 375px a third of the strip is about
-     105px: "rest of season · Very Low" loses the band, which is the half
-     that says something, while "Very Low · rest of season" loses the half a
-     reader can infer from every other caption around it.
+  /* The horizon goes LAST here and first in pre(), which is not a slip: at
+     phone width the tail is what is lost, and "rest of season · Very Low"
+     loses the band -- the half that says something -- while "Very Low ·
+     rest of season" loses the half a reader can infer from every caption
+     around it.
 
-     pre() is deliberately left as it is. It has the same problem and fixing
-     it would change a screen out of season, which this pass is not about. */
+     **Corrected in place, 19 September 2026.** This note used to open "a
+     FigCell's sub truncates, and at 375px a third of the strip is about
+     105px". Neither half survives measurement. The sub clamps to two lines
+     now rather than truncating to one (parts.jsx says why), and a cell is
+     **87px** at 375 -- measured in a real browser, against a figure that
+     had been carried here as an estimate. The correction matters because
+     the budget is what decides a caption: 87px is about thirteen
+     characters a line and twenty-six across the clamp, where 105 would
+     have promised thirty-two and let a caption ship clipped.
+
+     pre() is deliberately left as it is. It has the same ordering problem
+     and fixing it would change a screen out of season, which this pass is
+     not about. */
   const now = (sub) => (sub ? `${sub} · rest of season` : 'rest of season')
+
+  /* What the Juke score is a share OF, which is the one fact the strip has
+     never carried and the only one that lets 57 and 100 be read against each
+     other. The score is this player's edge over a replacement starter
+     divided by the biggest such edge on the board, so "76 pts of the best
+     132" is the arithmetic of the number directly above it, checkable on
+     the spot -- the same contract the grade panel's own weighted-sum line
+     has.
+
+     "pts" is there to kill one reading, not to state a unit the cell above
+     already implies: "76 of the best 132" parses as "76 of the best 132
+     PLAYERS", which is a count of something else entirely and is the sort
+     of sentence a reader resolves wrongly without ever noticing they had a
+     choice.
+
+     It REPLACES the band rather than joining it. "High" is a restatement of
+     57 in words, which is the qualifier-restating-its-own-subject failure
+     this project has already shipped once (the Strategy Room's +6.9 beside
+     +6.9), and the band is still drawn in the panels below, next to the
+     preseason score it is worth comparing against. The denominator is not
+     drawn anywhere else at all.
+
+     Both figures are rounded and the score is not computed from them, so
+     the division comes out one short of the printed score for **10 of the
+     415 priced players** on the 18 September half-PPR board -- 2.4%, never
+     by more than one. Measured rather than estimated, and left alone: the
+     caption's job is to show the reader what the scale is, and the honest
+     alternative is a decimal place on a figure this file already argues is
+     sharper than the sport supports.
+
+     Un-clamped on purpose. A sub-replacement player scores a floored 0 in
+     both horizons, and "-5 pts of the best 145" is the thing that tells two
+     zeros apart -- which is exactly what replacementGap() exists for and
+     what a band reading "Very Low" twice cannot do.
+
+     It is the ONE cell in the strip whose caption does not name its
+     horizon, and that is a measurement rather than an oversight.
+     "76 pts of the best 132 · rest of season" is thirty-nine characters
+     against the twenty-six an 87px cell allows, and it was confirmed
+     clipped in a real browser at 375 (1440, at 206px and one line, was
+     clean throughout). Something had to go. The horizon is already
+     printed on both of this cell's neighbours in the same group and
+     again on the panel below; the denominator is printed nowhere else
+     at all, which is the whole reason this caption exists.
+
+     The band is the fallback rather than the default, so a player the
+     board cannot price still gets the sentence he used to get. */
+  const scale = (gap, best) =>
+    gap === null || gap === undefined || !best ? null : `${Math.round(gap)} pts of the best ${best}`
+  // Horizon only when there is no arithmetic to print in its place.
+  const scaleSub = (gap, best, band, horizon) => {
+    const s = scale(gap, best)
+    return s || horizon(band || null)
+  }
 
   return (
     <header className="grid gap-6">
@@ -114,8 +179,8 @@ function Header({ d, fit, engine }) {
           {ros ? (
             <>
               <FigCell label="Pts left" sub={now(null)}><CountUp value={ros.pts === null ? null : Math.round(ros.pts)} /></FigCell>
-              <FigCell label="Over repl." sub={r.unranked ? 'not rated' : now(null)}><Delta value={ros.gap} count className="text-[22px]" /></FigCell>
-              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : now(ros.scoreLabel || null)}>
+              <FigCell label="Over repl." sub={r.unranked ? 'not rated' : now(ros.replacementRank ? `vs ${posWord(p.pos)}${ros.replacementRank}` : null)}><Delta value={ros.gap} count className="text-[22px]" /></FigCell>
+              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : scaleSub(ros.gap, ros.best, ros.scoreLabel, now)}>
                 <span className={ros.score === null ? 'text-v3-ink3' : ''}><CountUp value={ros.score} /></span>
               </FigCell>
             </>
@@ -123,7 +188,7 @@ function Header({ d, fit, engine }) {
             <>
               <FigCell label="Proj pts" sub={pre(d.scoring)}><CountUp value={p.projPts === null || p.projPts === undefined ? null : Math.round(p.projPts)} /></FigCell>
               <FigCell label="Over repl." sub={r.unranked ? 'not rated' : pre(r.replacementRank ? `vs ${r.replacementRank}` : null)}><Delta value={r.gap} count className="text-[22px]" /></FigCell>
-              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : pre(r.label || null)}>
+              <FigCell label="Juke score" sub={r.unranked ? 'not rated' : scaleSub(r.gap, r.bestGap, r.label, pre)}>
                 <span className={r.score === null || r.score === undefined ? 'text-v3-ink3' : ''}><CountUp value={typeof r.score === 'number' ? r.score : null} /></span>
               </FigCell>
             </>

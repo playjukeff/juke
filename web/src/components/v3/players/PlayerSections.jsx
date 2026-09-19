@@ -295,10 +295,32 @@ export function JukeSheet({ d }) {
         </p>
       )}
 
+      {/* "Room to grow", not "Upside", and the rename is the whole fix.
+
+          draftSignals() scores five things: the projection ranking him
+          higher than the market does, a rookie or a player three years in,
+          first on the depth chart, age 24 or under, and points per game up
+          across his last two full seasons. Every one is a reason to think
+          there is more to come than the price implies. None of them is a
+          ceiling.
+
+          So the meter read "Upside: LOW" on the best quarterback in
+          football -- 20 base plus 14 for starting, and nothing else to say
+          about a 30-year-old consensus QB1 whom the market already ranks
+          exactly where the projection does. That is true of the model and
+          false of the sentence, which is this project's own right-value-
+          wrong-column bug landing on a word instead of a column. Reported
+          by the owner, 19 September 2026, off the same screen as the Juke
+          score above it.
+
+          "Bust risk" is left alone: it really does aggregate risk -- ruled
+          out, listed, age at position, second on the depth chart, missed
+          time, and the market pricing him above the projection -- and the
+          words already match the model. */}
       {r.upside !== null && (
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {[
-            { name: 'Upside', v: r.upside, label: r.upsideLabel, why: r.upsideWhy },
+            { name: 'Room to grow', v: r.upside, label: r.upsideLabel, why: r.upsideWhy },
             { name: 'Bust risk', v: r.bust, label: r.bustLabel, why: r.bustWhy },
           ].map((m) => (
             <div key={m.name} className="rounded-[6px] border border-v3-rule p-3.5">
@@ -311,6 +333,19 @@ export function JukeSheet({ d }) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Both meters are about his PRICE, and neither is a ceiling. Without
+          this, a low reading on an established star reads as a verdict on
+          the player rather than on what is left to discover about him. */}
+      {r.upside !== null && (
+        <Note className="mt-3">
+          Both weigh him against what he costs, not against the rest of the league. Room to grow counts the projection
+          ranking him above the market, youth, a first-team job and a rising two-season trend; bust risk counts the
+          market ranking him above the projection, an injury designation, age at his position, a place behind somebody
+          on the depth chart and seasons of missed time. A player the market has already priced correctly reads low on
+          both, which says there is little left to find out — not that his ceiling is low.
+        </Note>
       )}
 
       {r.priorScore !== null && r.priorSeason && (

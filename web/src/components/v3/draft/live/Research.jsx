@@ -95,7 +95,12 @@ export function OurRead({ engine, player }) {
       {r.deep && <p className="rounded-[4px] border border-v3-rule bg-v3-paper px-3 py-2 text-[13px] leading-relaxed text-v3-ink2"><span className="font-bold text-v3-ink">Deep board</span> — {r.deepNote}</p>}
       {r.upside !== null && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Meter name="Upside" score={r.upside} label={r.upsideLabel} why={r.upsideWhy} />
+          {/* "Room to grow" rather than "Upside" — see the note beside the
+              same pair in PlayerSections.jsx. The model scores reasons he may
+              beat his PRICE (young, a first-team job, rising, ranked above
+              the market), none of which is a ceiling, and the old word read
+              as one on every established star. */}
+          <Meter name="Room to grow" score={r.upside} label={r.upsideLabel} why={r.upsideWhy} />
           <Meter name="Bust risk" score={r.bust} label={r.bustLabel} why={r.bustWhy} caution={r.bust >= 35} />
         </div>
       )}

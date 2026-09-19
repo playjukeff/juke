@@ -4761,7 +4761,7 @@ function buildRosTable(rules, lg, clock, tw, key) {
       id: String(p.id), pos: p.pos, prior: prior, rate: rate, games: std.games,
       seasonPts: std.points, ppg: std.ppg, left: left, pts: pts,
       weight: rosWeight(p.pos, std.games), gap: null, score: null, scoreLabel: null,
-      rank: null, posRank: null
+      rank: null, posRank: null, replacementRank: null, best: null
     };
     if (pts !== null) (byPos[p.pos] = byPos[p.pos] || []).push(rows[p.id]);
   });
@@ -4770,13 +4770,18 @@ function buildRosTable(rules, lg, clock, tw, key) {
   POSITIONS.forEach(function (pos) {
     const list = (byPos[pos] || []).slice().sort(function (a, b) { return b.pts - a.pts; });
     if (!list.length) { replacement[pos] = 0; return; }
-    const cut = Math.min(replacementRank(pos, lg), list.length) - 1;
+    const repRank = replacementRank(pos, lg);
+    const cut = Math.min(repRank, list.length) - 1;
     replacement[pos] = list[Math.max(0, cut)].pts;
     // Kickers and defenses keep their points and lose every rating: the
     // UNRANKED_POSITIONS refusal is about the forecast ORDER, and a rest-of-
     // season order is a forecast too.
     if (UNRANKED_POSITIONS.indexOf(pos) >= 0) return;
-    list.forEach(function (r, i) { r.posRank = i + 1; r.gap = r.pts - replacement[pos]; });
+    // repRank rides along so the strip can say what the gap is measured
+    // AGAINST. The preseason half of that strip has said "vs QB11" since it
+    // was written and the in-season half said nothing -- a straight omission
+    // rather than a decision, and the half a reader is looking at in October.
+    list.forEach(function (r, i) { r.posRank = i + 1; r.gap = r.pts - replacement[pos]; r.replacementRank = repRank; });
   });
 
   const ranked = board.map(function (p) { return rows[p.id]; }).filter(function (r) { return r.gap !== null; });
@@ -4798,6 +4803,10 @@ function buildRosTable(rules, lg, clock, tw, key) {
        screen somebody opens because they want the number explained. */
     r.score = Math.round(Math.max(0, Math.min(100, (r.gap / best) * 100)));
     r.scoreLabel = label(r.score);
+    // The denominator, for jukeReadout().bestGap's reason -- a share whose
+    // whole is invisible is a number nobody can reconcile against the one
+    // beside it.
+    r.best = Math.round(best);
   });
 
   return { key: key, season: clock.season, week: clock.week, throughWeek: tw, rows: rows, replacement: replacement, best: best };
@@ -8440,7 +8449,7 @@ function openSheet(player) {
       ${sig.overall === null
           ? unratedNote(player)
           : meter("Juke score", sig.overall, sig.overall >= 55 ? "good" : "", sig.reasons.overall)}
-      ${meter("Upside",  sig.upside,  sig.upside  >= 55 ? "good" : "", sig.reasons.upside)}
+      ${meter("Room to grow", sig.upside, sig.upside >= 55 ? "good" : "", sig.reasons.upside)}
       ${meter("Bust risk", sig.bust,  sig.bust >= 55 ? "bad" : sig.bust >= 35 ? "warn" : "", sig.reasons.bust)}
 
       <p class="section-label">2026 projection &middot; ${scoringLabel()}</p>
@@ -8460,8 +8469,11 @@ function openSheet(player) {
       the rest of the pool, so somebody always scores 100, and most of the ${board.length} players
       here score nothing at all &mdash; this league only ever starts
       ${league.teams * (starterCount() + flexCount())} of them at once.` : ``}
-      Upside and bust risk weigh how far the projection disagrees with ADP,
-      plus experience, age, depth chart position, injury designation and last season's availability.
+      Room to grow and bust risk weigh him against what he COSTS rather than against the
+      rest of the league: how far the projection disagrees with ADP, plus experience, age,
+      depth chart position, injury designation and last season's availability. A player the
+      market has already priced correctly reads low on both, which says there is little left
+      to find out about him and nothing at all about his ceiling.
       This is one model, not a consensus of analysts.</p>`;
   }
 
@@ -14163,6 +14175,26 @@ window.JukeEngine = {
       // are not equal and this is what says so.
       gap: gap === null ? null : Math.round(gap),
       replacementRank: posLabel(player.pos) + replacementRank(player.pos),
+      /* The DENOMINATOR, which nothing on the page had ever named.
+
+         overallScore() is this player's gap as a share of the biggest gap
+         on the board, and the score on its own cannot say what it is a
+         share OF -- so a reader has the numerator (drawn in the cell next
+         to it) and no way at all to reach the number in front of them.
+
+         Reported by the owner, 19 September 2026, off his own player page:
+         a consensus QB1 reads 47 beside a back reading 100, and he had no
+         route from one to the other. Both are right. Josh Allen projects
+         406 against QB11 at 338, so his edge is 68; Jahmyr Gibbs projects
+         300 against RB25 at 155, so his is 145; and 68/145 is 47. The
+         market agrees with the arithmetic rather than with the intuition --
+         Allen's ADP is 33.2 against Gibbs' 1.5 -- so the number was never
+         the defect. The defect was that 145 was nowhere on the screen.
+
+         Rounded here for jukeReadout()'s own stated reason: this object is
+         the display boundary, and BEST_VOR itself may not move, because
+         modelMultipliers() divides by the score it sets. */
+      bestGap: Math.round(BEST_VOR),
       reason: overallReason(player),
       unranked: unranked,
       // Why a position is refused, rather than a silent dash.
