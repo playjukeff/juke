@@ -197,7 +197,14 @@ test.describe("what the board marks", () => {
 
       const before = await read();
       expect(before.count, "exactly one cell is on the clock").toBe(1);
-      expect(before.says.toLowerCase()).toContain("on the clock");
+      /* Either word. The live cell has read `mine ? 'Your pick' : 'On the
+         clock'` since Board.jsx was written, and this asserted only the
+         second — while draftInto() pins mySlot: 3 and twelve picks in puts
+         the live pick at overall 17, which in a reversed round 2 IS seat 3.
+         So it named the reader's own cell every run and failed every run,
+         on a board drawing exactly what it promises. A standing red is a
+         suite nobody reads by the end of the week. */
+      expect(before.says.toLowerCase()).toMatch(/on the clock|your pick/);
 
       // One more pick, and the ring has to have moved with it.
       await page.evaluate(() => {

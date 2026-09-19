@@ -206,7 +206,7 @@ function Friends({ engine, roomActive }) {
           One board, one clock, and a chair for everybody who turns up. Empty chairs draft as CPUs, so a room of three still runs a full ten-team draft.
         </p>
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           {/* Ink, not cobalt. "Start mock draft" is this page's one primary
               action and the rule is one per view — the same second rank the

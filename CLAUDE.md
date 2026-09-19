@@ -5565,6 +5565,116 @@ chronologically across a season — Prospect, Draft, Waiver, Trade, Strategy,
 League — rather than live-room-first; confirmed safe first, the same way
 any reorder here should be: nothing indexes `ROOMS` positionally.
 
+## `overflow: hidden` is not a way of handling overflow when the thing inside it is a word
+
+Reported from a phone, with a screenshot: the game page's hero drew
+`Panthers` and `Falcons` either side of the kickoff line and **both club
+names were cut off by it.**
+
+**Every phone was affected, pre-game and post-game alike.** Measured on a
+built page against a canned ESPN summary:
+
+```
+                     side track   widest name   clipped by
+short names, pre 390     85px     Panthers 124      39
+short names, pre 375     77px                       47
+short names, post 390   116px                        8
+long names,  pre 390     85px     Commanders 162     77
+long names,  post 390   116px                        46
+desktop 768 / 1024 / 1440   217+       —              0
+```
+
+**The cause is a grid track, and it is worth knowing because it reads as
+correct.** The hero was `grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]` —
+club, meta, club. An `auto` track takes its **max-content** width, and the
+two `minmax(0,1fr)` sides have a minimum of **zero**, so they yield to it
+completely: the kickoff line `SUN, SEP 20 AT 12:00 PM` is 172px of a 342px
+row and the clubs are left 85px each. `overflow-hidden` — which the club
+watermark genuinely needs — then cut the name instead of the name pushing
+back.
+
+**There is no arrangement of that row that fits**, which is what settles the
+fix rather than tuning it. Two club names want up to 324px of a 342px row,
+so ANYTHING between them is 324px too many. The clubs get the row to
+themselves, the score and the status move to a line under it, and the score
+stays the biggest thing in the block by being set large and centred rather
+than by sitting in the middle. Measured after: **zero clipped at 320, 375,
+390, 768, 1024 and 1440**, both name lengths, both states.
+
+**The name wraps rather than clips now, and that is belt and braces on
+purpose.** Half a 390px row is 175px and the longest club on the board is
+162, so it never fires today. What it buys is that the next name to outgrow
+the box costs a second line rather than a cut word.
+
+### The two sweeps this project already runs could not see it, by design
+
+`no-sideways-leak.spec.mjs` and `phone.spec.mjs` both ask this file's own
+question — *an element wider than its box is only a bug when it can neither
+scroll nor ellipsise* — and `overflow: hidden` is an accepted OUTCOME in
+both. So a name cut mid-word passes them, and always would have.
+
+**That exemption is right for what it was written about and wrong for
+text.** It exists for a rotated glyph hanging past its box, a badge at
+`-bottom-1`, a watermark at `-left-2`: decoration deliberately outside its
+edge, where nothing is unreachable. A clipped WORD is exactly as unreachable
+as one that leaks off the side and rather more confusing — a reader sees
+"Panther" and has no reason to think there is more.
+
+`tests/no-clipped-text.spec.mjs` asks the narrower question: **is there text
+that is cut, with no ellipsis, no scroller, and nothing decorative to
+explain it?** Sixteen guest routes at 1440, 390 and **320**, because a
+fixed-width thing runs out of room at the narrowest phone first and
+`sheet-reachable.spec.mjs` already drives 320 for that reason.
+
+**Two of its exemptions took a measurement to get right.**
+
+- **`sr-only` is found by its CLIP, not its class and not its size.**
+  Tailwind's is a 1px square with `clip: rect(0,0,0,0)`, and the skip link
+  adds padding on top — so it measures 25x33 and `phone.spec`'s own 2px size
+  test misses it. The first run reported it on all sixteen routes.
+- **A box whose overflowing children are all absolutely positioned** is
+  `phone.spec.mjs`'s decoration rule, reused verbatim. Without it the game
+  hero's own watermark reports every club as clipped by 8px.
+
+**It plants a clipped element and confirms the walker names it before
+believing any clean result** — a sweep is a walker over computed styles
+where one wrong predicate returns nothing at all, which is the vacuity trap
+this file records three times over.
+
+### Three more of the same class, found by running it
+
+All three had been reported by the existing sweeps for a while and were
+carried as standing reds:
+
+- **`#/draft`'s room card, `over=48` at 320 and `over=9` at 375.** `grid
+  gap-4 sm:grid-cols-2` names no base template, so the single implicit
+  column is `auto` and sized to its max-content: the track came out **318px
+  inside a 286px body**, because a sentence's max-content is the sentence
+  unwrapped. `grid-cols-1` is `repeat(1, minmax(0,1fr))` and is bounded by
+  its container. The same shape was fixed in `V3League` and `RoomLobby`,
+  which had the identical class string. **`grid gap-N sm:grid-cols-2` with
+  no `grid-cols-1` beside it is the tell.**
+- **The Players row's tag line, `over=16` to `52` at 320.** Every chip on it
+  is `shrink-0`, so the last one was cut by the row's own
+  `overflow-hidden`. It wraps now.
+- **`Over repl.` at `w-[110px]`, 8px short of its own header, at 1440.** Its
+  twin in the preseason column set carries the same label at `w-[124px]`.
+  A width hand-set against a string is wrong the moment the string is longer
+  than the guess — the same lesson `RANK_COL_W` already records.
+- **The draft board's roster strip, `over=9` on all ten columns.** Six
+  position counts do not fit a 104px phone column. The header is
+  bottom-aligned with no fixed height, so a second line costs the board
+  nothing where a cut count costs the reader a position.
+
+### And one stale assertion that had been red every run
+
+`board-marks.spec.mjs` asserted the live cell says "on the clock". Board.jsx
+has read `mine ? 'Your pick' : 'On the clock'` since it was written, and
+`draftInto()` pins `mySlot: 3` — twelve picks in, the live pick is overall
+17, which in a reversed round 2 is seat 3. **The reader's own.** So it named
+the wrong branch on every single run rather than flaking, on a board drawing
+exactly what it promises. It accepts either word now.
+
 ## "You" is not a team name, and a connected league already has one
 
 The owner, 19 September 2026, with four screenshots: *"remove 'You' from any

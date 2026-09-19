@@ -226,7 +226,7 @@ export default function RoomLobby({ engine, view }) {
                     ? view.isHost ? 'The draft order is yours to set once the room can hear you.' : 'Tap a free seat to take it. The host sets the order.'
                     : 'The draft has started, so the order is fixed.'}
               </p>
-              <ol className="grid gap-1.5 sm:grid-cols-2">
+              <ol className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {view.seats.map((chair, i) => (
                   <Seat
                     key={i}
