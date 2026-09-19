@@ -4,6 +4,7 @@ import { Delta, Fig, Label, PageHead, PosTag, QuietButton, Seg, Sheet, Skeleton,
 import { UNRANKED, posWord } from './playerData.js'
 import { Chips, PlayerFace, TenureControl } from './parts.jsx'
 import { useBoardKey } from './useBoardKey.js'
+import { usePhoneWidth } from '../../../hooks/useBreakpoint.js'
 
 /* Rookies — production's Prospect Room, as a view of the Players place.
 
@@ -58,10 +59,46 @@ function readClass(engine) {
   return { rows, drafted, undrafted, withCollege, positions }
 }
 
+/* The page's honesty notice, and the one on the college board, are each a
+   sheet of prose at a desk and a single line on a phone.
+
+   They may not simply be dropped. A ranking this page itself calls
+   low-confidence has to say so, and both of these are the saying-so. But
+   measured at 390x844 the first was 430px of the 894 standing between the
+   top of the page and the first rookie — the whole opening screen spent on
+   a paragraph, which is the thing this pass exists to stop. So on a phone
+   the counts stand alone (they are the part that is a fact rather than a
+   framing) and every word is one tap away, with no word rewritten. */
+function Primer({ code, summary, aside = 'Read this first', children }) {
+  const phone = usePhoneWidth()
+  const [open, setOpen] = useState(false)
+  if (!phone) {
+    return <Sheet code={code} aside={aside} aria-label={code}>{children}</Sheet>
+  }
+  return (
+    <section aria-label={code} className="overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex min-h-[44px] w-full items-center justify-between gap-3 px-4 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call"
+      >
+        <span className="min-w-0 font-figure text-[13px] leading-[1.45] text-v3-ink2">{summary}</span>
+        <span aria-hidden="true" className={cx('shrink-0 font-figure text-[13px] font-semibold text-v3-ink3 transition-transform duration-150 motion-reduce:transition-none', open ? 'rotate-180' : '')}>▾</span>
+        <span className="sr-only">{open ? 'Hide' : 'Show'} {code}</span>
+      </button>
+      {open && <div className="border-t border-v3-rule px-4 py-4">{children}</div>}
+    </section>
+  )
+}
+
 function Notice({ c }) {
   const anything = c.drafted || c.undrafted || c.withCollege
+  const summary = anything
+    ? `${c.drafted} of ${c.rows.length} drafted · ${c.undrafted} undrafted · no combine data yet`
+    : 'No draft class has been read yet'
   return (
-    <Sheet code="What is known, and what is not" aside="Read this first" aria-label="What is known, and what is not">
+    <Primer code="What is known, and what is not" summary={summary}>
       <p className="max-w-[78ch] text-[15px] leading-[1.6] text-v3-ink">
         {anything ? (
           <>
@@ -75,9 +112,9 @@ function Notice({ c }) {
         )}
       </p>
       <p className="mt-3 max-w-[78ch] text-[15px] leading-[1.55] text-v3-ink2">
-        So Juke ranks this class and keeps its confidence low. Each row says how much of its ranking stands on evidence — a count of what is known, never a percentage dressed up to look uncertain.
+        So Juke ranks this class and keeps its confidence low. Open any row for a count of what is known about him and what is not — never a percentage dressed up to look uncertain.
       </p>
-    </Sheet>
+    </Primer>
   )
 }
 
@@ -89,8 +126,13 @@ function ClassRow({ rank, row, open, onToggle, note }) {
   const panel = `rookie-${p.id}`
   return (
     <li className="border-b border-v3-rule last:border-b-0" data-prospect-row>
-      <div className="grid grid-cols-[2rem_auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[2rem_auto_minmax(0,1fr)_7rem_5rem_auto] sm:px-5">
-        <Fig className="text-[13px] text-v3-ink3">{String(rank).padStart(2, '0')}</Fig>
+      {/* Four tracks on a phone and six at a desk, and the rank is why the
+          counts differ: a `hidden` grid item occupies no track, so dropping
+          it below sm drops the column with it. It goes because the phone
+          list on Players — the other list in this same place — has never
+          carried one, and 44px of ordinal is 44px the name does not get. */}
+      <div className="grid min-h-[64px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-2.5 sm:grid-cols-[2rem_auto_minmax(0,1fr)_7rem_5rem_auto] sm:px-5 sm:py-3">
+        <Fig className="hidden text-[13px] text-v3-ink3 sm:block">{String(rank).padStart(2, '0')}</Fig>
         <PlayerFace photo={row.photo} initials={row.initials} pos={p.pos} size={40} />
         <div className="min-w-0">
           <a href={`#/players/${encodeURIComponent(p.id)}`} className="block truncate text-[15px] font-semibold text-v3-ink hover:underline focus-visible:rounded-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">{p.name}</a>
@@ -106,7 +148,10 @@ function ClassRow({ rank, row, open, onToggle, note }) {
           </Fig>
         </div>
         <div className="text-right">
-          <Label className="block text-[12px] sm:sr-only">Over repl.</Label>
+          {/* 86px of "OVER REPL." on every row, stacked over a number 48
+              wide — so the label set the column and truncated the name to
+              "Jeremiyah L…". It is said once, above the list. */}
+          <Label className="sr-only">Over repl.</Label>
           {row.value === null ? <Fig className="text-[15px] text-v3-ink3">—</Fig> : <Delta value={row.value} className="text-[15px]" />}
         </div>
         <button
@@ -114,15 +159,23 @@ function ClassRow({ rank, row, open, onToggle, note }) {
           onClick={onToggle}
           aria-expanded={open}
           aria-controls={panel}
-          className="col-span-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px] border border-v3-rule px-3 sm:w-[132px] font-figure text-[13px] font-semibold text-v3-ink2 hover:border-v3-ink3 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call sm:col-span-1"
+          /* The count is the same for very nearly every row — 7/8 on all of
+             them on the 19 September board — so on a phone it was 56px of
+             constant per row, wrapped onto its own line by col-span-4 and
+             worth a third of the row's height. It stays at a desk, where it
+             has a column and a header naming it; on a phone it moves into
+             the panel it opens and into this control's own name. */
+          className="inline-flex min-h-[44px] w-11 items-center justify-center gap-2 rounded-[6px] font-figure text-[13px] text-v3-ink2 sm:border sm:border-v3-rule hover:border-v3-ink3 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call sm:w-[132px] sm:px-3"
         >
-          <span className="tabular-nums">{e.known}/{e.total} known</span>
+          <span className="hidden font-semibold tabular-nums sm:inline">{e.known}/{e.total} known</span>
           <span aria-hidden="true" className={cx('inline-block transition-transform duration-150 motion-reduce:transition-none', open ? 'rotate-180' : '')}>▾</span>
-          <span className="sr-only">{open ? 'Hide' : 'Show'} what is known about {p.name}</span>
+          <span className="sr-only">{open ? 'Hide' : 'Show'} what is known about {p.name} — {e.known} of {e.total} known</span>
         </button>
       </div>
       {open && (
         <div id={panel} className="grid grid-cols-1 gap-4 border-t border-v3-rule bg-v3-paper px-4 py-4 sm:grid-cols-2 sm:px-5">
+          {/* What the collapsed row stopped saying, said here instead. */}
+          <p className="font-figure text-[13px] font-semibold tabular-nums text-v3-ink2 sm:hidden">{e.known} of {e.total} known</p>
           <div>
             <Label>On file</Label>
             <dl className="mt-1.5 grid gap-1">
@@ -161,12 +214,15 @@ function ClassView({ c, engine }) {
     return r && r.unrankedNote ? r.unrankedNote : null
   }
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4 sm:gap-5">
       <Notice c={c} />
       {c.positions.length > 1 && (
-        <div className="grid gap-1">
-          <Label>Position</Label>
+        <div className="grid min-w-0 gap-1">
+          {/* The chips say POSITION by being positions, and they carry
+              aria-label="Position" for anyone who cannot see that. */}
+          <Label className="hidden sm:block">Position</Label>
           <Chips
+            scroll
             label="Position"
             value={pos}
             onChange={(v) => { setPos(v); setLimit(CLASS_PAGE); setOpen(null) }}
@@ -186,6 +242,14 @@ function ClassView({ c, engine }) {
               <Label className="text-right text-[12px]">NFL draft</Label>
               <Label className="text-right text-[12px]">Over repl.</Label>
               <Label className="w-[132px] text-center text-[12px]">Evidence</Label>
+            </div>
+            {/* The phone's column heads. Approximately over their columns
+                rather than in the same grid: the two grids would have to
+                agree on track widths, and the whole point is that the head
+                may be wider than the figure under it. */}
+            <div className="flex items-center justify-between border-b border-v3-rule px-4 py-1.5 sm:hidden" aria-hidden="true">
+              <Label className="text-[12px]">Player</Label>
+              <Label className="pr-11 text-[12px]">Over repl.</Label>
             </div>
             <ul aria-label="First-year players">
               {page.map((row, i) => (
@@ -233,18 +297,20 @@ function CollegeView({ engine }) {
   const filtered = pos === 'ALL' ? rows : rows.filter((r) => r.pos === pos)
   const page = filtered.slice(0, limit)
   return (
-    <div className="grid gap-5">
-      <Sheet code="Not drafted yet" aside={meta ? `${meta.season} season` : ''} aria-label="About the college board">
+    <div className="grid gap-4 sm:gap-5">
+      <Primer code="Not drafted yet" aside={meta ? `${meta.season} season` : ''} summary={`Still in college · nobody has drafted or measured them${meta ? ` · ${meta.season} season` : ''}`}>
         <p className="max-w-[78ch] text-[15px] leading-[1.6] text-v3-ink">
           Every player here is still in college and has never been drafted, so none of them can be queued or drafted in a mock, and none has a page of his own yet. They arrive on the real board the season an NFL team takes one.
           {meta ? <> Production is their <Fig className="font-bold">{meta.season}</Fig> season; class years are from the {meta.roster} rosters, and the next draft they can enter is <Fig className="font-bold">{meta.draft}</Fig>.</> : null}{' '}
           There is no combine testing and no draft position for any of them yet — nobody has measured or picked them.
         </p>
-      </Sheet>
+      </Primer>
       {positions.length > 1 && (
-        <div className="grid gap-1">
-          <Label>Position</Label>
-          <Chips label="Position" value={pos} onChange={(v) => { setPos(v); setLimit(COLLEGE_PAGE) }} options={['ALL', ...positions].map((p) => ({ value: p, label: p === 'ALL' ? 'All' : posWord(p) }))} />
+        <div className="grid min-w-0 gap-1">
+          {/* The chips say POSITION by being positions, and they carry
+              aria-label="Position" for anyone who cannot see that. */}
+          <Label className="hidden sm:block">Position</Label>
+          <Chips scroll label="Position" value={pos} onChange={(v) => { setPos(v); setLimit(COLLEGE_PAGE) }} options={['ALL', ...positions].map((p) => ({ value: p, label: p === 'ALL' ? 'All' : posWord(p) }))} />
         </div>
       )}
       <Sheet code="By production" aside={`${filtered.length} ${filtered.length === 1 ? 'player' : 'players'}`} bodyClass="p-0">
@@ -294,19 +360,24 @@ export default function V3Rookies() {
   }, [key, engine])
 
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-5 sm:gap-8">
       <PageHead
         label={c ? `Players · rookies · ${c.rows.length} in their first season` : null}
         title="The rookie class, and what we don't know yet."
         lede="Every first-year player on the board, ranked by points over the player a league your size would start instead — and, for each, what is on file and what is not. Behind them, the players still in college."
       />
-      <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+      {/* The two labels are 40px of the 148 this block cost on a phone, and
+          each names a control that already says what it is — "All / Rookies
+          / Vets", "The class / In college". They are the VISIBLE labels
+          only: both controls carry their own aria-label, so nothing is lost
+          to a screen reader. */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4">
         <div className="grid justify-items-start gap-1">
-          <Label>Tenure</Label>
+          <Label className="hidden sm:block">Tenure</Label>
           <TenureControl current="rookie" />
         </div>
         <div className="grid justify-items-start gap-1">
-          <Label>Which rookies</Label>
+          <Label className="hidden sm:block">Which rookies</Label>
           <Seg
             label="Which rookies"
             value={view}

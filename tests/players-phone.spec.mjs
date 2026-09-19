@@ -227,6 +227,98 @@ test.describe("Players on a phone", () => {
   });
 });
 
+/* ---- Rookies, the other list in this same place ----
+
+   Measured the same way on the same day and it was the worse of the two:
+   the first rookie sat at y=894 on an 844px screen — nothing but chrome on
+   the opening screenful — behind a 430px notice, two labelled control
+   groups, and rows 130px tall because every one of them carried a
+   full-width "7/8 known" button that reads 7/8 for very nearly the whole
+   class.
+
+   None of that could simply be deleted. The notice is the page saying out
+   loud that it ranks players it cannot fully explain, which is the only
+   thing that makes the ranking defensible; the count is what each row is
+   promising. So both moved rather than going, and both halves are asserted
+   here — a rookie near the top, AND every word still reachable. Either
+   alone passes against a page that threw the other away. */
+test.describe("Rookies on a phone", () => {
+  async function openRookies(browser) {
+    const context = await browser.newContext({
+      ...devices["iPhone 13"],
+      defaultBrowserType: undefined,
+      viewport: PHONE,
+      isMobile: true,
+      hasTouch: true,
+    });
+    const page = await openApp(context, "#/players/rookies");
+    await page.locator("[data-prospect-row]").first().waitFor({ timeout: 30000 });
+    return { context, page };
+  }
+
+  test("a rookie is on the first screen", async ({ browser }) => {
+    const { context, page } = await openRookies(browser);
+    const y = await page.evaluate(() => {
+      const li = document.querySelector("[data-prospect-row]");
+      return Math.round(li.getBoundingClientRect().top + window.scrollY);
+    });
+    expect(y, `first rookie row at y=${y}`).toBeLessThan(PHONE.height - 120);
+    await context.close();
+  });
+
+  /* The notice, both halves. Collapsed it must still carry the counts —
+     they are the part that is a fact rather than a framing — and opening it
+     must give back the sentences, unrewritten. A page that kept only the
+     counts would be claiming a confidence it has not got. */
+  test("the notice keeps its counts, and its words are one tap away", async ({ browser }) => {
+    const { context, page } = await openRookies(browser);
+    const primer = page.locator('section[aria-label="What is known, and what is not"]');
+    await expect(primer).toHaveCount(1);
+
+    // Collapsed: the counts are on screen and the prose is not.
+    await expect(primer).toContainText(/drafted/);
+    await expect(primer).not.toContainText("no feed in this product carries one yet");
+
+    await primer.getByRole("button").click();
+    await expect(primer).toContainText("no feed in this product carries one yet");
+    await expect(primer).toContainText("keeps its confidence low");
+
+    await context.close();
+  });
+
+  /* The count left the collapsed row, so the control that opens the row has
+     to carry it — for a screen reader, which never saw the visible one
+     either way — and the panel has to show it. */
+  test("the evidence count survives leaving the row", async ({ browser }) => {
+    const { context, page } = await openRookies(browser);
+    const row = page.locator("[data-prospect-row]").first();
+    const toggle = row.getByRole("button");
+
+    await expect(toggle, "the control names the count").toHaveAccessibleName(
+      /\d+ of \d+ known/,
+    );
+    await toggle.click();
+    await expect(row).toContainText(/\d+ of \d+ known/);
+    await expect(row, "and the panel it opens is the detail itself").toContainText("On file");
+
+    await context.close();
+  });
+
+  /* The control. At a desk the count is a column with a header over it, so
+     it stays where it was — this is what stops "drop it everywhere" passing
+     the two tests above. */
+  test("at a desk the count is still written on the row", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await openApp(context, "#/players/rookies");
+    await page.locator("[data-prospect-row]").first().waitFor({ timeout: 30000 });
+
+    const toggle = page.locator("[data-prospect-row]").first().getByRole("button");
+    await expect(toggle).toContainText(/\d+\/\d+ known/);
+
+    await context.close();
+  });
+});
+
 /* SITE is imported so this file fails loudly if the helpers ever stop
    exporting it, rather than silently driving the default. */
 test.beforeAll(() => {
