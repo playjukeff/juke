@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { POS_CHALK, CELL_INK } from '../draftRoomPositions.js'
 import { useV2Data } from '../v2/v2ui.jsx'
 import { THEME_CHOICES, useV3Theme } from './theme.js'
@@ -192,7 +192,17 @@ export function PosTag({ pos, className = '' }) {
    `code` is the band's left text (what situation this block is), `aside` the
    right. A sheet without a band is allowed — `band={false}` — for the plain
    white panels a page needs between the called blocks. */
-export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', codeAs: CodeTag = 'h2', rise = true, ...rest }) {
+/* `action` is a control in the band, to the right of `aside`. It exists so
+   a block whose band already NAMES its state can also be where that state
+   is changed: the Players band reads "REST OF SEASON · HALF PPR", which is
+   a summary of five controls, and on a phone those five were 514px of
+   stacked form above the list. A band that says what is set and opens the
+   rest is the setup screen's own disclosure pattern — shut is still
+   informative — rather than a new idea.
+
+   It sits on the band, so whatever a caller puts here is white-on-band and
+   answers to that contrast rather than to the page's. */
+export function Sheet({ code, aside, action, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', codeAs: CodeTag = 'h2', rise = true, ...rest }) {
   // A Sheet rises once on ARRIVAL -- a route change plays the new page's
   // first viewport (motion.jsx useReveal). One in view on a cold load is
   // simply there, and so is one below the fold: sections do not rise as
@@ -203,13 +213,14 @@ export function Sheet({ code, aside, band = true, children, className = '', body
   useReveal(ref, { disabled: !rise })
   return (
     <Tag ref={ref} className={cx('overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet', className)} {...rest}>
-      {band && (code || aside) && (
+      {band && (code || aside || action) && (
         <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
           {/* The band's code IS the section's heading — it was a span, so
               five pages carried one heading between them and nothing could
               be jumped to. The tag changes and the styling does not. */}
           <CodeTag className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{code}</CodeTag>
           {aside && <span className="shrink-0 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-bandInk">{aside}</span>}
+          {action && <span className="-my-1 shrink-0">{action}</span>}
         </div>
       )}
       <div className={bodyClass}>{children}</div>
@@ -363,6 +374,52 @@ export function PageHead({ label, title, lede, reason, action }) {
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>
   )
+}
+
+/* Focus for the live room's dialogs — the menu, the Call sheet, the player
+   drawer — which can stack: a phone opens a player FROM the Call sheet.
+
+   v2's useDialogFocus answers Esc with stopPropagation() on a window
+   listener, which stops nothing registered on the same window, so one Esc
+   closed every open dialog at once. Here the dialogs form a stack and only
+   the one on top handles Esc and the Tab trap; the one beneath takes over
+   when it closes, and focus goes back to whatever opened each. */
+const dialogStack = []
+export function useDialogFocus(open, onClose, panelRef, initialRef) {
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    if (!open) return undefined
+    const me = {}
+    dialogStack.push(me)
+    const opener = document.activeElement
+    const t = setTimeout(() => {
+      const el = (initialRef && initialRef.current) || panelRef.current
+      if (el && el.focus) el.focus()
+    }, 0)
+    const onKey = (e) => {
+      if (dialogStack[dialogStack.length - 1] !== me) return
+      if (e.key === 'Escape') { e.preventDefault(); close.current(); return }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const f = [...panelRef.current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+        .filter((n) => n.offsetParent !== null)
+      if (!f.length) return
+      const first = f[0]
+      const last = f[f.length - 1]
+      if (!panelRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); return }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('keydown', onKey)
+      const i = dialogStack.indexOf(me)
+      if (i >= 0) dialogStack.splice(i, 1)
+      if (opener && opener.focus && document.contains(opener)) requestAnimationFrame(() => opener.focus())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 }
 
 export function Skeleton({ lines = 4, className = '' }) {

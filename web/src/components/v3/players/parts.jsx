@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Icon, Label, TOUCH, cx } from '../ui.jsx'
+import { useEffect, useRef, useState } from 'react'
+import { Icon, Label, TOUCH, cx, useDialogFocus } from '../ui.jsx'
 import { injuryWord } from './playerData.js'
 
 /* Parts the Players place needs that ui.jsx does not carry. Presentation
@@ -144,9 +144,30 @@ export function TenureControl({ current, onChange }) {
 
 /* A row of toggle chips — positions, mostly. Chosen is ink (state), never
    cobalt (action). 44px targets. */
-export function Chips({ label, options, value, onChange, className = '' }) {
+/* `scroll` makes the row one line that scrolls sideways instead of wrapping.
+   Seven position chips wrap to two rows at 390px, and two rows of chips
+   above a list is the list starting a chip-row lower for a control most
+   readers leave on ALL. A scroller is what the overflow sweep already
+   accepts as a legitimate answer to "wider than its box" — the condition is
+   that it can scroll OR ellipsise, and this can.
+
+   It does NOT bleed past its container's padding, and the first cut did.
+   `-mx-4 px-4` makes the row 32px wider than the box it sits in, and a
+   scroller only excuses ITS OWN overflow — every ancestor then overflows
+   too, with no scroller of its own. no-sideways-leak.spec.mjs reported
+   exactly that: three elements, the outermost over by 111px. The bleed was
+   worth a nicety and cost the page the condition this project states as a
+   rule, so it is gone. */
+export function Chips({ label, options, value, onChange, scroll = false, className = '' }) {
   return (
-    <div role="group" aria-label={label} className={cx('flex flex-wrap gap-1.5', className)}>
+    <div
+      role="group"
+      aria-label={label}
+      className={cx(
+        scroll ? 'no-scrollbar flex flex-nowrap gap-1.5 overflow-x-auto sm:flex-wrap sm:overflow-visible' : 'flex flex-wrap gap-1.5',
+        className,
+      )}
+    >
       {options.map((o) => {
         const on = o.value === value
         return (
@@ -156,7 +177,7 @@ export function Chips({ label, options, value, onChange, className = '' }) {
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cx(
-              'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] border px-3 font-figure text-[13px] font-bold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+              'inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[6px] border px-3 font-figure text-[13px] font-bold uppercase tracking-[0.06em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
               on ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet text-v3-ink2 hover:border-v3-ink3 hover:text-v3-ink',
             )}
           >
@@ -217,5 +238,118 @@ export function FigCell({ label, children, sub, className = '' }) {
           caption that carries real arithmetic land whole. */}
       {sub && <dd className="mt-1 line-clamp-2 text-[12px] leading-[1.35] text-v3-ink3">{sub}</dd>}
     </div>
+  )
+}
+
+/* ---- The filter sheet ----
+
+   The five controls a reader changes rarely, off the list rather than
+   stacked above it. Measured 19 September 2026: the Players control block
+   was 514px on a 390px screen and the four things a reader came for were
+   under all of it.
+
+   NOT called `Sheet`. That name is v3's CARD — a white panel with a solid
+   band — and a second, unrelated `Sheet` is the `.home` / `.avatar` /
+   `initials()` collision with a component instead of a class. `FilterSheet`
+   says which of the two it is.
+
+   Here rather than in ui.jsx for kit.jsx's own stated reason: one place
+   needs it. It moves up the moment a second does, and `useDialogFocus`
+   already made that trip.
+
+   ---- What it is careful about ----
+
+   The ceiling is `dvh`, not `vh`, and the panel is capped rather than
+   sized. A phone browser's URL bar shrinks the viewport as you scroll, and
+   the draft room's own bottom sheet shipped a bug where the header then
+   covered the drag handle by up to 31px — see CLAUDE.md's "The ceiling
+   moves, and nothing re-clamped the sheet to it". `dvh` tracks that
+   viewport, `max-height` lets a short sheet stay short, and the body is the
+   only thing that scrolls, so the grab handle and the header can never be
+   pushed under the app's own.
+
+   It renders NOTHING until it is open. Not CSS-hidden: a dialog in the
+   prerendered markup that the client then mounts differently is React #418,
+   and this app has paid for that once already. Open/closed is the only
+   state, false on both sides of hydration, and the phone-only decision is
+   made in CSS by the caller. */
+export function FilterSheet({ open, onClose, title, count, children }) {
+  const panel = useRef(null)
+  const closeRef = useRef(null)
+  useDialogFocus(open, onClose, panel, closeRef)
+
+  /* The page behind does not scroll while the sheet is over it. Restored to
+     whatever it was rather than to '' — a hard reset would fight any other
+     owner of the property, which is how a scroll lock leaves a page stuck. */
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return undefined
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [open])
+
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" data-filter-sheet>
+      <button type="button" aria-label="Close filters" onClick={onClose} className="absolute inset-0 bg-v3-shade/60 backdrop-blur-[2px]" />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className="relative flex max-h-[86dvh] w-full flex-col rounded-t-[14px] border border-v3-rule bg-v3-sheet shadow-[0_-18px_40px_rgb(var(--v3-shade)/0.35)] focus:outline-none sm:max-w-[440px] sm:rounded-[10px]"
+      >
+        <div className="mx-auto mt-2.5 h-1 w-9 shrink-0 rounded-full bg-v3-rule sm:hidden" aria-hidden="true" />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-v3-rule px-4 py-3">
+          <h2 className="font-figure text-[12px] font-bold uppercase tracking-[0.12em] text-v3-ink3">
+            {title}{count ? <span className="ml-2 text-v3-ink2">· {count} set</span> : null}
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className={cx(TOUCH, '-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-[6px] text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call')}
+          >
+            <span className="sr-only">Close filters</span>
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        {/* The only scroller. pb for the home indicator on a phone. */}
+        <div className="grid min-h-0 gap-4 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/* The band's way in. On the band, so white-on-band rather than the page's
+   inks, and it carries the count for the same reason the fold it replaces
+   did: shut is still informative. */
+export function FilterButton({ onClick, count, controls, expanded, className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      aria-label={count ? `Filters, ${count} set` : 'Filters'}
+      data-filters-open
+      className={cx(
+        TOUCH,
+        'inline-flex min-h-[32px] items-center gap-1.5 rounded-[6px] border border-white/25 px-2.5 font-figure text-[12px] font-bold uppercase tracking-[0.08em] text-white transition-colors duration-150 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+        className,
+      )}
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4" /></svg>
+      {/* The word is for a screen reader only. The band has 358px and three
+          things wanting it, and spelling "FILTERS" out cost the band's own
+          code its last six characters — "REST OF SEASON · HA…", which is
+          the summary failing at the one job this arrangement gives it. A
+          filter glyph with a count beside it is the same control and the
+          same affordance, and it is what every app this was measured
+          against uses. */}
+      <span className="sr-only">Filters</span>
+      {count ? <span aria-hidden="true" className="font-bold">{count}</span> : null}
+    </button>
   )
 }
