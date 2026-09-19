@@ -1,5 +1,5 @@
 FFC rows that did not join to a Sleeper player
-Generated 2026-09-18 14:43 UTC
+Generated 2026-09-19 14:04 UTC
 Across every scoring format, each name listed once.
 Add an entry to MANUAL_MATCHES in build_players.py to fix one.
 
@@ -302,13 +302,13 @@ season    compared  disagree    rate
 2021           994        14    1.4%
 2022          1264        40    3.2%
 2023          1581        12    0.8%
-2024          1967         7    0.4%
-2025          2328         5    0.2%
+2024          1972         7    0.4%
+2025          2331         5    0.2%
 
 stat  compared   agree   agree%
-cfd       917     852    92.9%
-ct        723     723   100.0%
-cy        983     979    99.6%
+cfd       918     853    92.9%
+ct        724     724   100.0%
+cy        985     981    99.6%
 f19        17      17   100.0%
 f29       129     126    97.7%
 f39       131     131   100.0%
@@ -324,11 +324,11 @@ pi        224     224   100.0%
 pt        241     240    99.6%
 py        280     277    98.9%
 ra        845     840    99.4%
-rc        978     976    99.8%
+rc        980     978    99.8%
 rfd       702     644    91.7%
 rt        472     472   100.0%
 ry        834     827    99.2%
-tg        996     981    98.5%
+tg        998     983    98.5%
 xp        131     130    99.2%
 xpx        92      92   100.0%
 
