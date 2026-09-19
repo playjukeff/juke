@@ -61,7 +61,10 @@ function SituationBand({ league, snapshot, sheet, rank, total, showKickoff = tru
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-[6px] bg-v3-band px-4 py-2.5 font-figure text-[13px] text-v3-bandInk">
       <span className="min-w-0 break-words [overflow-wrap:anywhere] font-bold uppercase tracking-[0.14em] text-white">{snapshot.name || league.name}</span>
-      <span>{platform} · read-only</span>
+      {/* "Read-only" is the League page's own eyebrow and the footer's
+          standing promise; a third copy on the band of every call sheet is
+          the same sentence three times on one screenful. */}
+      <span>{platform}</span>
       {snapshot.week ? <span>Week <Fig className="font-bold text-white">{snapshot.week}</Fig></span> : null}
       {me ? (
         <span>
@@ -84,7 +87,7 @@ function SituationBand({ league, snapshot, sheet, rank, total, showKickoff = tru
    EVEN drawn. The framing sentence is the one production's own Strategy
    Room refuses to show this number without. */
 function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) {
-  const { game, opponent, total, oppTotal, winProb, read, mineWeek, oppWeek, source } = sheet
+  const { mine, game, opponent, total, oppTotal, winProb, read, mineWeek, oppWeek, source } = sheet
   if (!game && hasSchedule) {
     return (
       <Sheet code={week ? `Week ${week}` : 'The matchup'} aside="No game">
@@ -136,15 +139,19 @@ function Matchup({ sheet, week, platform, hasRules, hasSchedule, sleeperGame }) 
   return (
     <Sheet code={`The matchup · week ${game.week}`} aside={game.home ? 'Home' : 'Away'}>
       <div className="grid gap-2.5">
+        {/* Both teams named. Which one is the reader's is carried by weight
+            and the rule down its left edge, the same marking the standings
+            row and the matchup head use — never the word "You", which tells
+            a reader nothing they cannot already see. */}
         {[
-          { name: 'You', value: total, tone: 'neutral' },
-          { name: opponent.teamName, value: oppTotal, tone: 'neutral', href: teamHref(opponent) },
+          { name: (mine && mine.teamName) || 'Your team', value: total, mine: true },
+          { name: opponent.teamName, value: oppTotal, href: teamHref(opponent) },
         ].map((r) => (
-          <div key={r.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]">
+          <div key={r.name} className={cx('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-l-2 pl-2.5 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]', r.mine ? 'border-v3-ink' : 'border-transparent')}>
             {r.href ? (
               <a href={r.href} className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a>
             ) : (
-              <span className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>
+              <span className="break-words [overflow-wrap:anywhere] text-[15px] font-bold text-v3-ink">{r.name}<span className="sr-only"> (your team)</span></span>
             )}
             <ValueBar value={r.value} max={max} tone="neutral" className="order-3 col-span-2 sm:order-none sm:col-span-1" />
             <CountUp value={r.value} format={(v) => v.toFixed(1)} className="text-right font-figure text-[18px] font-bold tabular-nums text-v3-ink" />
@@ -250,7 +257,7 @@ function WeekCall({ sheet, week }) {
       figure: (
         <span className="inline-flex flex-wrap items-center gap-2">
           <InjuryChip severity={r.severity} onBye={r.onBye} code={r.player.inj} />
-          A starter, and nothing on your bench beats him at {r.player.pos}. Check him before his game kicks off.
+          A starter, and nothing on your bench beats him at {r.player.pos}.
         </span>
       ),
     }
@@ -277,7 +284,7 @@ function WeekCall({ sheet, week }) {
       ) : (
         <>
           <p className="mt-3 text-[22px] font-black leading-tight tracking-[-0.01em] text-v3-ink">Nothing needs doing this week.</p>
-          <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">No swap on your bench clears a point, nothing on the wire beats what you hold, and every starter is available. Your lineup stands.</p>
+          <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">No swap on your bench clears a point, nothing on the wire beats what you hold, and every starter is available.</p>
         </>
       )}
       {also.length ? <p className="mt-2 text-[15px] leading-[1.5] text-v3-ink2">Also this week: {also.join(' · ')}.</p> : null}
@@ -323,7 +330,7 @@ function LineupCall({ sheet, primary }) {
           </div>
           {swaps.length > 1 ? (
             <ol className="mt-4 grid gap-2 border-t border-v3-rule pt-3" aria-label="Other swaps, alternatives rather than additions">
-              <li><Label className="text-[12px]">Or instead — alternatives, not additions</Label></li>
+              <li><Label className="text-[12px]">Or instead — one of these, not all</Label></li>
               {swaps.slice(1, 3).map((s) => (
                 <li key={s.sit.id + ':' + s.start.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_7rem_3.5rem]">
                   <span className="truncate text-[15px] text-v3-ink2"><span className="text-v3-ink">{s.start.name}</span> over {s.sit.name}</span>
@@ -335,11 +342,11 @@ function LineupCall({ sheet, primary }) {
           ) : null}
         </>
       ) : best ? (
-        <Nothing>The best swap on your bench adds <Fig className="font-bold text-v3-ink">{best.gain.toFixed(1)}</Fig> — under a point, inside the projection&apos;s own error, so it is not a call. Your lineup stands.</Nothing>
+        <Nothing>The best swap on your bench adds <Fig className="font-bold text-v3-ink">{best.gain.toFixed(1)}</Fig> — under a point, inside the projection&apos;s own error, so it is not a call.</Nothing>
       ) : (
-        <Nothing>Nothing on your bench beats a starter at his own position. Your lineup is already the best one Juke can build from this roster.</Nothing>
+        <Nothing>Nothing on your bench beats a starter at his own position.</Nothing>
       )}
-      <p className="mt-4 text-[13px] leading-[1.5] text-v3-ink3">Same position only — your platform does not tell Juke which slot is a FLEX, so these are the swaps that are certainly legal.</p>
+      <p className="mt-4 text-[13px] leading-[1.5] text-v3-ink3">Same-position swaps only: your platform does not say which slot is a FLEX.</p>
       <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
         {primary ? <CallButton href="#/calls/lineup">Open the lineup tool <Icon name="arrow" className="h-4 w-4" /></CallButton> : <GoLink href="#/calls/lineup">Open the lineup tool</GoLink>}
       </div>
@@ -436,7 +443,7 @@ function TradeCall({ sheet, snapshot }) {
           </div>
         </dl>
       ) : null}
-      <p className="mt-3 text-[13px] leading-[1.5] text-v3-ink3">Over replacement for the season. Kickers and defenses are not priced — Juke declines to rank them.</p>
+      <p className="mt-3 text-[13px] leading-[1.5] text-v3-ink3">Over replacement for the season. Kickers and defenses are not priced.</p>
       <div className="mt-auto pt-4"><GoLink href="#/calls/trade">{w.state === 'passed' || w.state === 'disabled' ? 'Price a roster' : 'Build a trade'}</GoLink></div>
     </Sheet>
   )
@@ -693,8 +700,12 @@ export default function NowConnected({ plan = null }) {
         ? `Week ${week} against ${sleeperGame.theirs.team.teamName}.`
         : week ? `Week ${week}.` : 'Your week.'
 
+  /* The lede says only what the cards under it cannot. Both projections and
+     the win probability are on the matchup card a few pixels below, drawn
+     larger and side by side, so restating them here was the headline's own
+     number printed three times on one screen. What is left is the one case
+     the card cannot state plainly: a lineup it could not price. */
   const facts = []
-  if (mine && total !== null) facts.push(`You project ${total.toFixed(1)} as set${sheet.oppTotal !== null && opponent ? `; ${opponent.teamName} projects ${sheet.oppTotal.toFixed(1)}` : ''}.`)
   if (mine && total === null) facts.push('A starter has no projection yet, so there is no total to state.')
 
   return (
@@ -708,11 +719,16 @@ export default function NowConnected({ plan = null }) {
           row, then the week's two cards side by side underneath. */}
       <div className="grid gap-8">
         <div>
-          <Label tier="page" as="p">Now · your call sheet{week ? ` · week ${week}` : ''}</Label>
+          <Label tier="page" as="p">Now · your call sheet</Label>
           <Headline className="mt-3 max-w-[22ch]">{title}</Headline>
-          <p className="mt-5 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2">
-            {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}
-          </p>
+          {/* Rendered only when there is something to say: an empty
+              paragraph still takes its top margin, so a hero with nothing
+              left to add would open on a gap nobody put there. */}
+          {!mine || facts.length ? (
+            <p className="mt-5 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2">
+              {mine ? facts.join(' ') : `Juke cannot tell which of the ${(snapshot.teams || []).length} rosters in ${snapshot.name} is yours. Reconnect the league and pick your team, and this becomes your week.`}
+            </p>
+          ) : null}
         </div>
         {mine ? (
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-8">

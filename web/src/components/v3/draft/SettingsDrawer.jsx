@@ -146,7 +146,7 @@ function DraftOrderList({ engine, league, onChange }) {
   const canOrder = seats ? isHost : true
 
   const rows = seats
-    ? seats.map((c, i) => ({ slot: i, you: !!c.you, name: c.you ? 'You' : c.name || (c.taken ? 'A manager' : 'Open'), open: !c.taken }))
+    ? seats.map((c, i) => ({ slot: i, you: !!c.you, name: c.name || (c.you ? 'Your seat' : c.taken ? 'A manager' : 'Open'), open: !c.taken }))
     : safe(() => engine.draftOrder(), []).map((r) => ({ slot: r.slot, you: r.you, name: r.name, firstPick: r.firstPick, open: false }))
 
   const randomize = () => {

@@ -268,18 +268,16 @@ test.describe("what the board marks", () => {
           : null;
 
         /* The header for the same column, which is the other ground the
-           mark touches. It carries a real label rather than a colour alone
-           — "You" — so the bar here IS 4.5:1, on the text. */
+           mark touches. It carries text, so the bar here IS 4.5:1 on it.
+
+           Found by its GROUND rather than by what it says. The head used to
+           read "You" over every other head's "Seat N", and the seat number
+           is what it says now — which is the point: the column is marked by
+           the band it is drawn in, and a match on the word would have gone
+           looking for a label the design deliberately removed. */
         const heads = [...boardEl().querySelectorAll("thead th")];
-        /* Matched on the header's own first line rather than on its whole
-           textContent: the cell stacks "You" directly above "Your team",
-           so the concatenation reads "YouYour team" and a word-boundary
-           match for "you" finds nothing. It reported the header as absent
-           on a board that was drawing it. */
-        const myHead = heads.find((th) => {
-          const first = th.querySelector("span");
-          return first && /^you$/i.test(first.textContent.trim());
-        });
+        const mineLeft = mine.length ? Math.round(mine[0].getBoundingClientRect().left) : null;
+        const myHead = heads.find((th) => Math.round(th.getBoundingClientRect().left) === mineLeft);
         let headText = null, headRatio = null;
         if (myHead) {
           headText = myHead.textContent.replace(/\s+/g, " ").trim();
@@ -288,7 +286,7 @@ test.describe("what the board marks", () => {
           headRatio = label ? Math.round(ratio(over(parse(getComputedStyle(label).color), hb), hb) * 100) / 100 : null;
         }
 
-        return { mine: mine.length, rounds: league.rounds, apart, headText, headRatio,
+        return { mine: mine.length, rounds: league.rounds, apart, headText, headRatio, mySeat: state.mySlot,
                  oneColumn: new Set(mine.map((e) => Math.round(e.getBoundingClientRect().left))).size };
       }, CONTRAST);
 
@@ -300,7 +298,12 @@ test.describe("what the board marks", () => {
          painted and practically invisible, which is the failure the rail's
          1.06-on-a-chalk-fill measurement was about. */
       expect(r.apart, "your ground is visibly not an ordinary cell's").toBeGreaterThanOrEqual(12);
-      expect(r.headText, "and the column header says whose it is").toMatch(/you/i);
+      /* The head still names the column's own team, which in a solo mock is
+         the only name that seat has. What it no longer does is say "You"
+         where every other head says a seat number. */
+      expect(r.headText, "and the column header names the team").toMatch(/your team/i);
+      expect(r.headText, "without a bare \"You\" where the others say a seat")
+        .toMatch(new RegExp(`^Seat ${r.mySeat + 1}(?!\\d)`));
       expect(r.headRatio, "legibly").toBeGreaterThanOrEqual(4.5);
     });
 

@@ -81,6 +81,7 @@ function useMyWeek() {
     const opp = g && g.theirs && g.theirs.team ? g.theirs.team : (sheet && sheet.opponent) || null
     return {
       league: snapshot.name || '',
+      myName: mine.teamName || mine.name || null,
       oppName: opp ? opp.teamName || opp.name || 'Opponent' : null,
       bye: !!(g && g.bye),
       mePts: live ? g.mine.points : sheet ? sheet.total : null,
@@ -153,9 +154,9 @@ function Ticker({ games }) {
             className="flex min-h-[48px] shrink-0 items-center rounded-full bg-v3-ink px-4 font-figure text-[13px] text-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
           >
             <span className="grid leading-tight">
-              <span className="font-bold">You {fmt(me.mePts)} – {fmt(me.oppPts)} {me.oppName}</span>
+              <span className="font-bold">{me.myName || 'Your team'} {fmt(me.mePts)} – {fmt(me.oppPts)} {me.oppName}</span>
               <span className="text-[11px] uppercase text-v3-paper/80">
-                {me.league}{me.projected ? ' · projected' : ''}{toPlay ? ` · ${toPlay} of yours to play` : ''}
+                {[me.projected ? 'Projected' : null, toPlay ? `${toPlay} still to play` : null].filter(Boolean).join(' · ') || me.league}
               </span>
             </span>
           </a>

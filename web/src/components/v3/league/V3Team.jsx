@@ -242,7 +242,7 @@ export default function V3Team({ teamId }) {
 
       <KpiGrid
         items={[
-          { label: 'Record', value: recordText(team), note: st.rank ? `${ordinal(st.rank)} of ${st.table.length}, on wins then points for.` : 'No games played yet.', children: played.length ? <div className="mt-3 flex flex-wrap gap-1">{played.map((g) => <ResultChip key={g.week} result={g.result} />)}</div> : null },
+          { label: 'Record', value: recordText(team), note: st.rank ? `${ordinal(st.rank)} of ${st.table.length}.` : 'No games played yet.', children: played.length ? <div className="mt-3 flex flex-wrap gap-1">{played.map((g) => <ResultChip key={g.week} result={g.result} />)}</div> : null },
           { label: 'Points for', value: (team.pointsFor || 0).toFixed(1), delta: st.played && pfD !== null ? <Delta value={pfD} digits={1} className="text-[15px]" /> : null, note: st.played ? `Against a league median of ${st.pfMedian.toFixed(1)}.` : 'Nothing scored yet.' },
           { label: `Week ${snapshot.week || ''} projected`.trim(), value: wk.total === null ? '—' : wk.total.toFixed(1), note: wk.total === null ? 'A starter has no projection, so there is no total.' : snapshot.rules ? 'As this lineup is set, under the league’s scoring.' : 'As this lineup is set, on default scoring — the league’s rules could not be read.' },
           { label: 'Playoff odds', value: odds && typeof odds.playoffs === 'number' ? pct(odds.playoffs) : '—', note: odds && typeof odds.playoffs === 'number' ? `${SIMS.toLocaleString()} seasons from today’s projections${model.odds && model.odds.byeSeats && typeof odds.bye === 'number' ? `; a bye in ${pct(odds.bye)}` : ''}.` : 'Only for a league with a published schedule and every roster priced.' },
@@ -258,8 +258,11 @@ export default function V3Team({ teamId }) {
             <ul className="mt-3 flex flex-wrap gap-2">
               {others.map((t) => (
                 <li key={t.rosterId ?? t.ownerId}>
-                  <a href={teamHref(t)} className="inline-flex min-h-[40px] items-center rounded-[6px] border border-v3-rule px-3 text-[15px] font-medium text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call">
-                    {t.teamName}{league.ownerId && String(t.ownerId) === String(league.ownerId) ? ' · you' : ''}
+                  {/* The reader's own chip is the one drawn in ink, not the
+                      one with "· you" written after a name they chose. */}
+                  <a href={teamHref(t)} className={cx('inline-flex min-h-[40px] items-center rounded-[6px] border px-3 text-[15px] text-v3-ink hover:border-v3-ink3 hover:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call',
+                    league.ownerId && String(t.ownerId) === String(league.ownerId) ? 'border-v3-ink font-bold' : 'border-v3-rule font-medium')}>
+                    {t.teamName}
                   </a>
                 </li>
               ))}

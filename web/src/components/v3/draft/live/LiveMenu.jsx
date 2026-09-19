@@ -132,7 +132,7 @@ function SettingsPage({ engine }) {
             {order.map((r) => (
               <li key={r.slot} className={cx('flex min-h-[40px] items-center gap-3 px-3 py-1.5', r.you ? 'bg-v3-band text-white' : 'bg-v3-sheet')}>
                 <span className={cx('w-6 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', r.you ? 'text-white' : 'text-v3-ink3')}>{r.slot + 1}</span>
-                <span className={cx('min-w-0 flex-1 truncate text-[15px]', r.you ? 'font-bold text-white' : 'text-v3-ink')}>{r.you ? 'You' : r.name}</span>
+                <span className={cx('min-w-0 flex-1 truncate text-[15px]', r.you ? 'font-bold text-white' : 'text-v3-ink')}>{r.name}</span>
                 {r.firstPick && <span className={cx('shrink-0 font-figure text-[12px]', r.you ? 'text-v3-bandInk' : 'text-v3-ink3')}>first pick #{r.firstPick}</span>}
               </li>
             ))}
@@ -177,7 +177,7 @@ function RoomPage({ engine, room }) {
           <li key={i} className={cx('flex min-h-[40px] items-center gap-3 px-3 py-1.5', chair.you ? 'bg-v3-band text-white' : 'bg-v3-sheet')}>
             <span className={cx('w-5 shrink-0 text-right font-figure text-[13px] font-bold tabular-nums', chair.you ? 'text-white' : 'text-v3-ink3')}>{i + 1}</span>
             <span className={cx('min-w-0 flex-1 truncate text-[15px]', chair.you ? 'font-bold text-white' : 'text-v3-ink')}>
-              {chair.you ? 'You' : chair.taken ? (chair.name || 'Manager') : 'CPU'}
+              {chair.taken ? (chair.name || (chair.you ? 'Your seat' : 'Manager')) : 'CPU'}
             </span>
             {chair.taken && chair.auto && <span className={cx('shrink-0 font-figure text-[12px] uppercase tracking-[0.08em]', chair.you ? 'text-v3-bandInk' : 'text-v3-warn')}>away</span>}
           </li>

@@ -25,9 +25,16 @@ import { openApp, createRoom } from "./helpers.mjs";
    more: a seat is a row carrying its number, who is in it, and a host badge.
    What identifies one is its ACCESSIBLE NAME, which RoomLobby writes
    deliberately and which is the same string a screen reader is given —
-   "Take seat 5" for a free chair, "Seat 2, You", "Seat 1, Blake". That is a
-   fact about what the element IS rather than about how it currently reads,
-   which is the rule this project already applies to [data-start-draft].
+   "Take seat 5" for a free chair, "Seat 1, Blake". That is a fact about what
+   the element IS rather than about how it currently reads, which is the rule
+   this project already applies to [data-start-draft].
+
+   WHOSE a chair is is NOT in that name any more. It used to end ", You",
+   and the reader's own chair now carries the name they typed, exactly as
+   everybody else's does — so the label moved with the copy and every
+   assertion anchored on those three letters went with it. `data-you` and
+   `data-taken` are what RoomLobby states instead, for the reason above:
+   the attribute says what the chair IS.
 
    The other half of that rule is structural and worth stating once: a chair
    that cannot be acted on is a <span> rather than a disabled <button>. So
@@ -48,6 +55,8 @@ async function seats(page) {
     return rows.map((el) => ({
       label: el.getAttribute("aria-label"),
       pressable: el.tagName === "BUTTON",
+      mine: el.hasAttribute("data-you"),
+      taken: el.hasAttribute("data-taken"),
       text: (el.textContent || "").trim(),
     }));
   });
@@ -117,16 +126,14 @@ test("two managers, one board: a claimed chair shows as taken to everybody",
        already says which chair is somebody else's - that is the thing under
        test - so the seat index comes from there. */
     await expect
-      .poll(() => guest.evaluate(() => {
-        const rows = [...document.querySelectorAll("ol > li")]
-          .map((li) => li.firstElementChild)
-          .filter((el) => el && /^Seat \d+,/.test(el.getAttribute("aria-label") || ""));
-        return rows.filter((el) => !/, You$/.test(el.getAttribute("aria-label"))).length;
-      }), { timeout: 30000 })
+      .poll(() => guest.evaluate(() => [...document.querySelectorAll("ol > li")]
+        .map((li) => li.firstElementChild)
+        .filter((el) => el && el.hasAttribute("data-taken") && !el.hasAttribute("data-you")).length),
+      { timeout: 30000 })
       .toBe(1);
 
     const onGuest = await seats(guest);
-    const hostChair = onGuest.findIndex((s) => /^Seat \d+,/.test(s.label) && !/, You$/.test(s.label));
+    const hostChair = onGuest.findIndex((s) => s.taken && !s.mine);
     expect(hostChair, "the host's chair is on the guest's board").toBeGreaterThanOrEqual(0);
     /* Not "disabled": RoomLobby draws a chair nobody may act on as a <span>,
        so there is no button to disable. A test asserting `disabled` on this
@@ -159,9 +166,9 @@ test("two managers, one board: a claimed chair shows as taken to everybody",
       .not.toMatch(/, CPU\./);
 
     const onHost = await seats(host);
-    expect(onHost.filter((s) => /, You\./.test(s.label)).length,
+    expect(onHost.filter((s) => s.mine).length,
       "the host still has exactly one chair of their own").toBe(1);
-    expect(onHost[target].label, "and it is not the one the guest took").not.toMatch(/, You\./);
+    expect(onHost[target].mine, "and it is not the one the guest took").toBe(false);
 
     /* A name, not an id. The guest never typed one, so the room's own
        fallback word is what a reader sees — what matters is that a member id
