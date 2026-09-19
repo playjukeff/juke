@@ -3,51 +3,13 @@ import { INJURY_META } from '../../draftRoomPositions.js'
 import { Label, cx } from '../ui.jsx'
 import { PRESS, SPRING, motion } from '../motion.jsx'
 
-/* Focus for the live room's dialogs — the menu, the Call sheet, the player
-   drawer — which can stack: a phone opens a player FROM the Call sheet.
-
-   v2's useDialogFocus answers Esc with stopPropagation() on a window
-   listener, which stops nothing registered on the same window, so one Esc
-   closed every open dialog at once. Here the dialogs form a stack and only
-   the one on top handles Esc and the Tab trap; the one beneath takes over
-   when it closes, and focus goes back to whatever opened each. */
-const dialogStack = []
-export function useDialogFocus(open, onClose, panelRef, initialRef) {
-  const close = useRef(onClose)
-  close.current = onClose
-  useEffect(() => {
-    if (!open) return undefined
-    const me = {}
-    dialogStack.push(me)
-    const opener = document.activeElement
-    const t = setTimeout(() => {
-      const el = (initialRef && initialRef.current) || panelRef.current
-      if (el && el.focus) el.focus()
-    }, 0)
-    const onKey = (e) => {
-      if (dialogStack[dialogStack.length - 1] !== me) return
-      if (e.key === 'Escape') { e.preventDefault(); close.current(); return }
-      if (e.key !== 'Tab' || !panelRef.current) return
-      const f = [...panelRef.current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
-        .filter((n) => n.offsetParent !== null)
-      if (!f.length) return
-      const first = f[0]
-      const last = f[f.length - 1]
-      if (!panelRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); return }
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('keydown', onKey)
-      const i = dialogStack.indexOf(me)
-      if (i >= 0) dialogStack.splice(i, 1)
-      if (opener && opener.focus && document.contains(opener)) requestAnimationFrame(() => opener.focus())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-}
+/* useDialogFocus moved to ui.jsx when the Players filter sheet needed it:
+   a dialog outside the draft tree cannot import the draft's kit, and a
+   second copy of a focus trap is the written-down-twice rule landing on
+   the one thing that must behave identically in every dialog — the stack
+   that decides which one Esc closes. Re-exported rather than relocated at
+   the call sites, so nothing in the live room changes. */
+export { useDialogFocus } from '../ui.jsx'
 
 /* The draft area's own small parts, in the call-sheet idiom. Presentation
    only — every figure any of the four draft pages prints is asked of

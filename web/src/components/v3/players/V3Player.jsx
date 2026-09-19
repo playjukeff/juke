@@ -42,7 +42,7 @@ function NotFound({ id }) {
       <PageHead
         label="Players · not on the board"
         title="No player answers to that id."
-        lede={`Nothing on tonight's board carries the id "${id}". Players join and leave when the nightly rebuild runs — search the index for him by name.`}
+        reason={`Nothing on tonight's board carries the id "${id}". Players join and leave when the nightly rebuild runs — search the index for him by name.`}
         action={<QuietButton href="#/players">Browse every player</QuietButton>}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { POS_CHALK, CELL_INK } from '../draftRoomPositions.js'
 import { useV2Data } from '../v2/v2ui.jsx'
 import { THEME_CHOICES, useV3Theme } from './theme.js'
@@ -128,9 +128,16 @@ export function cx(...parts) {
    Labels in v3 and almost all are exactly what they should be: a quiet
    uppercase key beside a figure. Raising the tier globally would be
    shouting in every card on the site. */
+/* `page` is 12px on a phone and 24/26 from `sm`, which is a change of ROLE
+   rather than a smaller version of one. At 24px above a 40px headline it is
+   part of the composition, and on a 390px screen that composition is three
+   wrapped lines of accent type above three more of headline — over 200px of
+   page furniture before anything a reader came for. At 12px it is the quiet
+   breadcrumb the default tier already is, and the accent is what keeps it
+   reading as the page's orientation rather than as a caption. */
 const LABEL_TIER = {
   default: 'text-[12px] tracking-[0.12em] text-v3-ink3',
-  page: 'text-[24px] leading-[1.1] tracking-[0.06em] text-v3-call sm:text-[26px]',
+  page: 'text-[12px] leading-[1.1] tracking-[0.12em] text-v3-call sm:text-[24px] sm:tracking-[0.06em] md:text-[26px]',
 }
 export function Label({ children, className = '', as: Tag = 'span', tier = 'default', ...rest }) {
   return (
@@ -185,7 +192,17 @@ export function PosTag({ pos, className = '' }) {
    `code` is the band's left text (what situation this block is), `aside` the
    right. A sheet without a band is allowed — `band={false}` — for the plain
    white panels a page needs between the called blocks. */
-export function Sheet({ code, aside, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', codeAs: CodeTag = 'h2', rise = true, ...rest }) {
+/* `action` is a control in the band, to the right of `aside`. It exists so
+   a block whose band already NAMES its state can also be where that state
+   is changed: the Players band reads "REST OF SEASON · HALF PPR", which is
+   a summary of five controls, and on a phone those five were 514px of
+   stacked form above the list. A band that says what is set and opens the
+   rest is the setup screen's own disclosure pattern — shut is still
+   informative — rather than a new idea.
+
+   It sits on the band, so whatever a caller puts here is white-on-band and
+   answers to that contrast rather than to the page's. */
+export function Sheet({ code, aside, action, band = true, children, className = '', bodyClass = 'p-4 sm:p-5', as: Tag = 'section', codeAs: CodeTag = 'h2', rise = true, ...rest }) {
   // A Sheet rises once on ARRIVAL -- a route change plays the new page's
   // first viewport (motion.jsx useReveal). One in view on a cold load is
   // simply there, and so is one below the fold: sections do not rise as
@@ -196,13 +213,14 @@ export function Sheet({ code, aside, band = true, children, className = '', body
   useReveal(ref, { disabled: !rise })
   return (
     <Tag ref={ref} className={cx('overflow-hidden rounded-[6px] border border-v3-rule bg-v3-sheet', className)} {...rest}>
-      {band && (code || aside) && (
+      {band && (code || aside || action) && (
         <div className="flex min-h-[38px] items-center justify-between gap-3 bg-v3-band px-4 text-white">
           {/* The band's code IS the section's heading — it was a span, so
               five pages carried one heading between them and nothing could
               be jumped to. The tag changes and the styling does not. */}
           <CodeTag className="min-w-0 truncate font-figure text-[12px] font-bold uppercase tracking-[0.14em]">{code}</CodeTag>
           {aside && <span className="shrink-0 font-figure text-[12px] uppercase tracking-[0.1em] text-v3-bandInk">{aside}</span>}
+          {action && <span className="-my-1 shrink-0">{action}</span>}
         </div>
       )}
       <div className={bodyClass}>{children}</div>
@@ -292,7 +310,13 @@ export function ThemeChoice({ className = '' }) {
 
 /* A headline. Sentence case, upright, heavy — the opposite of both earlier
    builds' italic caps. `size` picks a step on one scale. */
-const H = { page: 'text-[clamp(2.5rem,5vw,4.875rem)] leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
+/* The page step starts at 26px rather than at the clamp's own 2.5rem floor.
+   A clamp whose minimum is 40px is a minimum nothing can get under, and at
+   390px a page title routinely wrapped to three lines of it — 126px spent on
+   a heading that is read once. 26px is still unmistakably the page's title
+   beside 15px body, and it costs one line or two. The clamp is untouched
+   from `sm` up, so no desktop heading moves. */
+const H = { page: 'text-[26px] leading-[1.1] sm:text-[clamp(2.5rem,5vw,4.875rem)] sm:leading-[0.98]', section: 'text-[clamp(1.6rem,3vw,2.25rem)] leading-[1.05]', block: 'text-[20px] leading-[1.2]' }
 export function Headline({ children, size = 'page', as: Tag = 'h1', className = '', ...rest }) {
   return (
     <Tag className={cx('font-sheet font-black tracking-[-0.025em] text-v3-ink [text-wrap:balance]', H[size], className)} {...rest}>
@@ -308,20 +332,94 @@ export function Headline({ children, size = 'page', as: Tag = 'h1', className = 
    is longer — never on a cold load, where it is simply there. A lede that IS
    data (a record, a rank, the arithmetic of a call) carries digits and so is
    never streamed. */
-export function PageHead({ label, title, lede, action }) {
+/* ---- `lede` and `reason` are two different promises ----
+
+   Measured on the built site at 390x844, 19 September 2026: the first real
+   figure on #/record was at y=1386 — a screenful and a half of prose before
+   a number — on #/league at y=843, and the first viewport of every page
+   carried 197 to 522 characters of it. Almost all of that is this component,
+   because almost every page opens with one.
+
+   A `lede` DESCRIBES a page whose content is right there underneath it:
+   "Rank them by the weeks that are left, by what they have actually scored,
+   or by the preseason board" sits above the three controls that say exactly
+   that. On a desk it is orientation. On a phone it is the thing standing
+   between a reader and the list, and it is the single most expensive habit
+   in v3. So a lede does not render below `sm`.
+
+   A `reason` is prose the page is BROKEN without: why a team page is empty,
+   what a refusal means, what the reader has to do next. An empty state whose
+   explanation is hidden is not tidier, it is a dead end — the rule this file
+   already keeps about a disabled Start button whose reason is folded away.
+   So a reason renders at every width, and it is the smaller step, because
+   what it has to do is be read rather than set a scene.
+
+   Deliberately not a disclosure. A collapsed "about this page" is a control
+   announcing that there is text you are not reading, which is worse on a
+   phone than the text simply not being there — and it would put a second
+   affordance on all twenty-four pages to recover copy that the screen
+   underneath already states. */
+export function PageHead({ label, title, lede, reason, action }) {
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="max-w-[860px]">
         {label && <Label tier="page" as="p">{label}</Label>}
         {/* 24ch holds the headline to about three lines at the top of its
             clamp — a team name is user-generated, and a long one must not
             push the first card off the screen. */}
-        <Headline className={cx('max-w-[24ch] [text-wrap:balance]', label ? 'mt-3' : '')}>{title}</Headline>
-        {lede && <StreamText as="p" text={lede} className="mt-4 max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2" />}
+        <Headline className={cx('max-w-[24ch] [text-wrap:balance]', label ? 'mt-1 sm:mt-3' : '')}>{title}</Headline>
+        {lede && <StreamText as="p" text={lede} className="mt-4 hidden max-w-[62ch] text-[18px] leading-[1.55] text-v3-ink2 sm:block" />}
+        {reason && <p className="mt-3 max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2 sm:mt-4 sm:text-[18px]">{reason}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
     </div>
   )
+}
+
+/* Focus for the live room's dialogs — the menu, the Call sheet, the player
+   drawer — which can stack: a phone opens a player FROM the Call sheet.
+
+   v2's useDialogFocus answers Esc with stopPropagation() on a window
+   listener, which stops nothing registered on the same window, so one Esc
+   closed every open dialog at once. Here the dialogs form a stack and only
+   the one on top handles Esc and the Tab trap; the one beneath takes over
+   when it closes, and focus goes back to whatever opened each. */
+const dialogStack = []
+export function useDialogFocus(open, onClose, panelRef, initialRef) {
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    if (!open) return undefined
+    const me = {}
+    dialogStack.push(me)
+    const opener = document.activeElement
+    const t = setTimeout(() => {
+      const el = (initialRef && initialRef.current) || panelRef.current
+      if (el && el.focus) el.focus()
+    }, 0)
+    const onKey = (e) => {
+      if (dialogStack[dialogStack.length - 1] !== me) return
+      if (e.key === 'Escape') { e.preventDefault(); close.current(); return }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const f = [...panelRef.current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+        .filter((n) => n.offsetParent !== null)
+      if (!f.length) return
+      const first = f[0]
+      const last = f[f.length - 1]
+      if (!panelRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); return }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('keydown', onKey)
+      const i = dialogStack.indexOf(me)
+      if (i >= 0) dialogStack.splice(i, 1)
+      if (opener && opener.focus && document.contains(opener)) requestAnimationFrame(() => opener.focus())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 }
 
 export function Skeleton({ lines = 4, className = '' }) {

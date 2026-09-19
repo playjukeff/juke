@@ -182,9 +182,9 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
         ]}
       />
     )
-  const shell = (title, lede, body) => (
+  const shell = (title, callLine, body) => (
     <div className="grid gap-8">
-      <CallHead label={label} title={title} lede={lede} action={action} band={band} />
+      <CallHead label={label} title={title} reason={callLine} action={action} band={band} />
       {body}
     </div>
   )
@@ -212,7 +212,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
       : targets.length
         ? 'Nobody on the wire beats what you hold.'
         : 'Nobody on your wire is worth a starting slot.'
-  const lede = !mine
+  const callLine = !mine
     ? null
     : best
       ? `+${Math.round(best.improvement)} ${unit.word} points over your best ${best.pos}: he is ${overText(best.best.gap)} a replaceable ${posWord(best.pos)}, ${best.held === null ? `and you hold nobody rankable at ${best.pos}` : `and your best is ${overText(best.held)}`}.${ptsOpen > best.improvement ? ` ${Math.round(ptsOpen)} points are open across every position a claim would improve.` : ''}`
@@ -230,7 +230,7 @@ export default function WireTool({ league, snapshot, status, reason, onRetry, sa
     { value: 'intel', label: <GatedLabel text="League intel" gate={intelGate} tier={tier} /> },
   ]
 
-  return shell(title, lede, (
+  return shell(title, callLine, (
     <div className="grid gap-6">
       {!mine ? <NoTeam teams={snapshot.totalTeams} what="price a claim against your roster" /> : null}
 

@@ -5,7 +5,8 @@ import {
   FORMATS, FORMAT_LABEL, MODE_LABEL, MODE_SORT, POSITIONS, SORTS, filterRows, liveFormat, posWord, readIndex,
   scoringName, seasonModes, sortRows, weightNote,
 } from './playerData.js'
-import { Chips, DeepTag, InjuryTag, LiveTag, PLAYERS_PREFS, PlayerFace, RookieTag, SelectField, TenureControl } from './parts.jsx'
+import { Chips, DeepTag, FilterButton, FilterSheet, InjuryTag, LiveTag, PLAYERS_PREFS, PlayerFace, RookieTag, SelectField, TenureControl } from './parts.jsx'
+import { usePhoneWidth } from '../../../hooks/useBreakpoint.js'
 import { useBoardKey } from './useBoardKey.js'
 import { LAYOUT_ROW, motion } from '../motion.jsx'
 import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
@@ -325,6 +326,28 @@ export default function V3Players() {
   const [sort, setSort] = useState(saved.sort || { key: 'adp', dir: 'asc' })
   const [limit, setLimit] = useState(saved.limit || PAGE)
   const [more, setMore] = useState(false)
+  /* usePhoneWidth reads matchMedia on the FIRST client render, which is a
+     hydration mismatch in any component that renders during hydration.
+     This one does not: useHashRoute() answers null until it is resolved, so
+     the server drew Now and the client's hydrating render draws Now too —
+     Players mounts afterwards, from an effect. That is asserted rather than
+     assumed: no-console-errors.spec.mjs cold-loads every route at 375 and
+     1440 and React #418 is a console error.
+
+     It is a real width read rather than a CSS class because the two
+     arrangements must not both be MOUNTED. Two instances of these controls
+     means two elements carrying `v3-player-team`, and `<label for>` binds
+     to the first in the document — so the sheet's label would point at the
+     hidden desktop control. CSS-hidden is still mounted; that is the rule
+     useMinWidth exists for. */
+  const phone = usePhoneWidth()
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  /* Closed on a phone, and `sm:block` on the paragraph itself is what
+     opens it at a desk — so the state is false on both sides of hydration
+     and the width is decided by CSS rather than by a render-time read of
+     the viewport, which is what React #418 costs this app when it is not. */
+  const [note, setNote] = useState(false)
   const [wanted, setWanted] = useState(saved.mode || null)
 
   const live = key ? liveFormat(engine) : 'half'
@@ -403,6 +426,66 @@ export default function V3Players() {
 
   const liveName = key ? scoringName(engine, engine.league().scoring) : ''
   const fmtName = key ? scoringName(engine, fmt) : ''
+
+  /* ---- Each control, defined once ----
+
+     A React element renders wherever it is placed, and only one of the two
+     arrangements below is ever mounted, so one definition can serve both.
+     Writing the desktop row and the sheet out separately would be the same
+     control in two places, which is how a prop gets added to one of them. */
+  const scoringCtl = (
+    <div className="grid justify-items-start gap-1">
+      <Label>Scoring</Label>
+      <Seg label="Scoring" value={fmt} onChange={setFormat} options={FORMATS.map((f) => ({ value: f, label: FORMAT_LABEL[f] }))} />
+    </div>
+  )
+  /* The three orders, in season only. Out of season there is no rest of a
+     season to rank and no games to have played, so the control is absent
+     rather than a segment that cannot act. */
+  const modeCtl = modes.modes.length > 1 ? (
+    <div className="grid justify-items-start gap-1">
+      <Label>Ranked by</Label>
+      <Seg label="Ranked by" value={mode} onChange={setWanted} options={modes.modes.map((m) => ({ value: m, label: MODE_LABEL[m] }))} />
+    </div>
+  ) : null
+  const teamCtl = (
+    <SelectField id="v3-player-team" label="NFL team" value={team} onChange={setTeam}>
+      <option value="ALL">All teams</option>
+      {(data ? data.teams : []).map((t) => <option key={t} value={t}>{t}</option>)}
+    </SelectField>
+  )
+  const tenureCtl = (
+    <div className="grid justify-items-start gap-1">
+      <Label>Tenure</Label>
+      <TenureControl current={tenure} onChange={setTenure} />
+    </div>
+  )
+  /* Sorting is phone-only: a column head IS the sort control at a desk. */
+  const sortCtl = (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+      {/* Only this mode's own orders: offering "ROS pts" on a preseason
+          list is a control that sorts by a column nobody can see, which is
+          the sort arrow pointing at nothing in a different shape. */}
+      <SelectField id="v3-player-sort" label="Sort by" value={sort.key} onChange={(k) => setSort({ key: k, dir: SORTS[k].dir })}>
+        {['name', ...cols.map((c) => c.sort)].map((k) => <option key={k} value={k}>{SORTS[k].label}</option>)}
+      </SelectField>
+      <QuietButton
+        onClick={() => setSort((s) => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
+        aria-label={`Sort direction: ${sort.dir === 'asc' ? 'ascending' : 'descending'}. Reverse it.`}
+        className="px-4"
+      >
+        {sort.dir === 'asc' ? 'Low → high' : 'High → low'}
+      </QuietButton>
+    </div>
+  )
+
+  /* What the Filters button counts: the controls inside it that are away
+     from where they started. The mode is not counted — the band names it
+     in words, so a count would be saying the same thing twice — and nor is
+     the sort direction, which has no default to be away from. */
+  const setCount = extraSet + (fmt !== live ? 1 : 0) + (sort.key !== 'adp' ? 1 : 0)
+
+  const POS_OPTIONS = ['ALL', ...POSITIONS].map((p) => ({ value: p, label: p === 'DST' ? 'D/ST' : p === 'ALL' ? 'All' : p }))
   const season = data ? data.season : null
   // Week 1 has no complete week behind it, so "who moved" is measured from
   // the preseason board; from week 2 on it is the last complete week.
@@ -422,6 +505,65 @@ export default function V3Players() {
     ? `${done} week${done === 1 ? '' : 's'} played: a back or a receiver who played every one is ${Math.round((done / (done + kRB)) * 100)}% this season`
     : 'No week has finished yet, so the rate is still all preseason projection'
 
+  /* What the numbers on screen ARE, in the mode they are drawn in. A figure
+     that changed meaning when a control moved and kept its caption would be
+     this project's own right-value-wrong-column bug, with a horizon instead
+     of a table.
+
+     Folded on a phone and open at a desk, and BELOW the list on a phone
+     rather than above it. Measured at 390px it is 215px — larger than any
+     group of controls in the block — and a definition of the columns is a
+     footnote to the table, which is where the standings' own tiebreak note
+     already sits. It stays attached either way, which is the requirement.
+
+     This is a disclosure where PageHead's lede is simply dropped, and the
+     line between them is worth stating because it looks inconsistent. A
+     lede DESCRIBES a page whose content restates it, so nothing is lost by
+     dropping it. This DEFINES the columns and is restated nowhere, so it
+     cannot be dropped — and a definition a reader needs once, then never
+     again, is exactly what a disclosure is for.
+
+     A button and state rather than <details>: `sm:block` on the paragraph
+     is what opens it at a desk, and CSS cannot force a <details> open. */
+  const noteEl = key ? (
+    <div>
+                <button
+                  type="button"
+                  onClick={() => setNote((n) => !n)}
+                  aria-expanded={note}
+                  aria-controls="v3-player-note"
+                  className="-mx-1 inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[13px] font-semibold text-v3-ink2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call sm:hidden"
+                >
+                  What these numbers are
+                  <Icon name="arrow" className={cx('h-3.5 w-3.5 transition-transform duration-150 motion-reduce:transition-none', note ? '-rotate-90' : 'rotate-90')} />
+                </button>
+                <p id="v3-player-note" className={cx('max-w-[85ch] text-[13px] leading-[1.5] text-v3-ink3 sm:block', note ? 'block' : 'hidden')}>
+                {mode === 'ros' && (
+                  <>
+                    Rest of season is a rate for the weeks he has left — what he was projected to average, pulled toward what he has actually
+                    averaged, times the games between now and week {season.lastWeek} with his bye and any known absence taken out.{' '}
+                    {weightLine}. <strong className="font-semibold text-v3-ink2">Moved</strong> is places since {since}.
+                    Scored under {fmtName}; ADP is the {liveName} market the board was built on.{' '}
+                  </>
+                )}
+                {mode === 'season' && (
+                  <>
+                    What he has actually scored this season under {fmtName}, and his points per game <em>played</em> — a week he missed is not
+                    a nought, so a man with no games has no season rather than a zero. Pure fact: nothing here is a forecast.{' '}
+                  </>
+                )}
+                {mode === 'pre' && (
+                  <>
+                    Projected points, points over replacement and position rank are under {fmtName}. ADP is the {liveName} market the board is built on
+                    {fmt !== live ? <>, and the Juke score stays on {liveName}, the scoring your mock is set to — the engine only prices it under that table</> : null}.{' '}
+                    {season ? 'These are the preseason numbers, untouched by anything that has happened since. ' : ''}
+                  </>
+                )}
+                Kickers and defenses keep their points and are never rated.
+                </p>
+              </div>
+  ) : null
+
   return (
     <div className="grid gap-section">
       <PageHead
@@ -434,129 +576,126 @@ export default function V3Players() {
 
       <Sheet
         code={season ? `${MODE_LABEL[mode]} · ${fmtName}` : `The board · ${fmtName || '…'}`}
-        aside={data ? `${sorted.length} of ${data.size}` : ''}
+        /* The count goes on a phone: the band has three things competing
+           for 358px and this is the one the list itself already answers.
+           With it in, "REST OF SEASON · HALF PPR" truncated to "REST OF …",
+           which is the band saying nothing on the screen where it is the
+           only thing that says what is set. */
+        aside={phone ? null : data ? `${sorted.length} of ${data.size}` : ''}
+        /* On a phone the band is the whole control surface: its code already
+           reads "REST OF SEASON · HALF PPR", which is a summary of what is
+           set, so the way to change it belongs there too. At a desk the
+           controls are inline below and the band stays a heading. */
+        action={phone ? <FilterButton onClick={() => setFiltersOpen(true)} count={setCount} controls="v3-player-filters" expanded={filtersOpen} /> : null}
         bodyClass="p-0"
       >
         <div className="grid gap-4 border-b border-v3-rule p-4 sm:p-5">
-          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-            <label htmlFor="v3-player-search" className="grid gap-1">
-              <Label>Search</Label>
-              <span className="relative block">
-                <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-v3-ink3" />
-                <input
-                  id="v3-player-search"
-                  type="search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="A player's name"
-                  autoComplete="off"
-                  className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet pl-10 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
-                />
-              </span>
-            </label>
-            <div className="grid justify-items-start gap-1">
-              <Label>Scoring</Label>
-              <Seg label="Scoring" value={fmt} onChange={setFormat} options={FORMATS.map((f) => ({ value: f, label: FORMAT_LABEL[f] }))} />
-            </div>
-          </div>
+          {/* ---- The phone row: search and position, and nothing else ----
 
-          {/* The filter groups flow onto one row where the row can seat them:
-              three stacked full-width rows used under 30% of their width
-              each, and the page exists for the table underneath them. */}
-          <div className="grid gap-4 md:flex md:flex-wrap md:items-end md:gap-x-8 md:gap-y-4">
-          {/* The three orders, in season only. Out of season there is no
-              rest of a season to rank and no games to have played, so the
-              control is absent rather than a segment that cannot act. */}
-          {modes.modes.length > 1 && (
-            <div className="grid justify-items-start gap-1">
-              <Label>Ranked by</Label>
-              <Seg
-                label="Ranked by"
-                value={mode}
-                onChange={setWanted}
-                options={modes.modes.map((m) => ({ value: m, label: MODE_LABEL[m] }))}
-              />
+              The two controls a reader touches most, on one 44px line. The
+              search field expands over the chips rather than sitting above
+              them — a second row for a field that is empty most of the time
+              is the habit this whole pass is about — and it stays expanded
+              while there is a term in it, so a filtered list never hides
+              why it is short.
+
+              min-w-0 on the row is load-bearing and it is a GRID item: the
+              scroller inside it already had min-w-0 and that does nothing,
+              because the default min-width of a grid item is auto, so the
+              track refuses to shrink below its content and the scroller
+              never gets a box small enough to scroll in. Measured at 375:
+              the block was 95px wider than its own padding box, and the
+              overflow sweep named three ancestors. */}
+          {phone ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {searchOpen || q ? (
+                <>
+                  <label htmlFor="v3-player-search" className="sr-only">Search</label>
+                  <span className="relative block min-w-0 flex-1">
+                    <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-v3-ink3" />
+                    <input
+                      id="v3-player-search"
+                      type="search"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="A player's name"
+                      autoComplete="off"
+                      autoFocus={searchOpen}
+                      className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet pl-10 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+                    />
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setQ(''); setSearchOpen(false) }}
+                    className="inline-flex min-h-[44px] shrink-0 items-center rounded-[6px] px-2 text-[15px] font-semibold text-v3-ink2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    data-players-search
+                    aria-label="Search players"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] border border-v3-rule bg-v3-sheet text-v3-ink2 hover:text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+                  >
+                    <Icon name="search" className="h-5 w-5" />
+                  </button>
+                  <Chips scroll label="Position" value={pos} onChange={setPos} options={POS_OPTIONS} className="min-w-0 flex-1" />
+                </>
+              )}
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                <label htmlFor="v3-player-search" className="grid gap-1">
+                  <Label>Search</Label>
+                  <span className="relative block">
+                    <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-v3-ink3" />
+                    <input
+                      id="v3-player-search"
+                      type="search"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="A player's name"
+                      autoComplete="off"
+                      className="min-h-[44px] w-full rounded-[6px] border border-v3-rule bg-v3-sheet pl-10 pr-3 text-[16px] text-v3-ink placeholder:text-v3-ink3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
+                    />
+                  </span>
+                </label>
+                {scoringCtl}
+              </div>
+
+              {/* The filter groups flow onto one row where the row can seat
+                  them: three stacked full-width rows used under 30% of their
+                  width each, and the page exists for the table underneath. */}
+              <div className="grid gap-4 md:flex md:flex-wrap md:items-end md:gap-x-8 md:gap-y-4">
+                {modeCtl}
+                <div className="grid justify-items-start gap-1">
+                  <Label>Position</Label>
+                  <Chips label="Position" value={pos} onChange={setPos} options={POS_OPTIONS} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMore((m) => !m)}
+                  aria-expanded={more}
+                  aria-controls="v3-player-more"
+                  className="inline-flex min-h-[44px] items-center justify-between rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call md:hidden"
+                >
+                  <span>Team and tenure{extraSet ? <span className="ml-2 font-figure text-[13px] text-v3-ink2">· {extraSet} set</span> : null}</span>
+                  <Icon name="arrow" className={cx('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', more ? '-rotate-90' : 'rotate-90')} />
+                </button>
+                <div id="v3-player-more" className={cx('grid-cols-1 items-end gap-3 md:grid md:grid-cols-[220px_auto]', more ? 'grid' : 'hidden')}>
+                  {teamCtl}
+                  {tenureCtl}
+                </div>
+              </div>
+            </>
           )}
 
-          <div className="grid justify-items-start gap-1">
-            <Label>Position</Label>
-            <Chips label="Position" value={pos} onChange={setPos} options={['ALL', ...POSITIONS].map((p) => ({ value: p, label: p === 'DST' ? 'D/ST' : p === 'ALL' ? 'All' : p }))} />
-          </div>
-
-          {/* Team and tenure. Always out at a desk; folded behind one button
-              on a phone, where six controls stacked above the list would put
-              the first player a screen and a half down. The button counts
-              what is set inside, so folded is still informative. */}
-          <button
-            type="button"
-            onClick={() => setMore((m) => !m)}
-            aria-expanded={more}
-            aria-controls="v3-player-more"
-            className="inline-flex min-h-[44px] items-center justify-between rounded-[6px] border border-v3-rule bg-v3-sheet px-3 text-[15px] font-semibold text-v3-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call md:hidden"
-          >
-            <span>Team and tenure{extraSet ? <span className="ml-2 font-figure text-[13px] text-v3-ink2">· {extraSet} set</span> : null}</span>
-            <Icon name="arrow" className={cx('h-4 w-4 transition-transform duration-150 motion-reduce:transition-none', more ? '-rotate-90' : 'rotate-90')} />
-          </button>
-          <div id="v3-player-more" className={cx('grid-cols-1 items-end gap-3 md:grid md:grid-cols-[220px_auto]', more ? 'grid' : 'hidden')}>
-            <SelectField id="v3-player-team" label="NFL team" value={team} onChange={setTeam}>
-              <option value="ALL">All teams</option>
-              {(data ? data.teams : []).map((t) => <option key={t} value={t}>{t}</option>)}
-            </SelectField>
-            <div className="grid justify-items-start gap-1">
-              <Label>Tenure</Label>
-              <TenureControl current={tenure} onChange={setTenure} />
-            </div>
-          </div>
-          </div>
-
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 md:hidden">
-            {/* Only this mode's own orders: offering "ROS pts" on a
-                preseason list is a control that sorts by a column nobody
-                can see, which is the sort arrow pointing at nothing in a
-                different shape. */}
-            <SelectField id="v3-player-sort" label="Sort by" value={sort.key} onChange={(k) => setSort({ key: k, dir: SORTS[k].dir })}>
-              {['name', ...cols.map((c) => c.sort)].map((k) => <option key={k} value={k}>{SORTS[k].label}</option>)}
-            </SelectField>
-            <QuietButton
-              onClick={() => setSort((s) => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
-              aria-label={`Sort direction: ${sort.dir === 'asc' ? 'ascending' : 'descending'}. Reverse it.`}
-              className="px-4"
-            >
-              {sort.dir === 'asc' ? 'Low → high' : 'High → low'}
-            </QuietButton>
-          </div>
-
-          {/* What the numbers on screen ARE, in the mode they are drawn in.
-              A figure that changed meaning when a control moved and kept
-              its caption would be this project's own right-value-wrong-
-              column bug, with a horizon instead of a table. */}
-          {key && (
-            <p className="max-w-[85ch] text-[13px] leading-[1.5] text-v3-ink3">
-              {mode === 'ros' && (
-                <>
-                  Rest of season is a rate for the weeks he has left — what he was projected to average, pulled toward what he has actually
-                  averaged, times the games between now and week {season.lastWeek} with his bye and any known absence taken out.{' '}
-                  {weightLine}. <strong className="font-semibold text-v3-ink2">Moved</strong> is places since {since}.
-                  Scored under {fmtName}; ADP is the {liveName} market the board was built on.{' '}
-                </>
-              )}
-              {mode === 'season' && (
-                <>
-                  What he has actually scored this season under {fmtName}, and his points per game <em>played</em> — a week he missed is not
-                  a nought, so a man with no games has no season rather than a zero. Pure fact: nothing here is a forecast.{' '}
-                </>
-              )}
-              {mode === 'pre' && (
-                <>
-                  Projected points, points over replacement and position rank are under {fmtName}. ADP is the {liveName} market the board is built on
-                  {fmt !== live ? <>, and the Juke score stays on {liveName}, the scoring your mock is set to — the engine only prices it under that table</> : null}.{' '}
-                  {season ? 'These are the preseason numbers, untouched by anything that has happened since. ' : ''}
-                </>
-              )}
-              Kickers and defenses keep their points and are never rated.
-            </p>
-          )}
+          {!phone && noteEl}
         </div>
 
         {!data ? (
@@ -585,7 +724,22 @@ export default function V3Players() {
             </div>
           </>
         )}
+        {phone && noteEl ? <div className="border-t border-v3-rule p-4">{noteEl}</div> : null}
       </Sheet>
+
+      {/* Phone only, and rendered as nothing at all when shut — see
+          FilterSheet's own note on why this is not CSS-hidden. */}
+      {phone && (
+        <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters" count={setCount}>
+          <div id="v3-player-filters" className="grid gap-4">
+            {scoringCtl}
+            {modeCtl}
+            {sortCtl}
+            {teamCtl}
+            {tenureCtl}
+          </div>
+        </FilterSheet>
+      )}
     </div>
   )
 }

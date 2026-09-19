@@ -88,8 +88,18 @@
   /* ---- Rhythm ----
      The gap BETWEEN major blocks, as one token rather than a margin chosen
      per page. Density INSIDE a card never reads it: that density is correct
-     and was never what was wrong. */
-  --v3-space-section: 4rem;
+     and was never what was wrong.
+
+     The phone step is 1.75rem and was 4rem. Sixty-four pixels between blocks
+     is a proportion for a page read at arm's length across 1320px, where the
+     blocks sit beside each other and the gap is what separates columns; on a
+     390px screen they are stacked, each already a bordered card on a
+     different ground, and the gap is separating things nothing could confuse
+     — so it reads as the page having been abandoned halfway down. Measured
+     on the connected week page: three gaps above the fold, 192px, against a
+     screen 844 tall. The md and lg steps are untouched, so no desktop page
+     moves. */
+  --v3-space-section: 1.75rem;
 
   /* ---- Elevation ----
      One step, scarce on purpose. Every card here is a 1px rule on a lifted
@@ -100,6 +110,9 @@
   --v3-shadow-raised: 0 1px 2px rgb(var(--v3-shade) / 0.06), 0 8px 24px -12px rgb(var(--v3-shade) / 0.28);
 }
 
+/* 640px restores the old base exactly, so the only width this token moves at
+   is the one the complaint was about. */
+@media (min-width: 640px) { :root { --v3-space-section: 4rem; } }
 @media (min-width: 768px) { :root { --v3-space-section: 6rem; } }
 @media (min-width: 1024px) { :root { --v3-space-section: 8rem; } }
 html[data-v3-theme='dark'] {

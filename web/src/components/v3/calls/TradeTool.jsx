@@ -184,9 +184,9 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
         items={[league && league.name, platformName, snapshot && snapshot.week ? `week ${snapshot.week}` : 'preseason', unit.long]}
       />
     )
-  const shell = (title, lede, body, act = action) => (
+  const shell = (title, callLine, body, act = action) => (
     <div className="grid gap-8">
-      <CallHead label={label} title={title} lede={lede} action={act} band={band} />
+      <CallHead label={label} title={title} reason={callLine} action={act} band={band} />
       {body}
     </div>
   )
@@ -225,7 +225,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
       : swing.you > 0 ? `This deal favors you by ${Math.round(swing.you)}.` : `This deal favors them by ${Math.round(-swing.you)}.`
     : !empty ? 'Juke will not call this one.'
       : suggestion ? `Ask for ${suggestion.get.player.name}.` : 'Price a trade before you send it.'
-  const lede = !empty
+  const callLine = !empty
     ? swing.priced
       ? `${unit.long[0].toUpperCase()}${unit.long.slice(1)}: you get ${signedWhole(swing.get)} and send ${signedWhole(swing.give)}, so the swing is ${signedWhole(swing.you)} for you and ${signedWhole(swing.them)} for ${partner ? partner.teamName : 'them'}.`
       : 'This deal includes a kicker or a defense. Juke does not rank those two, so it will not put a number on a trade containing one rather than guess at it.'
@@ -373,7 +373,7 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
 
   const valueMax = values.length ? Math.max(1, ...values.map((r) => Math.max(0, r.value))) : 1
 
-  return shell(title, lede, (
+  return shell(title, callLine, (
     <div className="grid gap-6">
       <TradeWindowStrip snapshot={snapshot} />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">

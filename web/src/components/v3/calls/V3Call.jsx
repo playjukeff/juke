@@ -88,7 +88,7 @@ function SampleTool({ tool }) {
         <CallHead
           label={`Sample call · ${tool.what}`}
           title="Reading tonight’s board."
-          lede="The sample league is drafted off tonight’s board the moment it lands."
+          reason="The sample league is drafted off tonight’s board the moment it lands."
           action={action}
           band={<SituationBand sample items={['a sample league', 'not your league']} />}
         />
@@ -142,7 +142,7 @@ export default function V3Call({ slug }) {
   if (status === 'loading') {
     return (
       <div className="grid gap-8">
-        <CallHead label={`Now · ${tool.what}`} title="Checking which league is yours." lede={null} band={null} />
+        <CallHead label={`Now · ${tool.what}`} title="Checking which league is yours." reason={null} band={null} />
         <Loading />
       </div>
     )
@@ -151,7 +151,7 @@ export default function V3Call({ slug }) {
   if (status === 'error') {
     return (
       <div className="grid gap-8">
-        <CallHead label={`Now · ${tool.what}`} title="We could not check your league." lede="Juke could not find out whether you have a league connected, so it is not going to guess and ask you to connect one you may already have." band={null} />
+        <CallHead label={`Now · ${tool.what}`} title="We could not check your league." reason="Juke could not find out whether you have a league connected, so it is not going to guess and ask you to connect one you may already have." band={null} />
         <Sheet code="Your league" aside="Not checked" role="alert">
           <p className="text-[15px] leading-[1.55] text-v3-ink2">Nothing about your league has changed. This page just could not ask.</p>
           <QuietButton onClick={retryLeagues} className="mt-4">Try again</QuietButton>

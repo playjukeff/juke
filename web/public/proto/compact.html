@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en" data-screen="now">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0D1219">
+<title>Juke Compact — mobile prototype</title>
+<!--
+  A PROTOTYPE, not the product. Nothing here imports from web/src and
+  nothing in web/src imports this: it is a single static file under
+  web/public, so it costs the React bundle nothing and cannot break a
+  shipping screen. It is served at /proto/compact.html.
+
+  What it is for: the owner's note of 18 September 2026, beside two
+  recordings of ESPN Fantasy — "ours has a ton of text describing almost
+  every element on each page and is very busy compared to theirs".
+  Measured on the built site at 390x844 that morning, the first real
+  figure on #/record is at y=1386 (1.6 screenfuls of prose before a
+  number), on #/league at y=843, and the first viewport of every page
+  carries 197 to 522 characters of prose. ESPN's home puts five player
+  rows above the fold and zero sentences anywhere.
+
+  The five rules this page is an argument for, in the order they matter:
+
+    1. No page hero. The league is the title and it lives in the 56px
+       header; data starts at y=100 on every screen. The eyebrow,
+       headline and explanatory paragraph that open every v3 page are
+       the single biggest cost, and they are page furniture rather than
+       content.
+    2. Two lines per row, never three, with the figure right-aligned in
+       its own column so a list reads as a column of numbers.
+    3. A section header is one 12px caps line and a link — not a solid
+       band. The band is right for a laminated call sheet and wrong for
+       a phone, where it eats 38px per section.
+    4. THE ARITHMETIC IS NOT DELETED. It moves one tap down, behind the
+       figure it explains. This is the whole reason not to simply copy
+       ESPN: they have no working to show, and Juke's claim is that a
+       call comes with its arithmetic. Deleting the sentences would be
+       deleting the product.
+    5. Colour means one thing — gain, cost, action, everything else grey.
+
+  The numbers are the owner's real Week 2 (Season Over Already vs Team
+  Trap), read off the recordings: his nine starters sum to 154.7 and the
+  McConkey-over-London swap is +1.76, which is why 13.15/14.91 = 88% is
+  a real break-even rather than an illustration. Everything on the
+  Players screen is marked SAMPLE, because a rest-of-season order is not
+  something this file can compute.
+
+  Tokens are copied from web/src/index.css's dark v3 values rather than
+  imported, because a standalone file cannot read them. They are a
+  snapshot: if the palette moves, this page does not follow, and that is
+  the right trade for something that must never be in the bundle.
+-->
+<style>
+  :root {
+    --paper: #0D1219;
+    --sheet: #151C27;
+    --well: #1D2634;
+    --rule: #2E3A4D;
+    --ink: #E7ECF3;
+    --ink2: #B5BFCD;
+    --ink3: #8F9BAD;
+    --call: #8198FF;
+    --on-call: #0A1024;
+    --gain: #4CD08A;
+    --gain-wash: #11301F;
+    --cost: #FF8A7E;
+    --cost-wash: #3B1916;
+    --warn: #F2B64B;
+    --warn-wash: #35270F;
+    --qb: #F7BCCB; --rb: #ABDFC7; --wr: #AACAF2; --te: #FBD5A8; --k: #CDBDEF; --dst: #C2CCD7;
+    --cell-ink: #16202E;
+  }
+  /* The light half exists only for the "as it ships" comparison. */
+  .today {
+    --paper: #F2F4F7; --sheet: #FFFFFF; --well: #E8ECF1; --rule: #D5DBE3;
+    --ink: #0C1422; --ink2: #39455A; --ink3: #556274;
+    --call: #1F3FE0; --on-call: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+  /* An author `display` beats `[hidden]`, so a class carrying one wins
+     and the element stays laid out. The tab strip did exactly that on
+     Now — an empty 44px band under the header — which is the rule
+     CLAUDE.md already records against the draft room's chat dock. */
+  [hidden] { display: none !important; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: #05080D;
+    color: var(--ink);
+    font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .mono { font-family: Inconsolata, ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+  /* On a phone the prototype IS the page — no frame, no chrome, so it
+     reads as an app rather than as a picture of one. The frame only
+     appears where there is room for it. */
+  .device {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  @media (min-width: 760px) {
+    body { padding: 0 16px 32px; }
+    .device {
+      width: 390px;
+      height: 844px;
+      flex: 0 0 auto;
+      max-height: calc(100dvh - 110px);
+      border-radius: 34px;
+      border: 1px solid #222C3C;
+      box-shadow: 0 40px 100px -30px rgba(0,0,0,0.9);
+    }
+  }
+
+  /* ---- header ---- */
+  .hdr {
+    flex: 0 0 auto; height: 56px; display: flex; align-items: center; gap: 10px;
+    padding: 0 8px 0 14px; border-bottom: 1px solid var(--rule); background: var(--sheet);
+    padding-top: env(safe-area-inset-top);
+    height: calc(56px + env(safe-area-inset-top));
+  }
+  .hdr-title { flex: 1 1 auto; min-width: 0; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip {
+    flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--ink2); background: var(--well); border-radius: 4px; padding: 4px 7px;
+  }
+  .iconbtn {
+    flex: 0 0 auto; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink2);
+  }
+
+  /* ---- tabs ---- */
+  .tabs { flex: 0 0 auto; height: 44px; display: flex; border-bottom: 1px solid var(--rule); background: var(--sheet); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1 0 auto; min-width: 84px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--ink3);
+    background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; padding: 0 12px;
+  }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--call); }
+
+  /* ---- body ---- */
+  .body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .screen[hidden] { display: none; }
+
+  /* ---- section head: one line, no band ---- */
+  .sec { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 5px; }
+  .sec-t { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink3); }
+  .sec a {
+    font-size: 13px; font-weight: 600; color: var(--call); text-decoration: none;
+    display: inline-flex; align-items: center; min-height: 44px; padding-left: 12px;
+  }
+  /* The head keeps its own height so a 44px link does not stretch it. */
+  .sec { min-height: 44px; }
+
+  /* ---- the row ---- */
+  .row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 16px; border-bottom: 1px solid var(--well);
+    background: none; border-left: 0; border-right: 0; border-top: 0;
+    text-align: left; color: inherit; font: inherit; cursor: pointer;
+  }
+  .row:active { background: var(--sheet); }
+  .row-slot { flex: 0 0 auto; width: 28px; font-size: 12px; font-weight: 700; color: var(--ink3); }
+  .row-main { flex: 1 1 auto; min-width: 0; }
+  .row-name { font-size: 15px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-meta { margin-top: 1px; font-size: 12px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-fig { flex: 0 0 auto; width: 48px; text-align: right; font-size: 15px; font-weight: 700; }
+  .pos {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 34px; height: 22px; border-radius: 4px; color: var(--cell-ink);
+    font-size: 12px; font-weight: 700;
+  }
+  .flag { margin-left: 5px; font-size: 12px; font-weight: 700; color: var(--warn); }
+  .gain { color: var(--gain); } .cost { color: var(--cost); } .dim { color: var(--ink3); }
+
+  /* ---- bottom nav ---- */
+  .nav {
+    flex: 0 0 auto; display: flex; border-top: 1px solid var(--rule); background: var(--sheet);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav button {
+    flex: 1 1 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; background: none; border: 0; cursor: pointer; color: var(--ink3); font: inherit;
+    font-size: 12px; font-weight: 600; padding: 6px 0;
+  }
+  .nav button[aria-current="page"] { color: var(--call); font-weight: 700; }
+  .nav svg { width: 21px; height: 21px; }
+
+  /* ---- the working sheet ---- */
+  .scrim { position: absolute; inset: 0; background: rgba(5,8,13,0.68); border: 0; padding: 0; cursor: pointer; }
+  .scrim[hidden], .work[hidden] { display: none; }
+  .work {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%;
+    background: var(--sheet); border-top: 1px solid var(--rule); border-radius: 14px 14px 0 0;
+    box-shadow: 0 -18px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--rule); margin: 10px auto 8px; }
+  .work-body { overflow-y: auto; padding: 0 16px 18px; }
+  .kv { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; font-size: 14px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; border-radius: 6px; background: var(--call); color: var(--on-call);
+    font-size: 15px; font-weight: 700; border: 0; cursor: pointer; text-decoration: none; font-family: inherit;
+  }
+  .btn-quiet { background: none; border: 1px solid var(--rule); color: var(--ink2); padding: 0 18px; }
+
+  /* ---- the comparison ---- */
+  .today .hero-eyebrow { font-size: 24px; font-weight: 700; letter-spacing: 0.06em; line-height: 1.18; color: var(--call); }
+  .today h1 { margin: 8px 0 0; font-size: 40px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.06; }
+  .today p.lede { margin: 16px 0 0; font-size: 18px; line-height: 1.5; color: var(--ink2); }
+  .band { background: #0C1422; color: #fff; border-radius: 6px 6px 0 0; padding: 11px 14px; display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; }
+
+  /* In the document's flow, never over the app. A floating pill here
+     landed squarely on the bottom nav at 390px — the same "eight dead
+     pixels on the button the whole screen exists to press" shape the
+     legacy stylesheet already records against a sticky chat dock. */
+  .toggle {
+    flex: 0 0 auto;
+    display: flex; gap: 0; background: #151C27; border: 1px solid #2E3A4D;
+    border-radius: 999px; padding: 3px; margin: 10px auto;
+  }
+  @media (min-width: 760px) { .toggle { margin: 20px auto 14px; } }
+  .toggle button {
+    min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: none;
+    color: #8F9BAD; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer;
+  }
+  .toggle button[aria-pressed="true"] { background: #8198FF; color: #0A1024; }
+
+  :where(button, a):focus-visible { outline: 2px solid var(--call); outline-offset: 2px; border-radius: 4px; }
+  @media (prefers-reduced-motion: no-preference) { .work { animation: rise 220ms cubic-bezier(.2,.8,.2,1); } }
+  @keyframes rise { from { transform: translateY(14px); opacity: 0; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&family=Inconsolata:wght@400..800&display=swap">
+</head>
+<body>
+
+<div class="toggle" role="group" aria-label="Which version">
+  <button type="button" id="tCompact" aria-pressed="true">COMPACT</button>
+  <button type="button" id="tToday" aria-pressed="false">AS IT SHIPS</button>
+</div>
+
+<div class="device" id="device">
+
+  <!-- ============ COMPACT ============ -->
+  <div id="compact" style="display:flex;flex-direction:column;height:100%;min-height:0;">
+
+    <header class="hdr">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="flex:0 0 auto"><path d="M12 2.5 4.5 13.5a7.5 7.5 0 1 0 15 0Z" fill="#8198FF"/><circle cx="9.6" cy="13.2" r="1.7" fill="#0A1024"/></svg>
+      <span class="hdr-title" id="hdrTitle">Season Over Already</span>
+      <span class="chip mono" id="hdrChip">WK 2</span>
+      <button class="iconbtn" type="button" aria-label="Account">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg>
+      </button>
+    </header>
+
+    <div class="tabs" id="tabs" role="tablist" hidden></div>
+
+    <main class="body" id="body"></main>
+
+    <nav class="nav" id="nav" aria-label="Primary"></nav>
+
+    <button class="scrim" id="scrim" hidden aria-label="Close the working"></button>
+    <section class="work" id="work" hidden aria-label="The working"></section>
+  </div>
+
+  <!-- ============ TODAY (comparison) ============ -->
+  <div id="today" class="today" hidden style="flex-direction:column;height:100%;min-height:0;background:var(--paper);color:var(--ink);">
+    <header class="hdr" style="height:calc(64px + env(safe-area-inset-top))">
+      <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" style="flex:0 0 auto"><path d="M12 2.5 4.5 13.5a7.5 7.5 0 1 0 15 0Z" fill="#1F3FE0"/><circle cx="9.6" cy="13.2" r="1.7" fill="#fff"/></svg>
+      <span style="flex:1 1 auto;font-size:26px;font-weight:900;letter-spacing:-0.01em">JUKE</span>
+      <span class="iconbtn"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span>
+    </header>
+    <main class="body" style="padding:0 16px">
+      <div style="margin-top:20px;background:#0C1422;border-radius:6px;padding:12px 14px">
+        <div class="mono" style="font-size:13px;font-weight:700;letter-spacing:0.1em;color:#fff">WEEK 2 · 2026 SEASON</div>
+        <div class="mono" style="margin-top:5px;font-size:13px;color:#9AA7B8"><b style="color:#fff">480</b> players priced &nbsp; refreshed 23 hrs ago</div>
+      </div>
+      <div class="hero-eyebrow mono" style="margin-top:26px">NOW · WEEK 2 · 2026</div>
+      <h1>Week 2 is here. Bring your league.</h1>
+      <p class="lede">Juke reads your league and makes the week’s calls — who to start, who to claim, whether a trade is fair — each with the arithmetic printed beside it. This is what that looks like on a sample league, on tonight’s real players.</p>
+      <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+        <span class="btn" style="padding:0 18px">Connect your league →</span>
+        <span class="btn btn-quiet" style="color:var(--ink)">Log in</span>
+      </div>
+      <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:var(--ink3)">Read-only: Juke never edits your league. Sleeper, ESPN, CBS and Yahoo now. Connecting needs a free account and Season Pass, which is not on sale yet.</p>
+      <div class="band" style="margin-top:16px"><span>SAMPLE WEEK · WHAT NOW SHOW…</span></div>
+      <div style="height:1px;border-top:2px dashed #B8261B;margin:0 -16px" aria-hidden="true"></div>
+      <p style="margin:14px 0 24px;font-size:13px;line-height:1.5;color:var(--ink3)">↑ the fold at 390×844. Everything above it is copy. On this page the first figure is at y=109 in a status band; on Record it is at y=1386.</p>
+    </main>
+    <nav class="nav" aria-label="Primary">
+      <button type="button" aria-current="page">Now</button>
+      <button type="button">League</button>
+      <button type="button">Players</button>
+      <button type="button">Draft</button>
+      <button type="button">Record</button>
+    </nav>
+  </div>
+
+</div>
+
+
+
+<script>
+/* Plain DOM, no framework and no build step — the same rule the legacy
+   pages keep. Screens are data; every row is a <button> so it is
+   reachable by keyboard and announces itself, which a div with a click
+   handler is not. */
+(function () {
+  'use strict';
+
+  var CHALK = { QB: 'var(--qb)', RB: 'var(--rb)', WR: 'var(--wr)', TE: 'var(--te)', K: 'var(--k)', DST: 'var(--dst)' };
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function sec(title, link) {
+    var s = el('div', 'sec');
+    s.appendChild(el('span', 'sec-t mono', title));
+    if (link) { var a = el('a', null, link); a.href = '#'; a.addEventListener('click', function (e) { e.preventDefault(); }); s.appendChild(a); }
+    return s;
+  }
+  /* One row, two lines, a figure. `working` makes it pressable. */
+  function row(o) {
+    var b = el('button', 'row');
+    b.type = 'button';
+    if (o.slot) b.appendChild(el('span', 'row-slot mono', o.slot));
+    if (o.pos) { var p = el('span', 'pos mono', o.pos === 'DST' ? 'D/ST' : o.pos); p.style.background = CHALK[o.pos] || 'var(--dst)'; b.appendChild(p); }
+    var m = el('div', 'row-main');
+    var n = el('div', 'row-name');
+    n.appendChild(document.createTextNode(o.name));
+    if (o.flag) n.appendChild(el('span', 'flag mono', o.flag));
+    m.appendChild(n);
+    m.appendChild(el('div', 'row-meta mono', o.meta));
+    b.appendChild(m);
+    if (o.extra) b.appendChild(o.extra);
+    var f = el('span', 'row-fig mono ' + (o.tone || ''), o.fig);
+    b.appendChild(f);
+    if (o.working) b.addEventListener('click', function () { openWork(o.working); });
+    else b.addEventListener('click', function () {});
+    return b;
+  }
+
+  /* ---- the data: the owner's real Week 2, read off the recordings ---- */
+  var STARTERS = [
+    { slot: 'QB', name: 'J. Allen', meta: 'DET 41-31 F · 248 yd, 5 TD', fig: '49.3' },
+    { slot: 'RB', name: 'C. Skattebo', meta: '@LAR Mon 7:15', fig: '13.3', tone: 'dim' },
+    { slot: 'RB', name: 'D. Montgomery', meta: 'CIN Sun 12:00', fig: '14.7', tone: 'dim' },
+    { slot: 'WR', name: 'P. Nacua', flag: 'Q', meta: 'NYG Mon 7:15', fig: '22.2', tone: 'dim' },
+    { slot: 'WR', name: 'D. London', meta: 'CAR Sun 12:00', fig: '13.2', tone: 'dim' },
+    { slot: 'TE', name: 'D. Goedert', meta: '@TEN Sun 12:00', fig: '11.0', tone: 'dim' },
+    { slot: 'FLX', name: 'P. Washington', meta: '@DEN Sun 3:05', fig: '12.5', tone: 'dim' },
+    { slot: 'D/ST', name: 'Buccaneers', meta: 'CLE Sun 12:00', fig: '10.3', tone: 'dim' },
+    { slot: 'K', name: 'C. Little', meta: '@DEN Sun 3:05', fig: '8.4', tone: 'dim' }
+  ];
+  var BENCH = [
+    { slot: 'BE', name: 'L. McConkey', flag: 'Q', meta: 'LV Sun 3:05', fig: '14.9', tone: 'gain' },
+    { slot: 'BE', name: 'J. Dobbins', meta: 'JAX Sun 3:05', fig: '12.0', tone: 'dim' },
+    { slot: 'BE', name: 'M. Golden', meta: '@NYJ Sun 12:00', fig: '11.1', tone: 'dim' },
+    { slot: 'BE', name: 'R. Dowdle', meta: '@NE Sun 12:00', fig: '10.4', tone: 'dim' },
+    { slot: 'BE', name: 'J. Croskey-Merritt', meta: '@DAL Sun 3:25', fig: '10.5', tone: 'dim' }
+  ];
+  var PLAYERS = [
+    { r: 1, pos: 'RB', name: 'J. Gibbs', team: 'DET', move: '—', mt: 'dim', ros: '188' },
+    { r: 2, pos: 'RB', name: 'B. Robinson', team: 'ATL', move: '—', mt: 'dim', ros: '181' },
+    { r: 3, pos: 'WR', name: 'P. Nacua', team: 'LAR', move: '+3', mt: 'gain', ros: '174' },
+    { r: 4, pos: 'WR', name: "J. Chase", team: 'CIN', move: '−1', mt: 'cost', ros: '170' },
+    { r: 5, pos: 'RB', name: 'S. Barkley', team: 'PHI', move: '−2', mt: 'cost', ros: '166' },
+    { r: 6, pos: 'WR', name: 'D. London', team: 'ATL', move: '+4', mt: 'gain', ros: '159' },
+    { r: 7, pos: 'QB', name: 'J. Allen', team: 'BUF', move: '—', mt: 'dim', ros: '154' },
+    { r: 8, pos: 'WR', name: 'L. McConkey', team: 'LAC', move: '+9', mt: 'gain', ros: '151' },
+    { r: 9, pos: 'TE', name: 'B. Bowers', team: 'LV', move: '−5', mt: 'cost', ros: '148' },
+    { r: 10, pos: 'RB', name: 'C. Skattebo', team: 'NYG', move: '+12', mt: 'gain', ros: '143' },
+    { r: 11, pos: 'WR', name: 'M. Nabers', team: 'NYG', move: '−3', mt: 'cost', ros: '140' },
+    { r: 12, pos: 'RB', name: 'D. Montgomery', team: 'DET', move: '+1', mt: 'gain', ros: '137' }
+  ];
+  var CALLS = [
+    { t: 'Start McConkey over London', m: 'Lineup · Wk 2 · pending', n: '—', k: 'dim' },
+    { t: 'Claim R. Dowdle', m: 'Wire · Wk 1 · right', n: '+8.4', k: 'gain' },
+    { t: 'Start Skattebo over Dowdle', m: 'Lineup · Wk 1 · right', n: '+6.1', k: 'gain' },
+    { t: 'Hold Nacua', m: 'Trade · Wk 1 · right', n: '+5.2', k: 'gain' },
+    { t: 'Start Washington over Dobbins', m: 'Lineup · Wk 1 · wrong', n: '−3.7', k: 'cost' },
+    { t: 'Claim M. Golden', m: 'Wire · Wk 1 · right', n: '+3.1', k: 'gain' },
+    { t: 'Sit Goedert', m: 'Lineup · Wk 1 · wrong', n: '−2.9', k: 'cost' },
+    { t: 'Start Buccaneers D/ST', m: 'Lineup · Wk 1 · right', n: '+2.4', k: 'gain' }
+  ];
+
+  /* The swap's working. Every figure in it is on the screen behind it,
+     so a reader can add the panel up — the reconciliation rule. */
+  var SWAP = {
+    title: 'Start McConkey over London',
+    start: { name: 'L. McConkey', flag: 'Q', meta: 'LV Sun 3:05', pts: '14.91' },
+    sit: { name: 'D. London', meta: 'CAR Sun 12:00', pts: '13.15' },
+    asSet: '154.70', gain: '+1.76', after: '156.46',
+    breakEven: '88%',
+    sources: [
+      ['Projection', 'ESPN’s own, week 2'],
+      ['Scoring', 'Your league’s 53 rules'],
+      ['Swap kind', 'Same position only (WR → WR)']
+    ]
+  };
+
+  /* ---- screens ---- */
+  var SCREENS = {
+    now: { title: 'Season Over Already', chip: 'WK 2', tabs: null, build: buildNow },
+    league: { title: 'Season Over Already', chip: 'WK 2', tabs: ['MATCHUP', 'TEAM', 'TABLE', 'ODDS'], build: buildLeague },
+    players: { title: 'Players', chip: '480', tabs: ['REST OF SEASON', 'SO FAR', 'PRESEASON'], build: buildPlayers },
+    draft: { title: 'Draft', chip: null, tabs: null, build: buildDraft },
+    record: { title: 'Record', chip: null, tabs: ['CALLS', 'DRAFTS'], build: buildRecord }
+  };
+
+  function scoreRail() {
+    var wrap = el('div');
+    wrap.style.cssText = 'display:flex;overflow-x:auto;border-bottom:1px solid var(--rule);scrollbar-width:none';
+    [['DET 31 BUF 41', 'FINAL'], ['CIN', 'Sun 12:00'], ['CAR', 'Sun 12:00'], ['CLE', 'Sun 12:00'], ['DEN', 'Sun 3:05'], ['LAR', 'Mon 7:15']]
+      .forEach(function (g) {
+        var c = el('div');
+        c.className = 'mono';
+        c.style.cssText = 'flex:0 0 auto;display:flex;gap:6px;align-items:baseline;padding:11px 12px;border-right:1px solid var(--rule);font-size:12px;white-space:nowrap';
+        c.appendChild(el('b', null, g[0]));
+        c.appendChild(el('span', 'dim', g[1]));
+        wrap.appendChild(c);
+      });
+    return wrap;
+  }
+
+  function matchupHead(compact) {
+    var w = el('div');
+    w.style.cssText = 'padding:14px 16px 12px;border-bottom:1px solid var(--rule)';
+    var top = el('div');
+    top.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px';
+    function side(score, name, meta, dimmed, right) {
+      var d = el('div');
+      d.style.cssText = 'min-width:0;flex:1 1 0;' + (right ? 'text-align:right' : '');
+      var s = el('div', 'mono', score);
+      s.style.cssText = 'font-size:34px;font-weight:700;line-height:1;letter-spacing:-0.02em;' + (dimmed ? 'color:var(--ink3)' : '');
+      d.appendChild(s);
+      var n = el('div', null, name);
+      n.style.cssText = 'margin-top:5px;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (dimmed ? 'color:var(--ink2)' : '');
+      d.appendChild(n);
+      var mt = el('div', 'mono dim', meta);
+      mt.style.cssText = 'margin-top:1px;font-size:12px';
+      d.appendChild(mt);
+      return d;
+    }
+    top.appendChild(side('49.3', 'Season Over Already', '1-0 · proj 154.7', false, false));
+    var vs = el('div', 'mono dim', 'vs');
+    vs.style.cssText = 'flex:0 0 auto;align-self:center;font-size:12px;padding-top:6px';
+    top.appendChild(vs);
+    top.appendChild(side('-0.1', 'Team Trap', '0-1 · proj 109.3', true, true));
+    w.appendChild(top);
+
+    var bar = el('div');
+    bar.style.cssText = 'margin-top:12px;display:flex;align-items:center;gap:8px';
+    var pct = el('span', 'mono gain', '73%');
+    pct.style.cssText = 'font-size:12px;font-weight:700;width:30px';
+    bar.appendChild(pct);
+    var track = el('span');
+    track.style.cssText = 'flex:1 1 auto;height:5px;border-radius:3px;background:var(--well);overflow:hidden;display:block';
+    var fill = el('span');
+    fill.style.cssText = 'display:block;width:73%;height:5px;background:var(--gain);border-radius:3px';
+    track.appendChild(fill);
+    bar.appendChild(track);
+    var lab = el('span', 'mono dim', 'win prob');
+    lab.style.cssText = 'font-size:12px';
+    bar.appendChild(lab);
+    w.appendChild(bar);
+    if (compact) w.style.cursor = 'pointer';
+    return w;
+  }
+
+  function buildNow(b) {
+    b.appendChild(scoreRail());
+    b.appendChild(matchupHead(true));
+
+    var head = el('div', 'sec');
+    head.appendChild(el('span', 'sec-t mono', 'THE CALL'));
+    var kind = el('span', 'mono', 'LINEUP');
+    kind.style.cssText = 'font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--warn);background:var(--warn-wash);border-radius:4px;padding:3px 6px';
+    head.appendChild(kind);
+    b.appendChild(head);
+
+    var call = el('button', 'row');
+    call.type = 'button';
+    call.style.cssText = 'padding:8px 16px 14px;align-items:flex-start';
+    var p = el('span', 'pos mono', 'WR');
+    p.style.cssText += 'background:var(--wr);margin-top:2px';
+    call.appendChild(p);
+    var m = el('div', 'row-main');
+    var t = el('div', null, 'Start McConkey over London');
+    t.style.cssText = 'font-size:16px;font-weight:700;line-height:1.25';
+    m.appendChild(t);
+    m.appendChild(el('div', 'row-meta mono', '154.7 → 156.5 · needs 88% to play'));
+    call.appendChild(m);
+    var right = el('div');
+    right.style.cssText = 'flex:0 0 auto;text-align:right';
+    var g = el('div', 'mono gain', '+1.8');
+    g.style.cssText = 'font-size:20px;font-weight:700;line-height:1';
+    right.appendChild(g);
+    var why = el('div', 'mono', 'Why');
+    why.style.cssText = 'margin-top:2px;font-size:12px;color:var(--call)';
+    right.appendChild(why);
+    call.appendChild(right);
+    call.addEventListener('click', function () { openWork(SWAP); });
+    b.appendChild(call);
+
+    b.appendChild(sec('STARTERS', 'Full lineup'));
+    STARTERS.forEach(function (s) { b.appendChild(row(s)); });
+  }
+
+  function buildLeague(b) {
+    b.appendChild(matchupHead(false));
+    b.appendChild(sec('STARTERS'));
+    STARTERS.forEach(function (s) { b.appendChild(row(s)); });
+    b.appendChild(sec('BENCH'));
+    BENCH.forEach(function (s) {
+      var o = {}; for (var k in s) o[k] = s[k];
+      o.working = s.name === 'L. McConkey' ? SWAP : null;
+      b.appendChild(row(o));
+    });
+  }
+
+  function buildPlayers(b) {
+    var chips = el('div');
+    chips.style.cssText = 'display:flex;gap:7px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--rule);scrollbar-width:none';
+    ['ALL', 'QB', 'RB', 'WR', 'TE', 'FREE AGENT'].forEach(function (c, i) {
+      var x = el('button', 'mono', c);
+      x.type = 'button';
+      x.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+      x.style.cssText = 'flex:0 0 auto;min-height:30px;padding:0 12px;border-radius:15px;font-size:12px;font-weight:700;cursor:pointer;' +
+        (i === 0 ? 'background:var(--call);color:var(--on-call);border:1px solid var(--call)'
+                 : 'background:none;color:var(--ink2);border:1px solid var(--rule)');
+      chips.appendChild(x);
+    });
+    b.appendChild(chips);
+
+    var head = el('div');
+    head.style.cssText = 'display:flex;gap:10px;padding:7px 16px;background:var(--sheet);border-bottom:1px solid var(--rule)';
+    [['#', 24, 'left'], ['PLAYER', 0, 'left'], ['MOVE', 40, 'right'], ['ROS', 48, 'right']].forEach(function (c) {
+      var s = el('span', 'mono dim', c[0]);
+      s.style.cssText = 'font-size:12px;font-weight:700;letter-spacing:0.06em;text-align:' + c[2] + ';' + (c[1] ? 'width:' + c[1] + 'px;flex:0 0 auto' : 'flex:1 1 auto');
+      head.appendChild(s);
+    });
+    b.appendChild(head);
+
+    PLAYERS.forEach(function (p) {
+      var extra = el('span', 'mono ' + p.mt, p.move);
+      extra.style.cssText = 'flex:0 0 auto;width:40px;text-align:right;font-size:13px;font-weight:700';
+      b.appendChild(row({ slot: String(p.r), pos: p.pos, name: p.name, meta: p.team, extra: extra, fig: p.ros }));
+    });
+
+    var note = el('p', null, 'Sample figures. The three orders are never blended into one number.');
+    note.style.cssText = 'margin:0;padding:14px 16px 24px;font-size:13px;line-height:1.5;color:var(--ink3)';
+    b.appendChild(note);
+  }
+
+  function buildDraft(b) {
+    var top = el('div');
+    top.style.cssText = 'padding:18px 16px 0';
+    top.appendChild(el('div', 'sec-t mono', 'THE NEXT MOCK'));
+    var h = el('div', null, '10-team Half PPR');
+    h.style.cssText = 'margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.01em';
+    top.appendChild(h);
+    var settings = el('button', 'mono');
+    settings.type = 'button';
+    settings.style.cssText = 'margin-top:6px;min-height:34px;display:flex;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;color:var(--ink2);font-size:13px;font-family:inherit';
+    settings.appendChild(document.createTextNode('14 rounds · 1st seat · 60s clock · snake'));
+    var chev = el('span', null, '›');
+    chev.style.cssText = 'color:var(--call);font-size:16px;font-weight:700';
+    settings.appendChild(chev);
+    top.appendChild(settings);
+    b.appendChild(top);
+
+    var actions = el('div');
+    actions.style.cssText = 'padding:14px 16px 0;display:flex;gap:10px';
+    var start = el('button', 'btn', '▶  Start mock draft');
+    start.type = 'button';
+    start.style.flex = '1 1 auto';
+    actions.appendChild(start);
+    b.appendChild(actions);
+
+    var friends = el('div');
+    friends.style.cssText = 'padding:12px 16px 4px';
+    var fa = el('a', null, 'Draft with friends ›');
+    fa.href = '#';
+    fa.style.cssText = 'font-size:14px;font-weight:600;color:var(--call);text-decoration:none';
+    fa.addEventListener('click', function (e) { e.preventDefault(); });
+    friends.appendChild(fa);
+    b.appendChild(friends);
+
+    b.appendChild(sec('PRACTICE'));
+    var grid = el('div');
+    grid.style.cssText = 'padding:0 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';
+    [['From the turn', '12 team · seat 6'], ['Superflex', '10 team · 15 rd'], ['Fast clock', '30s per pick'], ['Your weak spot', 'TE · last 20 mocks']]
+      .forEach(function (s) {
+        var c = el('button');
+        c.type = 'button';
+        c.style.cssText = 'text-align:left;padding:11px 12px;border-radius:6px;border:1px solid var(--rule);background:var(--sheet);cursor:pointer;color:inherit;font:inherit';
+        var t = el('div', null, s[0]);
+        t.style.cssText = 'font-size:14px;font-weight:700;line-height:1.25';
+        c.appendChild(t);
+        c.appendChild(el('div', 'row-meta mono', s[1]));
+        grid.appendChild(c);
+      });
+    b.appendChild(grid);
+
+    b.appendChild(sec('RECENT', 'All 47'));
+    [['A', 'gain', '10-team Half PPR', '2nd of 10 · 3 days ago'],
+     ['B+', 'dim', '12-team PPR', '4th of 12 · 5 days ago'],
+     ['A+', 'gain', '10-team Superflex', '1st of 10 · 1 week ago'],
+     ['C', 'cost', '14-team Standard', '11th of 14 · 2 weeks ago']].forEach(function (d) {
+      var b2 = el('button', 'row');
+      b2.type = 'button';
+      var g = el('span', 'mono ' + d[1], d[0]);
+      g.style.cssText = 'flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:36px;height:30px;border-radius:4px;font-size:15px;font-weight:700;background:' +
+        (d[1] === 'gain' ? 'var(--gain-wash)' : d[1] === 'cost' ? 'var(--cost-wash)' : 'var(--well)');
+      b2.appendChild(g);
+      var m = el('div', 'row-main');
+      var t = el('div', 'row-name', d[2]);
+      m.appendChild(t);
+      m.appendChild(el('div', 'row-meta mono', d[3]));
+      b2.appendChild(m);
+      b.appendChild(b2);
+    });
+  }
+
+  function buildRecord(b) {
+    var kpi = el('div');
+    kpi.style.cssText = 'display:flex;border-bottom:1px solid var(--rule)';
+    [['18', 'CALLS', ''], ['13', 'RIGHT', 'gain'], ['+41.6', 'NET PTS', 'gain']].forEach(function (k, i) {
+      var c = el('div');
+      c.style.cssText = 'flex:1 1 0;padding:12px 8px;' + (i === 0 ? 'padding-left:16px;' : '') + (i === 2 ? 'padding-right:16px;' : 'border-right:1px solid var(--well);');
+      var v = el('div', 'mono ' + k[2], k[0]);
+      v.style.cssText = 'font-size:24px;font-weight:700;line-height:1';
+      c.appendChild(v);
+      var l = el('div', 'mono dim', k[1]);
+      l.style.cssText = 'margin-top:4px;font-size:12px;letter-spacing:0.06em';
+      c.appendChild(l);
+      kpi.appendChild(c);
+    });
+    b.appendChild(kpi);
+
+    CALLS.forEach(function (c) {
+      var b2 = el('button', 'row');
+      b2.type = 'button';
+      var dot = el('span');
+      dot.style.cssText = 'flex:0 0 auto;width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:' +
+        (c.k === 'gain' ? 'var(--gain-wash)' : c.k === 'cost' ? 'var(--cost-wash)' : 'var(--well)');
+      var inner = el('span');
+      inner.style.cssText = 'width:8px;height:8px;border-radius:4px;background:' +
+        (c.k === 'gain' ? 'var(--gain)' : c.k === 'cost' ? 'var(--cost)' : 'var(--ink3)');
+      dot.appendChild(inner);
+      b2.appendChild(dot);
+      var m = el('div', 'row-main');
+      m.appendChild(el('div', 'row-name', c.t));
+      m.appendChild(el('div', 'row-meta mono', c.m));
+      b2.appendChild(m);
+      b2.appendChild(el('span', 'row-fig mono ' + c.k, c.n));
+      if (c.t.indexOf('McConkey') === 0) b2.addEventListener('click', function () { openWork(SWAP); });
+      b.appendChild(b2);
+    });
+  }
+
+  /* ---- the working sheet: the sentence, one tap down ---- */
+  var work = document.getElementById('work');
+  var scrim = document.getElementById('scrim');
+  var lastFocus = null;
+
+  function openWork(d) {
+    if (!d) return;
+    lastFocus = document.activeElement;
+    work.textContent = '';
+    work.appendChild(el('div', 'grab'));
+
+    var head = el('div');
+    head.style.cssText = 'padding:0 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--rule)';
+    var ht = el('div');
+    ht.appendChild(el('div', 'sec-t mono', 'THE WORKING'));
+    var h2 = el('h2', null, d.title);
+    h2.style.cssText = 'margin:4px 0 0;font-size:18px;font-weight:800;line-height:1.25';
+    ht.appendChild(h2);
+    head.appendChild(ht);
+    var close = el('button', 'iconbtn');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.style.margin = '-8px -10px 0 0';
+    close.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    close.addEventListener('click', closeWork);
+    head.appendChild(close);
+    work.appendChild(head);
+
+    var body = el('div', 'work-body');
+
+    var pair = el('div');
+    pair.style.cssText = 'display:flex;gap:10px;padding:14px 0 12px;border-bottom:1px solid var(--well)';
+    function card(kind, p, good) {
+      var c = el('div');
+      c.style.cssText = 'flex:1 1 0;min-width:0;padding:10px 12px;border-radius:6px;background:' + (good ? 'var(--gain-wash)' : 'var(--well)');
+      var k = el('div', 'mono', kind);
+      k.style.cssText = 'font-size:12px;font-weight:700;letter-spacing:0.08em;color:' + (good ? 'var(--gain)' : 'var(--ink3)');
+      c.appendChild(k);
+      var n = el('div');
+      n.style.cssText = 'margin-top:4px;font-size:15px;font-weight:700';
+      n.appendChild(document.createTextNode(p.name));
+      if (p.flag) n.appendChild(el('span', 'flag mono', p.flag));
+      c.appendChild(n);
+      var mt = el('div', 'mono', p.meta);
+      mt.style.cssText = 'margin-top:2px;font-size:12px;color:var(--ink2)';
+      c.appendChild(mt);
+      var v = el('div', 'mono', p.pts);
+      v.style.cssText = 'margin-top:8px;font-size:24px;font-weight:700;line-height:1;' + (good ? '' : 'color:var(--ink2)');
+      c.appendChild(v);
+      return c;
+    }
+    pair.appendChild(card('START', d.start, true));
+    pair.appendChild(card('SIT', d.sit, false));
+    body.appendChild(pair);
+
+    /* The sum, as a sum: the panel has to add up. */
+    var sum = el('div');
+    sum.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--well)';
+    function kv(k, v, cls, strong) {
+      var r = el('div', 'kv');
+      var a = el('span', null, k);
+      if (strong) a.style.fontWeight = '700';
+      r.appendChild(a);
+      var bq = el('span', 'mono ' + (cls || ''), v);
+      bq.style.cssText = 'font-size:' + (strong ? '18px' : '15px') + ';font-weight:' + (strong ? '700' : '600');
+      r.appendChild(bq);
+      if (!strong) a.style.color = 'var(--ink2)';
+      return r;
+    }
+    sum.appendChild(kv('Lineup as set', d.asSet, 'dim'));
+    sum.appendChild(kv('Swap gain', d.gain, 'gain'));
+    var tot = kv('Lineup after', d.after, '', true);
+    tot.style.cssText += 'padding-top:8px;margin-top:6px;border-top:1px solid var(--rule)';
+    sum.appendChild(tot);
+    body.appendChild(sum);
+
+    if (d.breakEven) {
+      var warn = el('div');
+      warn.style.cssText = 'margin:12px 0;padding:12px;border-radius:6px;border:1px solid var(--warn);background:var(--warn-wash)';
+      var wh = el('div', 'mono', 'HE IS QUESTIONABLE');
+      wh.style.cssText = 'font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--warn)';
+      warn.appendChild(wh);
+      var eq = el('div', 'mono');
+      eq.style.cssText = 'margin-top:8px;font-size:15px';
+      eq.appendChild(document.createTextNode('13.15 ÷ 14.91 = '));
+      eq.appendChild(el('b', null, d.breakEven));
+      warn.appendChild(eq);
+      var wp = el('p', null, 'The swap is worth making only if he is at least ' + d.breakEven + ' to play. If he sits, the slot scores 0 and you lose 13.15.');
+      wp.style.cssText = 'margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--ink2)';
+      warn.appendChild(wp);
+      body.appendChild(warn);
+    }
+
+    var src = el('div');
+    src.style.cssText = 'padding:2px 0 12px';
+    d.sources.forEach(function (s) {
+      var r = el('div', 'kv');
+      var a = el('span', 'dim', s[0]);
+      a.style.fontSize = '13px';
+      r.appendChild(a);
+      var b2 = el('span', null, s[1]);
+      b2.style.cssText = 'font-size:13px;color:var(--ink2);text-align:right';
+      r.appendChild(b2);
+      src.appendChild(r);
+    });
+    body.appendChild(src);
+
+    var acts = el('div');
+    acts.style.cssText = 'display:flex;gap:10px;padding:4px 0 4px';
+    var make = el('button', 'btn', 'Make this call');
+    make.type = 'button';
+    make.style.flex = '1 1 auto';
+    make.addEventListener('click', closeWork);
+    acts.appendChild(make);
+    var method = el('button', 'btn btn-quiet', 'Method');
+    method.type = 'button';
+    acts.appendChild(method);
+    body.appendChild(acts);
+
+    work.appendChild(body);
+    work.hidden = false;
+    scrim.hidden = false;
+    close.focus();
+  }
+
+  function closeWork() {
+    work.hidden = true;
+    scrim.hidden = true;
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  scrim.addEventListener('click', closeWork);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !work.hidden) closeWork(); });
+
+  /* ---- shell ---- */
+  var ICONS = {
+    now: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+    league: '<path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3M10 19h4M12 14v5"/>',
+    players: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.4a3.2 3.2 0 0 1 0 5.2M18 19a5.6 5.6 0 0 0-2-4.3"/>',
+    draft: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+    record: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
+  };
+  var LABELS = { now: 'Now', league: 'League', players: 'Players', draft: 'Draft', record: 'Record' };
+  var ORDER = ['now', 'league', 'players', 'draft', 'record'];
+  var current = 'now';
+
+  var navEl = document.getElementById('nav');
+  ORDER.forEach(function (k) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[k] + '</svg><span>' + LABELS[k] + '</span>';
+    b.addEventListener('click', function () { go(k); });
+    b.dataset.key = k;
+    navEl.appendChild(b);
+  });
+
+  function go(key) {
+    current = key;
+    var s = SCREENS[key];
+    document.documentElement.dataset.screen = key;
+    document.getElementById('hdrTitle').textContent = s.title;
+    var chip = document.getElementById('hdrChip');
+    chip.textContent = s.chip || '';
+    chip.hidden = !s.chip;
+
+    var tabs = document.getElementById('tabs');
+    tabs.textContent = '';
+    tabs.hidden = !s.tabs;
+    if (s.tabs) {
+      s.tabs.forEach(function (t, i) {
+        var b = el('button', 'tab mono', t);
+        b.type = 'button';
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+        b.addEventListener('click', function () {
+          [].forEach.call(tabs.children, function (c) { c.setAttribute('aria-selected', 'false'); });
+          b.setAttribute('aria-selected', 'true');
+        });
+        tabs.appendChild(b);
+      });
+    }
+
+    var body = document.getElementById('body');
+    body.textContent = '';
+    body.scrollTop = 0;
+    s.build(body);
+
+    [].forEach.call(navEl.children, function (b) {
+      if (b.dataset.key === key) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    closeWork();
+  }
+
+  /* ---- the comparison toggle ---- */
+  var tC = document.getElementById('tCompact');
+  var tT = document.getElementById('tToday');
+  function show(which) {
+    var compact = which === 'compact';
+    document.getElementById('compact').style.display = compact ? 'flex' : 'none';
+    var today = document.getElementById('today');
+    today.hidden = compact;
+    today.style.display = compact ? 'none' : 'flex';
+    tC.setAttribute('aria-pressed', String(compact));
+    tT.setAttribute('aria-pressed', String(!compact));
+  }
+  tC.addEventListener('click', function () { show('compact'); });
+  tT.addEventListener('click', function () { show('today'); });
+
+  go('now');
+  show('compact');
+})();
+</script>
+</body>
+</html>

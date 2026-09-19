@@ -138,9 +138,9 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
         ]}
       />
     )
-  const shell = (title, lede, body) => (
+  const shell = (title, callLine, body) => (
     <div className="grid gap-8">
-      <CallHead label={label} title={title} lede={lede} action={action} band={band} />
+      <CallHead label={label} title={title} reason={callLine} action={action} band={band} />
       {body}
     </div>
   )
@@ -192,11 +192,11 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
   const after = best && nowTotal !== null ? nowTotal + best.gain : null
 
   const title = best ? `Start ${best.start.name} over ${best.sit.name}.` : 'Your lineup is already the best one.'
-  const lede = best
+  const callLine = best
     ? `${signedText(best.gain)} ${unit}${after !== null ? (best.replacing ? ` — ${best.sit.name} scores nothing, so your lineup as set really projects ${nowTotal.toFixed(1)}; with the swap, ${after.toFixed(1)}` : ` — your lineup goes from ${total.toFixed(1)} to ${after.toFixed(1)}`) : ''}${opponent ? `, against ${opponent.teamName}’s ${oppTotal !== null ? oppTotal.toFixed(1) : 'unpriced lineup'}` : ''}.${hurt.length ? ` ${hurt.length} on your roster may not play.` : ''}`
     : `${total !== null ? `It projects ${total.toFixed(1)} ${unit} as set` : 'Some starters have no projection'}${opponent && oppTotal !== null ? `, against ${opponent.teamName}’s ${oppTotal.toFixed(1)}` : ''}. Nothing on the bench beats a starter at his own position.`
 
-  return shell(title, lede, (
+  return shell(title, callLine, (
     <div className="grid gap-6">
       {/* One grid rather than two stacked ones. The call and the
           matchup were a row of their own, and a call with nothing to do
