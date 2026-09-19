@@ -145,7 +145,7 @@ export default function OurReadTab({ engine, player }) {
       {r.upside !== null && (
         <div className="grid grid-cols-2 gap-2 lg:gap-4">
           <Meter
-            name="Upside"
+            name="Room to grow"
             score={r.upside}
             label={r.upsideLabel}
             why={r.upsideWhy}

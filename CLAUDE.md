@@ -2209,6 +2209,98 @@ printed, so a season Sleeper declines to serve is visible in the run rather
 than silently absent. Even if every one comes back empty the list still earns
 its place, because next year's run finds this year in it.
 
+### The share was printed and the whole was not
+
+Reported by the owner, 19 September 2026, off his own player page: Josh Allen
+is the first quarterback off the board and reads **47** in the preseason and
+**57** for the rest of the season, beside Jahmyr Gibbs at **100**. *"If I'm
+confused, I can only imagine how confused your average end user will be."*
+
+**Every number was right and the page was still wrong.** Measured on the
+18 September half-PPR board:
+
+```
+                  proj   replacement starter        gap   Juke    ADP
+Josh Allen         406   QB11 Justin Herbert  338    68     47   33.2
+Jahmyr Gibbs       300   RB25 R. Stevenson    155   145    100    1.5
+```
+
+47 is `68 / 145`, and the whole startable quarterback tier — QB1 through
+QB11 — is **68 points wide** where RB1 through RB25 is **145**. So the score
+is doing football rather than mangling it, and the market agrees with it
+rather than with the intuition: the same board that scores Allen 47 records
+his ADP at 33.2 against Gibbs' 1.5, thirty-two picks apart. A score of 100
+on Allen would be advice to draft him in round one, against every recorded
+draft in FFC's sample. **Superflex is the proof it moves for the right
+reason**: replacement collapses from Herbert (338) to QB20 Tyler Shough (303)
+and Allen goes **47 → 70** while Gibbs stays 100.
+
+**What was actually missing is the DENOMINATOR.** `overallScore()` is a share
+of `BEST_VOR`, and `BEST_VOR` was on no screen in the app. The reader had the
+numerator — `+76`, drawn in the cell immediately to the left — and no route
+at all from it to the number beside it. That is this file's own "a grade can
+be correct and still be unbelievable" rule landing on a figure whose
+arithmetic was one integer short of checkable.
+
+So the strip's Juke score caption is the arithmetic now — `76 pts of the
+best 132`, and `145 pts of the best 145` on whoever is the 100 — and the
+cell can be
+reconciled against its own neighbour without leaving the strip.
+`jukeReadout().bestGap` and `buildRosTable()`'s `row.best` are the two places
+that publish it, one per horizon.
+
+**It replaces the band rather than joining it.** "High" is a restatement of
+57 in words — the qualifier-restating-its-own-subject failure this file
+already records against the Strategy Room's `+6.9` beside `+6.9` — and the
+band is still drawn in the panels below, next to the preseason score it is
+worth comparing against. It survives in the strip only as a fallback, for a
+player the board cannot price.
+
+**And the in-season half of that strip had never said what the gap was
+measured against.** The preseason half has printed `vs QB11` since it was
+written; `now()` printed nothing. A straight omission rather than a decision,
+on the half a reader is looking at in October.
+
+**87px, not 105.** The caption note in `V3Player.jsx` carried 105px a cell at
+375 as an estimate and it is **87** measured — about thirteen characters a
+line, twenty-six across the two-line clamp. `76 of the best 132 · rest of
+season` is thirty-five and shipped clipped on the first attempt; 1440
+(206px, one line) was clean throughout. The horizon is what gave way, on
+that one cell alone, because both its neighbours in the same group still
+print it and the denominator is printed nowhere else at all. **A budget
+carried as an estimate is a caption nobody can size**, which is the same
+lesson `RANK_COL_W` already records about a constant derived from a string.
+
+**`FigCell`'s sub clamps to two lines rather than truncating to one**, which
+is what made room for any of it. What shipped in it was `High · rest of se…`
+— a caption cut in the middle of the horizon it exists to name.
+
+### "Upside" was never a ceiling, and the word said it was
+
+The same report, same screenshot: **Upside: LOW** on the best quarterback in
+football, over the reason "first on the depth chart".
+
+`draftSignals()` scores five things — the projection ranking him above the
+market at his position, a rookie or a player three years in, first on the
+depth chart, age 24 or under, and points per game up across his last two full
+seasons. Every one is a reason to think there is more to come **than his
+price implies**. None of them is a ceiling. Allen is QB1 on both the market's
+ranking and the projection's, thirty years old and eight years in, so there
+is nothing for that model to say and it prints 20 + 14 = 34.
+
+The model is right and the word was wrong, which is the right-value-wrong-
+column bug arriving at a **label** instead of a column. It is **"Room to
+grow"** now, in all four places it is drawn — `PlayerSections.jsx`,
+`Research.jsx`, `OurReadTab.jsx` and the unreachable legacy sheet — plus the
+how-it-works page, and a note under the pair says what both weigh and that a
+low reading on a correctly-priced star says there is little left to find out
+rather than anything about his ceiling.
+
+**"Bust risk" is deliberately left alone.** It really does aggregate risk —
+ruled out, listed, age at position, second on the depth chart, missed time,
+and the market pricing him above the projection — and the words already match
+the model. Renaming it for symmetry would be changing the half that works.
+
 ## Grading the projection against itself
 
 `pp` in `stats.js` holds what we forecast for 2023, 2024 and 2025, beside what

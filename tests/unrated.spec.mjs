@@ -75,7 +75,7 @@ test.describe("the positions we decline to rank", () => {
          empty bar labelled "Very Low", which is a verdict — and further from
          the truth than the number it replaced. */
       expect(r.unrated, `${pos} gets the unrated block`).toBe(true);
-      expect(r.meterCount, `and only Upside and Bust risk keep their bars`).toBe(2);
+      expect(r.meterCount, `and only Room to grow and Bust risk keep their bars`).toBe(2);
 
       /* The rest of the sheet has to agree. "K1 on the projection" argues from
          exactly the ordering we have just told the reader is worthless. */
