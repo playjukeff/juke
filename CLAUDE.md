@@ -5565,6 +5565,40 @@ chronologically across a season — Prospect, Draft, Waiver, Trade, Strategy,
 League — rather than live-room-first; confirmed safe first, the same way
 any reorder here should be: nothing indexes `ROOMS` positionally.
 
+## The scores ticker is the NFL slate, and nothing else
+
+The owner, 19 September 2026, with a screenshot of the header on a phone:
+*"Remove the league matchup from the header. I only care for users to see
+the NFL matchups with how much room the league matchup is taking up."*
+
+The strip opened with one wide pill carrying the reader's own fantasy
+matchup — both team names, both projections, and how many of their starters
+were still to play. At 390px that pill is the whole header: `ALL NFL` and
+the matchup filled the row, and the games the strip exists to show were off
+the right-hand edge. It is a horizontal scroller, so nothing was cut — the
+NFL slate simply started past the fold on the one surface whose entire job
+is to show it.
+
+**The matchup keeps three addresses of its own**: the call sheet's own
+card, the League page, and `#/league/matchup`. What it loses is the one
+place it was competing with the thing the strip is named for.
+
+**The connected league still decides the ORDER, and that is the half worth
+keeping.** The games a reader's starters are in sort first, which costs no
+width at all — the strip's own header comment already records that as the
+owner's call, and it is what a league is worth on a row this narrow.
+
+### The pill's reads went with it, which is most of the saving
+
+`useMyWeek()` fetched the week's pairing to fill that pill: the schedule,
+the opponent, `useWeekSheet()` for both projections, and **a
+`useSleeperWeeks()` request of its own on a Sleeper league**. None of that
+is wanted for a set of club abbreviations. It is `useMyClubs()` now —
+snapshot, `myTeam()`, `usePricing()` — and it returns the Set rather than an
+object carrying `starterClubs` beside it, because the only thing that read
+that field was the pill's "8 still to play" and a field nothing draws is an
+invitation to put the thing that drew it back without the reasoning.
+
 ## `overflow: hidden` is not a way of handling overflow when the thing inside it is a word
 
 Reported from a phone, with a screenshot: the game page's hero drew

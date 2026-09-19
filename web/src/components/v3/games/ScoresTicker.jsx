@@ -5,11 +5,18 @@
    offseason, or ESPN unreachable).
 
    Each chip is the game page's own chip (GameChip, shared with the strip at
-   the top of #/games/<id>) and opens that game. A reader with a connected
-   league gets one more chip at the front — their own matchup, inverted the
-   way the game page marks the game you are on — and the games their
+   the top of #/games/<id>) and opens that game, and the games a reader's
    starters are in sort first. Nothing on a game chip says which games those
    are; the order is the whole signal, by the owner's call.
+
+   THE READER'S OWN FANTASY MATCHUP IS NOT ON THIS STRIP. It was, as one
+   wide pill at the front carrying both team names and both projections,
+   and the owner's call is that the strip is for the NFL slate: on a phone
+   that pill was the whole width of the header and the games it exists to
+   show were off the right-hand edge. The matchup has three addresses of its
+   own — the call sheet's card, the League page, and #/league/matchup —
+   and the connected league still decides the ORDER here, which is what it
+   is worth on a strip this narrow.
 
    The slate comes off JukeEngine.primeScores(), the one-minute cache the
    kickoff pill already fills, so this costs no request of its own. It is
@@ -18,9 +25,7 @@
 import { useMemo } from 'react'
 import { useLeagueFresh, useSnapshotFresh } from '../../v2/stores.js'
 import { myTeam } from '../../rooms/waiverBoard.js'
-import { usePricing, useWeekSheet } from '../league/leagueData.js'
-import { espnWeek, gameFor, sleeperWeekView } from '../league/matchupData.js'
-import { useSleeperWeeks } from '../league/useSleeperWeeks.js'
+import { usePricing } from '../league/leagueData.js'
 import { boardTeam } from '../../../lib/gameSummary.js'
 import { useSlate } from '../now/season.js'
 import { cx } from '../ui.jsx'
@@ -51,46 +56,34 @@ export function GameChip({ g, on = false }) {
 }
 
 
-/* The reader's league, their team this week, and the clubs their starters
-   play for. Mounted only when there is a slate to draw. */
-function useMyWeek() {
+/* The clubs a reader's starters play for, which is the whole of what a
+   connected league is worth to this strip: the games those clubs are in
+   sort first.
+
+   It read the week's pairing too, for the matchup pill that used to sit at
+   the front — the schedule, the opponent, both projections, and a
+   useSleeperWeeks() fetch of its own on a Sleeper league. All of that went
+   with the pill; nothing here asks for anything the snapshot does not
+   already carry. */
+function useMyClubs() {
   const { league, status: ls } = useLeagueFresh()
   const connected = ls === 'connected' && league
   const { snapshot, status } = useSnapshotFresh(connected ? league.leagueId : null, connected ? league.provider : null)
   const ready = !!connected && status === 'ready' && !!snapshot
   const pricing = usePricing(ready ? snapshot : null)
-  const sheet = useWeekSheet(connected ? league : null, ready ? snapshot : null)
-  const week = ready ? Number(snapshot.week) || null : null
-  const hasSchedule = ready && !!(snapshot.schedule && Array.isArray(snapshot.schedule.matchups) && snapshot.schedule.matchups.length)
-  const sleeperOn = ready && !hasSchedule && (league.provider || 'sleeper') === 'sleeper' && !!week
-  const sw = useSleeperWeeks(sleeperOn ? league.leagueId : null, sleeperOn ? [week] : [], sleeperOn ? week : null)
 
   return useMemo(() => {
-    if (!ready || !week) return null
+    if (!ready) return null
     const mine = myTeam(snapshot, league)
     if (!mine) return null
-    const view = hasSchedule ? espnWeek(snapshot, week) : (sw[week] && sw[week].view ? sleeperWeekView(snapshot, sw[week].view) : null)
-    const g = view ? gameFor(view, mine) : null
-    const starterClubs = ((mine.starters) || [])
+    // Just the set. `starterClubs` rode along beside it for the pill's
+    // "8 still to play" count, and a field nothing reads is an invitation
+    // to put the thing that read it back without the reasoning.
+    return new Set((mine.starters || [])
       .map((id) => pricing.byId && pricing.byId.get(String(id)))
       .filter(Boolean)
-      .map((p) => String(p.team || '').toUpperCase())
-    const clubs = new Set(starterClubs)
-    // Points once the platform has any; its projection before that.
-    const live = g && g.mine && g.theirs && (g.mine.points || g.theirs.points)
-    const opp = g && g.theirs && g.theirs.team ? g.theirs.team : (sheet && sheet.opponent) || null
-    return {
-      league: snapshot.name || '',
-      myName: mine.teamName || mine.name || null,
-      oppName: opp ? opp.teamName || opp.name || 'Opponent' : null,
-      bye: !!(g && g.bye),
-      mePts: live ? g.mine.points : sheet ? sheet.total : null,
-      oppPts: live ? g.theirs.points : sheet ? sheet.oppTotal : null,
-      projected: !live,
-      clubs,
-      starterClubs,
-    }
-  }, [ready, week, snapshot, league, hasSchedule, sw, pricing.byId, sheet])
+      .map((p) => String(p.team || '').toUpperCase()))
+  }, [ready, snapshot, league, pricing.byId])
 }
 
 /* "Today", "Yesterday", "Tomorrow", otherwise "Sep 20", then the week:
@@ -110,16 +103,14 @@ function dayOnly(t) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : '—')
-
 function Ticker({ games }) {
-  const me = useMyWeek()
+  const me = useMyClubs()
   /* The games grouped by the day they kick off, in the reader's own zone,
      each day under a small label with a rule between days — the way a
      scoreboard reads a week. Inside a day: yours first, then live, next,
      final. */
   const days = useMemo(() => {
-    const mineOf = (g) => (me && me.clubs && (me.clubs.has(boardTeam(g.away)) || me.clubs.has(boardTeam(g.home))) ? 0 : 1)
+    const mineOf = (g) => (me && (me.has(boardTeam(g.away)) || me.has(boardTeam(g.home))) ? 0 : 1)
     const groups = new Map()
     for (const g of games) {
       if (!g || !g.id) continue
@@ -132,11 +123,6 @@ function Ticker({ games }) {
       .sort((a, b) => a.t - b.t)
       .map((d) => ({ ...d, label: dayLabel(d.t, d.rows[0] && d.rows[0].week), rows: d.rows.sort((a, b) => mineOf(a) - mineOf(b) || (ORDER[a.state] ?? 3) - (ORDER[b.state] ?? 3) || (Date.parse(a.kickoff) || 0) - (Date.parse(b.kickoff) || 0)) }))
   }, [games, me])
-  // Starters whose game has not finished. A club on bye has no game on the
-  // slate, so its players are not counted as still to play.
-  const open = new Set()
-  for (const g of games) if (g && g.state !== 'post') { open.add(boardTeam(g.away)); open.add(boardTeam(g.home)) }
-  const toPlay = me ? me.starterClubs.filter((c) => open.has(c)).length : 0
 
   return (
     <div className="border-t border-v3-rule">
@@ -148,19 +134,6 @@ function Ticker({ games }) {
             <span>ALL</span><span>NFL</span>
           </a>
         </section>
-        {me && me.oppName && !me.bye && (<section aria-label="Your matchup" className="flex shrink-0 flex-col gap-1.5"><span className="font-figure text-[11px] font-semibold uppercase tracking-[0.12em] text-v3-ink3">Your matchup</span>
-          <a
-            href="#/league/matchup"
-            className="flex min-h-[48px] shrink-0 items-center rounded-full bg-v3-ink px-4 font-figure text-[13px] text-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v3-call"
-          >
-            <span className="grid leading-tight">
-              <span className="font-bold">{me.myName || 'Your team'} {fmt(me.mePts)} – {fmt(me.oppPts)} {me.oppName}</span>
-              <span className="text-[11px] uppercase text-v3-paper/80">
-                {[me.projected ? 'Projected' : null, toPlay ? `${toPlay} still to play` : null].filter(Boolean).join(' · ') || me.league}
-              </span>
-            </span>
-          </a>
-        </section>)}
         {days.map((d, i) => (
           <section key={d.key} aria-label={d.label} className={cx('flex shrink-0 flex-col gap-1.5', 'border-l border-v3-rule pl-3')}>
             <span className="font-figure text-[11px] font-semibold uppercase tracking-[0.12em] text-v3-ink3">{d.label}</span>
