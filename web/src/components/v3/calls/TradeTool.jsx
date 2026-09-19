@@ -263,9 +263,11 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
               </Step>
               <Step n={2} what="The swing is the difference, and it is zero-sum" sub="what you gain is exactly what they lose">
                 <div className="grid gap-2">
-                  {[{ who: 'You', v: swing.you }, { who: partner ? partner.teamName : 'Them', v: swing.them }].map((s) => (
-                    <div key={s.who} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]">
-                      <span className="truncate text-[13px] text-v3-ink2">{s.who}</span>
+                  {/* Both sides named, the reader's own carrying the ink rule
+                      every other paired row in the app uses. */}
+                  {[{ who: mine.teamName || 'Your team', v: swing.you, mine: true }, { who: partner ? partner.teamName : 'Them', v: swing.them }].map((s) => (
+                    <div key={s.who} className={cx('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-l-2 pl-2.5 sm:grid-cols-[minmax(0,10rem)_1fr_4rem]', s.mine ? 'border-v3-ink' : 'border-transparent')}>
+                      <span className={cx('truncate text-[13px]', s.mine ? 'font-bold text-v3-ink' : 'text-v3-ink2')}>{s.who}</span>
                       <ValueBar value={s.v} max={swingMax} zero tone={Math.round(s.v) > 0 ? 'gain' : Math.round(s.v) < 0 ? 'cost' : 'neutral'} className="order-3 col-span-2 sm:order-none sm:col-span-1" />
                       <Signed value={s.v} tone={Math.round(s.v) > 0 ? 'gain' : Math.round(s.v) < 0 ? 'cost' : null} className="text-right text-[15px]" />
                     </div>
@@ -413,8 +415,8 @@ export default function TradeTool({ league, snapshot, status, reason, onRetry, s
                   <span className="min-w-0">
                     <a href={playerHref(row.player)} className={cx(HIT, 'block truncate text-[15px] font-semibold text-v3-ink hover:underline')}>{row.player.name}</a>
                     {teamHref(row.team) && !sample ? (
-                      <a href={teamHref(row.team)} className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3 hover:text-v3-ink hover:underline">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</a>
-                    ) : <span className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3">{row.team.teamName}{row.team.rosterId === mine.rosterId ? ' · yours' : ''}</span>}
+                      <a href={teamHref(row.team)} className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3 hover:text-v3-ink hover:underline">{row.team.teamName}</a>
+                    ) : <span className="block break-words [overflow-wrap:anywhere] font-figure text-[12px] text-v3-ink3">{row.team.teamName}</span>}
                   </span>
                   <ValueBar value={Math.max(0, row.value)} max={valueMax} tone="neutral" className="order-last col-span-4 sm:order-none sm:col-span-1" />
                   <span className="text-right"><Signed value={row.value} className="text-[15px]" /></span>

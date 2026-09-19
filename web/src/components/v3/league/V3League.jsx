@@ -138,6 +138,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
   const n = Number(weekKey)
   const game = gameInWeek(snapshot.schedule, league.ownerId, n)
   const opp = game && game.opponentId ? (snapshot.teams || []).find((t) => String(t.ownerId) === String(game.opponentId)) : null
+  const me = (snapshot.teams || []).find((x) => String(x.ownerId) === String(league.ownerId)) || null
   const rows = decisionsForWeek(league.leagueId, n, decisions)
   const scored = game && typeof game.points === 'number' && typeof game.opponentPoints === 'number' && game.result
   const max = scored ? Math.max(game.points, game.opponentPoints, 1) : 0
@@ -157,9 +158,9 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
               {game.result === 'W' ? `Won by ${Math.abs(margin).toFixed(1)}` : game.result === 'L' ? `Lost by ${Math.abs(margin).toFixed(1)}` : `Tied at ${game.points.toFixed(1)}`}
             </p>
             <div className="mt-3 grid gap-2">
-              {[{ name: 'You', v: game.points }, { name: opp ? opp.teamName : 'Opponent', v: game.opponentPoints, team: opp }].map((r) => (
-                <div key={r.name} className="grid grid-cols-[minmax(0,8rem)_1fr_3.5rem] items-center gap-3">
-                  {r.team ? <a href={teamHref(r.team)} className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink">{r.name}</span>}
+              {[{ name: (me && me.teamName) || 'Your team', v: game.points, mine: true }, { name: opp ? opp.teamName : 'Opponent', v: game.opponentPoints, team: opp }].map((r) => (
+                <div key={r.name} className={cx('grid grid-cols-[minmax(0,8rem)_1fr_3.5rem] items-center gap-3 border-l-2 pl-2.5', r.mine ? 'border-v3-ink' : 'border-transparent')}>
+                  {r.team ? <a href={teamHref(r.team)} className="break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-v3-rule underline-offset-4 hover:decoration-v3-ink">{r.name}</a> : <span className="break-words [overflow-wrap:anywhere] text-[15px] font-bold text-v3-ink">{r.name}<span className="sr-only"> (your team)</span></span>}
                   <ValueBar value={r.v} max={max} tone="neutral" />
                   <Fig className="text-right text-[15px] font-bold text-v3-ink">{r.v.toFixed(1)}</Fig>
                 </div>
@@ -189,7 +190,7 @@ function WeekPanel({ weekKey, league, snapshot, decisions }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">No calls were logged in week {n}. A call is recorded when Juke makes it and graded after the week is played.</p>
+          <p className="mt-2 text-[15px] leading-[1.55] text-v3-ink2">No calls were logged in week {n}.</p>
         )}
       </div>
     </div>
@@ -209,21 +210,24 @@ function SeasonNumbers({ league, snapshot, odds, games }) {
       ? {
           label: 'Playoff odds',
           value: pct(mine.playoffs),
-          note: `${ordinal(st.rank)} of ${st.table.length} now${odds.byeSeats && typeof mine.bye === 'number' ? `, a bye in ${pct(mine.bye)}` : ''}. ${SIMS.toLocaleString()} seasons from today’s projections.`,
+          /* The rank is the standings table's own first column, three
+             inches down this page; what only this note can say is what the
+             percentage was computed FROM, which is the framing this number
+             may not be shown without. */
+          note: `${odds.byeSeats && typeof mine.bye === 'number' ? `A bye in ${pct(mine.bye)}. ` : ''}${SIMS.toLocaleString()} seasons from today’s projections.`,
           children: <ValueBar value={mine.playoffs} max={1} tone="neutral" className="mt-3" />,
         }
-      : { label: 'Standing', value: ordinal(st.rank), note: `Of ${st.table.length}, on wins then points for.` },
+      : { label: 'Standing', value: ordinal(st.rank), note: `Of ${st.table.length}.` },
     {
       label: 'Record',
       value: recordText(me),
-      note: 'As your platform reports it.',
       children: played.length ? <div className="mt-3 flex flex-wrap gap-1">{played.map((g) => <ResultChip key={g.week} result={g.result} />)}</div> : null,
     },
     {
       label: 'Points for',
       value: (me.pointsFor || 0).toFixed(1),
       delta: <Delta value={pfD} digits={1} className="text-[15px]" />,
-      note: `Against a league median of ${st.pfMedian.toFixed(1)}.`,
+      note: `League median ${st.pfMedian.toFixed(1)}.`,
     },
     {
       label: 'Points against',
@@ -233,7 +237,7 @@ function SeasonNumbers({ league, snapshot, odds, games }) {
          the colour says cost. Production printed "−10.8" for a value 10.8
          above the median once; CLAUDE.md's rule is to write it here. */
       delta: <Delta value={paD} digits={1} tone={paD > 0 ? 'cost' : paD < 0 ? 'gain' : 'even'} className="text-[15px]" />,
-      note: `Against a league median of ${st.paMedian.toFixed(1)}. Conceding more is the bad direction.`,
+      note: `League median ${st.paMedian.toFixed(1)}.`,
     },
   ]
   return <KpiGrid items={items} />
@@ -297,8 +301,13 @@ function Standings({ snapshot, ownerId, odds }) {
                   <td className="border-0 py-3 pl-3 pr-0 font-figure text-[15px] tabular-nums text-v3-ink2 sm:pl-5">{st.played ? i + 1 : '—'}</td>
                   <td className="border-0 w-full max-w-0 py-3 pl-1 pr-2">
                     <span className="flex min-w-0 items-center gap-2 overflow-hidden">
-                      <a href={teamHref(t)} className="min-w-0 break-words [overflow-wrap:anywhere] text-[15px] font-semibold text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink">{t.teamName}</a>
-                      {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
+                      {/* The reader's own row is marked by the rule down its
+                          left edge, its lighter ground and the team name in
+                          bold — never by a chip reading "You" beside a name
+                          they already know is theirs. The sr-only word is
+                          what carries that to a reader who gets neither the
+                          colour nor the rule. */}
+                      <a href={teamHref(t)} className={cx('min-w-0 break-words [overflow-wrap:anywhere] text-[15px] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink', you ? 'font-extrabold' : 'font-semibold')}>{t.teamName}{you ? <span className="sr-only"> (your team)</span> : null}</a>
                     </span>
                     {t.manager && t.manager !== t.teamName ? <span className="mt-0.5 block break-words [overflow-wrap:anywhere] text-[13px] text-v3-ink3">{t.manager}</span> : null}
                   </td>
@@ -320,8 +329,8 @@ function Standings({ snapshot, ownerId, odds }) {
         </table>
       </div>
       <p className="border-t border-v3-rule px-4 py-3 text-[13px] leading-[1.5] text-v3-ink3 sm:px-5">
-        {st.played ? 'Wins, then points for — Juke’s tiebreak, which a league with its own may not share.' : 'No games played yet, so there is no order — the rank is a dash rather than the order the platform lists its teams in.'}
-        {hasOdds ? ` Playoffs: ${SIMS.toLocaleString()} seasons from today’s projections.` : ''} Every team opens its own page.
+        {st.played ? 'Juke’s own tiebreak, which a league with its own may not share.' : 'No games played yet, so there is no order — the rank is a dash rather than the order the platform lists its teams in.'}
+        {hasOdds ? ` Playoffs: ${SIMS.toLocaleString()} seasons from today’s projections.` : ''}
       </p>
     </Sheet>
   )
@@ -381,7 +390,7 @@ function Facts({ league, snapshot }) {
           </div>
         ))}
       </dl>
-      <p className="mt-3 border-t border-v3-rule pt-3 text-[13px] leading-[1.5] text-v3-ink3">Read from {platform}. Juke never writes to your league.</p>
+      <p className="mt-3 border-t border-v3-rule pt-3 text-[13px] leading-[1.5] text-v3-ink3">Read from {platform}.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <DisconnectButton league={league} />
       </div>
@@ -504,11 +513,12 @@ function Connected({ league }) {
   let lede = null
   if (ready) {
     const st = standing(snapshot, league.ownerId)
+    /* Phase and week only. The team, its record and its rank are the
+       cards and the table immediately below — printed here as well, they
+       were the same four facts twice on one screenful. */
     lede = [
       PHASE_LABEL[seasonPhase(snapshot)],
       snapshot.week ? `Week ${snapshot.week}` : null,
-      st.me ? `${st.me.teamName} ${recordText(st.me)}` : null,
-      st.rank ? `${ordinal(st.rank)} of ${st.table.length}` : null,
     ].filter(Boolean).join(' · ')
   } else if (status === 'loading') lede = `Reading ${league.name} from ${platform}…`
 

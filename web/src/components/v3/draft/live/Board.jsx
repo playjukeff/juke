@@ -15,7 +15,7 @@ import { SPRING, motion, playOn, useCalm } from '../../motion.jsx'
    number is not a seat number").
 
    Your column is marked the way v3 marks a chosen thing: ink. An ink rule
-   and "You" on its head, a well tint down it. The live pick is a 2px ink ring
+   and its seat number on its head, a well tint down it. The live pick is a 2px ink ring
    — shape, not a second hue, separates the two when they coincide.
 
    The board follows the pick on the clock and stops the moment a person
@@ -110,7 +110,7 @@ export default function Board({ engine, version, onOpen, phone }) {
                 const strip = engine.rosterStrip ? engine.rosterStrip(s) : []
                 return (
                   <th key={s} scope="col" style={{ minWidth: cellW, maxWidth: cellW }} className={cx('relative border-b px-2 py-2 text-left align-bottom', mine ? 'border-v3-band bg-v3-band text-white' : 'border-v3-rule bg-v3-sheet')}>
-                    <span className={cx('block truncate font-figure text-[12px] font-bold uppercase tracking-[0.08em]', mine ? 'text-v3-bandInk' : 'text-v3-ink3')}>{mine ? 'You' : `Seat ${s + 1}`}</span>
+                    <span className={cx('block truncate font-figure text-[12px] font-bold uppercase tracking-[0.08em]', mine ? 'text-v3-bandInk' : 'text-v3-ink3')}>Seat {s + 1}</span>
                     <span className={cx('block truncate text-[13px] font-bold', mine ? 'text-white' : 'text-v3-ink')}>{mine ? 'Your team' : engine.teamLabel(s)}</span>
                     {!!strip.length && (
                       <span className={cx('mt-1 flex gap-1 font-figure text-[12px] tabular-nums', mine ? 'text-v3-bandInk' : 'text-v3-ink3')} aria-label="Roster so far">

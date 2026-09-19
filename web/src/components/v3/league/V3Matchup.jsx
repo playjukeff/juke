@@ -278,13 +278,18 @@ function TeamBlock({ team, value, valueLabel, align, standingOf, you, link = tru
   const right = align === 'right'
   const st = team ? standingOf(team) : null
   return (
-    <div className={cx('min-w-0', right && 'text-right')}>
+    /* The reader's own side carries an ink rule down its outer edge — the
+       same mark the standings row and both bar rows use, so "which of these
+       two is mine" reads the same way on every screen that draws a pair. */
+    <div className={cx('min-w-0', right ? 'border-r-2 pr-3 text-right' : 'border-l-2 pl-3', you ? 'border-v3-ink' : 'border-transparent')}>
       <div className={cx('flex min-w-0 items-center gap-2', right && 'flex-row-reverse')}>
         {team && link ? (
           <a href={teamHref(team)} className="min-w-0 break-words [overflow-wrap:anywhere] text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink underline decoration-transparent underline-offset-4 hover:decoration-v3-ink focus-visible:decoration-v3-ink sm:text-[20px]">{team.teamName}</a>
         ) : team ? <span className="min-w-0 break-words [overflow-wrap:anywhere] text-[18px] font-extrabold tracking-[-0.01em] text-v3-ink sm:text-[20px]">{team.teamName}</span>
           : <span className="text-[18px] font-extrabold text-v3-ink3 sm:text-[20px]">—</span>}
-        {you ? <span className="shrink-0 rounded-[4px] bg-v3-band px-1.5 py-0.5 font-figure text-[12px] font-bold uppercase tracking-[0.1em] text-white">You</span> : null}
+        {/* The reader's own side is marked by the rule under its name, not
+            by a chip reading "You" beside a team they named themselves. */}
+        {you ? <span className="sr-only">Your team</span> : null}
       </div>
       <p className="mt-1 font-figure text-[13px] text-v3-ink2">
         {recordNow ? 'Now ' : ''}{team ? recordText(team) : '—'}{st && st.rank ? ` · ${ordinal(st.rank)}` : ''}
@@ -354,18 +359,21 @@ function Scoreboard({ view, week, focus, mine, scoreOf, unitLabel, sample = fals
                   {...(sample ? {} : { href: matchupHref(week, a.team, mine), 'aria-current': on ? 'true' : undefined })}
                   className={cx('grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2 sm:gap-4 sm:px-5', !sample && 'transition-colors hover:bg-v3-paper focus-visible:bg-v3-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v3-call', on ? 'bg-v3-paper shadow-[inset_3px_0_0_rgb(var(--v3-ink))]' : '')}
                 >
-                  <span className="min-w-0">
+                  {/* The reader's own team in a row carries the ink rule the
+                      rest of the app uses for it, rather than a "· you" in the
+                      record line beside a name they chose themselves. */}
+                  <span className={cx('min-w-0 border-l-2 pl-2', yours && sameTeam(a.team, mine) ? 'border-v3-ink' : 'border-transparent')}>
                     <span className={cx('block break-words [overflow-wrap:anywhere] text-[15px] sm:text-[15px]', aWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{a.team ? a.team.teamName : '—'}</span>
-                    <span className="block truncate font-figure text-[12px] text-v3-ink3">{a.team ? recordText(a.team) : ''}{yours && sameTeam(a.team, mine) ? ' · you' : ''}</span>
+                    <span className="block truncate font-figure text-[12px] text-v3-ink3">{a.team ? recordText(a.team) : ''}</span>
                   </span>
                   <span className="flex items-center gap-2 font-figure text-[15px] tabular-nums">
                     <span className={aWon ? 'font-bold text-v3-ink' : 'text-v3-ink2'}>{typeof sa === 'number' ? sa.toFixed(1) : '—'}</span>
                     <span className="text-v3-ink3" aria-hidden="true">–</span>
                     <span className={bWon ? 'font-bold text-v3-ink' : 'text-v3-ink2'}>{typeof sb === 'number' ? sb.toFixed(1) : '—'}</span>
                   </span>
-                  <span className="min-w-0 text-right">
+                  <span className={cx('min-w-0 border-r-2 pr-2 text-right', yours && sameTeam(b.team, mine) ? 'border-v3-ink' : 'border-transparent')}>
                     <span className={cx('block break-words [overflow-wrap:anywhere] text-[15px] sm:text-[15px]', bWon ? 'font-bold text-v3-ink' : 'font-semibold text-v3-ink')}>{b.team ? b.team.teamName : '—'}</span>
-                    <span className="block truncate font-figure text-[12px] text-v3-ink3">{b.team ? recordText(b.team) : ''}{yours && sameTeam(b.team, mine) ? ' · you' : ''}</span>
+                    <span className="block truncate font-figure text-[12px] text-v3-ink3">{b.team ? recordText(b.team) : ''}</span>
                   </span>
                 </Row>
               </li>
@@ -609,13 +617,13 @@ function MatchupBody({ league, snapshot, pricing, platform, week, current, view,
     const b = g.theirs.points
     const score = typeof a === 'number' && typeof b === 'number' ? `, ${a.toFixed(1)}–${b.toFixed(1)}` : ''
     title = g.result === 'W' ? `${focusName} beat ${opp ? opp.teamName : 'their opponent'}${score}.` : g.result === 'L' ? `${focusName} lost to ${opp ? opp.teamName : 'their opponent'}${score}.` : `${focusName} tied ${opp ? opp.teamName : 'their opponent'}${score}.`
-    lede = `Week ${week}${view && view.playoff ? ', a playoff week' : ''}. ${view && view.provider === 'sleeper' ? `The final score as ${platform} states it; ${platform} names no winner, so the result is read off its final points.` : `The score and the result as ${platform} states them.`}`
+    lede = `Week ${week}${view && view.playoff ? ', a playoff week' : ''}.${view && view.provider === 'sleeper' ? ` ${platform} names no winner, so the result is read off its final points.` : ''}`
   } else if (g) {
     title = `Week ${week}: ${focusName} vs ${opp ? opp.teamName : 'TBD'}.`
     lede = phase === 'final'
       ? `${platform} has not published a result for week ${week} yet.`
       : isCurrent
-      ? `This week. ${totalL !== null ? `${focusName} projects ${totalL.toFixed(1)}` : 'Not every starter has a projection'}${totalR !== null ? `; ${opp.teamName}, ${totalR.toFixed(1)}` : ''}.`
+      ? (totalL === null || totalR === null ? 'This week. Not every starter has a projection.' : 'This week.')
       : `${week - (current || 0)} ${week - (current || 0) === 1 ? 'week' : 'weeks'} ahead, priced from today's rosters.`
   } else if (!hasSchedule && sleeperEntry && sleeperEntry.status === 'loading') {
     title = `Week ${week}.`; lede = `Reading ${platform}'s week ${week}…`

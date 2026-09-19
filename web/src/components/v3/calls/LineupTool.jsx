@@ -318,6 +318,7 @@ export default function LineupTool({ league, snapshot, status, reason, onRetry, 
           <MatchupSheet
             sample={sample}
             week={week}
+            mine={mine}
             game={game}
             opponent={opponent}
             total={total}
@@ -376,7 +377,7 @@ function signedText(n) {
 /* Who you play and how likely the lineup as set is to be enough.
    The bar's reference is EVEN — 50% by construction, and the only mark on
    these pages not measured from anything. */
-function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, winProb, readTone, mineWeek, oppWeek, scoredCount = 0, oppScoredCount = 0, provider }) {
+function MatchupSheet({ sample, week, mine, game, opponent, total, oppTotal, margin, winProb, readTone, mineWeek, oppWeek, scoredCount = 0, oppScoredCount = 0, provider }) {
   const oppLink = opponent && teamHref(opponent) && !sample
     ? <a href={teamHref(opponent)} className="font-bold text-v3-ink underline decoration-v3-rule decoration-2 underline-offset-4 hover:decoration-v3-ink">{opponent.teamName}</a>
     : opponent ? <span className="font-bold text-v3-ink">{opponent.teamName}</span> : null
@@ -398,8 +399,11 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
 
   const pct = winProb === null ? null : Math.round(winProb * 100)
   const color = readTone === 'gain' ? 'text-v3-gain' : readTone === 'cost' ? 'text-v3-cost' : 'text-v3-ink'
+  /* The opponent is named once, on the line that links to them, rather than
+     in the sheet's aside as well — the two sat an inch apart and said the
+     same three words. */
   return (
-    <Sheet code={code} aside={sample ? <SampleTag /> : `${game.home ? 'vs' : 'at'} ${opponent.teamName}`}>
+    <Sheet code={code} aside={sample ? <SampleTag /> : null}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <Label>Win probability</Label>
@@ -418,8 +422,12 @@ function MatchupSheet({ sample, week, game, opponent, total, oppTotal, margin, w
         />
       ) : null}
       <dl className="mt-5 grid grid-cols-3 gap-2">
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">You</Label></dt><dd className="mt-1"><Pts value={total} /></dd></div>
-        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Them</Label></dt><dd className="mt-1"><Pts value={oppTotal} /></dd></div>
+        {/* Both teams named. The reader's own is the one with the ink rule
+            down its edge, the same mark the matchup head and the standings
+            use — a tile reading "You" beside a tile reading the opponent's
+            real name is the only one of the pair that says nothing. */}
+        <div className="rounded-[6px] border-l-2 border-v3-ink bg-v3-paper p-3"><dt><Label className="text-[12px]">{(mine && mine.teamName) || 'Your team'}</Label></dt><dd className="mt-1"><Pts value={total} /></dd></div>
+        <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">{opponent.teamName}</Label></dt><dd className="mt-1"><Pts value={oppTotal} /></dd></div>
         <div className="rounded-[6px] bg-v3-paper p-3"><dt><Label className="text-[12px]">Margin</Label></dt><dd className="mt-1"><Delta value={margin} digits={1} className="text-[15px]" /></dd></div>
       </dl>
       <p className="mt-4 text-[13px] leading-[1.55] text-v3-ink2">

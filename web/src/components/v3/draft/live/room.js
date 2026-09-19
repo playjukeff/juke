@@ -237,8 +237,7 @@ export function seatNameOf(view, slot, engine) {
   if (!view) return engine ? engine.teamLabel(slot) : `Seat ${slot + 1}`
   const chair = view.seats[slot]
   if (!chair) return `Seat ${slot + 1}`
-  if (chair.you) return 'You'
-  if (chair.taken) return chair.name || `Manager ${slot + 1}`
+  if (chair.taken) return chair.name || (chair.you ? 'Your seat' : `Manager ${slot + 1}`)
   return 'CPU'
 }
 

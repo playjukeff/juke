@@ -187,7 +187,7 @@ export function ViewField({ report, hover, onHover, onOpen }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="max-w-[62ch] text-[15px] leading-[1.55] text-v3-ink2">The room is every other seat in the mocks you ran — same board, same ADP, same night. The tick is the pick at which that position’s starting tier runs out; right of it is late.</p>
         <div className="flex shrink-0 flex-wrap gap-4 text-[13px] text-v3-ink2">
-          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-v3-ink" />You</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-v3-ink" />Your picks</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-2 border-v3-ink2 bg-v3-sheet" />The room</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-v3-warn" />Tier empties</span>
         </div>

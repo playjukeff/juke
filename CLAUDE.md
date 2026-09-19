@@ -5565,9 +5565,143 @@ chronologically across a season — Prospect, Draft, Waiver, Trade, Strategy,
 League — rather than live-room-first; confirmed safe first, the same way
 any reorder here should be: nothing indexes `ROOMS` positionally.
 
+## "You" is not a team name, and a connected league already has one
+
+The owner, 19 September 2026, with four screenshots: *"remove 'You' from any
+place throughout the website. If your league is connected it'll be obvious
+who my team is, either by highlighting who my team is or through some other
+mechanism."*
+
+**It was a chip, a bar row, a KPI tile and a ticker pill, and in every one of
+them it sat next to a team drawn by its real name.** The matchup card read
+`You 154.7` over `Team Trap 109.3`; the standings row read `Season Over
+Already` with a `YOU` chip beside it; the ticker pill read `You 154.7 – 109.3
+Team Trap`. One of each pair said what it was and the other said who was
+reading — **so the only row on the screen carrying no information was the
+reader's own.**
+
+**Every one of those places already had the name and already had a mark.**
+The standings row has carried `bg-v3-paper` and an inset ink rule down its
+left edge since it was written; the board column is drawn in the band; the
+lobby chair is drawn in the band. The chip was a caption on a highlight that
+was already doing the job — which is the dead-control failure's opposite
+number: not a control that does nothing, a *label* that says nothing.
+
+**One mark, everywhere a pair is drawn: a 2px ink rule down the reader's own
+edge, and the name in bold.** The matchup head, the matchup card's two bars,
+a played week's two bars, the trade swing's two rows, the lineup tool's two
+tiles, every game in a week, and the standings row. Consistent because "which
+of these two is mine" is one question, and a reader who learns the mark on
+one screen should not have to learn it again on the next.
+
+**Both rows of a pair take the padding; only one takes the border.** A rule
+added to one row alone shifts that row's bar 10px right and shortens it by
+10, so the two bars are no longer on one scale — which is the thing a pair of
+bars exists for. `border-transparent` on the other row costs nothing and
+keeps the geometry.
+
+**The word survives where nothing else names the seat, and that is the
+line.** A solo mock has no team name, so `teamLabel()`'s "Your Team" stays on
+the board column, in the pick ticker and in the draft order — it is a *name*
+for a seat that has no other one, rather than a pronoun standing in for a
+name that exists. What went from the board is the column head that read
+"You" where nine others read "Seat N": every column takes its seat number now
+and the band says whose it is. In a shared room a chair carries the name its
+manager typed, exactly as everybody else's does.
+
+**Screen readers get the word back, invisibly.** The mark is colour and
+weight, and neither reaches somebody who is not looking at the screen, so the
+reader's own name carries an `sr-only` "(your team)". Removing a visible
+label is not a reason to remove the fact.
+
+### Two specs described the label rather than the product
+
+`lobby.spec.mjs` found the host's chair by filtering out every row whose
+accessible name ended `, You`, and `board-marks.spec.mjs` found the reader's
+own column header by matching `/^you$/i` on its first line. Both went red,
+and neither was about anything that broke.
+
+**The repair is the rule this file already states about the Start button's
+five names**: `RoomLobby` carries `data-you` and `data-taken` now, and the
+spec asks the attribute. An attribute says what a chair IS; `, You` said what
+it currently read. The board spec finds the reader's column **by its ground**
+— the same band the change makes load-bearing — rather than by a word the
+change deliberately removed, and then asserts both halves: the head names the
+team, and it opens with the seat number every other head opens with.
+
+**`board-marks`'s own header called the old label load-bearing** — *"it
+carries a real label rather than a colour alone — 'You' — so the bar here IS
+4.5:1"*. That is still true of the head's text; what changed is which text.
+
+### And the same pass cut the copy that was saying it twice
+
+The second half of the same report: *"audit the entire website for any
+unnecessary text. I don't want it to be overkill on things that are blatantly
+obvious."* What came out, and the test each one failed:
+
+- **The Now hero's lede.** It read *"You project 154.7 as set; Team Trap
+  projects 109.3."* directly above a card drawing both numbers larger, side
+  by side, with a win probability under them. Three printings of one fact on
+  one screenful. The paragraph is rendered only when there is something left
+  to say — an empty `<p>` still takes its top margin, so the guard is what
+  stops the hero opening on a gap.
+- **`· week 2` in that hero's eyebrow**, with the headline, the band and the
+  ticker all naming the week already.
+- **The League page's lede.** `In season · Week 2 · Season Over Already 1-0 ·
+  2nd of 10` sat above a KPI grid whose cards are the record and the rank and
+  a standings table that highlights the row. Phase and week only.
+- **"As your platform reports it."** under RECORD — a note that describes
+  where every number on the page comes from, under one of them.
+- **"Wins, then points for", three times on the League page**: the Standing
+  card's note, the standings sheet's aside, and the standings footnote. It
+  stays on the table it sorts; the footnote keeps only the half the aside
+  cannot say, that it is *Juke's* tiebreak.
+- **"Read-only", three times**: the page eyebrow, the league panel's footnote
+  and the site footer. The eyebrow and the footer keep it. It came off the
+  Now band too, for the same count.
+- **"Conceding more is the bad direction."** under a delta already coloured
+  as a cost, and **"Against a league median of"** twice in adjacent cards,
+  shortened to "League median".
+- **"Your lineup stands."** three times, each one under a sentence that had
+  just said so ("Nothing needs doing this week", "it is not a call", "nothing
+  on your bench beats a starter").
+- **"Check him before his game kicks off."** above a button reading *Check
+  your lineup*.
+- **The matchup page's lede**, which printed both projections above the two
+  40px numbers that are the page's whole head.
+- **The lineup tool's sheet aside**, which said `vs Team Trap` an inch from
+  the line that says `vs Team Trap` and links to them.
+
+**What was deliberately kept.** Anything that is the framing a number may not
+be shown without — `10,000 seasons from today's projections`, `a
+scoring-strength estimate from two projected lineups`, `same-position swaps
+only` — and anything that is a promise rather than a description, which is
+why "read-only" survives twice rather than once. The rule applied throughout
+is narrow: **cut a sentence when the thing it describes is already on the
+same screen, larger.** Not when it is merely long.
+
+### Three specs were already red, and every one was checked before it was blamed
+
+`no-sideways-leak` at both widths (`#/players`' OVER REPL. header at
+`over=8`; `#/draft`'s Create-a-room card at `over=9`), `board-marks`' live
+ring, and `phone`'s own overflow sweep (the board's roster strip, `over=9`).
+All four were reproduced on a clean tree with the identical element and the
+identical figure, which is the baseline this file's Testing section asks for
+before a red run is attributed to anything. **The live-ring one is worth a
+line of its own**: it asserts the live cell says "on the clock", and the cell
+says `Your pick` when the live pick is the reader's own seat — `draftInto()`
+pins `mySlot: 3` and the pick it lands on is seat 3, so it fails every run
+rather than flaking. It is a stale assertion about a board that draws two
+words there, and it is not this change's to fix.
+
 ## Whose it is, and where the draft is
 
 Two marks on the board, and they were one colour between them.
+
+**Corrected in place, 19 September 2026**: the sections below describe the
+LEGACY board's own marks. The connected-league surfaces no longer write the
+word "You" anywhere — see "\"You\" is not a team name" above for what
+replaced it and why.
 
 **Gold is identity, and it is the third meaning after teal and blue.**
 Teal acts, blue states — and *whose* is neither. It had been blue in four of

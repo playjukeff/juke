@@ -191,7 +191,7 @@ export default function Pool({ engine, version, f, set, sort, canDraft, draftRea
   const picks = engine.picks() || []
   const takenBy = (p) => {
     const pick = picks.find((x) => x.player === p || x.player.name === p.name)
-    return pick ? (pick.slot === engine.mySlot() ? 'You' : engine.teamLabel(pick.slot)) : null
+    return pick ? engine.teamLabel(pick.slot) : null
   }
 
   let playersSeen = 0

@@ -34,7 +34,7 @@ import { inviteUrl, leaveRoom, sendBlocker, startBlocker } from './room.js'
    and "move Blake to seat 3" would have to name Blake. */
 
 function Seat({ chair, index, held, canOrder, canClaim, onClaim, onHold, hostSeat }) {
-  const who = chair.you ? 'You' : chair.taken ? (chair.name || 'Manager') : 'CPU'
+  const who = chair.taken ? (chair.name || (chair.you ? 'Your seat' : 'Manager')) : 'CPU'
   const pressable = canOrder || (canClaim && !chair.taken)
   const label = canOrder
     ? `Seat ${index + 1}, ${who}. ${held ? 'Tap another seat to swap.' : 'Tap to move.'}`
@@ -64,10 +64,15 @@ function Seat({ chair, index, held, canOrder, canClaim, onClaim, onHold, hostSea
           : 'border-dashed border-v3-rule bg-v3-paper text-v3-ink2',
   )
 
-  if (!pressable) return <li><span className={cls} aria-label={label}>{body}</span></li>
+  /* data-you / data-taken rather than a label a test can read: a chair
+     used to announce itself as ", You" and the name is the reader's own
+     now, so anything anchored on the words moved with the copy. An
+     attribute says what the chair IS. */
+  const marks = { 'data-seat': index + 1, 'data-you': chair.you ? '' : undefined, 'data-taken': chair.taken ? '' : undefined }
+  if (!pressable) return <li><span {...marks} className={cls} aria-label={label}>{body}</span></li>
   return (
     <li>
-      <button type="button" aria-label={label} aria-pressed={canOrder ? held : undefined} onClick={() => (canOrder ? onHold(index) : onClaim(index))} className={cls}>
+      <button type="button" {...marks} aria-label={label} aria-pressed={canOrder ? held : undefined} onClick={() => (canOrder ? onHold(index) : onClaim(index))} className={cls}>
         {body}
       </button>
     </li>
